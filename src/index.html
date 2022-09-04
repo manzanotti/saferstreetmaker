@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <title>Safer Street Maker</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.8.0/dist/leaflet.css"
+      integrity="sha512-hoalWLoI8r4UszCkZ5kL8vayOGVae1oxXe/2A4AO6J9+580uKHDO3JdHb7NzwwzK5xr/Fs0W40kiNHxM9vyTtQ=="
+      crossorigin=""/>
+      <link rel="stylesheet" href="../node_modules/leaflet-toolbar/dist/leaflet.toolbar.css"/>
+      <style>
+        #map { height: 100vh; }
+
+        .modal-filter {
+          cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30'%3E%3Ccircle cx='15' cy='15' r='10' stroke='green' stroke-width='3' fill='green' fill-opacity='.2' %3E%3C/circle%3E%3C/svg%3E") 15 15, auto;
+        }
+
+        .ltn-cell {
+          cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30'%3E%3Cpath class='leaflet-interactive' stroke='blue' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' fill='blue' fill-opacity='.2' fill-rule='evenodd' d='M5 5 h20v20h-20v-20'%3E%3C/path%3E%3C/svg%3E") 15 15, auto;
+        }
+
+      </style>
+
+    <script type="module" src="scripts/index.ts"></script>
+  </head>
+  <body>
+    <div id="map"></div>
+  </body>
+</html>
