@@ -11,6 +11,7 @@ export class MapContainer {
     private _mode: string;
     private _selectedLayer: IMapLayer | null;
     private _layers: Map<string, IMapLayer>;
+    private readonly _layerUpdatedTopic = 'LayerUpdatedTopic';
 
     constructor(mapManager: MapManager) {
         this._mapManager = mapManager;
@@ -36,6 +37,16 @@ export class MapContainer {
                     break;
             }
         });
+
+        PubSub.subscribe(mapManager.fileLoadedTopic, (msg, data) => {
+            if(this.loadMapData(data)) {
+                this.saveMap();
+            };
+        });
+
+        PubSub.subscribe(this._layerUpdatedTopic, (msg, data) => {
+            this.saveMap();
+        });
     }
 
     private setupMap = () => {
@@ -46,6 +57,40 @@ export class MapContainer {
 
     private setupToolbars = () => {
         const actions: Array<IMapLayer> = [];
+
+        const saveFileAction = L.Toolbar2.Action.extend({
+            options: {
+                toolbarIcon: {
+                    html: '<div class="save-file"></div>',
+                    tooltip: 'Save map to a file'
+                }
+            },
+
+            addHooks: () => {
+                const centre = this._map.getCenter();
+                const zoom = this._map.getZoom();
+        
+                this._mapManager.saveMapToFile(this._title, this._layers, centre, zoom);
+            }
+        });
+
+        actions.push(saveFileAction);
+
+        const loadFileAction = L.Toolbar2.Action.extend({
+            options: {
+                toolbarIcon: {
+                    html: '<div class="load-file"></div>',
+                    tooltip: 'Load map from a file'
+                }
+            },
+
+            addHooks: () => {
+                this._mapManager.loadMapFromFile();
+            }
+        });
+
+        actions.push(loadFileAction);
+
         this._layers.forEach((layer, key) => {
             actions.push(layer.getToolbarAction());
         });
@@ -57,10 +102,10 @@ export class MapContainer {
     };
 
     private setupModalFilterLayer = () => {
-        const modelFilters = new ModalFilterLayer();
+        const modelFilters = new ModalFilterLayer(this._layerUpdatedTopic);
         this._layers.set(modelFilters.id, modelFilters);
 
-        PubSub.subscribe(modelFilters.topic, (msg, data) => {
+        PubSub.subscribe(modelFilters.layerSelectedTopic, (msg, data) => {
             if (data === modelFilters.id) {
                 this._selectedLayer = modelFilters;
                 this._mode = 'modalFilters';
@@ -87,6 +132,10 @@ export class MapContainer {
         const lastMapSelected = this._mapManager.loadLastMapSelected();
         const geoJSON = this._mapManager.loadMapFromStorage(lastMapSelected || this._title);
 
+        return this.loadMapData(geoJSON);
+    };
+
+    private loadMapData = (geoJSON): boolean => {
         if (geoJSON === null) {
             this._mapManager.saveLastMapSelected(this._title);
             return false;
@@ -109,7 +158,7 @@ export class MapContainer {
 
         this._selectedLayer = null;
         return true;
-    };
+    }
 
     private saveMap = () => {
         const centre = this._map.getCenter();

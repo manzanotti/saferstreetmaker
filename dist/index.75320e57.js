@@ -549,7 +549,24 @@ parcelHelpers.export(exports, "MapManager", ()=>MapManager);
 var _lzString = require("lz-string");
 var _lzStringDefault = parcelHelpers.interopDefault(_lzString);
 class MapManager {
+    fileLoadedTopic = "fileLoaded";
+    saveMapToFile = (mapName, layersData, centre, zoom)=>{
+        const mapData = this.mapToJSON(mapName, layersData, centre, zoom);
+        const blob = new Blob([
+            mapData
+        ], {
+            type: "text/plain;charset=utf-8"
+        });
+        const hyperlink = document.createElement("a");
+        hyperlink.href = URL.createObjectURL(blob);
+        hyperlink.download = `${mapName}.json`;
+        hyperlink.click();
+    };
     saveMap = (mapName, layersData, centre, zoom)=>{
+        const mapData = this.mapToJSON(mapName, layersData, centre, zoom);
+        localStorage.setItem(`Map_${mapName}`, (0, _lzStringDefault.default).compress(mapData));
+    };
+    mapToJSON = (mapName, layersData, centre, zoom)=>{
         let layers = {};
         layersData.forEach((layer, layerName)=>{
             layers[layerName] = layer.getLayer().toGeoJSON();
@@ -560,11 +577,32 @@ class MapManager {
             "zoom": zoom,
             "layers": layers
         };
-        const data = JSON.stringify(mapData);
-        localStorage.setItem(`Map_${mapName}`, (0, _lzStringDefault.default).compress(data));
+        return JSON.stringify(mapData);
     };
     saveLastMapSelected = (mapName)=>{
         localStorage.setItem("LastMapSelected", (0, _lzStringDefault.default).compress(mapName));
+    };
+    loadMapFromFile = ()=>{
+        const fileInput = document.createElement("input");
+        fileInput.type = "file";
+        fileInput.style.display = "none";
+        fileInput.onchange = this.readFile;
+        document.body.appendChild(fileInput);
+        fileInput.click();
+    };
+    readFile = (e)=>{
+        let fileInput = e.target;
+        const file = fileInput.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e)=>{
+            if (e.target === null) return;
+            const contents = e.target.result || "";
+            const map = JSON.parse(contents);
+            PubSub.publish(this.fileLoadedTopic, map);
+            document.body.removeChild(fileInput);
+        };
+        reader.readAsText(file, "text/plain;charset=utf-8");
     };
     loadLastMapSelected = ()=>{
         const mapData = localStorage.getItem("LastMapSelected");
@@ -1057,14 +1095,13 @@ var _pubsubJs = require("pubsub-js");
 var _pubsubJsDefault = parcelHelpers.interopDefault(_pubsubJs);
 var _modalFilterLayer = require("./ModalFilterLayer");
 class MapContainer {
-    //private readonly _cellIcon: string;
+    _layerUpdatedTopic = "LayerUpdatedTopic";
     constructor(mapManager){
         this._mapManager = mapManager;
         this._map = _leaflet.map("map");
         this._title = "Hello Cleveland";
         this._mode = "";
         this._selectedLayer = null;
-        //this._cellIcon = '<svg width="30" height="30"><path class="leaflet-interactive" stroke="green" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="green" fill-opacity=".2" fill-rule="evenodd" d="M5 5 h20v20h-20v-20"></path></svg>';
         this._layers = new Map;
         this.setupMap();
         this.setupModalFilterLayer();
@@ -1078,6 +1115,12 @@ class MapContainer {
                     break;
             }
         });
+        (0, _pubsubJsDefault.default).subscribe(mapManager.fileLoadedTopic, (msg, data)=>{
+            if (this.loadMapData(data)) this.saveMap();
+        });
+        (0, _pubsubJsDefault.default).subscribe(this._layerUpdatedTopic, (msg, data)=>{
+            this.saveMap();
+        });
     }
     setupMap = ()=>{
         _leaflet.tileLayer("https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png", {
@@ -1086,36 +1129,44 @@ class MapContainer {
     };
     setupToolbars = ()=>{
         const actions = [];
+        const saveFileAction = _leaflet.Toolbar2.Action.extend({
+            options: {
+                toolbarIcon: {
+                    html: '<div class="save-file"></div>',
+                    tooltip: "Save map to a file"
+                }
+            },
+            addHooks: ()=>{
+                const centre = this._map.getCenter();
+                const zoom = this._map.getZoom();
+                this._mapManager.saveMapToFile(this._title, this._layers, centre, zoom);
+            }
+        });
+        actions.push(saveFileAction);
+        const loadFileAction = _leaflet.Toolbar2.Action.extend({
+            options: {
+                toolbarIcon: {
+                    html: '<div class="load-file"></div>',
+                    tooltip: "Load map from a file"
+                }
+            },
+            addHooks: ()=>{
+                this._mapManager.loadMapFromFile();
+            }
+        });
+        actions.push(loadFileAction);
         this._layers.forEach((layer, key)=>{
             actions.push(layer.getToolbarAction());
         });
-        // const cellAction = L.Toolbar2.Action.extend({
-        //     options: {
-        //         toolbarIcon: {
-        //             html: this._cellIcon,
-        //             tooltip: 'Add LTN Cells to the map'
-        //         }
-        //     },
-        //     addHooks: () => {
-        //         if (this._mode === 'ltnCells') {
-        //             this._mode = '';
-        //             this.removeCellsCursor();
-        //             return;
-        //         }
-        //         this._selectedLayer = 'LtnCells';
-        //         this._mode = 'ltnCells';
-        //         this.setCursorForCells();
-        //     }
-        // });
         new _leaflet.Toolbar2.Control({
             position: "topleft",
             actions: actions
         }).addTo(this._map);
     };
     setupModalFilterLayer = ()=>{
-        const modelFilters = new (0, _modalFilterLayer.ModalFilterLayer)();
+        const modelFilters = new (0, _modalFilterLayer.ModalFilterLayer)(this._layerUpdatedTopic);
         this._layers.set(modelFilters.id, modelFilters);
-        (0, _pubsubJsDefault.default).subscribe(modelFilters.topic, (msg, data)=>{
+        (0, _pubsubJsDefault.default).subscribe(modelFilters.layerSelectedTopic, (msg, data)=>{
             if (data === modelFilters.id) {
                 this._selectedLayer = modelFilters;
                 this._mode = "modalFilters";
@@ -1139,28 +1190,12 @@ class MapContainer {
             coordinates.longitude
         ], 17);
     };
-    // private addMarker = (latitude: number, longitude: number) => {
-    //     const modalFilter = new L.CircleMarker([latitude, longitude], {
-    //         draggable: true,
-    //         color: 'green',
-    //         radius: 10
-    //     })
-    //         .on('click', (e) => { this._selectedLayer = 'Modals'; this.deleteMarker(e); })
-    //         .on('dragend', (e) => { this.saveMap(); });
-    //     const selectedLayer = this._layers.get(this._selectedLayer);
-    //     selectedLayer?.addLayer(modalFilter);
-    //     this.saveMap();
-    // }
-    // private deleteMarker = (e) => {
-    //     L.DomEvent.stopPropagation(e);
-    //     const marker = e.target;
-    //     const selectedLayer = this._layers.get(this._selectedLayer);
-    //     selectedLayer?.removeLayer(marker);
-    //     this.saveMap();
-    // }
     loadMap = ()=>{
         const lastMapSelected = this._mapManager.loadLastMapSelected();
         const geoJSON = this._mapManager.loadMapFromStorage(lastMapSelected || this._title);
+        return this.loadMapData(geoJSON);
+    };
+    loadMapData = (geoJSON)=>{
         if (geoJSON === null) {
             this._mapManager.saveLastMapSelected(this._title);
             return false;
@@ -11747,8 +11782,9 @@ var _leafletPathDrag = require("leaflet-path-drag");
 var _pubsubJs = require("pubsub-js");
 var _pubsubJsDefault = parcelHelpers.interopDefault(_pubsubJs);
 class ModalFilterLayer {
-    topic = "ModalFilterLayerSelected";
-    constructor(){
+    layerSelectedTopic = "ModalFilterLayerSelected";
+    constructor(layerUpdatedTopic){
+        this._layerUpdatedTopic = layerUpdatedTopic;
         this._modalFilterIcon = `<svg width="30" height="30"><circle cx="15" cy="15" r="10" stroke="green" stroke-width="3" fill="green" fill-opacity=".2" /></svg>`;
         this._layer = _leaflet.geoJSON();
         this.id = "Modals";
@@ -11757,7 +11793,7 @@ class ModalFilterLayer {
         this.setupSubscribers();
     }
     setupSubscribers = ()=>{
-        (0, _pubsubJsDefault.default).subscribe(this.topic, (msg, data)=>{
+        (0, _pubsubJsDefault.default).subscribe(this.layerSelectedTopic, (msg, data)=>{
             if (data !== this.id) this.selected = false;
         });
     };
@@ -11773,11 +11809,13 @@ class ModalFilterLayer {
             this.deleteMarker(e);
         });
         this._layer.addLayer(modalFilter);
+    //PubSub.publish(this._layerUpdatedTopic, this.id);
     };
     deleteMarker = (e)=>{
         _leaflet.DomEvent.stopPropagation(e);
         const marker = e.target;
         this._layer.removeLayer(marker);
+        (0, _pubsubJsDefault.default).publish(this._layerUpdatedTopic, this.id);
     };
     getToolbarAction = ()=>{
         const modalFilterAction = _leaflet.Toolbar2.Action.extend({
@@ -11793,7 +11831,7 @@ class ModalFilterLayer {
                     this.removeCursor();
                     return;
                 }
-                (0, _pubsubJsDefault.default).publish(this.topic, this.id);
+                (0, _pubsubJsDefault.default).publish(this.layerSelectedTopic, this.id);
                 this.selected = true;
                 this.setCursor();
             }

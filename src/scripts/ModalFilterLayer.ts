@@ -12,11 +12,13 @@ export class ModalFilterLayer implements IMapLayer {
     public readonly id: string;
     public readonly title: string;
     public selected: boolean;
-    public topic = 'ModalFilterLayerSelected';
+    public layerSelectedTopic = 'ModalFilterLayerSelected';
+    private readonly _layerUpdatedTopic: string;
     private readonly _layer: L.GeoJSON;
     private readonly _modalFilterIcon: string;
 
-    constructor() {
+    constructor(layerUpdatedTopic: string) {
+        this._layerUpdatedTopic = layerUpdatedTopic;
         this._modalFilterIcon = `<svg width="30" height="30"><circle cx="15" cy="15" r="10" stroke="green" stroke-width="3" fill="green" fill-opacity=".2" /></svg>`;
         this._layer = L.geoJSON();
         this.id = 'Modals';
@@ -27,7 +29,7 @@ export class ModalFilterLayer implements IMapLayer {
     }
 
     private setupSubscribers = () => {
-        PubSub.subscribe(this.topic, (msg, data) => {
+        PubSub.subscribe(this.layerSelectedTopic, (msg, data) => {
             if (data !== this.id) {
                 this.selected = false;
             }
@@ -41,7 +43,9 @@ export class ModalFilterLayer implements IMapLayer {
             radius: 10
         })
             .on('click', (e) => { this.deleteMarker(e); });
-        this._layer.addLayer(modalFilter);;
+        this._layer.addLayer(modalFilter);
+
+        //PubSub.publish(this._layerUpdatedTopic, this.id);
     };
 
     deleteMarker = (e) => {
@@ -49,6 +53,7 @@ export class ModalFilterLayer implements IMapLayer {
 
         const marker = e.target;
         this._layer.removeLayer(marker);
+        PubSub.publish(this._layerUpdatedTopic, this.id);
     };
 
     getToolbarAction = () => {
@@ -67,7 +72,7 @@ export class ModalFilterLayer implements IMapLayer {
                     return;
                 }
 
-                PubSub.publish(this.topic, this.id);
+                PubSub.publish(this.layerSelectedTopic, this.id);
                 this.selected = true;
                 this.setCursor();
             }
