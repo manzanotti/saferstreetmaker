@@ -1028,6 +1028,11 @@
   "resolved" "https://registry.npmjs.org/json5/-/json5-2.2.1.tgz"
   "version" "2.2.1"
 
+"leaflet-draw@^1.0.4":
+  "integrity" "sha512-rsQ6saQO5ST5Aj6XRFylr5zvarWgzWnrg46zQ1MEOEIHsppdC/8hnN8qMoFvACsPvTioAuysya/TVtog15tyAQ=="
+  "resolved" "https://registry.npmjs.org/leaflet-draw/-/leaflet-draw-1.0.4.tgz"
+  "version" "1.0.4"
+
 "leaflet-path-drag@^1.8.0-beta.3":
   "integrity" "sha512-kpZ6sPOKlR+m+VChIzZZ7XFH4C+VGTrAxgnM4UN5iYl7lJ00iDOxS+r717bDf/xFFHB6n2jpUp9vvzjjteMpeQ=="
   "resolved" "https://registry.npmjs.org/leaflet-path-drag/-/leaflet-path-drag-1.8.0-beta.3.tgz"
@@ -1043,7 +1048,7 @@
   "resolved" "https://registry.npmjs.org/leaflet-toolbar/-/leaflet-toolbar-0.4.0-alpha.2.tgz"
   "version" "0.4.0-alpha.2"
 
-"leaflet@*", "leaflet@^1.8.0":
+"leaflet@*":
   "integrity" "sha512-gwhMjFCQiYs3x/Sf+d49f10ERXaEFCPr+nVTryhAW8DWbMGqJqt9G4XuIaHmFW08zYvhgdzqXGr8AlW8v8dQkA=="
   "resolved" "https://registry.npmjs.org/leaflet/-/leaflet-1.8.0.tgz"
   "version" "1.8.0"
