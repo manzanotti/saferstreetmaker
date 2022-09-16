@@ -1186,6 +1186,18 @@ class MapContainer {
         this._layers.forEach((layer, key)=>{
             actions.push(layer.getToolbarAction(this._map));
         });
+        const helpAction = _leaflet.Toolbar2.Action.extend({
+            options: {
+                toolbarIcon: {
+                    html: '<div class="help-button"></div>',
+                    tooltip: "Instructions on how to use the map"
+                }
+            },
+            addHooks: ()=>{
+                this.showHelp();
+            }
+        });
+        actions.push(helpAction);
         this._menu = new _leaflet.Toolbar2.Control({
             position: "topleft",
             actions: actions
@@ -1282,6 +1294,11 @@ class MapContainer {
         const centre = this._map.getCenter();
         const zoom = this._map.getZoom();
         this._mapManager.saveMap(this._title, this._layers, centre, zoom);
+    };
+    showHelp = ()=>{
+        const helpElement = document.getElementById("help");
+        if (helpElement?.classList.contains("hide")) helpElement?.classList.remove("hide");
+        else helpElement?.classList.add("hide");
     };
 }
 
