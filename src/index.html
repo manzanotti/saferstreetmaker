@@ -7,11 +7,18 @@
       integrity="sha512-hoalWLoI8r4UszCkZ5kL8vayOGVae1oxXe/2A4AO6J9+580uKHDO3JdHb7NzwwzK5xr/Fs0W40kiNHxM9vyTtQ=="
       crossorigin=""/>
       <link rel="stylesheet" href="../node_modules/leaflet-toolbar/dist/leaflet.toolbar.css"/>
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" integrity="sha512-gc3xjCmIy673V6MyOAZhIW93xhM9ei1I+gLbmFjUHIjocENRsLX/QUE1htk5q1XV2D/iie/VQ8DXI6Vu8bexvQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
       <style>
         #map { height: 100vh; }
 
         .modal-filter {
           cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30'%3E%3Ccircle cx='15' cy='15' r='10' stroke='green' stroke-width='3' fill='green' fill-opacity='.2' %3E%3C/circle%3E%3C/svg%3E") 15 15, auto;
+        }
+
+        .mobility-lane-button {
+          background-image: url(img/bicycle-svgrepo-com.svg);
+          height: 29px;
+          width: 29px;
         }
 
         .ltn-cell {
@@ -20,18 +27,33 @@
 
         .save-file {
           background-image: url(img/save-svgrepo-com.svg);
-          background-repeat: no-repeat;
-          height: 25px;
-          width: 25px;
-          margin: 3px 0 0 3px;
+          height: 29px;
+          width: 29px;
         }
 
         .load-file {
           background-image: url(img/folder-svgrepo-com.svg);
-          background-repeat: no-repeat;
-          height: 25px;
-          width: 25px;
-          margin: 3px 0 0 3px;
+          height: 29px;
+          width: 29px;
+        }
+
+        .delete-button {
+          background-image: url(img/outlined-trash-bin-svgrepo-com.svg);
+          height: 29px;
+          width: 29px;
+        }
+
+        .delete-button:hover {
+            box-shadow: 0 2px 2px 0 black;
+         }
+
+        ul.popup-buttons {
+          padding: 0;
+        }
+
+        ul.popup-buttons li{
+          list-style: none;
+          display: inline-block;
         }
 
       </style>

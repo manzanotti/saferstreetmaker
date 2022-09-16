@@ -3,15 +3,23 @@ import PubSub from 'pubsub-js';
 import { ModalFilterLayer } from './ModalFilterLayer';
 import { IMapLayer } from './IMapLayer';
 import { MapManager } from './MapManager';
+import 'leaflet-draw';
+//import 'leaflet-draw-toolbar';
+import { CycleLaneLayer } from './CycleLaneLayer';
 
 export class MapContainer {
     private _mapManager: MapManager;
     private _map: L.Map;
+    private _menu: L.Toolbar2.Control;
     private _title: string;
     private _mode: string;
     private _selectedLayer: IMapLayer | null;
     private _layers: Map<string, IMapLayer>;
     private readonly _layerUpdatedTopic = 'LayerUpdatedTopic';
+    private readonly _layerSelectedTopic = 'LayerSelectedTopic';
+    private readonly _layerDeselectedTopic = 'LayerDeselectedTopic';
+    private readonly _showPopupTopic = 'ShowPopup';
+    private readonly _closePopupTopic = 'ClosePopup';
 
     constructor(mapManager: MapManager) {
         this._mapManager = mapManager;
@@ -25,33 +33,50 @@ export class MapContainer {
 
         this.setupMap();
         this.setupModalFilterLayer();
+        this.setupCycleLaneLayer();
 
         this.addOverlays();
         this.setupToolbars();
 
-        this._map.addEventListener('click', (e: any) => {
+        this._map.on('click', (e: any) => {
             switch (this._mode) {
-                case 'modalFilters':
-                    this._selectedLayer?.addMarker(e.latlng.lat, e.latlng.lng);
+                case 'ModalFilters':
+                    L.DomEvent.stopPropagation(e);
+                    this._selectedLayer?.addMarker([[e.latlng.lng, e.latlng.lat]]);
                     this.saveMap();
+                    break;
+                case 'CycleLanes':
                     break;
             }
         });
 
-        PubSub.subscribe(mapManager.fileLoadedTopic, (msg, data) => {
-            if(this.loadMapData(data)) {
-                this.saveMap();
-            };
-        });
+        this._map.on('keyup', (e: L.LeafletKeyboardEvent) => {
+            if (e.originalEvent.key === 'Escape' && this._selectedLayer !== null) {
+                this._selectedLayer?.deselectLayer();
+                this._selectedLayer = null;
+                this._mode = '';
+            }
+        })
 
-        PubSub.subscribe(this._layerUpdatedTopic, (msg, data) => {
+        this._map.on('draw:created', (e) => {
+            const layer = e.layer;
+
+            switch (this._mode) {
+                case CycleLaneLayer.Id:
+                    this._selectedLayer?.addMarker(layer.getLatLngs());
+                    break;
+            }
+
             this.saveMap();
         });
+        
+        this.setupSubscribers();
     }
 
     private setupMap = () => {
         L.tileLayer('https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+            maxZoom: 20
         }).addTo(this._map);
     };
 
@@ -69,7 +94,7 @@ export class MapContainer {
             addHooks: () => {
                 const centre = this._map.getCenter();
                 const zoom = this._map.getZoom();
-        
+
                 this._mapManager.saveMapToFile(this._title, this._layers, centre, zoom);
             }
         });
@@ -92,31 +117,74 @@ export class MapContainer {
         actions.push(loadFileAction);
 
         this._layers.forEach((layer, key) => {
-            actions.push(layer.getToolbarAction());
+            actions.push(layer.getToolbarAction(this._map));
         });
 
-        new L.Toolbar2.Control({
+        this._menu = new L.Toolbar2.Control({
             position: 'topleft',
             actions: actions
         }).addTo(this._map);
     };
 
     private setupModalFilterLayer = () => {
-        const modelFilters = new ModalFilterLayer(this._layerUpdatedTopic);
-        this._layers.set(modelFilters.id, modelFilters);
-
-        PubSub.subscribe(modelFilters.layerSelectedTopic, (msg, data) => {
-            if (data === modelFilters.id) {
-                this._selectedLayer = modelFilters;
-                this._mode = 'modalFilters';
-            }
-        });
+        const modelFilters = new ModalFilterLayer(this._layerUpdatedTopic, this._layerSelectedTopic, this._layerDeselectedTopic);
+        this._layers.set(ModalFilterLayer.Id, modelFilters);
     };
+
+    private setupCycleLaneLayer = () => {
+        const cycleLanes = new CycleLaneLayer(this._layerUpdatedTopic, this._layerSelectedTopic, this._layerDeselectedTopic, this._showPopupTopic, this._closePopupTopic);
+        this._layers.set(CycleLaneLayer.Id, cycleLanes);
+    };
+
+    private setupSubscribers = () => {
+        PubSub.subscribe(this._mapManager.fileLoadedTopic, (msg, data) => {
+            this._layers.forEach((layer, layerName) => {
+                layer.getLayer().clearLayers();
+            });
+            if (this.loadMapData(data)) {
+                this.saveMap();
+            };
+        });
+
+        PubSub.subscribe(this._layerSelectedTopic, (msg, data) => {
+            this.selectLayer(data);
+        });
+
+        PubSub.subscribe(this._layerDeselectedTopic, (msg, data) => {
+            this.deselectLayer(data);
+        });
+
+        PubSub.subscribe(this._layerUpdatedTopic, (msg, data) => {
+            this.saveMap();
+        });
+
+        PubSub.subscribe(this._showPopupTopic, (msg, popup) => {
+            this._map.openPopup(popup);
+        });
+
+        PubSub.subscribe(this._closePopupTopic, (msg, popup) => {
+            this._map.closePopup(popup);
+        });
+    }
+
+    private selectLayer = (layerId: string) => {
+        if (this._selectedLayer !== null && this._selectedLayer.id !== layerId) {
+            this._selectedLayer.deselectLayer();
+        }
+
+        this._selectedLayer = this._layers.get(layerId) || null;
+        this._mode = this._selectedLayer?.id || '';
+    }
+
+    private deselectLayer = (layerId: string) => {
+        this._selectedLayer = null;
+        this._mode = '';
+    }
 
     private addOverlays = () => {
         const overlays = {};
         this._layers.forEach((layer, key) => {
-            overlays[key] = layer.getLayer();
+            overlays[layer.title] = layer.getLayer();
             this._map.addLayer(layer.getLayer());
         });
 
@@ -151,6 +219,9 @@ export class MapContainer {
         if (geoJSON['layers'] !== undefined) {
             const layersJSON = geoJSON['layers'];
             this._layers.forEach((layer, layerName) => {
+                if(layerName === ModalFilterLayer.Id && layersJSON['Modals'] !== undefined){
+                    layerName = 'Modals';
+                }
                 const layerJSON = layersJSON[layerName];
                 layer.loadFromGeoJSON(layerJSON);
             });

@@ -9,19 +9,21 @@ import PubSub from 'pubsub-js';
 import { IMapLayer } from "./IMapLayer";
 
 export class ModalFilterLayer implements IMapLayer {
-    public readonly id: string;
+    public static Id = 'ModalFilters';
     public readonly title: string;
     public selected: boolean;
-    public layerSelectedTopic = 'ModalFilterLayerSelected';
+    private readonly _layerSelectedTopic: string;
+    private readonly _layerDeselectedTopic: string;
     private readonly _layerUpdatedTopic: string;
     private readonly _layer: L.GeoJSON;
     private readonly _modalFilterIcon: string;
 
-    constructor(layerUpdatedTopic: string) {
+    constructor(layerUpdatedTopic: string, layerSelectedTopic: string, layerDeselectedTopic: string) {
         this._layerUpdatedTopic = layerUpdatedTopic;
+        this._layerSelectedTopic = layerSelectedTopic;
+        this._layerDeselectedTopic = layerDeselectedTopic;
         this._modalFilterIcon = `<svg width="30" height="30"><circle cx="15" cy="15" r="10" stroke="green" stroke-width="3" fill="green" fill-opacity=".2" /></svg>`;
         this._layer = L.geoJSON();
-        this.id = 'Modals';
         this.title = 'Modal Filters';
         this.selected = false;
 
@@ -29,15 +31,16 @@ export class ModalFilterLayer implements IMapLayer {
     }
 
     private setupSubscribers = () => {
-        PubSub.subscribe(this.layerSelectedTopic, (msg, data) => {
-            if (data !== this.id) {
+        PubSub.subscribe(this._layerSelectedTopic, (msg, data) => {
+            if (data !== ModalFilterLayer.Id) {
                 this.selected = false;
             }
         });
     };
 
-    addMarker = (latitude: number, longitude: number) => {
-        const modalFilter = new L.CircleMarker([latitude, longitude], {
+    addMarker = (points: Array<L.LatLng>) => {
+        const coordinates = points[0];
+        const modalFilter = new L.CircleMarker([coordinates[1], coordinates[0]], {
             draggable: true,
             color: 'green',
             radius: 10
@@ -53,10 +56,14 @@ export class ModalFilterLayer implements IMapLayer {
 
         const marker = e.target;
         this._layer.removeLayer(marker);
-        PubSub.publish(this._layerUpdatedTopic, this.id);
+        PubSub.publish(this._layerUpdatedTopic, ModalFilterLayer.Id);
     };
 
-    getToolbarAction = () => {
+    deselectLayer = () => {
+        this.removeCursor();
+    }
+
+    getToolbarAction = (map: L.Map) => {
         const modalFilterAction = L.Toolbar2.Action.extend({
             options: {
                 toolbarIcon: {
@@ -72,9 +79,9 @@ export class ModalFilterLayer implements IMapLayer {
                     return;
                 }
 
-                PubSub.publish(this.layerSelectedTopic, this.id);
                 this.selected = true;
                 this.setCursor();
+                PubSub.publish(this._layerSelectedTopic, ModalFilterLayer.Id);
             }
         });
 
@@ -94,7 +101,7 @@ export class ModalFilterLayer implements IMapLayer {
     loadFromGeoJSON = (geoJson: L.GeoJSON) => {
         geoJson['features'].forEach((modelFilter) => {
             const coordinates = modelFilter.geometry.coordinates;
-            this.addMarker(coordinates[1], coordinates[0]);
+            this.addMarker([coordinates]);
         });
     };
 
