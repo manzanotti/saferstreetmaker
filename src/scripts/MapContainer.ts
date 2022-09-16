@@ -120,6 +120,21 @@ export class MapContainer {
             actions.push(layer.getToolbarAction(this._map));
         });
 
+        const helpAction = L.Toolbar2.Action.extend({
+            options: {
+                toolbarIcon: {
+                    html: '<div class="help-button"></div>',
+                    tooltip: 'Instructions on how to use the map'
+                }
+            },
+
+            addHooks: () => {
+                this.showHelp();
+            }
+        });
+
+        actions.push(helpAction);
+
         this._menu = new L.Toolbar2.Control({
             position: 'topleft',
             actions: actions
@@ -237,4 +252,14 @@ export class MapContainer {
 
         this._mapManager.saveMap(this._title, this._layers, centre, zoom);
     };
+
+    private showHelp = () => {
+        const helpElement = document.getElementById('help');
+
+        if(helpElement?.classList.contains('hide')){
+            helpElement?.classList.remove('hide');
+        } else {
+            helpElement?.classList.add('hide');
+        }
+    }
 }
