@@ -25,9 +25,9 @@ export class CycleLaneLayer implements IMapLayer {
         this._layerDeselectedTopic = layerDeselectedTopic;
         this._showPopupTopic = showPopupTopic;
         this._closePopupTopic = closePopupTopic;
-
         this._cycleLaneIcon = `<svg width="30" height="30"><path stroke='blue' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' fill='blue' fill-opacity='.4' fill-rule='evenodd' d='M12 5 h5v20h-5v-20' /></svg>`;
         this._layer = L.geoJSON();
+        
         this.id = CycleLaneLayer.Id;
         this.title = 'Cycle Lanes';
         this.selected = false;
