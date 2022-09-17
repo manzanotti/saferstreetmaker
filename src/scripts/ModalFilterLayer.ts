@@ -10,6 +10,7 @@ import { IMapLayer } from "./IMapLayer";
 
 export class ModalFilterLayer implements IMapLayer {
     public static Id = 'ModalFilters';
+    public readonly id: string;
     public readonly title: string;
     public selected: boolean;
     private readonly _layerSelectedTopic: string;
@@ -24,6 +25,7 @@ export class ModalFilterLayer implements IMapLayer {
         this._layerDeselectedTopic = layerDeselectedTopic;
         this._modalFilterIcon = `<svg width="30" height="30"><circle cx="15" cy="15" r="10" stroke="green" stroke-width="3" fill="green" fill-opacity=".2" /></svg>`;
         this._layer = L.geoJSON();
+        this.id = ModalFilterLayer.Id;
         this.title = 'Modal Filters';
         this.selected = false;
 
@@ -47,8 +49,6 @@ export class ModalFilterLayer implements IMapLayer {
         })
             .on('click', (e) => { this.deleteMarker(e); });
         this._layer.addLayer(modalFilter);
-
-        //PubSub.publish(this._layerUpdatedTopic, this.id);
     };
 
     deleteMarker = (e) => {
