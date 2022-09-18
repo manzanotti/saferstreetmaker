@@ -38,6 +38,9 @@
 
 .delete-button {
     background-image: url(../img/outlined-trash-bin-svgrepo-com.svg);
+    width: 29px;
+    height: 29px;
+    background-size: 29px 29px;
 }
 
 .help-button {
