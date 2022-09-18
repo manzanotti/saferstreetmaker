@@ -1,10 +1,4 @@
 import * as L from 'leaflet';
-import 'leaflet-svg-shape-markers/src/shapeMarker';
-import 'leaflet-svg-shape-markers/src/SVG';
-import 'leaflet-toolbar/src/Toolbar';
-import 'leaflet-toolbar/src/Action';
-import 'leaflet-toolbar/src/Control';
-import 'leaflet-path-drag';
 import PubSub from 'pubsub-js';
 import { IMapLayer } from "./IMapLayer";
 

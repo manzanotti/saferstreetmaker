@@ -1,5 +1,5 @@
 import * as L from 'leaflet';
-import 'leaflet-toolbar/src/Action';
+import 'leaflet-toolbar';
 
 export interface IMapLayer {
     id: string;
