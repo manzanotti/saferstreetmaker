@@ -23,7 +23,7 @@ export class ModalFilterLayer implements IMapLayer {
         this._layerUpdatedTopic = layerUpdatedTopic;
         this._layerSelectedTopic = layerSelectedTopic;
         this._layerDeselectedTopic = layerDeselectedTopic;
-        this._modalFilterIcon = `<svg width="30" height="30"><circle cx="15" cy="15" r="10" stroke="green" stroke-width="3" fill="green" fill-opacity=".2" /></svg>`;
+        this._modalFilterIcon = `<svg width="60" height="60"><circle cx="29" cy="29" r="20" stroke="green" stroke-width="3" fill="green" fill-opacity=".2" /></svg>`;
         this._layer = L.geoJSON();
 
         this.selected = false;
