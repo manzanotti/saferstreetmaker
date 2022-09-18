@@ -99,6 +99,8 @@ export class CycleLaneLayer implements IMapLayer {
         this._layer.eachLayer((layer: L.Draw.Polyline) => {
             layer.editing.disable();
         });
+
+        this.removeCursor();
     }
 
     getToolbarAction = (map: L.Map) => {
@@ -114,11 +116,11 @@ export class CycleLaneLayer implements IMapLayer {
                 if (this.selected) {
                     this.deselectLayer();
                     this.selected = false;
+                    this.removeCursor();
                     PubSub.publish(this._layerDeselectedTopic, CycleLaneLayer.Id);
                     return;
                 }
 
-                PubSub.publish(this._layerSelectedTopic, CycleLaneLayer.Id);
                 this.selected = true;
 
                 const options = {
@@ -130,10 +132,23 @@ export class CycleLaneLayer implements IMapLayer {
                 const polyline = new L['Draw'].Polyline(map, options);
 
                 polyline.enable();
+                this.setCursor();
+
+                PubSub.publish(this._layerSelectedTopic, CycleLaneLayer.Id);
             }
         });
 
         return modalFilterAction;
+    };
+
+    setCursor = () => {
+        document.getElementById('map')?.classList.remove('leaflet-grab');
+        document.getElementById('map')?.classList.add('mobility-lane');
+    };
+
+    removeCursor = () => {
+        document.getElementById('map')?.classList.remove('mobility-lane');
+        document.getElementById('map')?.classList.add('leaflet-grab');
     };
 
     loadFromGeoJSON = (geoJson: L.GeoJSON) => {
