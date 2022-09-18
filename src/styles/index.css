@@ -80,10 +80,10 @@ h2 {
     cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30'%3E%3Ccircle cx='15' cy='15' r='10' stroke='green' stroke-width='3' fill='green' fill-opacity='.2' %3E%3C/circle%3E%3C/svg%3E") 15 15, auto;
 }
 
-.tram-line {
+.tram-line [role="button"] {
     cursor: crosshair;
 }
 
-.mobility-lane {
+.mobility-lane [role="button"] {
     cursor: crosshair;
 }
