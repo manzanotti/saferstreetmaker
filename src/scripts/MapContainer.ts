@@ -6,6 +6,7 @@ import { MapManager } from './MapManager';
 import 'leaflet-draw';
 //import 'leaflet-draw-toolbar';
 import { CycleLaneLayer } from './CycleLaneLayer';
+import { TramLineLayer } from './TramLineLayer';
 
 export class MapContainer {
     private _mapManager: MapManager;
@@ -34,6 +35,7 @@ export class MapContainer {
         this.setupMap();
         this.setupModalFilterLayer();
         this.setupCycleLaneLayer();
+        this.setupTramLineLayer();
 
         this.addOverlays();
         this.setupToolbars();
@@ -63,6 +65,7 @@ export class MapContainer {
 
             switch (this._mode) {
                 case CycleLaneLayer.Id:
+                case TramLineLayer.Id:
                     this._selectedLayer?.addMarker(layer.getLatLngs());
                     break;
             }
@@ -149,6 +152,11 @@ export class MapContainer {
     private setupCycleLaneLayer = () => {
         const cycleLanes = new CycleLaneLayer(this._layerUpdatedTopic, this._layerSelectedTopic, this._layerDeselectedTopic, this._showPopupTopic, this._closePopupTopic);
         this._layers.set(CycleLaneLayer.Id, cycleLanes);
+    };
+
+    private setupTramLineLayer = () => {
+        const tramLines = new TramLineLayer(this._layerUpdatedTopic, this._layerSelectedTopic, this._layerDeselectedTopic, this._showPopupTopic, this._closePopupTopic);
+        this._layers.set(TramLineLayer.Id, tramLines);
     };
 
     private setupSubscribers = () => {
