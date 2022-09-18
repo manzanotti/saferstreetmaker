@@ -90,3 +90,7 @@ h2 {
 .mobility-lane [role="button"] {
     cursor: crosshair;
 }
+
+a {
+    color: blue;
+}
