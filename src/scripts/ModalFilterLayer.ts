@@ -83,6 +83,7 @@ export class ModalFilterLayer implements IMapLayer {
 
                 this.selected = true;
                 this.setCursor();
+
                 PubSub.publish(this._layerSelectedTopic, ModalFilterLayer.Id);
             }
         });
