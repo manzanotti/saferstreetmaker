@@ -3,15 +3,12 @@ import PubSub from 'pubsub-js';
 import { ModalFilterLayer } from './ModalFilterLayer';
 import { IMapLayer } from './IMapLayer';
 import { MapManager } from './MapManager';
-import 'leaflet-draw';
-//import 'leaflet-draw-toolbar';
 import { CycleLaneLayer } from './CycleLaneLayer';
 import { TramLineLayer } from './TramLineLayer';
 
 export class MapContainer {
     private _mapManager: MapManager;
     private _map: L.Map;
-    private _menu: L.Toolbar2.Control;
     private _title: string;
     private _mode: string;
     private _selectedLayer: IMapLayer | null;

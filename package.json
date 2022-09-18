@@ -1,20 +1,22 @@
 {
   "devDependencies": {
-    "parcel": "^2.7.0"
-  },
-  "dependencies": {
+    "parcel": "^2.7.0",
     "@types/leaflet": "^1.7.11",
     "@types/lz-string": "^1.3.34",
-    "@types/pubsub-js": "^1.8.3",
-    "leaflet": "^1.8.0",
-    "leaflet-draw": "^1.0.4",
-    "leaflet-path-drag": "^1.8.0-beta.3",
-    "leaflet-svg-shape-markers": "^1.4.0",
-    "leaflet-toolbar": "^0.4.0-alpha.2",
-    "lz-string": "^1.4.4",
+    "@types/pubsub-js": "^1.8.3"
+  },
+  "dependencies": {
     "postcss": "^8.4.16",
-    "pubsub-js": "^1.9.4",
     "tailwindcss": "^1"
+  },
+  "alias": {
+    "leaflet": { "global": "leaflet" },
+    "leaflet-draw": { "global": "leaflet-draw" },
+    "leaflet-path-drag": { "global": "leaflet-path-drag" },
+    "leaflet-svg-shape-markers": { "global": "leaflet-svg-shape-markers" },
+    "leaflet-toolbar": { "global": "leaflet-toolbar" },
+    "lz-string": { "global": "LZString" },
+    "pubsub-js": { "global": "PubSub" }
   },
   "packageManager": "yarn@3.2.3"
 }

@@ -1257,31 +1257,6 @@ jsonfile@^4.0.0:
   optionalDependencies:
     graceful-fs "^4.1.6"
 
-leaflet-draw@^1.0.4:
-  version "1.0.4"
-  resolved "https://registry.yarnpkg.com/leaflet-draw/-/leaflet-draw-1.0.4.tgz#45be92f378ed253e7202fdeda1fcc71885198d46"
-  integrity sha512-rsQ6saQO5ST5Aj6XRFylr5zvarWgzWnrg46zQ1MEOEIHsppdC/8hnN8qMoFvACsPvTioAuysya/TVtog15tyAQ==
-
-leaflet-path-drag@^1.8.0-beta.3:
-  version "1.8.0-beta.3"
-  resolved "https://registry.yarnpkg.com/leaflet-path-drag/-/leaflet-path-drag-1.8.0-beta.3.tgz#8c672a8a5e0c7754fa601c11d0ba213165641c75"
-  integrity sha512-kpZ6sPOKlR+m+VChIzZZ7XFH4C+VGTrAxgnM4UN5iYl7lJ00iDOxS+r717bDf/xFFHB6n2jpUp9vvzjjteMpeQ==
-
-leaflet-svg-shape-markers@^1.4.0:
-  version "1.4.0"
-  resolved "https://registry.yarnpkg.com/leaflet-svg-shape-markers/-/leaflet-svg-shape-markers-1.4.0.tgz#46376bc833a68dcd1c296d83ade21cd2b31a8723"
-  integrity sha512-vUBwso51+4ZVGcLZbhdBGxz+xrbul5jDYxool2yTKbIjAC6rvOMLjr8YBTQbLaa1LBRBQIaWUbmCafdXm17pxw==
-
-leaflet-toolbar@^0.4.0-alpha.2:
-  version "0.4.0-alpha.2"
-  resolved "https://registry.yarnpkg.com/leaflet-toolbar/-/leaflet-toolbar-0.4.0-alpha.2.tgz#ab58092d65b3dd158fb874c3f7e36b7ebdb994f8"
-  integrity sha512-g1KeU3DYGUOwXTS0vKIgJ8KgY0h/2B0qENNQUSYMFtSY2yzwaHWMbDyhDbk+aO8LgJ1iOX4fUt2bh1sYZbpmmQ==
-
-leaflet@^1.8.0:
-  version "1.8.0"
-  resolved "https://registry.yarnpkg.com/leaflet/-/leaflet-1.8.0.tgz#4615db4a22a304e8e692cae9270b983b38a2055e"
-  integrity sha512-gwhMjFCQiYs3x/Sf+d49f10ERXaEFCPr+nVTryhAW8DWbMGqJqt9G4XuIaHmFW08zYvhgdzqXGr8AlW8v8dQkA==
-
 lightningcss-darwin-arm64@1.15.1:
   version "1.15.1"
   resolved "https://registry.yarnpkg.com/lightningcss-darwin-arm64/-/lightningcss-darwin-arm64-1.15.1.tgz#9b15f7d65898cae9ceae11d5c7ef6ea64edcce16"
@@ -1365,11 +1340,6 @@ lodash@^4.17.20, lodash@^4.17.21:
   version "4.17.21"
   resolved "https://registry.yarnpkg.com/lodash/-/lodash-4.17.21.tgz#679591c564c3bffaae8454cf0b3df370c3d6911c"
   integrity sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==
-
-lz-string@^1.4.4:
-  version "1.4.4"
-  resolved "https://registry.yarnpkg.com/lz-string/-/lz-string-1.4.4.tgz#c0d8eaf36059f705796e1e344811cf4c498d3a26"
-  integrity sha512-0ckx7ZHRPqb0oUm8zNr+90mtf9DQB60H1wMCjBtfi62Kl3a7JbHob6gA2bC+xRvZoOL+1hzUK8jeuEIQE8svEQ==
 
 mdn-data@2.0.14:
   version "2.0.14"
@@ -1669,11 +1639,6 @@ pretty-hrtime@^1.0.3:
   version "1.0.3"
   resolved "https://registry.yarnpkg.com/pretty-hrtime/-/pretty-hrtime-1.0.3.tgz#b7e3ea42435a4c9b2759d99e0f201eb195802ee1"
   integrity sha512-66hKPCr+72mlfiSjlEB1+45IjXSqvVAIy6mocupoww4tBFE9R9IhwwUGoI4G++Tc9Aq+2rxOt0RFU6gPcrte0A==
-
-pubsub-js@^1.9.4:
-  version "1.9.4"
-  resolved "https://registry.yarnpkg.com/pubsub-js/-/pubsub-js-1.9.4.tgz#5c8678600e34e95b1269e96c17e1b51dab3ecb5a"
-  integrity sha512-hJYpaDvPH4w8ZX/0Fdf9ma1AwRgU353GfbaVfPjfJQf1KxZ2iHaHl3fAUw1qlJIR5dr4F3RzjGaWohYUEyoh7A==
 
 purgecss@^2.3.0:
   version "2.3.0"
