@@ -12,29 +12,40 @@
 }
 
 .leaflet-toolbar-0 > li > .leaflet-toolbar-icon > div {
-    width: 58px;
-    height: 58px;
-    background-size: 58px 58px;
-}
-
-.mobility-lane-button {
-    background-image: url(../img/bicycle-svgrepo-com.svg);
-}
-
-.tram-line-button {
-    background-image: url(../img/tram-svgrepo-com.svg);
-}
-
-.ltn-cell {
-    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30'%3E%3Cpath class='leaflet-interactive' stroke='blue' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' fill='blue' fill-opacity='.2' fill-rule='evenodd' d='M5 5 h20v20h-20v-20'%3E%3C/path%3E%3C/svg%3E") 15 15, auto;
+    width: 56px;
+    height: 56px;
+    margin: 0 0 0 2;
+    background-position: center;
+    background-repeat: no-repeat;
 }
 
 .save-file {
     background-image: url(../img/save-svgrepo-com.svg);
+    background-size: 40px 40px;
 }
 
 .load-file {
     background-image: url(../img/folder-svgrepo-com.svg);
+    background-size: 40px 40px;
+}
+
+.mobility-lane-button {
+    background-image: url(../img/bicycle-svgrepo-com.svg);
+    background-size: 50px 50px;
+}
+
+.tram-line-button {
+    background-image: url(../img/tram-svgrepo-com.svg);
+    background-size: 50px 50px;
+}
+
+.help-button {
+    background-image: url(../img/help-svgrepo-com.svg);
+    background-size: 40px 40px;
+}
+
+.ltn-cell {
+    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30'%3E%3Cpath class='leaflet-interactive' stroke='blue' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' fill='blue' fill-opacity='.2' fill-rule='evenodd' d='M5 5 h20v20h-20v-20'%3E%3C/path%3E%3C/svg%3E") 15 15, auto;
 }
 
 .delete-button {
@@ -42,10 +53,6 @@
     width: 29px;
     height: 29px;
     background-size: 29px 29px;
-}
-
-.help-button {
-    background-image: url(../img/help-svgrepo-com.svg);
 }
 
 .delete-button:hover {
@@ -66,6 +73,7 @@ ul.popup-buttons li {
     padding: 10px;
     border: 1 solid black;
     box-shadow: 0 2px 2px 0 black;
+    overflow-y: auto;
 }
 
 .hide {
