@@ -13,6 +13,7 @@ export class TramLineLayer implements IMapLayer {
     private readonly _showPopupTopic: string;
     private readonly _closePopupTopic: string;
     private readonly _layer: L.GeoJSON;
+    private readonly _layerColour = '#ff5e00';
 
     constructor(layerUpdatedTopic: string, layerSelectedTopic: string, layerDeselectedTopic: string, showPopupTopic: string, closePopupTopic: string) {
         this._layerUpdatedTopic = layerUpdatedTopic;
@@ -41,7 +42,7 @@ export class TramLineLayer implements IMapLayer {
 
     addMarker = (points: Array<L.LatLng>) => {
         const polyline = new L.Polyline(points, {
-            color: '#ff5e00',
+            color: this._layerColour,
             weight: 5,
             opacity: 1,
             smoothFactor: 1
@@ -118,7 +119,7 @@ export class TramLineLayer implements IMapLayer {
                 this.selected = true;
 
                 const options = {
-                    color: '#ff5e00',
+                    color: this._layerColour,
                     weight: 5,
                     opacity: 1,
                     smoothFactor: 1

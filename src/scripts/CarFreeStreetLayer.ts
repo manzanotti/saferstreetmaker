@@ -2,8 +2,8 @@ import * as L from 'leaflet';
 import PubSub from 'pubsub-js';
 import { IMapLayer } from "./IMapLayer";
 
-export class CycleLaneLayer implements IMapLayer {
-    public static Id = 'CycleLanes';
+export class CarFreeStreetLayer implements IMapLayer {
+    public static Id = 'CarFreeStreets';
     public readonly id: string;
     public readonly title: string;
     public selected: boolean;
@@ -13,7 +13,7 @@ export class CycleLaneLayer implements IMapLayer {
     private readonly _showPopupTopic: string;
     private readonly _closePopupTopic: string;
     private readonly _layer: L.GeoJSON;
-    private readonly _layerColour = '#2222ff';
+    private readonly _layerColour = '#00bb00';
 
     constructor(layerUpdatedTopic: string, layerSelectedTopic: string, layerDeselectedTopic: string, showPopupTopic: string, closePopupTopic: string) {
         this._layerUpdatedTopic = layerUpdatedTopic;
@@ -23,8 +23,8 @@ export class CycleLaneLayer implements IMapLayer {
         this._closePopupTopic = closePopupTopic;
         this._layer = L.geoJSON();
         
-        this.id = CycleLaneLayer.Id;
-        this.title = 'Cycle Lanes';
+        this.id = CarFreeStreetLayer.Id;
+        this.title = 'Car Free Streets';
         this.selected = false;
 
         this.setupSubscribers();
@@ -32,7 +32,7 @@ export class CycleLaneLayer implements IMapLayer {
 
     private setupSubscribers = () => {
         PubSub.subscribe(this._layerSelectedTopic, (msg, data) => {
-            if (data !== CycleLaneLayer.Id) {
+            if (data !== CarFreeStreetLayer.Id) {
                 this.selected = false;
             } else {
                 this.selected = true;
@@ -43,12 +43,12 @@ export class CycleLaneLayer implements IMapLayer {
     addMarker = (points: Array<L.LatLng>) => {
         const polyline = new L.Polyline(points, {
             color: this._layerColour,
-            weight: 5,
+            weight: 10,
             opacity: 1,
             smoothFactor: 1
         })
             .on('edit', (e) => {
-                PubSub.publish(this._layerUpdatedTopic, CycleLaneLayer.Id);
+                PubSub.publish(this._layerUpdatedTopic, CarFreeStreetLayer.Id);
             });
 
         const popup = L.popup({ minWidth: 30, keepInView: true });
@@ -79,7 +79,7 @@ export class CycleLaneLayer implements IMapLayer {
 
     deleteMarker = (layer: L.Draw.Polyline) => {
         this._layer.removeLayer(layer);
-        PubSub.publish(this._layerUpdatedTopic, CycleLaneLayer.Id);
+        PubSub.publish(this._layerUpdatedTopic, CarFreeStreetLayer.Id);
     }
 
     markerOnClick = (e) => {
@@ -87,7 +87,7 @@ export class CycleLaneLayer implements IMapLayer {
 
         const polyline = e.target;
         polyline.editing.enable();
-        PubSub.publish(this._layerSelectedTopic, CycleLaneLayer.Id);
+        PubSub.publish(this._layerSelectedTopic, CarFreeStreetLayer.Id);
     };
 
     deselectLayer = () => {
@@ -99,11 +99,11 @@ export class CycleLaneLayer implements IMapLayer {
     }
 
     getToolbarAction = (map: L.Map) => {
-        const modalFilterAction = L['Toolbar2'].Action.extend({
+        const carFreeStreetAction = L['Toolbar2'].Action.extend({
             options: {
                 toolbarIcon: {
-                    html: '<div class="mobility-lane-button"></div>',
-                    tooltip: 'Add cycle lanes to the map'
+                    html: '<div class="car-free-street-button"></div>',
+                    tooltip: 'Add car-free streets to the map'
                 }
             },
 
@@ -112,7 +112,7 @@ export class CycleLaneLayer implements IMapLayer {
                     this.deselectLayer();
                     this.selected = false;
                     this.removeCursor();
-                    PubSub.publish(this._layerDeselectedTopic, CycleLaneLayer.Id);
+                    PubSub.publish(this._layerDeselectedTopic, CarFreeStreetLayer.Id);
                     return;
                 }
 
@@ -120,7 +120,7 @@ export class CycleLaneLayer implements IMapLayer {
 
                 const options = {
                     color: this._layerColour,
-                    weight: 5,
+                    weight: 10,
                     opacity: 1,
                     smoothFactor: 1
                 };
@@ -129,29 +129,29 @@ export class CycleLaneLayer implements IMapLayer {
                 polyline.enable();
                 this.setCursor();
 
-                PubSub.publish(this._layerSelectedTopic, CycleLaneLayer.Id);
+                PubSub.publish(this._layerSelectedTopic, CarFreeStreetLayer.Id);
             }
         });
 
-        return modalFilterAction;
+        return carFreeStreetAction;
     };
 
     setCursor = () => {
         document.getElementById('map')?.classList.remove('leaflet-grab');
-        document.getElementById('map')?.classList.add('mobility-lane');
+        document.getElementById('map')?.classList.add('car-free-street');
     };
 
     removeCursor = () => {
-        document.getElementById('map')?.classList.remove('mobility-lane');
+        document.getElementById('map')?.classList.remove('car-free-street');
         document.getElementById('map')?.classList.add('leaflet-grab');
     };
 
     loadFromGeoJSON = (geoJson: L.GeoJSON) => {
         if (geoJson) {
-            const cycleLanes = geoJson['features'];
-            cycleLanes.forEach((cycleLane) => {
+            const carFreeStreets = geoJson['features'];
+            carFreeStreets.forEach((carFreeStreet) => {
                 const points = new Array<L.LatLng>();
-                const coordinates = cycleLane.geometry.coordinates;
+                const coordinates = carFreeStreet.geometry.coordinates;
                 coordinates.forEach((coordinate) => {
                     const point = new L.LatLng(coordinate[1], coordinate[0]);
                     points.push(point);

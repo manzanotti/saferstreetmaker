@@ -5,6 +5,7 @@ import { IMapLayer } from './IMapLayer';
 import { MapManager } from './MapManager';
 import { CycleLaneLayer } from './CycleLaneLayer';
 import { TramLineLayer } from './TramLineLayer';
+import { CarFreeStreetLayer } from './CarFreeStreetLayer';
 
 export class MapContainer {
     private _mapManager: MapManager;
@@ -33,6 +34,7 @@ export class MapContainer {
         this.setupModalFilterLayer();
         this.setupCycleLaneLayer();
         this.setupTramLineLayer();
+        this.setupCarFreeStreetLayer();
 
         this.addOverlays();
         this.setupToolbars();
@@ -44,7 +46,7 @@ export class MapContainer {
                     this._selectedLayer?.addMarker([[e.latlng.lng, e.latlng.lat]]);
                     this.saveMap();
                     break;
-                case 'CycleLanes':
+                default:
                     break;
             }
         });
@@ -63,7 +65,8 @@ export class MapContainer {
             switch (this._mode) {
                 case CycleLaneLayer.Id:
                 case TramLineLayer.Id:
-                    this._selectedLayer?.addMarker(layer.getLatLngs());
+                    case CarFreeStreetLayer.Id:
+                        this._selectedLayer?.addMarker(layer.getLatLngs());
                     break;
             }
 
@@ -135,7 +138,7 @@ export class MapContainer {
 
         actions.push(helpAction);
 
-        this._menu = new L.Toolbar2.Control({
+        new L.Toolbar2.Control({
             position: 'topleft',
             actions: actions
         }).addTo(this._map);
@@ -154,6 +157,11 @@ export class MapContainer {
     private setupTramLineLayer = () => {
         const tramLines = new TramLineLayer(this._layerUpdatedTopic, this._layerSelectedTopic, this._layerDeselectedTopic, this._showPopupTopic, this._closePopupTopic);
         this._layers.set(TramLineLayer.Id, tramLines);
+    };
+
+    private setupCarFreeStreetLayer = () => {
+        const tramLines = new CarFreeStreetLayer(this._layerUpdatedTopic, this._layerSelectedTopic, this._layerDeselectedTopic, this._showPopupTopic, this._closePopupTopic);
+        this._layers.set(CarFreeStreetLayer.Id, tramLines);
     };
 
     private setupSubscribers = () => {
