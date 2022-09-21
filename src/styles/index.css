@@ -6,12 +6,16 @@
     height: 100vh;
 }
 
-.leaflet-toolbar-0 > li > .leaflet-toolbar-icon {
+.leaflet-control-toolbar .leaflet-toolbar-1 {
+    left: 60px;
+}
+
+.leaflet-toolbar-0 > li > .leaflet-toolbar-icon, .leaflet-control-toolbar .leaflet-toolbar-1 > li > .leaflet-toolbar-icon {
     width: 60px;
     height: 60px;
 }
 
-.leaflet-toolbar-0 > li > .leaflet-toolbar-icon > div {
+.leaflet-toolbar-0 > li > .leaflet-toolbar-icon > div, .leaflet-control-toolbar .leaflet-toolbar-1 > li > .leaflet-toolbar-icon > div {
     width: 56px;
     height: 56px;
     margin: 0 0 0 2;
@@ -19,13 +23,28 @@
     background-repeat: no-repeat;
 }
 
+.leaflet-control-toolbar .leaflet-toolbar-1>li>.leaflet-toolbar-icon {
+    padding: 0;
+    background-color: #ffffff;
+}
+
+.file-actions {
+    background-image: url(../img/folder-svgrepo-com.svg);
+    background-size: 40px 40px;
+}
+
 .save-file {
     background-image: url(../img/save-svgrepo-com.svg);
     background-size: 40px 40px;
 }
 
+.save-geojson-file {
+    background-image: url(../img/geojson-file-svgrepo-com.svg);
+    background-size: 40px 40px;
+}
+
 .load-file {
-    background-image: url(../img/folder-svgrepo-com.svg);
+    background-image: url(../img/cloud-uploading-arrow-svgrepo-com.svg);
     background-size: 40px 40px;
 }
 
