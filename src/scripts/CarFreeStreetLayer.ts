@@ -24,7 +24,7 @@ export class CarFreeStreetLayer implements IMapLayer {
         this._layer = L.geoJSON();
         
         this.id = CarFreeStreetLayer.Id;
-        this.title = 'Car Free Streets';
+        this.title = 'Car-free Streets';
         this.selected = false;
 
         this.setupSubscribers();

@@ -38,7 +38,136 @@ export class MapContainer {
 
         this.addOverlays();
         this.setupToolbars();
+        this.setupMapEventHandlers();
+        this.setupSubscribers();
+    }
 
+    private setupMap = () => {
+        L.tileLayer('https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+            maxZoom: 20
+        }).addTo(this._map);
+    };
+
+    private setupToolbars = () => {
+        const actions: Array<L.Toolbar2.Action> = [];
+
+        const saveFileAction = L.Toolbar2.Action.extend({
+            options: {
+                toolbarIcon: {
+                    html: '<div class="file-actions"></div>',
+                    tooltip: 'Save or load files'
+                },
+                subToolbar: new L.Toolbar2({
+                    actions: this.getFileSubMenu()
+                })
+            }
+        });
+
+        actions.push(saveFileAction);
+
+        this._layers.forEach((layer, key) => {
+            actions.push(layer.getToolbarAction(this._map));
+        });
+
+        const helpAction = L.Toolbar2.Action.extend({
+            options: {
+                toolbarIcon: {
+                    html: '<div class="help-button"></div>',
+                    tooltip: 'Instructions on how to use the map'
+                }
+            },
+
+            addHooks: () => {
+                this.showHelp();
+            }
+        });
+
+        actions.push(helpAction);
+        
+        new L.Toolbar2.Control({
+            position: 'topleft',
+            actions: actions
+        }).addTo(this._map);
+    }
+
+    private getFileSubMenu = (): Array<L.Toolbar2.Action> => {
+        const actions: Array<L.Toolbar2.Action> = [];
+        const saveFileAction = L.Toolbar2.Action.extend({
+            options: {
+                toolbarIcon: {
+                    html: '<div class="save-file"></div>',
+                    tooltip: 'Save map to a file'
+                }
+            },
+
+            addHooks: () => {
+                const centre = this._map.getCenter();
+                const zoom = this._map.getZoom();
+
+                this._mapManager.saveMapToFile(this._title, this._layers, centre, zoom);
+            }
+        });
+
+        actions.push(saveFileAction);
+
+        const saveToGeoJSONFileAction = L.Toolbar2.Action.extend({
+            options: {
+                toolbarIcon: {
+                    html: '<div class="save-geojson-file"></div>',
+                    tooltip: 'Save GeoJSON to a file'
+                }
+            },
+
+            addHooks: () => {
+                const centre = this._map.getCenter();
+                const zoom = this._map.getZoom();
+
+                this._mapManager.saveMapToGeoJSONFile(this._title, this._layers, centre, zoom);
+            }
+        });
+
+        actions.push(saveToGeoJSONFileAction);
+
+        const loadFileAction = L.Toolbar2.Action.extend({
+            options: {
+                toolbarIcon: {
+                    html: '<div class="load-file"></div>',
+                    tooltip: 'Load map from a file'
+                }
+            },
+
+            addHooks: () => {
+                this._mapManager.loadMapFromFile();
+            }
+        });
+
+        actions.push(loadFileAction);
+
+        return actions;
+    }
+
+    private setupModalFilterLayer = () => {
+        const modelFilters = new ModalFilterLayer(this._layerUpdatedTopic, this._layerSelectedTopic, this._layerDeselectedTopic);
+        this._layers.set(ModalFilterLayer.Id, modelFilters);
+    };
+
+    private setupCycleLaneLayer = () => {
+        const cycleLanes = new CycleLaneLayer(this._layerUpdatedTopic, this._layerSelectedTopic, this._layerDeselectedTopic, this._showPopupTopic, this._closePopupTopic);
+        this._layers.set(CycleLaneLayer.Id, cycleLanes);
+    };
+
+    private setupTramLineLayer = () => {
+        const tramLines = new TramLineLayer(this._layerUpdatedTopic, this._layerSelectedTopic, this._layerDeselectedTopic, this._showPopupTopic, this._closePopupTopic);
+        this._layers.set(TramLineLayer.Id, tramLines);
+    };
+
+    private setupCarFreeStreetLayer = () => {
+        const tramLines = new CarFreeStreetLayer(this._layerUpdatedTopic, this._layerSelectedTopic, this._layerDeselectedTopic, this._showPopupTopic, this._closePopupTopic);
+        this._layers.set(CarFreeStreetLayer.Id, tramLines);
+    };
+
+    private setupMapEventHandlers = () => {
         this._map.on('click', (e: any) => {
             switch (this._mode) {
                 case 'ModalFilters':
@@ -65,104 +194,14 @@ export class MapContainer {
             switch (this._mode) {
                 case CycleLaneLayer.Id:
                 case TramLineLayer.Id:
-                    case CarFreeStreetLayer.Id:
-                        this._selectedLayer?.addMarker(layer.getLatLngs());
+                case CarFreeStreetLayer.Id:
+                    this._selectedLayer?.addMarker(layer.getLatLngs());
                     break;
             }
 
             this.saveMap();
         });
-        
-        this.setupSubscribers();
     }
-
-    private setupMap = () => {
-        L.tileLayer('https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-            maxZoom: 20
-        }).addTo(this._map);
-    };
-
-    private setupToolbars = () => {
-        const actions: Array<IMapLayer> = [];
-
-        const saveFileAction = L.Toolbar2.Action.extend({
-            options: {
-                toolbarIcon: {
-                    html: '<div class="save-file"></div>',
-                    tooltip: 'Save map to a file'
-                }
-            },
-
-            addHooks: () => {
-                const centre = this._map.getCenter();
-                const zoom = this._map.getZoom();
-
-                this._mapManager.saveMapToFile(this._title, this._layers, centre, zoom);
-            }
-        });
-
-        actions.push(saveFileAction);
-
-        const loadFileAction = L.Toolbar2.Action.extend({
-            options: {
-                toolbarIcon: {
-                    html: '<div class="load-file"></div>',
-                    tooltip: 'Load map from a file'
-                }
-            },
-
-            addHooks: () => {
-                this._mapManager.loadMapFromFile();
-            }
-        });
-
-        actions.push(loadFileAction);
-
-        this._layers.forEach((layer, key) => {
-            actions.push(layer.getToolbarAction(this._map));
-        });
-
-        const helpAction = L.Toolbar2.Action.extend({
-            options: {
-                toolbarIcon: {
-                    html: '<div class="help-button"></div>',
-                    tooltip: 'Instructions on how to use the map'
-                }
-            },
-
-            addHooks: () => {
-                this.showHelp();
-            }
-        });
-
-        actions.push(helpAction);
-
-        new L.Toolbar2.Control({
-            position: 'topleft',
-            actions: actions
-        }).addTo(this._map);
-    };
-
-    private setupModalFilterLayer = () => {
-        const modelFilters = new ModalFilterLayer(this._layerUpdatedTopic, this._layerSelectedTopic, this._layerDeselectedTopic);
-        this._layers.set(ModalFilterLayer.Id, modelFilters);
-    };
-
-    private setupCycleLaneLayer = () => {
-        const cycleLanes = new CycleLaneLayer(this._layerUpdatedTopic, this._layerSelectedTopic, this._layerDeselectedTopic, this._showPopupTopic, this._closePopupTopic);
-        this._layers.set(CycleLaneLayer.Id, cycleLanes);
-    };
-
-    private setupTramLineLayer = () => {
-        const tramLines = new TramLineLayer(this._layerUpdatedTopic, this._layerSelectedTopic, this._layerDeselectedTopic, this._showPopupTopic, this._closePopupTopic);
-        this._layers.set(TramLineLayer.Id, tramLines);
-    };
-
-    private setupCarFreeStreetLayer = () => {
-        const tramLines = new CarFreeStreetLayer(this._layerUpdatedTopic, this._layerSelectedTopic, this._layerDeselectedTopic, this._showPopupTopic, this._closePopupTopic);
-        this._layers.set(CarFreeStreetLayer.Id, tramLines);
-    };
 
     private setupSubscribers = () => {
         PubSub.subscribe(this._mapManager.fileLoadedTopic, (msg, data) => {
@@ -247,7 +286,7 @@ export class MapContainer {
         if (geoJSON['layers'] !== undefined) {
             const layersJSON = geoJSON['layers'];
             this._layers.forEach((layer, layerName) => {
-                if(layerName === ModalFilterLayer.Id && layersJSON['Modals'] !== undefined){
+                if (layerName === ModalFilterLayer.Id && layersJSON['Modals'] !== undefined) {
                     layerName = 'Modals';
                 }
                 const layerJSON = layersJSON[layerName];
@@ -269,7 +308,7 @@ export class MapContainer {
     private showHelp = () => {
         const helpElement = document.getElementById('help');
 
-        if(helpElement?.classList.contains('hide')){
+        if (helpElement?.classList.contains('hide')) {
             helpElement?.classList.remove('hide');
         } else {
             helpElement?.classList.add('hide');

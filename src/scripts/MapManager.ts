@@ -5,8 +5,31 @@ export class MapManager {
 
     saveMapToFile = (mapName, layersData, centre, zoom) => {
         const mapData = this.mapToJSON(mapName, layersData, centre, zoom);
+        const mapString = JSON.stringify(mapData);
 
-        const blob = new Blob([mapData], { type: 'text/plain;charset=utf-8' });
+        const blob = new Blob([mapString], { type: 'text/plain;charset=utf-8' });
+        const hyperlink = document.createElement("a");
+        hyperlink.href = URL.createObjectURL(blob);
+        hyperlink.download = `${mapName}.json`;
+        hyperlink.click();
+    };
+
+    saveMapToGeoJSONFile = (mapName, layersData, centre, zoom) => {
+        let layers = new Array<any>;
+        layersData.forEach((layer, layerName) => {
+            layers.push(layer.getLayer().toGeoJSON());
+        });
+
+        const geoJSON = layers[0];
+
+        layers.slice(1).forEach((layer) => {
+            const features = layer.features;
+            geoJSON.features.push(...features);
+        });
+
+        const mapString = JSON.stringify(geoJSON);
+
+        const blob = new Blob([mapString], { type: 'text/plain;charset=utf-8' });
         const hyperlink = document.createElement("a");
         hyperlink.href = URL.createObjectURL(blob);
         hyperlink.download = `${mapName}.json`;
@@ -15,11 +38,12 @@ export class MapManager {
 
     saveMap = (mapName, layersData, centre, zoom) => {
         const mapData = this.mapToJSON(mapName, layersData, centre, zoom);
+        const mapString = JSON.stringify(mapData);
 
-        localStorage.setItem(`Map_${mapName}`, LZString.compress(mapData));
+        localStorage.setItem(`Map_${mapName}`, LZString.compress(mapString));
     };
 
-    private mapToJSON = (mapName, layersData, centre, zoom): string => {
+    private mapToJSON = (mapName, layersData, centre, zoom): any => {
         let layers = {};
         layersData.forEach((layer, layerName) => {
             layers[layerName] = layer.getLayer().toGeoJSON();
@@ -32,7 +56,7 @@ export class MapManager {
             'layers': layers
         };
 
-        return JSON.stringify(mapData);
+        return mapData;
     }
 
     saveLastMapSelected = (mapName) => {
