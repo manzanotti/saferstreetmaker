@@ -63,6 +63,11 @@
     background-size: 50px 50px;
 }
 
+.school-street-button {
+    background-image: url(../img/school-street.svg);
+    background-size: 50px 50px;
+}
+
 .help-button {
     background-image: url(../img/help-svgrepo-com.svg);
     background-size: 40px 40px;
@@ -125,6 +130,10 @@ h2 {
 }
 
 .car-free-street [role="button"] {
+    cursor: crosshair;
+}
+
+.school-street [role="button"] {
     cursor: crosshair;
 }
 
