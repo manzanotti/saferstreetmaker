@@ -6,6 +6,7 @@ import { MapManager } from './MapManager';
 import { MobilityLaneLayer } from './MobilityLaneLayer';
 import { TramLineLayer } from './TramLineLayer';
 import { CarFreeStreetLayer } from './CarFreeStreetLayer';
+import { SchoolStreetLayer } from './SchoolStreetLayer';
 
 export class MapContainer {
     private _mapManager: MapManager;
@@ -35,6 +36,7 @@ export class MapContainer {
         this.setupMobilityLaneLayer();
         this.setupTramLineLayer();
         this.setupCarFreeStreetLayer();
+        this.setupSchoolStreetLayer();
 
         this.addOverlays();
         this.setupToolbars();
@@ -163,9 +165,14 @@ export class MapContainer {
     };
 
     private setupCarFreeStreetLayer = () => {
-        const tramLines = new CarFreeStreetLayer(this._layerUpdatedTopic, this._layerSelectedTopic, this._layerDeselectedTopic, this._showPopupTopic, this._closePopupTopic);
-        this._layers.set(CarFreeStreetLayer.Id, tramLines);
+        const carFreeStreets = new CarFreeStreetLayer(this._layerUpdatedTopic, this._layerSelectedTopic, this._layerDeselectedTopic, this._showPopupTopic, this._closePopupTopic);
+        this._layers.set(CarFreeStreetLayer.Id, carFreeStreets);
     };
+
+    private setupSchoolStreetLayer = () => {
+        const schoolStreets = new SchoolStreetLayer(this._layerUpdatedTopic, this._layerSelectedTopic, this._layerDeselectedTopic, this._showPopupTopic, this._closePopupTopic);
+        this._layers.set(SchoolStreetLayer.Id, schoolStreets);
+    }
 
     private setupMapEventHandlers = () => {
         this._map.on('click', (e: any) => {
@@ -195,6 +202,7 @@ export class MapContainer {
                 case MobilityLaneLayer.Id:
                 case TramLineLayer.Id:
                 case CarFreeStreetLayer.Id:
+                case SchoolStreetLayer.Id:
                     this._selectedLayer?.addMarker(layer.getLatLngs());
                     break;
             }
