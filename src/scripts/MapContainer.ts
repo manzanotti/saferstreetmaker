@@ -3,7 +3,7 @@ import PubSub from 'pubsub-js';
 import { ModalFilterLayer } from './ModalFilterLayer';
 import { IMapLayer } from './IMapLayer';
 import { MapManager } from './MapManager';
-import { CycleLaneLayer } from './CycleLaneLayer';
+import { MobilityLaneLayer } from './MobilityLaneLayer';
 import { TramLineLayer } from './TramLineLayer';
 import { CarFreeStreetLayer } from './CarFreeStreetLayer';
 
@@ -32,7 +32,7 @@ export class MapContainer {
 
         this.setupMap();
         this.setupModalFilterLayer();
-        this.setupCycleLaneLayer();
+        this.setupMobilityLaneLayer();
         this.setupTramLineLayer();
         this.setupCarFreeStreetLayer();
 
@@ -152,9 +152,9 @@ export class MapContainer {
         this._layers.set(ModalFilterLayer.Id, modelFilters);
     };
 
-    private setupCycleLaneLayer = () => {
-        const cycleLanes = new CycleLaneLayer(this._layerUpdatedTopic, this._layerSelectedTopic, this._layerDeselectedTopic, this._showPopupTopic, this._closePopupTopic);
-        this._layers.set(CycleLaneLayer.Id, cycleLanes);
+    private setupMobilityLaneLayer = () => {
+        const mobilityLanes = new MobilityLaneLayer(this._layerUpdatedTopic, this._layerSelectedTopic, this._layerDeselectedTopic, this._showPopupTopic, this._closePopupTopic);
+        this._layers.set(MobilityLaneLayer.Id, mobilityLanes);
     };
 
     private setupTramLineLayer = () => {
@@ -192,7 +192,7 @@ export class MapContainer {
             const layer = e.layer;
 
             switch (this._mode) {
-                case CycleLaneLayer.Id:
+                case MobilityLaneLayer.Id:
                 case TramLineLayer.Id:
                 case CarFreeStreetLayer.Id:
                     this._selectedLayer?.addMarker(layer.getLatLngs());
@@ -288,6 +288,8 @@ export class MapContainer {
             this._layers.forEach((layer, layerName) => {
                 if (layerName === ModalFilterLayer.Id && layersJSON['Modals'] !== undefined) {
                     layerName = 'Modals';
+                } else if(layerName === MobilityLaneLayer.Id && layersJSON['CycleLanes'] !== undefined){
+                    layerName = 'CycleLanes';
                 }
                 const layerJSON = layersJSON[layerName];
                 layer.loadFromGeoJSON(layerJSON);

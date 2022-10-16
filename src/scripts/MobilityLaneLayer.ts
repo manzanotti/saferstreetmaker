@@ -2,8 +2,8 @@ import * as L from 'leaflet';
 import PubSub from 'pubsub-js';
 import { IMapLayer } from "./IMapLayer";
 
-export class CycleLaneLayer implements IMapLayer {
-    public static Id = 'CycleLanes';
+export class MobilityLaneLayer implements IMapLayer {
+    public static Id = 'MobilityLanes';
     public readonly id: string;
     public readonly title: string;
     public selected: boolean;
@@ -23,8 +23,8 @@ export class CycleLaneLayer implements IMapLayer {
         this._closePopupTopic = closePopupTopic;
         this._layer = L.geoJSON();
         
-        this.id = CycleLaneLayer.Id;
-        this.title = 'Cycle Lanes';
+        this.id = MobilityLaneLayer.Id;
+        this.title = 'Mobility Lanes';
         this.selected = false;
 
         this.setupSubscribers();
@@ -32,7 +32,7 @@ export class CycleLaneLayer implements IMapLayer {
 
     private setupSubscribers = () => {
         PubSub.subscribe(this._layerSelectedTopic, (msg, data) => {
-            if (data !== CycleLaneLayer.Id) {
+            if (data !== MobilityLaneLayer.Id) {
                 this.selected = false;
             } else {
                 this.selected = true;
@@ -48,7 +48,7 @@ export class CycleLaneLayer implements IMapLayer {
             smoothFactor: 1
         })
             .on('edit', (e) => {
-                PubSub.publish(this._layerUpdatedTopic, CycleLaneLayer.Id);
+                PubSub.publish(this._layerUpdatedTopic, MobilityLaneLayer.Id);
             });
 
         const popup = L.popup({ minWidth: 30, keepInView: true });
@@ -79,7 +79,7 @@ export class CycleLaneLayer implements IMapLayer {
 
     deleteMarker = (layer: L.Draw.Polyline) => {
         this._layer.removeLayer(layer);
-        PubSub.publish(this._layerUpdatedTopic, CycleLaneLayer.Id);
+        PubSub.publish(this._layerUpdatedTopic, MobilityLaneLayer.Id);
     }
 
     markerOnClick = (e) => {
@@ -87,7 +87,7 @@ export class CycleLaneLayer implements IMapLayer {
 
         const polyline = e.target;
         polyline.editing.enable();
-        PubSub.publish(this._layerSelectedTopic, CycleLaneLayer.Id);
+        PubSub.publish(this._layerSelectedTopic, MobilityLaneLayer.Id);
     };
 
     deselectLayer = () => {
@@ -103,7 +103,7 @@ export class CycleLaneLayer implements IMapLayer {
             options: {
                 toolbarIcon: {
                     html: '<div class="mobility-lane-button"></div>',
-                    tooltip: 'Add cycle lanes to the map'
+                    tooltip: 'Add mobility lanes to the map'
                 }
             },
 
@@ -112,7 +112,7 @@ export class CycleLaneLayer implements IMapLayer {
                     this.deselectLayer();
                     this.selected = false;
                     this.removeCursor();
-                    PubSub.publish(this._layerDeselectedTopic, CycleLaneLayer.Id);
+                    PubSub.publish(this._layerDeselectedTopic, MobilityLaneLayer.Id);
                     return;
                 }
 
@@ -129,7 +129,7 @@ export class CycleLaneLayer implements IMapLayer {
                 polyline.enable();
                 this.setCursor();
 
-                PubSub.publish(this._layerSelectedTopic, CycleLaneLayer.Id);
+                PubSub.publish(this._layerSelectedTopic, MobilityLaneLayer.Id);
             }
         });
 
@@ -148,10 +148,10 @@ export class CycleLaneLayer implements IMapLayer {
 
     loadFromGeoJSON = (geoJson: L.GeoJSON) => {
         if (geoJson) {
-            const cycleLanes = geoJson['features'];
-            cycleLanes.forEach((cycleLane) => {
+            const mobilityLanes = geoJson['features'];
+            mobilityLanes.forEach((mobilityLane) => {
                 const points = new Array<L.LatLng>();
-                const coordinates = cycleLane.geometry.coordinates;
+                const coordinates = mobilityLane.geometry.coordinates;
                 coordinates.forEach((coordinate) => {
                     const point = new L.LatLng(coordinate[1], coordinate[0]);
                     points.push(point);
