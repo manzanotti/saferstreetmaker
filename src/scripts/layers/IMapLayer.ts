@@ -9,4 +9,5 @@ export interface IMapLayer {
     getToolbarAction: (map: L.Map) => L.Toolbar2.Action;
     loadFromGeoJSON: (geoJson: L.GeoJSON) => void;
     getLayer: () => L.GeoJSON;
+    toGeoJSON: () => {};
 }

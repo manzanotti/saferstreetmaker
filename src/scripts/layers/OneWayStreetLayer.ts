@@ -1,38 +1,31 @@
 import * as L from 'leaflet';
 import PubSub from 'pubsub-js';
+import { EventTopics } from '../EventTopics';
 import { IMapLayer } from "./IMapLayer";
 
-export class MobilityLaneLayer implements IMapLayer {
-    public static Id = 'MobilityLanes';
+export class OneWayStreetLayer implements IMapLayer {
+    public static Id = 'OneWayStreets';
     public readonly id: string;
     public readonly title: string;
     public selected: boolean;
-    private readonly _layerSelectedTopic: string;
-    private readonly _layerDeselectedTopic: string;
-    private readonly _layerUpdatedTopic: string;
-    private readonly _showPopupTopic: string;
-    private readonly _closePopupTopic: string;
+    private readonly _eventTopics: EventTopics;
     private readonly _layer: L.GeoJSON;
-    private readonly _layerColour = '#2222ff';
+    private readonly _layerColour = '#000000';
 
-    constructor(layerUpdatedTopic: string, layerSelectedTopic: string, layerDeselectedTopic: string, showPopupTopic: string, closePopupTopic: string) {
-        this._layerUpdatedTopic = layerUpdatedTopic;
-        this._layerSelectedTopic = layerSelectedTopic;
-        this._layerDeselectedTopic = layerDeselectedTopic;
-        this._showPopupTopic = showPopupTopic;
-        this._closePopupTopic = closePopupTopic;
+    constructor(eventTopics: EventTopics) {
+        this._eventTopics = eventTopics;
         this._layer = L.geoJSON();
         
-        this.id = MobilityLaneLayer.Id;
-        this.title = 'Mobility Lanes';
+        this.id = OneWayStreetLayer.Id;
+        this.title = 'One-way Streets';
         this.selected = false;
 
         this.setupSubscribers();
     }
 
     private setupSubscribers = () => {
-        PubSub.subscribe(this._layerSelectedTopic, (msg, data) => {
-            if (data !== MobilityLaneLayer.Id) {
+        PubSub.subscribe(this._eventTopics.layerSelectedTopic, (msg, data) => {
+            if (data !== OneWayStreetLayer.Id) {
                 this.selected = false;
             } else {
                 this.selected = true;
@@ -43,12 +36,16 @@ export class MobilityLaneLayer implements IMapLayer {
     addMarker = (points: Array<L.LatLng>) => {
         const polyline = new L.Polyline(points, {
             color: this._layerColour,
-            weight: 5,
+            weight: 2,
             opacity: 1,
             smoothFactor: 1
-        })
+        }).arrowheads({
+            frequency: '50px',
+            size: '15px',
+            yawn: 40
+          })
             .on('edit', (e) => {
-                PubSub.publish(this._layerUpdatedTopic, MobilityLaneLayer.Id);
+                PubSub.publish(this._eventTopics.layerUpdatedTopic, OneWayStreetLayer.Id);
             });
 
         const popup = L.popup({ minWidth: 30, keepInView: true });
@@ -60,7 +57,7 @@ export class MobilityLaneLayer implements IMapLayer {
         deleteControl.classList.add('delete-button');
         deleteControl.addEventListener('click', (e) => {
             this.deleteMarker(polyline);
-            PubSub.publish(this._closePopupTopic, popup);
+            PubSub.publish(this._eventTopics.closePopupTopic, popup);
         });
 
         controlList.appendChild(deleteControl);
@@ -71,7 +68,7 @@ export class MobilityLaneLayer implements IMapLayer {
             this.markerOnClick(e);
 
             popup.setLatLng(e.latlng);
-            PubSub.publish(this._showPopupTopic, popup);
+            PubSub.publish(this._eventTopics.showPopupTopic, popup);
         })
 
         this._layer.addLayer(polyline);
@@ -79,7 +76,7 @@ export class MobilityLaneLayer implements IMapLayer {
 
     deleteMarker = (layer: L.Draw.Polyline) => {
         this._layer.removeLayer(layer);
-        PubSub.publish(this._layerUpdatedTopic, MobilityLaneLayer.Id);
+        PubSub.publish(this._eventTopics.layerUpdatedTopic, OneWayStreetLayer.Id);
     }
 
     markerOnClick = (e) => {
@@ -87,7 +84,7 @@ export class MobilityLaneLayer implements IMapLayer {
 
         const polyline = e.target;
         polyline.editing.enable();
-        PubSub.publish(this._layerSelectedTopic, MobilityLaneLayer.Id);
+        PubSub.publish(this._eventTopics.layerSelectedTopic, OneWayStreetLayer.Id);
     };
 
     deselectLayer = () => {
@@ -102,8 +99,8 @@ export class MobilityLaneLayer implements IMapLayer {
         const modalFilterAction = L['Toolbar2'].Action.extend({
             options: {
                 toolbarIcon: {
-                    html: '<div class="mobility-lane-button"></div>',
-                    tooltip: 'Add mobility lanes to the map'
+                    html: '<div class="one-way-street-button"></div>',
+                    tooltip: 'Add one-way streets to the map'
                 }
             },
 
@@ -112,7 +109,7 @@ export class MobilityLaneLayer implements IMapLayer {
                     this.deselectLayer();
                     this.selected = false;
                     this.removeCursor();
-                    PubSub.publish(this._layerDeselectedTopic, MobilityLaneLayer.Id);
+                    PubSub.publish(this._eventTopics.layerDeselectedTopic, OneWayStreetLayer.Id);
                     return;
                 }
 
@@ -129,7 +126,7 @@ export class MobilityLaneLayer implements IMapLayer {
                 polyline.enable();
                 this.setCursor();
 
-                PubSub.publish(this._layerSelectedTopic, MobilityLaneLayer.Id);
+                PubSub.publish(this._eventTopics.layerSelectedTopic, OneWayStreetLayer.Id);
             }
         });
 
@@ -138,20 +135,20 @@ export class MobilityLaneLayer implements IMapLayer {
 
     setCursor = () => {
         document.getElementById('map')?.classList.remove('leaflet-grab');
-        document.getElementById('map')?.classList.add('mobility-lane');
+        document.getElementById('map')?.classList.add('tram-line');
     };
 
     removeCursor = () => {
-        document.getElementById('map')?.classList.remove('mobility-lane');
+        document.getElementById('map')?.classList.remove('tram-line');
         document.getElementById('map')?.classList.add('leaflet-grab');
     };
 
     loadFromGeoJSON = (geoJson: L.GeoJSON) => {
         if (geoJson) {
-            const mobilityLanes = geoJson['features'];
-            mobilityLanes.forEach((mobilityLane) => {
+            const tramLines = geoJson['features'];
+            tramLines.forEach((tramLine) => {
                 const points = new Array<L.LatLng>();
-                const coordinates = mobilityLane.geometry.coordinates;
+                const coordinates = tramLine.geometry.coordinates;
                 coordinates.forEach((coordinate) => {
                     const point = new L.LatLng(coordinate[1], coordinate[0]);
                     points.push(point);
@@ -164,4 +161,8 @@ export class MobilityLaneLayer implements IMapLayer {
     getLayer = (): L.GeoJSON => {
         return this._layer;
     };
+
+    toGeoJSON = (): {} => {
+        return this._layer.toGeoJSON();
+    }
 }

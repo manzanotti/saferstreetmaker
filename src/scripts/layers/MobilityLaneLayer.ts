@@ -1,38 +1,32 @@
 import * as L from 'leaflet';
 import PubSub from 'pubsub-js';
+import { EventTopics } from '../EventTopics';
 import { IMapLayer } from "./IMapLayer";
 
-export class SchoolStreetLayer implements IMapLayer {
-    public static Id = 'SchoolStreet';
+export class MobilityLaneLayer implements IMapLayer {
+    public static Id = 'MobilityLanes';
     public readonly id: string;
     public readonly title: string;
     public selected: boolean;
-    private readonly _layerSelectedTopic: string;
-    private readonly _layerDeselectedTopic: string;
-    private readonly _layerUpdatedTopic: string;
-    private readonly _showPopupTopic: string;
-    private readonly _closePopupTopic: string;
+    private readonly _eventTopics: EventTopics;
     private readonly _layer: L.GeoJSON;
-    private readonly _layerColour = '#E6EA09';
+    private readonly _layerColour = '#2222ff';
 
-    constructor(layerUpdatedTopic: string, layerSelectedTopic: string, layerDeselectedTopic: string, showPopupTopic: string, closePopupTopic: string) {
-        this._layerUpdatedTopic = layerUpdatedTopic;
-        this._layerSelectedTopic = layerSelectedTopic;
-        this._layerDeselectedTopic = layerDeselectedTopic;
-        this._showPopupTopic = showPopupTopic;
-        this._closePopupTopic = closePopupTopic;
+    constructor(eventTopics: EventTopics) {
+        this._eventTopics = eventTopics;
         this._layer = L.geoJSON();
+        this._eventTopics = eventTopics;
         
-        this.id = SchoolStreetLayer.Id;
-        this.title = 'School Streets';
+        this.id = MobilityLaneLayer.Id;
+        this.title = 'Mobility Lanes';
         this.selected = false;
 
         this.setupSubscribers();
     }
 
     private setupSubscribers = () => {
-        PubSub.subscribe(this._layerSelectedTopic, (msg, data) => {
-            if (data !== SchoolStreetLayer.Id) {
+        PubSub.subscribe(this._eventTopics.layerSelectedTopic, (msg, data) => {
+            if (data !== MobilityLaneLayer.Id) {
                 this.selected = false;
             } else {
                 this.selected = true;
@@ -48,7 +42,7 @@ export class SchoolStreetLayer implements IMapLayer {
             smoothFactor: 1
         })
             .on('edit', (e) => {
-                PubSub.publish(this._layerUpdatedTopic, SchoolStreetLayer.Id);
+                PubSub.publish(this._eventTopics.layerUpdatedTopic, MobilityLaneLayer.Id);
             });
 
         const popup = L.popup({ minWidth: 30, keepInView: true });
@@ -60,7 +54,7 @@ export class SchoolStreetLayer implements IMapLayer {
         deleteControl.classList.add('delete-button');
         deleteControl.addEventListener('click', (e) => {
             this.deleteMarker(polyline);
-            PubSub.publish(this._closePopupTopic, popup);
+            PubSub.publish(this._eventTopics.closePopupTopic, popup);
         });
 
         controlList.appendChild(deleteControl);
@@ -71,7 +65,7 @@ export class SchoolStreetLayer implements IMapLayer {
             this.markerOnClick(e);
 
             popup.setLatLng(e.latlng);
-            PubSub.publish(this._showPopupTopic, popup);
+            PubSub.publish(this._eventTopics.showPopupTopic, popup);
         })
 
         this._layer.addLayer(polyline);
@@ -79,7 +73,7 @@ export class SchoolStreetLayer implements IMapLayer {
 
     deleteMarker = (layer: L.Draw.Polyline) => {
         this._layer.removeLayer(layer);
-        PubSub.publish(this._layerUpdatedTopic, SchoolStreetLayer.Id);
+        PubSub.publish(this._eventTopics.layerUpdatedTopic, MobilityLaneLayer.Id);
     }
 
     markerOnClick = (e) => {
@@ -87,7 +81,7 @@ export class SchoolStreetLayer implements IMapLayer {
 
         const polyline = e.target;
         polyline.editing.enable();
-        PubSub.publish(this._layerSelectedTopic, SchoolStreetLayer.Id);
+        PubSub.publish(this._eventTopics.layerSelectedTopic, MobilityLaneLayer.Id);
     };
 
     deselectLayer = () => {
@@ -102,8 +96,8 @@ export class SchoolStreetLayer implements IMapLayer {
         const modalFilterAction = L['Toolbar2'].Action.extend({
             options: {
                 toolbarIcon: {
-                    html: '<div class="school-street-button"></div>',
-                    tooltip: 'Add school streets to the map'
+                    html: '<div class="mobility-lane-button"></div>',
+                    tooltip: 'Add mobility lanes to the map'
                 }
             },
 
@@ -112,7 +106,7 @@ export class SchoolStreetLayer implements IMapLayer {
                     this.deselectLayer();
                     this.selected = false;
                     this.removeCursor();
-                    PubSub.publish(this._layerDeselectedTopic, SchoolStreetLayer.Id);
+                    PubSub.publish(this._eventTopics.layerDeselectedTopic, MobilityLaneLayer.Id);
                     return;
                 }
 
@@ -129,7 +123,7 @@ export class SchoolStreetLayer implements IMapLayer {
                 polyline.enable();
                 this.setCursor();
 
-                PubSub.publish(this._layerSelectedTopic, SchoolStreetLayer.Id);
+                PubSub.publish(this._eventTopics.layerSelectedTopic, MobilityLaneLayer.Id);
             }
         });
 
@@ -138,20 +132,20 @@ export class SchoolStreetLayer implements IMapLayer {
 
     setCursor = () => {
         document.getElementById('map')?.classList.remove('leaflet-grab');
-        document.getElementById('map')?.classList.add('school-street');
+        document.getElementById('map')?.classList.add('mobility-lane');
     };
 
     removeCursor = () => {
-        document.getElementById('map')?.classList.remove('school-street');
+        document.getElementById('map')?.classList.remove('mobility-lane');
         document.getElementById('map')?.classList.add('leaflet-grab');
     };
 
     loadFromGeoJSON = (geoJson: L.GeoJSON) => {
         if (geoJson) {
-            const schoolStreets = geoJson['features'];
-            schoolStreets.forEach((schoolStreet) => {
+            const mobilityLanes = geoJson['features'];
+            mobilityLanes.forEach((mobilityLane) => {
                 const points = new Array<L.LatLng>();
-                const coordinates = schoolStreet.geometry.coordinates;
+                const coordinates = mobilityLane.geometry.coordinates;
                 coordinates.forEach((coordinate) => {
                     const point = new L.LatLng(coordinate[1], coordinate[0]);
                     points.push(point);
@@ -164,4 +158,8 @@ export class SchoolStreetLayer implements IMapLayer {
     getLayer = (): L.GeoJSON => {
         return this._layer;
     };
+
+    toGeoJSON = (): {} => {
+        return this._layer.toGeoJSON();
+    }
 }

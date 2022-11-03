@@ -4,7 +4,9 @@
     "@types/lz-string": "^1.3.34",
     "@types/pubsub-js": "^1.8.3",
     "cssnano": "^5.1.13",
-    "parcel": "^2.7.0"
+    "parcel": "^2.7.0",
+    "leaflet-arrowheads": "^1.4.0",
+    "leaflet-geometryutil": "0.10.1"
   },
   "dependencies": {
     "postcss": "^8.4.16",
@@ -31,6 +33,15 @@
     },
     "pubsub-js": {
       "global": "PubSub"
+    },
+    "leaflet-geometryutil": {
+      "global": "leaflet-geometryutil"
+    },
+    "leaflet-arrowheads": {
+      "global": "leaflet-arrowheads"
+    },
+    "L.Polyline.arrowheads": {
+      "global": "leaflet-arrowheads"
     }
   },
   "packageManager": "yarn@3.2.3"

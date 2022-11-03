@@ -1,5 +1,6 @@
 import * as L from 'leaflet';
 import PubSub from 'pubsub-js';
+import { EventTopics } from '../EventTopics';
 import { IMapLayer } from "./IMapLayer";
 
 export class ModalFilterLayer implements IMapLayer {
@@ -7,16 +8,12 @@ export class ModalFilterLayer implements IMapLayer {
     public readonly id: string;
     public readonly title: string;
     public selected: boolean;
-    private readonly _layerSelectedTopic: string;
-    private readonly _layerDeselectedTopic: string;
-    private readonly _layerUpdatedTopic: string;
+    private readonly _eventTopics: EventTopics;
     private readonly _layer: L.GeoJSON;
     private readonly _modalFilterIcon: string;
 
-    constructor(layerUpdatedTopic: string, layerSelectedTopic: string, layerDeselectedTopic: string) {
-        this._layerUpdatedTopic = layerUpdatedTopic;
-        this._layerSelectedTopic = layerSelectedTopic;
-        this._layerDeselectedTopic = layerDeselectedTopic;
+    constructor(eventTopics: EventTopics) {
+        this._eventTopics = eventTopics;
         this._modalFilterIcon = `<svg width="60" height="60"><circle cx="29" cy="29" r="15" stroke="green" stroke-width="3" fill="green" fill-opacity=".2" /></svg>`;
         this._layer = L.geoJSON();
 
@@ -28,7 +25,7 @@ export class ModalFilterLayer implements IMapLayer {
     }
 
     private setupSubscribers = () => {
-        PubSub.subscribe(this._layerSelectedTopic, (msg, data) => {
+        PubSub.subscribe(this._eventTopics.layerSelectedTopic, (msg, data) => {
             if (data !== ModalFilterLayer.Id) {
                 this.selected = false;
             }
@@ -37,7 +34,7 @@ export class ModalFilterLayer implements IMapLayer {
 
     addMarker = (points: Array<L.LatLng>) => {
         const coordinates = points[0];
-        const modalFilter = new L.CircleMarker([coordinates[1], coordinates[0]], {
+        const modalFilter = new L.CircleMarker(coordinates, {
             draggable: true,
             color: 'green',
             radius: 10
@@ -52,7 +49,7 @@ export class ModalFilterLayer implements IMapLayer {
 
         const marker = e.target;
         this._layer.removeLayer(marker);
-        PubSub.publish(this._layerUpdatedTopic, ModalFilterLayer.Id);
+        PubSub.publish(this._eventTopics.layerUpdatedTopic, ModalFilterLayer.Id);
     };
 
     deselectLayer = () => {
@@ -78,7 +75,7 @@ export class ModalFilterLayer implements IMapLayer {
                 this.selected = true;
                 this.setCursor();
 
-                PubSub.publish(this._layerSelectedTopic, ModalFilterLayer.Id);
+                PubSub.publish(this._eventTopics.layerSelectedTopic, ModalFilterLayer.Id);
             }
         });
 
@@ -98,11 +95,15 @@ export class ModalFilterLayer implements IMapLayer {
     loadFromGeoJSON = (geoJson: L.GeoJSON) => {
         geoJson['features'].forEach((modelFilter) => {
             const coordinates = modelFilter.geometry.coordinates;
-            this.addMarker([coordinates]);
+            const latLng = new L.LatLng(coordinates[1], coordinates[0]);
+            this.addMarker([latLng]);
         });
     };
 
     getLayer = (): L.GeoJSON => {
         return this._layer;
     };
-}
+
+    toGeoJSON = (): {} => {
+        return this._layer.toGeoJSON();
+    }}

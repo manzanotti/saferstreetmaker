@@ -1,5 +1,6 @@
 import * as L from 'leaflet';
 import PubSub from 'pubsub-js';
+import { EventTopics } from '../EventTopics';
 import { IMapLayer } from "./IMapLayer";
 
 export class TramLineLayer implements IMapLayer {
@@ -7,20 +8,12 @@ export class TramLineLayer implements IMapLayer {
     public readonly id: string;
     public readonly title: string;
     public selected: boolean;
-    private readonly _layerSelectedTopic: string;
-    private readonly _layerDeselectedTopic: string;
-    private readonly _layerUpdatedTopic: string;
-    private readonly _showPopupTopic: string;
-    private readonly _closePopupTopic: string;
+    private readonly _eventTopics: EventTopics;
     private readonly _layer: L.GeoJSON;
     private readonly _layerColour = '#ff5e00';
 
-    constructor(layerUpdatedTopic: string, layerSelectedTopic: string, layerDeselectedTopic: string, showPopupTopic: string, closePopupTopic: string) {
-        this._layerUpdatedTopic = layerUpdatedTopic;
-        this._layerSelectedTopic = layerSelectedTopic;
-        this._layerDeselectedTopic = layerDeselectedTopic;
-        this._showPopupTopic = showPopupTopic;
-        this._closePopupTopic = closePopupTopic;
+    constructor(eventTopics: EventTopics) {
+        this._eventTopics = eventTopics;
         this._layer = L.geoJSON();
         
         this.id = TramLineLayer.Id;
@@ -31,7 +24,7 @@ export class TramLineLayer implements IMapLayer {
     }
 
     private setupSubscribers = () => {
-        PubSub.subscribe(this._layerSelectedTopic, (msg, data) => {
+        PubSub.subscribe(this._eventTopics.layerSelectedTopic, (msg, data) => {
             if (data !== TramLineLayer.Id) {
                 this.selected = false;
             } else {
@@ -48,7 +41,7 @@ export class TramLineLayer implements IMapLayer {
             smoothFactor: 1
         })
             .on('edit', (e) => {
-                PubSub.publish(this._layerUpdatedTopic, TramLineLayer.Id);
+                PubSub.publish(this._eventTopics.layerUpdatedTopic, TramLineLayer.Id);
             });
 
         const popup = L.popup({ minWidth: 30, keepInView: true });
@@ -60,7 +53,7 @@ export class TramLineLayer implements IMapLayer {
         deleteControl.classList.add('delete-button');
         deleteControl.addEventListener('click', (e) => {
             this.deleteMarker(polyline);
-            PubSub.publish(this._closePopupTopic, popup);
+            PubSub.publish(this._eventTopics.closePopupTopic, popup);
         });
 
         controlList.appendChild(deleteControl);
@@ -71,7 +64,7 @@ export class TramLineLayer implements IMapLayer {
             this.markerOnClick(e);
 
             popup.setLatLng(e.latlng);
-            PubSub.publish(this._showPopupTopic, popup);
+            PubSub.publish(this._eventTopics.showPopupTopic, popup);
         })
 
         this._layer.addLayer(polyline);
@@ -79,7 +72,7 @@ export class TramLineLayer implements IMapLayer {
 
     deleteMarker = (layer: L.Draw.Polyline) => {
         this._layer.removeLayer(layer);
-        PubSub.publish(this._layerUpdatedTopic, TramLineLayer.Id);
+        PubSub.publish(this._eventTopics.layerUpdatedTopic, TramLineLayer.Id);
     }
 
     markerOnClick = (e) => {
@@ -87,7 +80,7 @@ export class TramLineLayer implements IMapLayer {
 
         const polyline = e.target;
         polyline.editing.enable();
-        PubSub.publish(this._layerSelectedTopic, TramLineLayer.Id);
+        PubSub.publish(this._eventTopics.layerSelectedTopic, TramLineLayer.Id);
     };
 
     deselectLayer = () => {
@@ -112,7 +105,7 @@ export class TramLineLayer implements IMapLayer {
                     this.deselectLayer();
                     this.selected = false;
                     this.removeCursor();
-                    PubSub.publish(this._layerDeselectedTopic, TramLineLayer.Id);
+                    PubSub.publish(this._eventTopics.layerDeselectedTopic, TramLineLayer.Id);
                     return;
                 }
 
@@ -129,7 +122,7 @@ export class TramLineLayer implements IMapLayer {
                 polyline.enable();
                 this.setCursor();
 
-                PubSub.publish(this._layerSelectedTopic, TramLineLayer.Id);
+                PubSub.publish(this._eventTopics.layerSelectedTopic, TramLineLayer.Id);
             }
         });
 
@@ -164,4 +157,8 @@ export class TramLineLayer implements IMapLayer {
     getLayer = (): L.GeoJSON => {
         return this._layer;
     };
+
+    toGeoJSON = (): {} => {
+        return this._layer.toGeoJSON();
+    }
 }
