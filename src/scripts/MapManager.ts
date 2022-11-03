@@ -1,9 +1,10 @@
 import LZString from 'lz-string';
+import { IMapLayer } from './layers/IMapLayer';
 
 export class MapManager {
     fileLoadedTopic: string = 'fileLoaded';
 
-    saveMapToFile = (mapName, layersData, centre, zoom) => {
+    saveMapToFile = (mapName: string, layersData: Map<string, IMapLayer>, centre: L.LatLng, zoom: number) => {
         const mapData = this.mapToJSON(mapName, layersData, centre, zoom);
         const mapString = JSON.stringify(mapData);
 
@@ -14,10 +15,10 @@ export class MapManager {
         hyperlink.click();
     };
 
-    saveMapToGeoJSONFile = (mapName, layersData, centre, zoom) => {
+    saveMapToGeoJSONFile = (mapName: string, layersData: Map<string, IMapLayer>) => {
         let layers = new Array<any>;
         layersData.forEach((layer, layerName) => {
-            layers.push(layer.getLayer().toGeoJSON());
+            layers.push(layer.toGeoJSON());
         });
 
         const geoJSON = layers[0];
@@ -36,14 +37,14 @@ export class MapManager {
         hyperlink.click();
     };
 
-    saveMap = (mapName, layersData, centre, zoom) => {
+    saveMap = (mapName: string, layersData: Map<string, IMapLayer>, centre: L.LatLng, zoom: number) => {
         const mapData = this.mapToJSON(mapName, layersData, centre, zoom);
         const mapString = JSON.stringify(mapData);
 
         localStorage.setItem(`Map_${mapName}`, LZString.compress(mapString));
     };
 
-    private mapToJSON = (mapName, layersData, centre, zoom): any => {
+    private mapToJSON = (mapName: string, layersData: Map<string, IMapLayer>, centre: L.LatLng, zoom: number): any => {
         let layers = {};
         layersData.forEach((layer, layerName) => {
             layers[layerName] = layer.getLayer().toGeoJSON();
@@ -59,7 +60,7 @@ export class MapManager {
         return mapData;
     }
 
-    saveLastMapSelected = (mapName) => {
+    saveLastMapSelected = (mapName: string) => {
         localStorage.setItem('LastMapSelected', LZString.compress(mapName));
     };
 
@@ -113,7 +114,7 @@ export class MapManager {
         return [];
     };
 
-    loadMapFromStorage = (mapName) => {
+    loadMapFromStorage = (mapName: string) => {
         const mapData = localStorage.getItem(`Map_${mapName}`);
         if (mapData !== null && mapData !== 'undefined') {
             const map = LZString.decompress(mapData) || '';

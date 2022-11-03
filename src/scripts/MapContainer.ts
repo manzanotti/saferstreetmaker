@@ -1,12 +1,14 @@
 import * as L from 'leaflet';
 import PubSub from 'pubsub-js';
-import { ModalFilterLayer } from './ModalFilterLayer';
-import { IMapLayer } from './IMapLayer';
+import { ModalFilterLayer } from './layers/ModalFilterLayer';
+import { IMapLayer } from './layers/IMapLayer';
 import { MapManager } from './MapManager';
-import { MobilityLaneLayer } from './MobilityLaneLayer';
-import { TramLineLayer } from './TramLineLayer';
-import { CarFreeStreetLayer } from './CarFreeStreetLayer';
-import { SchoolStreetLayer } from './SchoolStreetLayer';
+import { MobilityLaneLayer } from './layers/MobilityLaneLayer';
+import { TramLineLayer } from './layers/TramLineLayer';
+import { CarFreeStreetLayer } from './layers/CarFreeStreetLayer';
+import { SchoolStreetLayer } from './layers/SchoolStreetLayer';
+import { OneWayStreetLayer } from './layers/OneWayStreetLayer';
+import { EventTopics } from './EventTopics';
 
 export class MapContainer {
     private _mapManager: MapManager;
@@ -15,14 +17,12 @@ export class MapContainer {
     private _mode: string;
     private _selectedLayer: IMapLayer | null;
     private _layers: Map<string, IMapLayer>;
-    private readonly _layerUpdatedTopic = 'LayerUpdatedTopic';
-    private readonly _layerSelectedTopic = 'LayerSelectedTopic';
-    private readonly _layerDeselectedTopic = 'LayerDeselectedTopic';
-    private readonly _showPopupTopic = 'ShowPopup';
-    private readonly _closePopupTopic = 'ClosePopup';
+    private readonly _eventTopics: EventTopics;
 
     constructor(mapManager: MapManager) {
         this._mapManager = mapManager;
+
+        this._eventTopics = new EventTopics();
 
         this._map = L.map('map');
         this._title = 'Hello Cleveland';
@@ -32,11 +32,9 @@ export class MapContainer {
         this._layers = new Map<string, IMapLayer>;
 
         this.setupMap();
-        this.setupModalFilterLayer();
-        this.setupMobilityLaneLayer();
-        this.setupTramLineLayer();
-        this.setupCarFreeStreetLayer();
-        this.setupSchoolStreetLayer();
+
+        this.setupLayers();
+        this.setupOneWayStreetLayer();
 
         this.addOverlays();
         this.setupToolbars();
@@ -86,7 +84,7 @@ export class MapContainer {
         });
 
         actions.push(helpAction);
-        
+
         new L.Toolbar2.Control({
             position: 'topleft',
             actions: actions
@@ -125,7 +123,7 @@ export class MapContainer {
                 const centre = this._map.getCenter();
                 const zoom = this._map.getZoom();
 
-                this._mapManager.saveMapToGeoJSONFile(this._title, this._layers, centre, zoom);
+                this._mapManager.saveMapToGeoJSONFile(this._title, this._layers);
             }
         });
 
@@ -149,37 +147,51 @@ export class MapContainer {
         return actions;
     }
 
+    private setupLayers = () => {
+        this.setupModalFilterLayer();
+        this.setupMobilityLaneLayer();
+        this.setupTramLineLayer();
+        this.setupCarFreeStreetLayer();
+        this.setupSchoolStreetLayer();
+    }
+
     private setupModalFilterLayer = () => {
-        const modelFilters = new ModalFilterLayer(this._layerUpdatedTopic, this._layerSelectedTopic, this._layerDeselectedTopic);
+        const modelFilters = new ModalFilterLayer(this._eventTopics);
         this._layers.set(ModalFilterLayer.Id, modelFilters);
     };
 
     private setupMobilityLaneLayer = () => {
-        const mobilityLanes = new MobilityLaneLayer(this._layerUpdatedTopic, this._layerSelectedTopic, this._layerDeselectedTopic, this._showPopupTopic, this._closePopupTopic);
+        const mobilityLanes = new MobilityLaneLayer(this._eventTopics);
         this._layers.set(MobilityLaneLayer.Id, mobilityLanes);
     };
 
     private setupTramLineLayer = () => {
-        const tramLines = new TramLineLayer(this._layerUpdatedTopic, this._layerSelectedTopic, this._layerDeselectedTopic, this._showPopupTopic, this._closePopupTopic);
+        const tramLines = new TramLineLayer(this._eventTopics);
         this._layers.set(TramLineLayer.Id, tramLines);
     };
 
     private setupCarFreeStreetLayer = () => {
-        const carFreeStreets = new CarFreeStreetLayer(this._layerUpdatedTopic, this._layerSelectedTopic, this._layerDeselectedTopic, this._showPopupTopic, this._closePopupTopic);
+        const carFreeStreets = new CarFreeStreetLayer(this._eventTopics);
         this._layers.set(CarFreeStreetLayer.Id, carFreeStreets);
     };
 
     private setupSchoolStreetLayer = () => {
-        const schoolStreets = new SchoolStreetLayer(this._layerUpdatedTopic, this._layerSelectedTopic, this._layerDeselectedTopic, this._showPopupTopic, this._closePopupTopic);
+        const schoolStreets = new SchoolStreetLayer(this._eventTopics);
         this._layers.set(SchoolStreetLayer.Id, schoolStreets);
     }
 
+    private setupOneWayStreetLayer = () => {
+        const tramLines = new OneWayStreetLayer(this._eventTopics);
+        this._layers.set(OneWayStreetLayer.Id, tramLines);
+    };
+
     private setupMapEventHandlers = () => {
-        this._map.on('click', (e: any) => {
+        this._map.on('click', (e: L.LeafletMouseEvent) => {
             switch (this._mode) {
                 case 'ModalFilters':
                     L.DomEvent.stopPropagation(e);
-                    this._selectedLayer?.addMarker([[e.latlng.lng, e.latlng.lat]]);
+                    const latLng = e.latlng;
+                    this._selectedLayer?.addMarker([latLng]);
                     this.saveMap();
                     break;
                 default:
@@ -203,6 +215,7 @@ export class MapContainer {
                 case TramLineLayer.Id:
                 case CarFreeStreetLayer.Id:
                 case SchoolStreetLayer.Id:
+                case OneWayStreetLayer.Id:
                     this._selectedLayer?.addMarker(layer.getLatLngs());
                     break;
             }
@@ -221,23 +234,23 @@ export class MapContainer {
             };
         });
 
-        PubSub.subscribe(this._layerSelectedTopic, (msg, data) => {
+        PubSub.subscribe(this._eventTopics.layerSelectedTopic, (msg, data) => {
             this.selectLayer(data);
         });
 
-        PubSub.subscribe(this._layerDeselectedTopic, (msg, data) => {
+        PubSub.subscribe(this._eventTopics.layerDeselectedTopic, (msg, data) => {
             this.deselectLayer(data);
         });
 
-        PubSub.subscribe(this._layerUpdatedTopic, (msg, data) => {
+        PubSub.subscribe(this._eventTopics.layerUpdatedTopic, (msg, data) => {
             this.saveMap();
         });
 
-        PubSub.subscribe(this._showPopupTopic, (msg, popup) => {
+        PubSub.subscribe(this._eventTopics.showPopupTopic, (msg, popup) => {
             this._map.openPopup(popup);
         });
 
-        PubSub.subscribe(this._closePopupTopic, (msg, popup) => {
+        PubSub.subscribe(this._eventTopics.closePopupTopic, (msg, popup) => {
             this._map.closePopup(popup);
         });
     }
