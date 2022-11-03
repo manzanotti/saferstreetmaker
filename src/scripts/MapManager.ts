@@ -74,6 +74,12 @@ export class MapManager {
         fileInput.click();
     };
 
+    loadMapFromRemoteFile = async (url) => {
+        var response = await fetch(url);
+
+        return response.json();
+    }
+
     private readFile = (e) => {
         let fileInput = e.target;
         const file = fileInput.files[0];

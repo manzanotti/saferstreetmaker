@@ -284,7 +284,11 @@ export class MapContainer {
         this._map.setView([coordinates.latitude, coordinates.longitude], 17);
     };
 
-    loadMap = (): boolean => {
+    loadMap = async (remoteMapFile: string | null): Promise<boolean> => {
+        if(remoteMapFile){
+            const mapData = await this._mapManager.loadMapFromRemoteFile(remoteMapFile);
+            return this.loadMapData(mapData);
+        }
         const lastMapSelected = this._mapManager.loadLastMapSelected();
         const geoJSON = this._mapManager.loadMapFromStorage(lastMapSelected || this._title);
 
@@ -293,7 +297,7 @@ export class MapContainer {
 
     private loadMapData = (geoJSON): boolean => {
         if (geoJSON === null) {
-            this._mapManager.saveLastMapSelected(this._title);
+            //this._mapManager.saveLastMapSelected(this._title);
             return false;
         }
 
