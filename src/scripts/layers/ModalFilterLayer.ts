@@ -82,6 +82,18 @@ export class ModalFilterLayer implements IMapLayer {
         return modalFilterAction;
     };
 
+    getLegendEntry = () => {
+        const icon = document.createElement('i');
+        icon.innerHTML = `<svg width="30" height="30"><circle cx="10" cy="10" r="7" stroke="green" stroke-width="3" fill="green" fill-opacity=".2" /></svg>`;
+
+        const text = document.createElement('span');
+        text.textContent = this.title;
+
+        const br = document.createElement('br');
+
+        return [icon, text, br];
+    }
+
     setCursor = () => {
         document.getElementById('map')?.classList.remove('leaflet-grab');
         document.getElementById('map')?.classList.add('modal-filter');

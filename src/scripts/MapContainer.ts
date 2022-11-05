@@ -37,6 +37,8 @@ export class MapContainer {
         this.setupOneWayStreetLayer();
 
         this.addOverlays();
+        this.addLegend();
+
         this.setupToolbars();
         this.setupMapEventHandlers();
         this.setupSubscribers();
@@ -276,8 +278,35 @@ export class MapContainer {
             this._map.addLayer(layer.getLayer());
         });
 
-        L.control.layers(undefined, overlays, { collapsed: false }).addTo(this._map);
+        L.control.layers(undefined, overlays, { collapsed: false, position: 'bottomright' }).addTo(this._map);
     };
+
+    private addLegend = () => {
+        const legend = new L.Control({ position: "topright" });
+
+        const div = document.createElement('div');
+        div.classList.add('legend');
+
+        const header = document.createElement('h4');
+        header.textContent = 'Legend';
+
+        div.appendChild(header);
+
+        let legendEntries: Array<HTMLElement> = [];
+        this._layers.forEach((layer: IMapLayer, key) => {
+            legendEntries.push(...layer.getLegendEntry());
+        });
+
+        legendEntries.forEach((element: HTMLElement) => {
+            div.appendChild(element);
+        });
+
+        legend.onAdd = (map) => {
+            return div;
+        };
+
+        legend.addTo(this._map);
+    }
 
     setUserLocation = (userLocation: any) => {
         const coordinates = userLocation.coords;
@@ -285,7 +314,7 @@ export class MapContainer {
     };
 
     loadMap = async (remoteMapFile: string | null): Promise<boolean> => {
-        if(remoteMapFile){
+        if (remoteMapFile) {
             const mapData = await this._mapManager.loadMapFromRemoteFile(remoteMapFile);
             return this.loadMapData(mapData);
         }
@@ -313,7 +342,7 @@ export class MapContainer {
             this._layers.forEach((layer, layerName) => {
                 if (layerName === ModalFilterLayer.Id && layersJSON['Modals'] !== undefined) {
                     layerName = 'Modals';
-                } else if(layerName === MobilityLaneLayer.Id && layersJSON['CycleLanes'] !== undefined){
+                } else if (layerName === MobilityLaneLayer.Id && layersJSON['CycleLanes'] !== undefined) {
                     layerName = 'CycleLanes';
                 }
                 const layerJSON = layersJSON[layerName];
