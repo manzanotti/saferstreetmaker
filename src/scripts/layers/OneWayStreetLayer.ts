@@ -133,6 +133,18 @@ export class OneWayStreetLayer implements IMapLayer {
         return modalFilterAction;
     };
 
+    getLegendEntry = () => {
+        const icon = document.createElement('i');
+        icon.style.backgroundColor = this._layerColour;
+        
+        const text = document.createElement('span');
+        text.textContent = this.title;
+
+        const br = document.createElement('br');
+
+        return [icon, text, br];
+    }
+
     setCursor = () => {
         document.getElementById('map')?.classList.remove('leaflet-grab');
         document.getElementById('map')?.classList.add('tram-line');
