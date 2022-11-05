@@ -1,7 +1,11 @@
 export class EventTopics {
-    layerUpdatedTopic = 'LayerUpdatedTopic';
-    layerSelectedTopic = 'LayerSelectedTopic';
-    layerDeselectedTopic = 'LayerDeselectedTopic';
-    showPopupTopic = 'ShowPopup';
-    closePopupTopic = 'ClosePopup';    
+    static layerUpdatedTopic = 'LayerUpdatedTopic';
+    static layerSelectedTopic = 'LayerSelectedTopic';
+    static layerDeselectedTopic = 'LayerDeselectedTopic';
+    static showPopupTopic = 'ShowPopup';
+    static closePopupTopic = 'ClosePopup';
+    static saveMapToFileTopic = 'SaveMapToFile';
+    static saveMapToGeoJSONFileTopic = 'saveMapToGeoJSONFile';
+    static loadMapFromFileTopic = 'loadMapFromFile';
+    static showHelpTopic = 'showHelp';
 }

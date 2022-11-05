@@ -8,12 +8,10 @@ export class ModalFilterLayer implements IMapLayer {
     public readonly id: string;
     public readonly title: string;
     public selected: boolean;
-    private readonly _eventTopics: EventTopics;
     private readonly _layer: L.GeoJSON;
     private readonly _modalFilterIcon: string;
 
-    constructor(eventTopics: EventTopics) {
-        this._eventTopics = eventTopics;
+    constructor() {
         this._modalFilterIcon = `<svg width="60" height="60"><circle cx="29" cy="29" r="15" stroke="green" stroke-width="3" fill="green" fill-opacity=".2" /></svg>`;
         this._layer = L.geoJSON();
 
@@ -25,7 +23,7 @@ export class ModalFilterLayer implements IMapLayer {
     }
 
     private setupSubscribers = () => {
-        PubSub.subscribe(this._eventTopics.layerSelectedTopic, (msg, data) => {
+        PubSub.subscribe(EventTopics.layerSelectedTopic, (msg, data) => {
             if (data !== ModalFilterLayer.Id) {
                 this.selected = false;
             }
@@ -49,7 +47,7 @@ export class ModalFilterLayer implements IMapLayer {
 
         const marker = e.target;
         this._layer.removeLayer(marker);
-        PubSub.publish(this._eventTopics.layerUpdatedTopic, ModalFilterLayer.Id);
+        PubSub.publish(EventTopics.layerUpdatedTopic, ModalFilterLayer.Id);
     };
 
     deselectLayer = () => {
@@ -75,7 +73,7 @@ export class ModalFilterLayer implements IMapLayer {
                 this.selected = true;
                 this.setCursor();
 
-                PubSub.publish(this._eventTopics.layerSelectedTopic, ModalFilterLayer.Id);
+                PubSub.publish(EventTopics.layerSelectedTopic, ModalFilterLayer.Id);
             }
         });
 
