@@ -9,6 +9,8 @@ import { CarFreeStreetLayer } from './layers/CarFreeStreetLayer';
 import { SchoolStreetLayer } from './layers/SchoolStreetLayer';
 import { OneWayStreetLayer } from './layers/OneWayStreetLayer';
 import { EventTopics } from './EventTopics';
+import { FileActions } from './Toolbar/FileActions';
+import { HelpActions } from './Toolbar/HelpActions';
 
 export class MapContainer {
     private _mapManager: MapManager;
@@ -17,12 +19,9 @@ export class MapContainer {
     private _mode: string;
     private _selectedLayer: IMapLayer | null;
     private _layers: Map<string, IMapLayer>;
-    private readonly _eventTopics: EventTopics;
 
     constructor(mapManager: MapManager) {
         this._mapManager = mapManager;
-
-        this._eventTopics = new EventTopics();
 
         this._map = L.map('map');
         this._title = 'Hello Cleveland';
@@ -34,12 +33,11 @@ export class MapContainer {
         this.setupMap();
 
         this.setupLayers();
-        this.setupOneWayStreetLayer();
 
         this.addOverlays();
         this.addLegend();
-
         this.setupToolbars();
+        
         this.setupMapEventHandlers();
         this.setupSubscribers();
     }
@@ -51,141 +49,31 @@ export class MapContainer {
         }).addTo(this._map);
     };
 
+    private setupLayers = () => {
+        this._layers.set(ModalFilterLayer.Id, new ModalFilterLayer());
+        this._layers.set(MobilityLaneLayer.Id, new MobilityLaneLayer());
+        this._layers.set(TramLineLayer.Id, new TramLineLayer());
+        this._layers.set(CarFreeStreetLayer.Id, new CarFreeStreetLayer());
+        this._layers.set(SchoolStreetLayer.Id, new SchoolStreetLayer());
+        this._layers.set(OneWayStreetLayer.Id, new OneWayStreetLayer());
+    };
+
     private setupToolbars = () => {
         const actions: Array<L.Toolbar2.Action> = [];
 
-        const saveFileAction = L.Toolbar2.Action.extend({
-            options: {
-                toolbarIcon: {
-                    html: '<div class="file-actions"></div>',
-                    tooltip: 'Save or load files'
-                },
-                subToolbar: new L.Toolbar2({
-                    actions: this.getFileSubMenu()
-                })
-            }
-        });
-
-        actions.push(saveFileAction);
+        actions.push(...FileActions.getActions());
 
         this._layers.forEach((layer, key) => {
             actions.push(layer.getToolbarAction(this._map));
         });
 
-        const helpAction = L.Toolbar2.Action.extend({
-            options: {
-                toolbarIcon: {
-                    html: '<div class="help-button"></div>',
-                    tooltip: 'Instructions on how to use the map'
-                }
-            },
-
-            addHooks: () => {
-                this.showHelp();
-            }
-        });
-
-        actions.push(helpAction);
+        actions.push(...HelpActions.getActions());
 
         new L.Toolbar2.Control({
             position: 'topleft',
             actions: actions
         }).addTo(this._map);
     }
-
-    private getFileSubMenu = (): Array<L.Toolbar2.Action> => {
-        const actions: Array<L.Toolbar2.Action> = [];
-        const saveFileAction = L.Toolbar2.Action.extend({
-            options: {
-                toolbarIcon: {
-                    html: '<div class="save-file"></div>',
-                    tooltip: 'Save map to a file'
-                }
-            },
-
-            addHooks: () => {
-                const centre = this._map.getCenter();
-                const zoom = this._map.getZoom();
-
-                this._mapManager.saveMapToFile(this._title, this._layers, centre, zoom);
-            }
-        });
-
-        actions.push(saveFileAction);
-
-        const saveToGeoJSONFileAction = L.Toolbar2.Action.extend({
-            options: {
-                toolbarIcon: {
-                    html: '<div class="save-geojson-file"></div>',
-                    tooltip: 'Save GeoJSON to a file'
-                }
-            },
-
-            addHooks: () => {
-                const centre = this._map.getCenter();
-                const zoom = this._map.getZoom();
-
-                this._mapManager.saveMapToGeoJSONFile(this._title, this._layers);
-            }
-        });
-
-        actions.push(saveToGeoJSONFileAction);
-
-        const loadFileAction = L.Toolbar2.Action.extend({
-            options: {
-                toolbarIcon: {
-                    html: '<div class="load-file"></div>',
-                    tooltip: 'Load map from a file'
-                }
-            },
-
-            addHooks: () => {
-                this._mapManager.loadMapFromFile();
-            }
-        });
-
-        actions.push(loadFileAction);
-
-        return actions;
-    }
-
-    private setupLayers = () => {
-        this.setupModalFilterLayer();
-        this.setupMobilityLaneLayer();
-        this.setupTramLineLayer();
-        this.setupCarFreeStreetLayer();
-        this.setupSchoolStreetLayer();
-    }
-
-    private setupModalFilterLayer = () => {
-        const modelFilters = new ModalFilterLayer(this._eventTopics);
-        this._layers.set(ModalFilterLayer.Id, modelFilters);
-    };
-
-    private setupMobilityLaneLayer = () => {
-        const mobilityLanes = new MobilityLaneLayer(this._eventTopics);
-        this._layers.set(MobilityLaneLayer.Id, mobilityLanes);
-    };
-
-    private setupTramLineLayer = () => {
-        const tramLines = new TramLineLayer(this._eventTopics);
-        this._layers.set(TramLineLayer.Id, tramLines);
-    };
-
-    private setupCarFreeStreetLayer = () => {
-        const carFreeStreets = new CarFreeStreetLayer(this._eventTopics);
-        this._layers.set(CarFreeStreetLayer.Id, carFreeStreets);
-    };
-
-    private setupSchoolStreetLayer = () => {
-        const schoolStreets = new SchoolStreetLayer(this._eventTopics);
-        this._layers.set(SchoolStreetLayer.Id, schoolStreets);
-    }
-
-    private setupOneWayStreetLayer = () => {
-        const tramLines = new OneWayStreetLayer(this._eventTopics);
-        this._layers.set(OneWayStreetLayer.Id, tramLines);
-    };
 
     private setupMapEventHandlers = () => {
         this._map.on('click', (e: L.LeafletMouseEvent) => {
@@ -236,24 +124,43 @@ export class MapContainer {
             };
         });
 
-        PubSub.subscribe(this._eventTopics.layerSelectedTopic, (msg, data) => {
+        PubSub.subscribe(EventTopics.layerSelectedTopic, (msg, data) => {
             this.selectLayer(data);
         });
 
-        PubSub.subscribe(this._eventTopics.layerDeselectedTopic, (msg, data) => {
+        PubSub.subscribe(EventTopics.layerDeselectedTopic, (msg, data) => {
             this.deselectLayer(data);
         });
 
-        PubSub.subscribe(this._eventTopics.layerUpdatedTopic, (msg, data) => {
+        PubSub.subscribe(EventTopics.layerUpdatedTopic, (msg, data) => {
             this.saveMap();
         });
 
-        PubSub.subscribe(this._eventTopics.showPopupTopic, (msg, popup) => {
+        PubSub.subscribe(EventTopics.showPopupTopic, (msg, popup) => {
             this._map.openPopup(popup);
         });
 
-        PubSub.subscribe(this._eventTopics.closePopupTopic, (msg, popup) => {
+        PubSub.subscribe(EventTopics.closePopupTopic, (msg, popup) => {
             this._map.closePopup(popup);
+        });
+
+        PubSub.subscribe(EventTopics.saveMapToFileTopic, (msg, popup) => {
+            const centre = this._map.getCenter();
+            const zoom = this._map.getZoom();
+
+            this._mapManager.saveMapToFile(this._title, this._layers, centre, zoom);
+        });
+
+        PubSub.subscribe(EventTopics.saveMapToGeoJSONFileTopic, (msg, popup) => {
+            this._mapManager.saveMapToGeoJSONFile(this._title, this._layers);
+        });
+
+        PubSub.subscribe(EventTopics.loadMapFromFileTopic, (msg, popup) => {
+            this._mapManager.loadMapFromFile();
+        });
+
+        PubSub.subscribe(EventTopics.showHelpTopic, (msg, popup) => {
+            this.showHelp();
         });
     }
 
@@ -326,7 +233,6 @@ export class MapContainer {
 
     private loadMapData = (geoJSON): boolean => {
         if (geoJSON === null) {
-            //this._mapManager.saveLastMapSelected(this._title);
             return false;
         }
 
