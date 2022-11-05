@@ -220,6 +220,10 @@ export class MapContainer {
         this._map.setView([coordinates.latitude, coordinates.longitude], 17);
     };
 
+    setDefaultView = () => {
+        this._map.setView([52.5, -1.9], 12);
+    }
+
     loadMap = async (remoteMapFile: string | null): Promise<boolean> => {
         if (remoteMapFile) {
             const mapData = await this._mapManager.loadMapFromRemoteFile(remoteMapFile);
