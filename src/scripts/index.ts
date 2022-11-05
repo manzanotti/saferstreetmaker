@@ -13,6 +13,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (!mapLoaded && window.navigator.geolocation) {
         window.navigator.geolocation
-            .getCurrentPosition(mapContainer.setUserLocation, console.log);
+            .getCurrentPosition(mapContainer.setUserLocation, mapContainer.setDefaultView);
     }
 });
