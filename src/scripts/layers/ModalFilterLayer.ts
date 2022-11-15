@@ -23,9 +23,24 @@ export class ModalFilterLayer implements IMapLayer {
     }
 
     private setupSubscribers = () => {
-        PubSub.subscribe(EventTopics.layerSelectedTopic, (msg, data) => {
-            if (data !== ModalFilterLayer.Id) {
-                this.selected = false;
+        PubSub.subscribe(EventTopics.layerSelectedTopic, (msg, selectedLayerId) => {
+            if (selectedLayerId !== ModalFilterLayer.Id) {
+                this.deselectLayer();
+            } else {
+                this.selectLayer();
+            }
+        });
+
+        PubSub.subscribe(EventTopics.deselectedTopic, (msg) => {
+            this.deselectLayer();
+        });
+
+        PubSub.subscribe(EventTopics.mapClickedTopic, (msg, e: L.LeafletMouseEvent) => {
+            if (this.selected) {
+                L.DomEvent.stopPropagation(e);
+                const latLng = e.latlng;
+                this.addMarker([latLng]);
+                PubSub.publish(EventTopics.layerUpdatedTopic, ModalFilterLayer.Id);
             }
         });
     };
@@ -50,8 +65,18 @@ export class ModalFilterLayer implements IMapLayer {
         PubSub.publish(EventTopics.layerUpdatedTopic, ModalFilterLayer.Id);
     };
 
+    selectLayer = () => {
+        this.selected = true;
+        this.setCursor();
+    }
+
     deselectLayer = () => {
+        if (!this.selected) {
+            return;
+        }
+
         this.removeCursor();
+        this.selected = false;
     }
 
     getToolbarAction = (map: L.Map) => {
@@ -116,4 +141,5 @@ export class ModalFilterLayer implements IMapLayer {
 
     toGeoJSON = (): {} => {
         return this._layer.toGeoJSON();
-    }}
+    }
+}

@@ -33,8 +33,15 @@ export class FileActions {
                 }
             },
 
-            addHooks: () => {
+            initialize: function(map, parentAction) {
+                this.parentAction = parentAction;
+                L.Toolbar2.Action.prototype.initialize.call(this);
+            },
+
+            addHooks: function () {
                 PubSub.publish(EventTopics.saveMapToFileTopic);
+                this.parentAction.disable();
+                this.disable();
             }
         });
 
@@ -48,8 +55,15 @@ export class FileActions {
                 }
             },
 
-            addHooks: () => {
+            initialize: function(map, parentAction) {
+                this.parentAction = parentAction;
+                L.Toolbar2.Action.prototype.initialize.call(this);
+            },
+
+            addHooks: function () {
                 PubSub.publish(EventTopics.saveMapToGeoJSONFileTopic);
+                this.parentAction.disable();
+                this.disable();
             }
         });
 
@@ -63,8 +77,15 @@ export class FileActions {
                 }
             },
 
-            addHooks: () => {
+            initialize: function(map, parentAction) {
+                this.parentAction = parentAction;
+                L.Toolbar2.Action.prototype.initialize.call(this);
+            },
+
+            addHooks: function () {
                 PubSub.publish(EventTopics.loadMapFromFileTopic);
+                this.parentAction.disable();
+                this.disable();
             }
         });
 

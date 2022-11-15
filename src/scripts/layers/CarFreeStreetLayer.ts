@@ -13,7 +13,7 @@ export class CarFreeStreetLayer implements IMapLayer {
 
     constructor() {
         this._layer = L.geoJSON();
-        
+
         this.id = CarFreeStreetLayer.Id;
         this.title = 'Car-free Streets';
         this.selected = false;
@@ -22,11 +22,27 @@ export class CarFreeStreetLayer implements IMapLayer {
     }
 
     private setupSubscribers = () => {
-        PubSub.subscribe(EventTopics.layerSelectedTopic, (msg, data) => {
-            if (data !== CarFreeStreetLayer.Id) {
-                this.selected = false;
+        PubSub.subscribe(EventTopics.layerSelectedTopic, (msg, selectedLayerId) => {
+            if (selectedLayerId !== CarFreeStreetLayer.Id) {
+                if (this.selected) {
+                    this.deselectLayer();
+                }
             } else {
                 this.selected = true;
+                this.setCursor();
+            }
+        });
+
+        PubSub.subscribe(EventTopics.deselectedTopic, (msg) => {
+            if (this.selected) {
+                this.deselectLayer();
+            }
+        });
+
+        PubSub.subscribe(EventTopics.drawCreatedTopic, (msg, latLng: L.LatLng) => {
+            if (this.selected) {
+                this.addMarker([latLng]);
+                PubSub.publish(EventTopics.layerUpdatedTopic, CarFreeStreetLayer.Id);
             }
         });
     };
@@ -74,19 +90,29 @@ export class CarFreeStreetLayer implements IMapLayer {
     }
 
     markerOnClick = (e) => {
-        this.deselectLayer();
+        this.selectLayer();
 
         const polyline = e.target;
         polyline.editing.enable();
         PubSub.publish(EventTopics.layerSelectedTopic, CarFreeStreetLayer.Id);
     };
 
+    selectLayer = () => {
+        this.selected = true;
+        this.setCursor();
+    }
+
     deselectLayer = () => {
+        if (!this.selected) {
+            return;
+        }
+
         this._layer.eachLayer((layer: L.Draw.Polyline) => {
             layer.editing.disable();
         });
 
         this.removeCursor();
+        this.selected = false;
     }
 
     getToolbarAction = (map: L.Map) => {
@@ -103,7 +129,7 @@ export class CarFreeStreetLayer implements IMapLayer {
                     this.deselectLayer();
                     this.selected = false;
                     this.removeCursor();
-                    PubSub.publish(EventTopics.layerDeselectedTopic, CarFreeStreetLayer.Id);
+                    PubSub.publish(EventTopics.deselectedTopic, CarFreeStreetLayer.Id);
                     return;
                 }
 
@@ -130,7 +156,7 @@ export class CarFreeStreetLayer implements IMapLayer {
     getLegendEntry = () => {
         const icon = document.createElement('i');
         icon.style.backgroundColor = this._layerColour;
-        
+
         const text = document.createElement('span');
         text.textContent = this.title;
 
@@ -170,4 +196,5 @@ export class CarFreeStreetLayer implements IMapLayer {
 
     toGeoJSON = (): {} => {
         return this._layer.toGeoJSON();
-    }}
+    }
+}

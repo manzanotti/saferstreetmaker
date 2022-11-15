@@ -14,7 +14,7 @@ export class OneWayStreetLayer implements IMapLayer {
 
     constructor() {
         this._layer = L.geoJSON();
-        
+
         this.id = OneWayStreetLayer.Id;
         this.title = 'One-way Streets';
         this.selected = false;
@@ -23,11 +23,22 @@ export class OneWayStreetLayer implements IMapLayer {
     }
 
     private setupSubscribers = () => {
-        PubSub.subscribe(EventTopics.layerSelectedTopic, (msg, data) => {
-            if (data !== OneWayStreetLayer.Id) {
-                this.selected = false;
+        PubSub.subscribe(EventTopics.layerSelectedTopic, (msg, selectedLayerId) => {
+            if (selectedLayerId !== OneWayStreetLayer.Id) {
+                this.deselectLayer();
             } else {
-                this.selected = true;
+                this.selectLayer();
+            }
+        });
+
+        PubSub.subscribe(EventTopics.deselectedTopic, (msg) => {
+            this.deselectLayer();
+        });
+
+        PubSub.subscribe(EventTopics.drawCreatedTopic, (msg, latLng: L.LatLng) => {
+            if (this.selected) {
+                this.addMarker([latLng]);
+                PubSub.publish(EventTopics.layerUpdatedTopic, OneWayStreetLayer.Id);
             }
         });
     };
@@ -42,7 +53,7 @@ export class OneWayStreetLayer implements IMapLayer {
             frequency: '50px',
             size: '15px',
             yawn: 40
-          })
+        })
             .on('edit', (e) => {
                 PubSub.publish(EventTopics.layerUpdatedTopic, OneWayStreetLayer.Id);
             });
@@ -79,19 +90,29 @@ export class OneWayStreetLayer implements IMapLayer {
     }
 
     markerOnClick = (e) => {
-        this.deselectLayer();
+        this.selectLayer();
 
         const polyline = e.target;
         polyline.editing.enable();
         PubSub.publish(EventTopics.layerSelectedTopic, OneWayStreetLayer.Id);
     };
 
+    selectLayer = () => {
+        this.selected = true;
+        this.setCursor();
+    }
+
     deselectLayer = () => {
+        if (!this.selected) {
+            return;
+        }
+
         this._layer.eachLayer((layer: L.Draw.Polyline) => {
             layer.editing.disable();
         });
 
         this.removeCursor();
+        this.selected = false;
     }
 
     getToolbarAction = (map: L.Map) => {
@@ -108,7 +129,7 @@ export class OneWayStreetLayer implements IMapLayer {
                     this.deselectLayer();
                     this.selected = false;
                     this.removeCursor();
-                    PubSub.publish(EventTopics.layerDeselectedTopic, OneWayStreetLayer.Id);
+                    PubSub.publish(EventTopics.deselectedTopic, OneWayStreetLayer.Id);
                     return;
                 }
 
@@ -135,7 +156,7 @@ export class OneWayStreetLayer implements IMapLayer {
     getLegendEntry = () => {
         const icon = document.createElement('i');
         icon.style.backgroundColor = this._layerColour;
-        
+
         const text = document.createElement('span');
         text.textContent = this.title;
 

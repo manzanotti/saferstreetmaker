@@ -9,108 +9,90 @@ import { CarFreeStreetLayer } from './layers/CarFreeStreetLayer';
 import { SchoolStreetLayer } from './layers/SchoolStreetLayer';
 import { OneWayStreetLayer } from './layers/OneWayStreetLayer';
 import { EventTopics } from './EventTopics';
-import { FileActions } from './Toolbar/FileActions';
-import { HelpActions } from './Toolbar/HelpActions';
+import { Toolbar } from './Controls/Toolbar';
+import { Legend } from './Controls/Legend';
 
 export class MapContainer {
     private _mapManager: MapManager;
     private _map: L.Map;
     private _title: string;
-    private _mode: string;
-    private _selectedLayer: IMapLayer | null;
     private _layers: Map<string, IMapLayer>;
 
     constructor(mapManager: MapManager) {
         this._mapManager = mapManager;
 
-        this._map = L.map('map');
+        this._map = new L.Map('map');
         this._title = 'Hello Cleveland';
-        this._mode = '';
-        this._selectedLayer = null;
 
         this._layers = new Map<string, IMapLayer>;
 
         this.setupMap();
 
-        this.setupLayers();
+        this.addLayers();
 
-        this.addOverlays();
-        this.addLegend();
-        this.setupToolbars();
+        this.addOverlay(this._layers);
+        this.addLegend(this._layers);
+        this.addToolbar(this._layers);
         
         this.setupMapEventHandlers();
         this.setupSubscribers();
     }
 
     private setupMap = () => {
-        L.tileLayer('https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+        const tileLayer = new L.TileLayer('https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
             maxZoom: 20
-        }).addTo(this._map);
+        });
+        this._map.addLayer(tileLayer);
     };
 
-    private setupLayers = () => {
+    private addLayers = () => {
         this._layers.set(ModalFilterLayer.Id, new ModalFilterLayer());
         this._layers.set(MobilityLaneLayer.Id, new MobilityLaneLayer());
         this._layers.set(TramLineLayer.Id, new TramLineLayer());
         this._layers.set(CarFreeStreetLayer.Id, new CarFreeStreetLayer());
         this._layers.set(SchoolStreetLayer.Id, new SchoolStreetLayer());
         this._layers.set(OneWayStreetLayer.Id, new OneWayStreetLayer());
-    };
-
-    private setupToolbars = () => {
-        const actions: Array<L.Toolbar2.Action> = [];
-
-        actions.push(...FileActions.getActions());
 
         this._layers.forEach((layer, key) => {
-            actions.push(layer.getToolbarAction(this._map));
+            this._map.addLayer(layer.getLayer());
+        });
+    };
+
+    private addToolbar = (layers: Map<string, IMapLayer>) => {
+        const toolbar = Toolbar.create(this._map, layers);
+        this._map.addControl(toolbar);
+    }
+
+    private addOverlay = (layers: Map<string, IMapLayer>) => {
+        const overlays = {};
+        layers.forEach((layer, key) => {
+            overlays[layer.title] = layer.getLayer();
         });
 
-        actions.push(...HelpActions.getActions());
+        const overlay = new L.Control.Layers(undefined, overlays, { collapsed: false, position: 'bottomright' });
+        this._map.addControl(overlay);
+    };
 
-        new L.Toolbar2.Control({
-            position: 'topleft',
-            actions: actions
-        }).addTo(this._map);
+    private addLegend = (layers: Map<string, IMapLayer>) => {
+        const legend = Legend.create(layers);
+        this._map.addControl(legend);
     }
 
     private setupMapEventHandlers = () => {
         this._map.on('click', (e: L.LeafletMouseEvent) => {
-            switch (this._mode) {
-                case 'ModalFilters':
-                    L.DomEvent.stopPropagation(e);
-                    const latLng = e.latlng;
-                    this._selectedLayer?.addMarker([latLng]);
-                    this.saveMap();
-                    break;
-                default:
-                    break;
-            }
+            PubSub.publish(EventTopics.mapClickedTopic, e);
         });
 
         this._map.on('keyup', (e: L.LeafletKeyboardEvent) => {
-            if (e.originalEvent.key === 'Escape' && this._selectedLayer !== null) {
-                this._selectedLayer?.deselectLayer();
-                this._selectedLayer = null;
-                this._mode = '';
+            if (e.originalEvent.key === 'Escape') {
+                PubSub.publish(EventTopics.deselectedTopic);
             }
         })
 
         this._map.on('draw:created', (e) => {
             const layer = e.layer;
-
-            switch (this._mode) {
-                case MobilityLaneLayer.Id:
-                case TramLineLayer.Id:
-                case CarFreeStreetLayer.Id:
-                case SchoolStreetLayer.Id:
-                case OneWayStreetLayer.Id:
-                    this._selectedLayer?.addMarker(layer.getLatLngs());
-                    break;
-            }
-
-            this.saveMap();
+            PubSub.publish(EventTopics.drawCreatedTopic, layer.getLatLngs());
         });
     }
 
@@ -122,14 +104,6 @@ export class MapContainer {
             if (this.loadMapData(data)) {
                 this.saveMap();
             };
-        });
-
-        PubSub.subscribe(EventTopics.layerSelectedTopic, (msg, data) => {
-            this.selectLayer(data);
-        });
-
-        PubSub.subscribe(EventTopics.layerDeselectedTopic, (msg, data) => {
-            this.deselectLayer(data);
         });
 
         PubSub.subscribe(EventTopics.layerUpdatedTopic, (msg, data) => {
@@ -162,57 +136,6 @@ export class MapContainer {
         PubSub.subscribe(EventTopics.showHelpTopic, (msg, popup) => {
             this.showHelp();
         });
-    }
-
-    private selectLayer = (layerId: string) => {
-        if (this._selectedLayer !== null && this._selectedLayer.id !== layerId) {
-            this._selectedLayer.deselectLayer();
-        }
-
-        this._selectedLayer = this._layers.get(layerId) || null;
-        this._mode = this._selectedLayer?.id || '';
-    }
-
-    private deselectLayer = (layerId: string) => {
-        this._selectedLayer = null;
-        this._mode = '';
-    }
-
-    private addOverlays = () => {
-        const overlays = {};
-        this._layers.forEach((layer, key) => {
-            overlays[layer.title] = layer.getLayer();
-            this._map.addLayer(layer.getLayer());
-        });
-
-        L.control.layers(undefined, overlays, { collapsed: false, position: 'bottomright' }).addTo(this._map);
-    };
-
-    private addLegend = () => {
-        const legend = new L.Control({ position: "topright" });
-
-        const div = document.createElement('div');
-        div.classList.add('legend');
-
-        const header = document.createElement('h4');
-        header.textContent = 'Legend';
-
-        div.appendChild(header);
-
-        let legendEntries: Array<HTMLElement> = [];
-        this._layers.forEach((layer: IMapLayer, key) => {
-            legendEntries.push(...layer.getLegendEntry());
-        });
-
-        legendEntries.forEach((element: HTMLElement) => {
-            div.appendChild(element);
-        });
-
-        legend.onAdd = (map) => {
-            return div;
-        };
-
-        legend.addTo(this._map);
     }
 
     setUserLocation = (userLocation: any) => {

@@ -7,27 +7,35 @@ export class MobilityLaneLayer implements IMapLayer {
     public static Id = 'MobilityLanes';
     public readonly id: string;
     public readonly title: string;
-    public selected: boolean;
-    private readonly _eventTopics: EventTopics;
+    private selected: boolean = false;
     private readonly _layer: L.GeoJSON;
     private readonly _layerColour = '#2222ff';
 
     constructor() {
-        this._layer = L.geoJSON();
-        
         this.id = MobilityLaneLayer.Id;
         this.title = 'Mobility Lanes';
-        this.selected = false;
+        this._layer = L.geoJSON();
 
         this.setupSubscribers();
     }
 
     private setupSubscribers = () => {
-        PubSub.subscribe(EventTopics.layerSelectedTopic, (msg, data) => {
-            if (data !== MobilityLaneLayer.Id) {
-                this.selected = false;
+        PubSub.subscribe(EventTopics.layerSelectedTopic, (msg, selectedLayerId) => {
+            if (selectedLayerId !== MobilityLaneLayer.Id) {
+                this.deselectLayer();
             } else {
-                this.selected = true;
+                this.selectLayer();
+            }
+        });
+
+        PubSub.subscribe(EventTopics.deselectedTopic, (msg) => {
+            this.deselectLayer();
+        });
+
+        PubSub.subscribe(EventTopics.drawCreatedTopic, (msg, latLng: L.LatLng) => {
+            if (this.selected) {
+                this.addMarker([latLng]);
+                PubSub.publish(EventTopics.layerUpdatedTopic, MobilityLaneLayer.Id);
             }
         });
     };
@@ -75,19 +83,29 @@ export class MobilityLaneLayer implements IMapLayer {
     }
 
     markerOnClick = (e) => {
-        this.deselectLayer();
+        this.selectLayer();
 
         const polyline = e.target;
         polyline.editing.enable();
         PubSub.publish(EventTopics.layerSelectedTopic, MobilityLaneLayer.Id);
     };
 
+    selectLayer = () => {
+        this.selected = true;
+        this.setCursor();
+    }
+
     deselectLayer = () => {
+        if (!this.selected) {
+            return;
+        }
+
         this._layer.eachLayer((layer: L.Draw.Polyline) => {
             layer.editing.disable();
         });
 
         this.removeCursor();
+        this.selected = false;
     }
 
     getToolbarAction = (map: L.Map) => {
@@ -102,13 +120,8 @@ export class MobilityLaneLayer implements IMapLayer {
             addHooks: () => {
                 if (this.selected) {
                     this.deselectLayer();
-                    this.selected = false;
-                    this.removeCursor();
-                    PubSub.publish(EventTopics.layerDeselectedTopic, MobilityLaneLayer.Id);
                     return;
                 }
-
-                this.selected = true;
 
                 const options = {
                     color: this._layerColour,
@@ -119,7 +132,6 @@ export class MobilityLaneLayer implements IMapLayer {
                 const polyline = new L['Draw'].Polyline(map, options);
 
                 polyline.enable();
-                this.setCursor();
 
                 PubSub.publish(EventTopics.layerSelectedTopic, MobilityLaneLayer.Id);
             }
@@ -131,7 +143,7 @@ export class MobilityLaneLayer implements IMapLayer {
     getLegendEntry = () => {
         const icon = document.createElement('i');
         icon.style.backgroundColor = this._layerColour;
-        
+
         const text = document.createElement('span');
         text.textContent = this.title;
 
