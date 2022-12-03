@@ -78,6 +78,11 @@
     background-size: 40px 40px;
 }
 
+.settings-button {
+    background-image: url(../img/settings-svgrepo-com.svg);
+    background-size: 40px 40px;
+}
+
 .ltn-cell {
     cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30'%3E%3Cpath class='leaflet-interactive' stroke='blue' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' fill='blue' fill-opacity='.2' fill-rule='evenodd' d='M5 5 h20v20h-20v-20'%3E%3C/path%3E%3C/svg%3E") 15 15, auto;
 }
@@ -149,4 +154,42 @@ h2 {
 a {
     color: blue;
 }
+
+.settings {
+    padding: 6px 8px;
+    font: 14px Arial, Helvetica, sans-serif;
+    background: white;
+    line-height: 24px;
+    color: #555;
+  }
+
+  .settings h4 {
+    text-align: center;
+    font-size: 16px;
+    font-weight: 700;
+    margin: 2px 12px 8px;
+    color: #777;
+  }
+  
+  .settings input[type='text'] {
+    padding-left: 10px;
+  }
+  
+  .settings div.toggle label {
+    padding-left: 10px;;
+    cursor: pointer;
+  }
+  
+  .settings i {
+    width: 18px;
+    height: 18px;
+    float: left;
+    margin: 0 8px 0 0;
+    opacity: 0.7;
+  }
+  
+  .settings i.icon {
+    background-size: 18px;
+    background-color: rgba(255, 255, 255, 1);
+  }
   

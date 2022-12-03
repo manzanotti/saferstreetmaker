@@ -127,8 +127,6 @@ export class CarFreeStreetLayer implements IMapLayer {
             addHooks: () => {
                 if (this.selected) {
                     this.deselectLayer();
-                    this.selected = false;
-                    this.removeCursor();
                     PubSub.publish(EventTopics.deselected, CarFreeStreetLayer.Id);
                     return;
                 }
@@ -146,6 +144,7 @@ export class CarFreeStreetLayer implements IMapLayer {
                 polyline.enable();
                 this.setCursor();
 
+                PubSub.publish(EventTopics.layerSelected, CarFreeStreetLayer.Id);
                 PubSub.publish(EventTopics.layerSelected, CarFreeStreetLayer.Id);
             }
         });
