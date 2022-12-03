@@ -22,7 +22,7 @@ export class TramLineLayer implements IMapLayer {
     }
 
     private setupSubscribers = () => {
-        PubSub.subscribe(EventTopics.layerSelectedTopic, (msg, selectedLayerId) => {
+        PubSub.subscribe(EventTopics.layerSelected, (msg, selectedLayerId) => {
             if (selectedLayerId !== TramLineLayer.Id) {
                 this.deselectLayer();
             } else {
@@ -30,16 +30,16 @@ export class TramLineLayer implements IMapLayer {
             }
         });
 
-        PubSub.subscribe(EventTopics.deselectedTopic, (msg) => {
+        PubSub.subscribe(EventTopics.deselected, (msg) => {
             if (this.selected) {
                 this.deselectLayer();
             }
         });
 
-        PubSub.subscribe(EventTopics.drawCreatedTopic, (msg, latLng: L.LatLng) => {
+        PubSub.subscribe(EventTopics.drawCreated, (msg, latLng: L.LatLng) => {
             if (this.selected) {
                 this.addMarker([latLng]);
-                PubSub.publish(EventTopics.layerUpdatedTopic, TramLineLayer.Id);
+                PubSub.publish(EventTopics.layerUpdated, TramLineLayer.Id);
             }
         });
     };
@@ -52,7 +52,7 @@ export class TramLineLayer implements IMapLayer {
             smoothFactor: 1
         })
             .on('edit', (e) => {
-                PubSub.publish(EventTopics.layerUpdatedTopic, TramLineLayer.Id);
+                PubSub.publish(EventTopics.layerUpdated, TramLineLayer.Id);
             });
 
         const popup = L.popup({ minWidth: 30, keepInView: true });
@@ -64,7 +64,7 @@ export class TramLineLayer implements IMapLayer {
         deleteControl.classList.add('delete-button');
         deleteControl.addEventListener('click', (e) => {
             this.deleteMarker(polyline);
-            PubSub.publish(EventTopics.closePopupTopic, popup);
+            PubSub.publish(EventTopics.closePopup, popup);
         });
 
         controlList.appendChild(deleteControl);
@@ -75,7 +75,7 @@ export class TramLineLayer implements IMapLayer {
             this.markerOnClick(e);
 
             popup.setLatLng(e.latlng);
-            PubSub.publish(EventTopics.showPopupTopic, popup);
+            PubSub.publish(EventTopics.showPopup, popup);
         })
 
         this._layer.addLayer(polyline);
@@ -83,7 +83,7 @@ export class TramLineLayer implements IMapLayer {
 
     deleteMarker = (layer: L.Draw.Polyline) => {
         this._layer.removeLayer(layer);
-        PubSub.publish(EventTopics.layerUpdatedTopic, TramLineLayer.Id);
+        PubSub.publish(EventTopics.layerUpdated, TramLineLayer.Id);
     }
 
     markerOnClick = (e) => {
@@ -91,7 +91,7 @@ export class TramLineLayer implements IMapLayer {
 
         const polyline = e.target;
         polyline.editing.enable();
-        PubSub.publish(EventTopics.layerSelectedTopic, TramLineLayer.Id);
+        PubSub.publish(EventTopics.layerSelected, TramLineLayer.Id);
     };
 
     selectLayer = () => {
@@ -126,7 +126,7 @@ export class TramLineLayer implements IMapLayer {
                     this.deselectLayer();
                     this.selected = false;
                     this.removeCursor();
-                    PubSub.publish(EventTopics.deselectedTopic, TramLineLayer.Id);
+                    PubSub.publish(EventTopics.deselected, TramLineLayer.Id);
                     return;
                 }
 
@@ -143,7 +143,7 @@ export class TramLineLayer implements IMapLayer {
                 polyline.enable();
                 this.setCursor();
 
-                PubSub.publish(EventTopics.layerSelectedTopic, TramLineLayer.Id);
+                PubSub.publish(EventTopics.layerSelected, TramLineLayer.Id);
             }
         });
 

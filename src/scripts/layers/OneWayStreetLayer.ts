@@ -23,7 +23,7 @@ export class OneWayStreetLayer implements IMapLayer {
     }
 
     private setupSubscribers = () => {
-        PubSub.subscribe(EventTopics.layerSelectedTopic, (msg, selectedLayerId) => {
+        PubSub.subscribe(EventTopics.layerSelected, (msg, selectedLayerId) => {
             if (selectedLayerId !== OneWayStreetLayer.Id) {
                 this.deselectLayer();
             } else {
@@ -31,14 +31,14 @@ export class OneWayStreetLayer implements IMapLayer {
             }
         });
 
-        PubSub.subscribe(EventTopics.deselectedTopic, (msg) => {
+        PubSub.subscribe(EventTopics.deselected, (msg) => {
             this.deselectLayer();
         });
 
-        PubSub.subscribe(EventTopics.drawCreatedTopic, (msg, latLng: L.LatLng) => {
+        PubSub.subscribe(EventTopics.drawCreated, (msg, latLng: L.LatLng) => {
             if (this.selected) {
                 this.addMarker([latLng]);
-                PubSub.publish(EventTopics.layerUpdatedTopic, OneWayStreetLayer.Id);
+                PubSub.publish(EventTopics.layerUpdated, OneWayStreetLayer.Id);
             }
         });
     };
@@ -55,7 +55,7 @@ export class OneWayStreetLayer implements IMapLayer {
             yawn: 40
         })
             .on('edit', (e) => {
-                PubSub.publish(EventTopics.layerUpdatedTopic, OneWayStreetLayer.Id);
+                PubSub.publish(EventTopics.layerUpdated, OneWayStreetLayer.Id);
             });
 
         const popup = L.popup({ minWidth: 30, keepInView: true });
@@ -67,7 +67,7 @@ export class OneWayStreetLayer implements IMapLayer {
         deleteControl.classList.add('delete-button');
         deleteControl.addEventListener('click', (e) => {
             this.deleteMarker(polyline);
-            PubSub.publish(EventTopics.closePopupTopic, popup);
+            PubSub.publish(EventTopics.closePopup, popup);
         });
 
         controlList.appendChild(deleteControl);
@@ -78,7 +78,7 @@ export class OneWayStreetLayer implements IMapLayer {
             this.markerOnClick(e);
 
             popup.setLatLng(e.latlng);
-            PubSub.publish(EventTopics.showPopupTopic, popup);
+            PubSub.publish(EventTopics.showPopup, popup);
         })
 
         this._layer.addLayer(polyline);
@@ -86,7 +86,7 @@ export class OneWayStreetLayer implements IMapLayer {
 
     deleteMarker = (layer: L.Draw.Polyline) => {
         this._layer.removeLayer(layer);
-        PubSub.publish(EventTopics.layerUpdatedTopic, OneWayStreetLayer.Id);
+        PubSub.publish(EventTopics.layerUpdated, OneWayStreetLayer.Id);
     }
 
     markerOnClick = (e) => {
@@ -94,7 +94,7 @@ export class OneWayStreetLayer implements IMapLayer {
 
         const polyline = e.target;
         polyline.editing.enable();
-        PubSub.publish(EventTopics.layerSelectedTopic, OneWayStreetLayer.Id);
+        PubSub.publish(EventTopics.layerSelected, OneWayStreetLayer.Id);
     };
 
     selectLayer = () => {
@@ -129,7 +129,7 @@ export class OneWayStreetLayer implements IMapLayer {
                     this.deselectLayer();
                     this.selected = false;
                     this.removeCursor();
-                    PubSub.publish(EventTopics.deselectedTopic, OneWayStreetLayer.Id);
+                    PubSub.publish(EventTopics.deselected, OneWayStreetLayer.Id);
                     return;
                 }
 
@@ -146,7 +146,7 @@ export class OneWayStreetLayer implements IMapLayer {
                 polyline.enable();
                 this.setCursor();
 
-                PubSub.publish(EventTopics.layerSelectedTopic, OneWayStreetLayer.Id);
+                PubSub.publish(EventTopics.layerSelected, OneWayStreetLayer.Id);
             }
         });
 

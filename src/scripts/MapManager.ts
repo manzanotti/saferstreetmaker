@@ -1,9 +1,8 @@
 import LZString from 'lz-string';
+import { EventTopics } from './EventTopics';
 import { IMapLayer } from './layers/IMapLayer';
 
 export class MapManager {
-    fileLoadedTopic: string = 'fileLoaded';
-
     saveMapToFile = (mapName: string, layersData: Map<string, IMapLayer>, centre: L.LatLng, zoom: number) => {
         const mapData = this.mapToJSON(mapName, layersData, centre, zoom);
         const mapString = JSON.stringify(mapData);
@@ -94,7 +93,7 @@ export class MapManager {
 
             const contents = e.target.result || '';
             const map = JSON.parse(<string>contents);
-            PubSub.publish(this.fileLoadedTopic, map);
+            PubSub.publish(EventTopics.fileLoaded, map);
             document.body.removeChild(fileInput);
         }
         reader.readAsText(file, 'text/plain;charset=utf-8');

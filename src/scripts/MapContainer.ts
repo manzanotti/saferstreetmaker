@@ -81,23 +81,23 @@ export class MapContainer {
 
     private setupMapEventHandlers = () => {
         this._map.on('click', (e: L.LeafletMouseEvent) => {
-            PubSub.publish(EventTopics.mapClickedTopic, e);
+            PubSub.publish(EventTopics.mapClicked, e);
         });
 
         this._map.on('keyup', (e: L.LeafletKeyboardEvent) => {
             if (e.originalEvent.key === 'Escape') {
-                PubSub.publish(EventTopics.deselectedTopic);
+                PubSub.publish(EventTopics.deselected);
             }
         })
 
         this._map.on('draw:created', (e) => {
             const layer = e.layer;
-            PubSub.publish(EventTopics.drawCreatedTopic, layer.getLatLngs());
+            PubSub.publish(EventTopics.drawCreated, layer.getLatLngs());
         });
     }
 
     private setupSubscribers = () => {
-        PubSub.subscribe(this._mapManager.fileLoadedTopic, (msg, data) => {
+        PubSub.subscribe(EventTopics.fileLoaded, (msg, data) => {
             this._layers.forEach((layer, layerName) => {
                 layer.getLayer().clearLayers();
             });
@@ -106,34 +106,34 @@ export class MapContainer {
             };
         });
 
-        PubSub.subscribe(EventTopics.layerUpdatedTopic, (msg, data) => {
+        PubSub.subscribe(EventTopics.layerUpdated, (msg, data) => {
             this.saveMap();
         });
 
-        PubSub.subscribe(EventTopics.showPopupTopic, (msg, popup) => {
+        PubSub.subscribe(EventTopics.showPopup, (msg, popup) => {
             this._map.openPopup(popup);
         });
 
-        PubSub.subscribe(EventTopics.closePopupTopic, (msg, popup) => {
+        PubSub.subscribe(EventTopics.closePopup, (msg, popup) => {
             this._map.closePopup(popup);
         });
 
-        PubSub.subscribe(EventTopics.saveMapToFileTopic, (msg, popup) => {
+        PubSub.subscribe(EventTopics.saveMapToFile, (msg, popup) => {
             const centre = this._map.getCenter();
             const zoom = this._map.getZoom();
 
             this._mapManager.saveMapToFile(this._title, this._layers, centre, zoom);
         });
 
-        PubSub.subscribe(EventTopics.saveMapToGeoJSONFileTopic, (msg, popup) => {
+        PubSub.subscribe(EventTopics.saveMapToGeoJSONFile, (msg, popup) => {
             this._mapManager.saveMapToGeoJSONFile(this._title, this._layers);
         });
 
-        PubSub.subscribe(EventTopics.loadMapFromFileTopic, (msg, popup) => {
+        PubSub.subscribe(EventTopics.loadMapFromFile, (msg, popup) => {
             this._mapManager.loadMapFromFile();
         });
 
-        PubSub.subscribe(EventTopics.showHelpTopic, (msg, popup) => {
+        PubSub.subscribe(EventTopics.showHelp, (msg, popup) => {
             this.showHelp();
         });
     }
@@ -183,7 +183,6 @@ export class MapContainer {
             });
         }
 
-        this._selectedLayer = null;
         return true;
     }
 

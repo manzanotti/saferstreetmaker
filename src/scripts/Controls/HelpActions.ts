@@ -15,7 +15,7 @@ export class HelpActions {
             },
 
             addHooks: () => {
-                PubSub.publish(EventTopics.showHelpTopic);
+                PubSub.publish(EventTopics.showHelp);
             }
         });
 
