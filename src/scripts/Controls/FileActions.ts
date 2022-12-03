@@ -39,7 +39,7 @@ export class FileActions {
             },
 
             addHooks: function () {
-                PubSub.publish(EventTopics.saveMapToFileTopic);
+                PubSub.publish(EventTopics.saveMapToFile);
                 this.parentAction.disable();
                 this.disable();
             }
@@ -61,7 +61,7 @@ export class FileActions {
             },
 
             addHooks: function () {
-                PubSub.publish(EventTopics.saveMapToGeoJSONFileTopic);
+                PubSub.publish(EventTopics.saveMapToGeoJSONFile);
                 this.parentAction.disable();
                 this.disable();
             }
@@ -83,7 +83,7 @@ export class FileActions {
             },
 
             addHooks: function () {
-                PubSub.publish(EventTopics.loadMapFromFileTopic);
+                PubSub.publish(EventTopics.loadMapFromFile);
                 this.parentAction.disable();
                 this.disable();
             }

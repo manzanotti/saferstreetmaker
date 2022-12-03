@@ -23,7 +23,7 @@ export class ModalFilterLayer implements IMapLayer {
     }
 
     private setupSubscribers = () => {
-        PubSub.subscribe(EventTopics.layerSelectedTopic, (msg, selectedLayerId) => {
+        PubSub.subscribe(EventTopics.layerSelected, (msg, selectedLayerId) => {
             if (selectedLayerId !== ModalFilterLayer.Id) {
                 this.deselectLayer();
             } else {
@@ -31,16 +31,16 @@ export class ModalFilterLayer implements IMapLayer {
             }
         });
 
-        PubSub.subscribe(EventTopics.deselectedTopic, (msg) => {
+        PubSub.subscribe(EventTopics.deselected, (msg) => {
             this.deselectLayer();
         });
 
-        PubSub.subscribe(EventTopics.mapClickedTopic, (msg, e: L.LeafletMouseEvent) => {
+        PubSub.subscribe(EventTopics.mapClicked, (msg, e: L.LeafletMouseEvent) => {
             if (this.selected) {
                 L.DomEvent.stopPropagation(e);
                 const latLng = e.latlng;
                 this.addMarker([latLng]);
-                PubSub.publish(EventTopics.layerUpdatedTopic, ModalFilterLayer.Id);
+                PubSub.publish(EventTopics.layerUpdated, ModalFilterLayer.Id);
             }
         });
     };
@@ -62,7 +62,7 @@ export class ModalFilterLayer implements IMapLayer {
 
         const marker = e.target;
         this._layer.removeLayer(marker);
-        PubSub.publish(EventTopics.layerUpdatedTopic, ModalFilterLayer.Id);
+        PubSub.publish(EventTopics.layerUpdated, ModalFilterLayer.Id);
     };
 
     selectLayer = () => {
@@ -98,7 +98,7 @@ export class ModalFilterLayer implements IMapLayer {
                 this.selected = true;
                 this.setCursor();
 
-                PubSub.publish(EventTopics.layerSelectedTopic, ModalFilterLayer.Id);
+                PubSub.publish(EventTopics.layerSelected, ModalFilterLayer.Id);
             }
         });
 

@@ -22,7 +22,7 @@ export class SchoolStreetLayer implements IMapLayer {
     }
 
     private setupSubscribers = () => {
-        PubSub.subscribe(EventTopics.layerSelectedTopic, (msg, selectedLayerId) => {
+        PubSub.subscribe(EventTopics.layerSelected, (msg, selectedLayerId) => {
             if (selectedLayerId !== SchoolStreetLayer.Id) {
                 this.deselectLayer();
             } else {
@@ -30,14 +30,14 @@ export class SchoolStreetLayer implements IMapLayer {
             }
         });
 
-        PubSub.subscribe(EventTopics.deselectedTopic, (msg) => {
+        PubSub.subscribe(EventTopics.deselected, (msg) => {
             this.deselectLayer();
         });
 
-        PubSub.subscribe(EventTopics.drawCreatedTopic, (msg, latLng: L.LatLng) => {
+        PubSub.subscribe(EventTopics.drawCreated, (msg, latLng: L.LatLng) => {
             if (this.selected) {
                 this.addMarker([latLng]);
-                PubSub.publish(EventTopics.layerUpdatedTopic, SchoolStreetLayer.Id);
+                PubSub.publish(EventTopics.layerUpdated, SchoolStreetLayer.Id);
             }
         });
     };
@@ -50,7 +50,7 @@ export class SchoolStreetLayer implements IMapLayer {
             smoothFactor: 1
         })
             .on('edit', (e) => {
-                PubSub.publish(EventTopics.layerUpdatedTopic, SchoolStreetLayer.Id);
+                PubSub.publish(EventTopics.layerUpdated, SchoolStreetLayer.Id);
             });
 
         const popup = L.popup({ minWidth: 30, keepInView: true });
@@ -62,7 +62,7 @@ export class SchoolStreetLayer implements IMapLayer {
         deleteControl.classList.add('delete-button');
         deleteControl.addEventListener('click', (e) => {
             this.deleteMarker(polyline);
-            PubSub.publish(EventTopics.closePopupTopic, popup);
+            PubSub.publish(EventTopics.closePopup, popup);
         });
 
         controlList.appendChild(deleteControl);
@@ -73,7 +73,7 @@ export class SchoolStreetLayer implements IMapLayer {
             this.markerOnClick(e);
 
             popup.setLatLng(e.latlng);
-            PubSub.publish(EventTopics.showPopupTopic, popup);
+            PubSub.publish(EventTopics.showPopup, popup);
         })
 
         this._layer.addLayer(polyline);
@@ -81,7 +81,7 @@ export class SchoolStreetLayer implements IMapLayer {
 
     deleteMarker = (layer: L.Draw.Polyline) => {
         this._layer.removeLayer(layer);
-        PubSub.publish(EventTopics.layerUpdatedTopic, SchoolStreetLayer.Id);
+        PubSub.publish(EventTopics.layerUpdated, SchoolStreetLayer.Id);
     }
 
     markerOnClick = (e) => {
@@ -89,7 +89,7 @@ export class SchoolStreetLayer implements IMapLayer {
 
         const polyline = e.target;
         polyline.editing.enable();
-        PubSub.publish(EventTopics.layerSelectedTopic, SchoolStreetLayer.Id);
+        PubSub.publish(EventTopics.layerSelected, SchoolStreetLayer.Id);
     };
 
     selectLayer = () => {
@@ -124,7 +124,7 @@ export class SchoolStreetLayer implements IMapLayer {
                     this.deselectLayer();
                     this.selected = false;
                     this.removeCursor();
-                    PubSub.publish(EventTopics.deselectedTopic, SchoolStreetLayer.Id);
+                    PubSub.publish(EventTopics.deselected, SchoolStreetLayer.Id);
                     return;
                 }
 
@@ -141,7 +141,7 @@ export class SchoolStreetLayer implements IMapLayer {
                 polyline.enable();
                 this.setCursor();
 
-                PubSub.publish(EventTopics.layerSelectedTopic, SchoolStreetLayer.Id);
+                PubSub.publish(EventTopics.layerSelected, SchoolStreetLayer.Id);
             }
         });
 
