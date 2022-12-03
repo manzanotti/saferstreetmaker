@@ -228,19 +228,31 @@ export class MapContainer {
             this._mapInitialised = true;
         }
 
+        let mapLoaded = false;
+
         if (remoteMapFile) {
             const mapData = await this._fileManager.loadMapFromRemoteFile(remoteMapFile);
-            return this.loadMapData(mapData);
+            mapLoaded = this.loadMapData(mapData);
+        } else if(window.location.hash){
+            const hash = window.location.hash;
+            const mapData = this._fileManager.loadMapFromHash(hash.slice(1));
+            mapLoaded = this.loadMapData(mapData);
+        } else {
+            const lastMapSelected = this._fileManager.loadLastMapSelected();
+            const geoJSON = this._fileManager.loadMapFromStorage(lastMapSelected || this._settings.title);
+            mapLoaded = this.loadMapData(geoJSON);
         }
-
-        const lastMapSelected = this._fileManager.loadLastMapSelected();
-        const geoJSON = this._fileManager.loadMapFromStorage(lastMapSelected || this._settings.title);
-        const mapLoaded = this.loadMapData(geoJSON);
 
         this.updateUI(this._settings);
 
         return mapLoaded;
     };
+
+    saveMapToHash = () => {
+        const centre = this._map.getCenter();
+        const zoom = this._map.getZoom();
+        return this._fileManager.saveMapToHash(this._settings, this._layers, centre, zoom);
+    }
 
     private loadMapData = (geoJSON): boolean => {
         if (geoJSON === null) {

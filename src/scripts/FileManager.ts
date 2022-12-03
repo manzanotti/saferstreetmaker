@@ -37,6 +37,14 @@ export class FileManager {
         hyperlink.click();
     };
 
+    saveMapToHash = (settings: Settings, layersData: Map<string, IMapLayer>, centre: L.LatLng, zoom: number): string => {
+        const mapData = this.mapToJSON(settings, layersData, centre, zoom);
+        const mapString = JSON.stringify(mapData);
+        const uriEncodedString = encodeURIComponent(mapString);
+
+        return uriEncodedString;
+    }
+
     saveMap = (settings: Settings, layersData: Map<string, IMapLayer>, centre: L.LatLng, zoom: number) => {
         const mapData = this.mapToJSON(settings, layersData, centre, zoom);
         const mapString = JSON.stringify(mapData);
@@ -63,6 +71,11 @@ export class FileManager {
     saveLastMapSelected = (mapName: string) => {
         localStorage.setItem('LastMapSelected', LZString.compress(mapName));
     };
+
+    loadMapFromHash = (hash: string) => {
+        const map = decodeURIComponent(hash);
+        return JSON.parse(map);
+    }
 
     loadMapFromFile = () => {
         const fileInput = document.createElement('input');
