@@ -1,20 +1,21 @@
 import LZString from 'lz-string';
 import { EventTopics } from './EventTopics';
 import { IMapLayer } from './layers/IMapLayer';
+import { Settings } from '../Settings';
 
 export class FileManager {
-    saveMapToFile = (mapName: string, layersData: Map<string, IMapLayer>, centre: L.LatLng, zoom: number) => {
-        const mapData = this.mapToJSON(mapName, layersData, centre, zoom);
+    saveMapToFile = (settings: Settings, layersData: Map<string, IMapLayer>, centre: L.LatLng, zoom: number) => {
+        const mapData = this.mapToJSON(settings, layersData, centre, zoom);
         const mapString = JSON.stringify(mapData);
 
         const blob = new Blob([mapString], { type: 'text/plain;charset=utf-8' });
         const hyperlink = document.createElement("a");
         hyperlink.href = URL.createObjectURL(blob);
-        hyperlink.download = `${mapName}.json`;
+        hyperlink.download = `${settings.title}.json`;
         hyperlink.click();
     };
 
-    saveMapToGeoJSONFile = (mapName: string, layersData: Map<string, IMapLayer>) => {
+    saveMapToGeoJSONFile = (settings: Settings, layersData: Map<string, IMapLayer>) => {
         let layers = new Array<any>;
         layersData.forEach((layer, layerName) => {
             layers.push(layer.toGeoJSON());
@@ -32,25 +33,25 @@ export class FileManager {
         const blob = new Blob([mapString], { type: 'text/plain;charset=utf-8' });
         const hyperlink = document.createElement("a");
         hyperlink.href = URL.createObjectURL(blob);
-        hyperlink.download = `${mapName}.json`;
+        hyperlink.download = `${settings.title}.json`;
         hyperlink.click();
     };
 
-    saveMap = (mapName: string, layersData: Map<string, IMapLayer>, centre: L.LatLng, zoom: number) => {
-        const mapData = this.mapToJSON(mapName, layersData, centre, zoom);
+    saveMap = (settings: Settings, layersData: Map<string, IMapLayer>, centre: L.LatLng, zoom: number) => {
+        const mapData = this.mapToJSON(settings, layersData, centre, zoom);
         const mapString = JSON.stringify(mapData);
 
-        localStorage.setItem(`Map_${mapName}`, LZString.compress(mapString));
+        localStorage.setItem(`Map_${settings.title}`, LZString.compress(mapString));
     };
 
-    private mapToJSON = (mapName: string, layersData: Map<string, IMapLayer>, centre: L.LatLng, zoom: number): any => {
+    private mapToJSON = (settings: Settings, layersData: Map<string, IMapLayer>, centre: L.LatLng, zoom: number): any => {
         let layers = {};
         layersData.forEach((layer, layerName) => {
             layers[layerName] = layer.getLayer().toGeoJSON();
         });
 
         const mapData = {
-            'title': mapName,
+            'settings': settings,
             'centre': centre,
             'zoom': zoom,
             'layers': layers

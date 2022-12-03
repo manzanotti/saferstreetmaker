@@ -1,8 +1,8 @@
 export class EventTopics {
     static closePopup = 'ClosePopup';
-    static fileLoaded = 'fileLoaded';
     static deselected = 'deselected';
     static drawCreated = 'drawCreated';
+    static fileLoaded = 'fileLoaded';
     static layerSelected = 'LayerSelected';
     static layerUpdated = 'LayerUpdated';
     static loadMapFromFile = 'loadMapFromFile';
@@ -10,5 +10,7 @@ export class EventTopics {
     static showPopup = 'ShowPopup';
     static saveMapToFile = 'SaveMapToFile';
     static saveMapToGeoJSONFile = 'saveMapToGeoJSONFile';
+    static saveSettings = 'saveSettings';
     static showHelp = 'showHelp';
+    static showSettings = 'showSettings';
 }

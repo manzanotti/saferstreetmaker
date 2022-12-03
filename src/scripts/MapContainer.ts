@@ -11,34 +11,33 @@ import { OneWayStreetLayer } from './layers/OneWayStreetLayer';
 import { EventTopics } from './EventTopics';
 import { Toolbar } from './Controls/Toolbar';
 import { Legend } from './Controls/Legend';
+import { Settings } from '../Settings';
+import { SettingsControl } from './Controls/SettingsControl';
 
 export class MapContainer {
+    private _mapInitialised: boolean = false;
     private _fileManager: FileManager;
     private _map: L.Map;
-    private _title: string;
     private _layers: Map<string, IMapLayer>;
+    private _settings: Settings;
+    private _settingsControl: L.Control | null = null;
+    private _toolbarControl: L.Toolbar2.Control;
+    private _legend: L.Control;
+    private _overlay: L.Control.Layers;
 
     constructor(fileManager: FileManager) {
         this._fileManager = fileManager;
 
         this._map = new L.Map('map');
-        this._title = 'Hello Cleveland';
+        this._settings = new Settings();
+        this._settings.title = 'Hello Cleveland';
 
-        this._layers = new Map<string, IMapLayer>;
+        this.setupLayers();
 
-        this.setupMap();
-
-        this.addLayers();
-
-        this.addOverlay(this._layers);
-        this.addLegend(this._layers);
-        this.addToolbar(this._layers);
-        
-        this.setupMapEventHandlers();
-        this.setupSubscribers();
+        this.addTileLayer();
     }
 
-    private setupMap = () => {
+    private addTileLayer = () => {
         const tileLayer = new L.TileLayer('https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
             maxZoom: 20
@@ -46,7 +45,9 @@ export class MapContainer {
         this._map.addLayer(tileLayer);
     };
 
-    private addLayers = () => {
+    private setupLayers = () => {
+        this._layers = new Map<string, IMapLayer>;
+
         this._layers.set(ModalFilterLayer.Id, new ModalFilterLayer());
         this._layers.set(MobilityLaneLayer.Id, new MobilityLaneLayer());
         this._layers.set(TramLineLayer.Id, new TramLineLayer());
@@ -54,29 +55,73 @@ export class MapContainer {
         this._layers.set(SchoolStreetLayer.Id, new SchoolStreetLayer());
         this._layers.set(OneWayStreetLayer.Id, new OneWayStreetLayer());
 
-        this._layers.forEach((layer, key) => {
-            this._map.addLayer(layer.getLayer());
-        });
+        this.activateAllLayers();
     };
 
-    private addToolbar = (layers: Map<string, IMapLayer>) => {
-        const toolbar = Toolbar.create(this._map, layers);
-        this._map.addControl(toolbar);
+    private addLayers(settings: Settings){
+        this._layers.forEach((layer, layerName) => {
+            if(settings.activeLayers.includes(layerName)){
+                this._map.addLayer(layer.getLayer());
+            }
+        });
     }
 
-    private addOverlay = (layers: Map<string, IMapLayer>) => {
+    private addToolbar = (layers: Map<string, IMapLayer>, settings: Settings) => {
+        this._toolbarControl = Toolbar.create(this._map, layers, settings);
+        this._map.addControl(this._toolbarControl);
+    }
+
+    private addOverlay = (layers: Map<string, IMapLayer>, settings: Settings) => {
         const overlays = {};
-        layers.forEach((layer, key) => {
-            overlays[layer.title] = layer.getLayer();
+        layers.forEach((layer, layerName) => {
+            if(settings.activeLayers.includes(layerName)){
+                overlays[layer.title] = layer.getLayer();
+            }
         });
 
-        const overlay = new L.Control.Layers(undefined, overlays, { collapsed: false, position: 'bottomright' });
-        this._map.addControl(overlay);
+        this._overlay = new L.Control.Layers(undefined, overlays, { collapsed: false, position: 'bottomright' });
+        this._map.addControl(this._overlay);
     };
 
-    private addLegend = (layers: Map<string, IMapLayer>) => {
-        const legend = Legend.create(layers);
-        this._map.addControl(legend);
+    private addLegend = (layers: Map<string, IMapLayer>, settings: Settings) => {
+        this._legend = Legend.create(layers, settings.activeLayers);
+        this._map.addControl(this._legend);
+    }
+
+    private removeAllLayers = () => {        
+        this._layers.forEach((layer, layerName) => {
+            this._map.removeLayer(layer.getLayer());
+        });
+    }
+
+    private activateAllLayers = () => {
+        this._settings.activeLayers = [];
+        this._layers.forEach((layer, layerName) => {
+            this._settings.activeLayers.push(layerName);
+        });
+    }
+
+    private resetSettings = () => {
+        this._settings.readOnly = false;
+        this.activateAllLayers();
+    }
+
+    private updateUI = (settings: Settings) => {
+        if(this._toolbarControl !== undefined){
+            this._map.removeControl(this._toolbarControl);
+        }
+
+        if(this._legend !== undefined){
+            this._map.removeControl(this._legend);
+        }
+
+        if(this._overlay !== undefined){
+            this._map.removeControl(this._overlay);
+        }
+
+        this.addToolbar(this._layers, settings);
+        this.addOverlay(this._layers, settings);
+        this.addLegend(this._layers, settings);
     }
 
     private setupMapEventHandlers = () => {
@@ -98,15 +143,15 @@ export class MapContainer {
 
     private setupSubscribers = () => {
         PubSub.subscribe(EventTopics.fileLoaded, (msg, data) => {
-            this._layers.forEach((layer, layerName) => {
-                layer.getLayer().clearLayers();
-            });
+            this.removeAllLayers();
+            this.resetSettings();
             if (this.loadMapData(data)) {
                 this.saveMap();
+                this.updateUI(this._settings);
             };
         });
 
-        PubSub.subscribe(EventTopics.layerUpdated, (msg, data) => {
+        PubSub.subscribe(EventTopics.layerUpdated, (msg) => {
             this.saveMap();
         });
 
@@ -118,19 +163,44 @@ export class MapContainer {
             this._map.closePopup(popup);
         });
 
-        PubSub.subscribe(EventTopics.saveMapToFile, (msg, popup) => {
+        PubSub.subscribe(EventTopics.saveMapToFile, (msg) => {
             const centre = this._map.getCenter();
             const zoom = this._map.getZoom();
 
-            this._fileManager.saveMapToFile(this._title, this._layers, centre, zoom);
+            this._fileManager.saveMapToFile(this._settings, this._layers, centre, zoom);
         });
 
-        PubSub.subscribe(EventTopics.saveMapToGeoJSONFile, (msg, popup) => {
-            this._fileManager.saveMapToGeoJSONFile(this._title, this._layers);
+        PubSub.subscribe(EventTopics.saveMapToGeoJSONFile, (msg) => {
+            this._fileManager.saveMapToGeoJSONFile(this._settings, this._layers);
         });
 
-        PubSub.subscribe(EventTopics.loadMapFromFile, (msg, popup) => {
+        PubSub.subscribe(EventTopics.loadMapFromFile, (msg) => {
             this._fileManager.loadMapFromFile();
+        });
+
+        PubSub.subscribe(EventTopics.showSettings, (msg) => {
+            if (this._settingsControl === null) {
+                this._settingsControl = SettingsControl.create(this._settings, this._layers);
+                this._map.addControl(this._settingsControl);
+            } else {
+                this._map.removeControl(this._settingsControl);
+                this._settingsControl = null;
+            }
+        });
+
+        PubSub.subscribe(EventTopics.saveSettings, (msg, settings) => {
+            this._settings = settings;
+            this.updateUI(settings);
+
+            this.removeAllLayers();
+            this.addLayers(settings);
+
+            this.saveMap();
+
+            if (this._settingsControl !== null) {
+                this._map.removeControl(this._settingsControl);
+                this._settingsControl = null;
+            }
         });
 
         PubSub.subscribe(EventTopics.showHelp, (msg, popup) => {
@@ -148,14 +218,28 @@ export class MapContainer {
     }
 
     loadMap = async (remoteMapFile: string | null): Promise<boolean> => {
+        if(this._mapInitialised){
+            this.removeAllLayers();
+            this.resetSettings();
+        } else {
+            this.addLayers(this._settings);
+            this.setupMapEventHandlers();
+            this.setupSubscribers();
+            this._mapInitialised = true;
+        }
+
         if (remoteMapFile) {
             const mapData = await this._fileManager.loadMapFromRemoteFile(remoteMapFile);
             return this.loadMapData(mapData);
         }
-        const lastMapSelected = this._fileManager.loadLastMapSelected();
-        const geoJSON = this._fileManager.loadMapFromStorage(lastMapSelected || this._title);
 
-        return this.loadMapData(geoJSON);
+        const lastMapSelected = this._fileManager.loadLastMapSelected();
+        const geoJSON = this._fileManager.loadMapFromStorage(lastMapSelected || this._settings.title);
+        const mapLoaded = this.loadMapData(geoJSON);
+
+        this.updateUI(this._settings);
+
+        return mapLoaded;
     };
 
     private loadMapData = (geoJSON): boolean => {
@@ -164,10 +248,11 @@ export class MapContainer {
         }
 
         if (geoJSON['title'] !== undefined) {
-            this._title = geoJSON['title'];
-            const centre = geoJSON['centre'];
-            const zoom = geoJSON['zoom'];
-            this._map.setView([centre.lat, centre.lng], zoom);
+            this._settings.title = geoJSON['title'];
+        }
+
+        if (geoJSON['settings'] !== undefined) {
+            this._settings = geoJSON['settings'];
         }
 
         if (geoJSON['layers'] !== undefined) {
@@ -178,10 +263,18 @@ export class MapContainer {
                 } else if (layerName === MobilityLaneLayer.Id && layersJSON['CycleLanes'] !== undefined) {
                     layerName = 'CycleLanes';
                 }
-                const layerJSON = layersJSON[layerName];
-                layer.loadFromGeoJSON(layerJSON);
+
+                if (this._settings.activeLayers.includes(layerName)) {
+                    const layerJSON = layersJSON[layerName];
+                    layer.loadFromGeoJSON(layerJSON);
+                    this._map.addLayer(layer.getLayer());
+                }
             });
         }
+
+        const centre = geoJSON['centre'];
+        const zoom = geoJSON['zoom'];
+        this._map.setView([centre.lat, centre.lng], zoom);
 
         return true;
     }
@@ -190,7 +283,7 @@ export class MapContainer {
         const centre = this._map.getCenter();
         const zoom = this._map.getZoom();
 
-        this._fileManager.saveMap(this._title, this._layers, centre, zoom);
+        this._fileManager.saveMap(this._settings, this._layers, centre, zoom);
     };
 
     private showHelp = () => {
