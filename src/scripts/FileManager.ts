@@ -2,7 +2,7 @@ import LZString from 'lz-string';
 import { EventTopics } from './EventTopics';
 import { IMapLayer } from './layers/IMapLayer';
 
-export class MapManager {
+export class FileManager {
     saveMapToFile = (mapName: string, layersData: Map<string, IMapLayer>, centre: L.LatLng, zoom: number) => {
         const mapData = this.mapToJSON(mapName, layersData, centre, zoom);
         const mapString = JSON.stringify(mapData);
