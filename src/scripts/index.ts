@@ -1,9 +1,9 @@
-import { MapManager } from './MapManager';
+import { FileManager } from './FileManager';
 import { MapContainer } from './MapContainer';
 
 document.addEventListener('DOMContentLoaded', async () => {
-    const mapManager = new MapManager();
-    const mapContainer = new MapContainer(mapManager);
+    const fileManager = new FileManager();
+    const mapContainer = new MapContainer(fileManager);
 
     const params = new URLSearchParams(window.location.search);
 

@@ -2,7 +2,7 @@ import * as L from 'leaflet';
 import PubSub from 'pubsub-js';
 import { ModalFilterLayer } from './layers/ModalFilterLayer';
 import { IMapLayer } from './layers/IMapLayer';
-import { MapManager } from './MapManager';
+import { FileManager } from './FileManager';
 import { MobilityLaneLayer } from './layers/MobilityLaneLayer';
 import { TramLineLayer } from './layers/TramLineLayer';
 import { CarFreeStreetLayer } from './layers/CarFreeStreetLayer';
@@ -13,13 +13,13 @@ import { Toolbar } from './Controls/Toolbar';
 import { Legend } from './Controls/Legend';
 
 export class MapContainer {
-    private _mapManager: MapManager;
+    private _fileManager: FileManager;
     private _map: L.Map;
     private _title: string;
     private _layers: Map<string, IMapLayer>;
 
-    constructor(mapManager: MapManager) {
-        this._mapManager = mapManager;
+    constructor(fileManager: FileManager) {
+        this._fileManager = fileManager;
 
         this._map = new L.Map('map');
         this._title = 'Hello Cleveland';
@@ -122,15 +122,15 @@ export class MapContainer {
             const centre = this._map.getCenter();
             const zoom = this._map.getZoom();
 
-            this._mapManager.saveMapToFile(this._title, this._layers, centre, zoom);
+            this._fileManager.saveMapToFile(this._title, this._layers, centre, zoom);
         });
 
         PubSub.subscribe(EventTopics.saveMapToGeoJSONFile, (msg, popup) => {
-            this._mapManager.saveMapToGeoJSONFile(this._title, this._layers);
+            this._fileManager.saveMapToGeoJSONFile(this._title, this._layers);
         });
 
         PubSub.subscribe(EventTopics.loadMapFromFile, (msg, popup) => {
-            this._mapManager.loadMapFromFile();
+            this._fileManager.loadMapFromFile();
         });
 
         PubSub.subscribe(EventTopics.showHelp, (msg, popup) => {
@@ -149,11 +149,11 @@ export class MapContainer {
 
     loadMap = async (remoteMapFile: string | null): Promise<boolean> => {
         if (remoteMapFile) {
-            const mapData = await this._mapManager.loadMapFromRemoteFile(remoteMapFile);
+            const mapData = await this._fileManager.loadMapFromRemoteFile(remoteMapFile);
             return this.loadMapData(mapData);
         }
-        const lastMapSelected = this._mapManager.loadLastMapSelected();
-        const geoJSON = this._mapManager.loadMapFromStorage(lastMapSelected || this._title);
+        const lastMapSelected = this._fileManager.loadLastMapSelected();
+        const geoJSON = this._fileManager.loadMapFromStorage(lastMapSelected || this._title);
 
         return this.loadMapData(geoJSON);
     };
@@ -190,7 +190,7 @@ export class MapContainer {
         const centre = this._map.getCenter();
         const zoom = this._map.getZoom();
 
-        this._mapManager.saveMap(this._title, this._layers, centre, zoom);
+        this._fileManager.saveMap(this._title, this._layers, centre, zoom);
     };
 
     private showHelp = () => {
