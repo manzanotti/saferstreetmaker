@@ -50,6 +50,8 @@ export class FileManager {
         const mapString = JSON.stringify(mapData);
 
         localStorage.setItem(`Map_${settings.title}`, LZString.compress(mapString));
+
+        this.saveLastMapSelected(settings.title);
     };
 
     private mapToJSON = (settings: Settings, layersData: Map<string, IMapLayer>, centre: L.LatLng, zoom: number): any => {
