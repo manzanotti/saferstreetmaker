@@ -1,16 +1,18 @@
 export class EventTopics {
-    static closePopup = 'ClosePopup';
+    static closePopup = 'closePopup';
     static deselected = 'deselected';
     static drawCreated = 'drawCreated';
     static fileLoaded = 'fileLoaded';
-    static layerSelected = 'LayerSelected';
-    static layerUpdated = 'LayerUpdated';
+    static hideSettings = 'hideSettings';
+    static layerSelected = 'layerSelected';
+    static layerUpdated = 'layerUpdated';
     static loadMapFromFile = 'loadMapFromFile';
     static mapClicked = 'mapClicked';
-    static showPopup = 'ShowPopup';
-    static saveMapToFile = 'SaveMapToFile';
+    static showPopup = 'showPopup';
+    static saveMapToFile = 'saveMapToFile';
     static saveMapToGeoJSONFile = 'saveMapToGeoJSONFile';
     static saveSettings = 'saveSettings';
     static showHelp = 'showHelp';
     static showSettings = 'showSettings';
+    static showSharingPopup = 'showSharingPopup';
 }

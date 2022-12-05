@@ -13,6 +13,7 @@ import { Toolbar } from './Controls/Toolbar';
 import { Legend } from './Controls/Legend';
 import { Settings } from '../Settings';
 import { SettingsControl } from './Controls/SettingsControl';
+import { SharingControl } from './Controls/SharingControl';
 
 export class MapContainer {
     private _mapInitialised: boolean = false;
@@ -21,6 +22,7 @@ export class MapContainer {
     private _layers: Map<string, IMapLayer>;
     private _settings: Settings;
     private _settingsControl: L.Control | null = null;
+    private _sharingControl: L.Control | null = null;
     private _toolbarControl: L.Toolbar2.Control;
     private _legend: L.Control;
     private _overlay: L.Control.Layers;
@@ -35,6 +37,8 @@ export class MapContainer {
         this.setupLayers();
 
         this.addTileLayer();
+
+        this.setupCloseHelpButtons();
     }
 
     private addTileLayer = () => {
@@ -88,6 +92,14 @@ export class MapContainer {
         this._map.addControl(this._legend);
     }
 
+    private setupCloseHelpButtons = () => {
+        document.getElementsByName('closeHelp').forEach((element: HTMLElement) => {
+            element.addEventListener('click', (e: Event) => {
+                this.showHelp();
+            })
+        });
+    }
+
     private removeAllLayers = () => {        
         this._layers.forEach((layer, layerName) => {
             this._map.removeLayer(layer.getLayer());
@@ -119,7 +131,10 @@ export class MapContainer {
             this._map.removeControl(this._overlay);
         }
 
-        this.addToolbar(this._layers, settings);
+        if(!settings.hideToolbar){
+            this.addToolbar(this._layers, settings);
+        }
+        
         this.addOverlay(this._layers, settings);
         this.addLegend(this._layers, settings);
     }
@@ -203,7 +218,18 @@ export class MapContainer {
             }
         });
 
-        PubSub.subscribe(EventTopics.showHelp, (msg, popup) => {
+        PubSub.subscribe(EventTopics.showSharingPopup, (msg) => {
+            if (this._sharingControl === null) {
+                const hash = this.saveMapToHash();
+                this._sharingControl = SharingControl.create(hash, this._settings.title);
+                this._map.addControl(this._sharingControl);
+            } else {
+                this._map.removeControl(this._sharingControl);
+                this._sharingControl = null;
+            }
+        });
+
+        PubSub.subscribe(EventTopics.showHelp, (msg) => {
             this.showHelp();
         });
     }
@@ -217,7 +243,7 @@ export class MapContainer {
         this._map.setView([52.5, -1.9], 12);
     }
 
-    loadMap = async (remoteMapFile: string | null): Promise<boolean> => {
+    loadMap = async (remoteMapFile: string | null, hash: string, hideToolbar: boolean): Promise<boolean> => {
         if(this._mapInitialised){
             this.removeAllLayers();
             this.resetSettings();
@@ -233,8 +259,7 @@ export class MapContainer {
         if (remoteMapFile) {
             const mapData = await this._fileManager.loadMapFromRemoteFile(remoteMapFile);
             mapLoaded = this.loadMapData(mapData);
-        } else if(window.location.hash){
-            const hash = window.location.hash;
+        } else if(hash !== ''){
             const mapData = this._fileManager.loadMapFromHash(hash.slice(1));
             mapLoaded = this.loadMapData(mapData);
         } else {
@@ -242,6 +267,8 @@ export class MapContainer {
             const geoJSON = this._fileManager.loadMapFromStorage(lastMapSelected || this._settings.title);
             mapLoaded = this.loadMapData(geoJSON);
         }
+
+        this._settings.hideToolbar = hideToolbar;
 
         this.updateUI(this._settings);
 
@@ -301,10 +328,16 @@ export class MapContainer {
     private showHelp = () => {
         const helpElement = document.getElementById('help');
 
-        if (helpElement?.classList.contains('hide')) {
-            helpElement?.classList.remove('hide');
+        if(helpElement === null){
+            return;
+        }
+
+        if (helpElement.classList.contains('fadeOut')) {
+            helpElement.classList.remove('fadeOut');
+            helpElement?.classList.add('fadeIn');
         } else {
-            helpElement?.classList.add('hide');
+            helpElement?.classList.remove('fadeIn');
+            helpElement.classList.add('fadeOut');
         }
     }
 }

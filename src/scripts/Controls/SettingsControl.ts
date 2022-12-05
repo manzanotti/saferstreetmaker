@@ -4,12 +4,13 @@ import { EventTopics } from '../EventTopics';
 import { IMapLayer } from '../layers/IMapLayer';
 
 export class SettingsControl {
+    private static rowMargin = 'mb-2';
     private static inputDivClasses = ['form-check', 'form-switch'];
     private static checkboxClasses = ['form-check-input', 'appearance-none', 'w-9', '-ml-10',
         'rounded-full', 'float-left', 'h-5', 'align-top', 'bg-white', 'bg-no-repeat', 'bg-contain',
         'bg-gray-300', 'focus:outline-none', 'cursor-pointer', 'shadow-sm'];
     private static labelClasses = ['form-check-label', 'inline-block', 'text-gray-800'];
-    private static buttonClasses = ['inline-block', 'px-6', 'py-2.5', 'bg-blue-600', 'text-gray', 'font-medium', 'text-xs', 'leading-tight', 'uppercase', 'rounded', 'shadow-md', 'hover:bg-blue-700', 'hover:shadow-lg', 'hover:text-white', 'focus:bg-blue-700', 'focus:shadow-lg', 'focus:outline-none', 'focus:ring-0', 'active:bg-blue-800', 'active:shadow-lg', 'transition', 'duration-150', 'ease-in-out'];
+    private static buttonClasses = ['inline-block', 'px-6', 'py-2.5', 'bg-blue-600', 'text-white', 'font-medium', 'text-xs', 'leading-tight', 'uppercase', 'rounded', 'shadow-md', 'hover:bg-blue-700', 'hover:shadow-lg', 'hover:text-white', 'focus:bg-blue-700', 'focus:shadow-lg', 'focus:outline-none', 'focus:ring-0', 'active:bg-blue-800', 'active:shadow-lg', 'transition', 'duration-150', 'ease-in-out'];
 
     static getAction = (): L.Toolbar2.Action => {
         const settingsAction = L.Toolbar2.Action.extend({
@@ -32,7 +33,7 @@ export class SettingsControl {
         const settingsBox = new L.Control({ position: "bottomleft" });
 
         const div = document.createElement('div');
-        div.classList.add('settings');
+        div.classList.add('popup');
 
         const header = document.createElement('h4');
         header.textContent = 'Settings';
@@ -58,6 +59,7 @@ export class SettingsControl {
 
     private static createTitle = (title: string): HTMLElement => {
         const element = document.createElement('div');
+        element.classList.add(SettingsControl.rowMargin);
 
         const label = document.createElement('label');
         label.textContent = 'Title';
@@ -79,6 +81,7 @@ export class SettingsControl {
         div.classList.add('toggle');
         div.classList.add('flex');
         div.classList.add('justify-left');
+        div.classList.add(SettingsControl.rowMargin);
 
         const element = document.createElement('div');
         SettingsControl.inputDivClasses.forEach(className => {
@@ -110,6 +113,7 @@ export class SettingsControl {
 
     private static createLayers = (layers: Map<string, IMapLayer>, settings: Settings): HTMLElement => {
         const section = document.createElement('div');
+        section.classList.add(SettingsControl.rowMargin);
 
         const header = document.createElement('h4');
         header.textContent = 'Visible Layers';
@@ -131,6 +135,7 @@ export class SettingsControl {
         div.classList.add('toggle');
         div.classList.add('flex');
         div.classList.add('justify-left');
+        div.classList.add(SettingsControl.rowMargin);
 
         const element = document.createElement('div');
         SettingsControl.inputDivClasses.forEach(className => {
@@ -160,6 +165,9 @@ export class SettingsControl {
 
     private static createButtons = (): HTMLElement => {
         const element = document.createElement('div');
+        element.classList.add('flex');
+        element.classList.add('justify-center');
+        element.classList.add(SettingsControl.rowMargin);
 
         const saveButton = document.createElement('button');
         saveButton.type = 'button';

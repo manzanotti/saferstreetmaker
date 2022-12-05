@@ -1,9 +1,9 @@
-@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 #map {
     height: 100vh;
+    z-index: 1;
 }
 
 .leaflet-control-toolbar .leaflet-toolbar-1 {
@@ -83,6 +83,11 @@
     background-size: 40px 40px;
 }
 
+.share-button {
+    background-image: url(../img/share-svgrepo-com.svg);
+    background-size: 40px 40px;
+}
+
 .ltn-cell {
     cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30'%3E%3Cpath class='leaflet-interactive' stroke='blue' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' fill='blue' fill-opacity='.2' fill-rule='evenodd' d='M5 5 h20v20h-20v-20'%3E%3C/path%3E%3C/svg%3E") 15 15, auto;
 }
@@ -105,14 +110,6 @@ ul.popup-buttons {
 ul.popup-buttons li {
     list-style: none;
     display: inline-block;
-}
-
-#help {
-    z-index: 10001;
-    padding: 10px;
-    border: 1 solid black;
-    box-shadow: 0 2px 2px 0 black;
-    overflow-y: auto;
 }
 
 .hide {
@@ -155,41 +152,55 @@ a {
     color: blue;
 }
 
-.settings {
+.popup {
     padding: 6px 8px;
     font: 14px Arial, Helvetica, sans-serif;
     background: white;
     line-height: 24px;
     color: #555;
-  }
+}
 
-  .settings h4 {
-    text-align: center;
-    font-size: 16px;
-    font-weight: 700;
-    margin: 2px 12px 8px;
-    color: #777;
-  }
+    .popup h4 {
+        text-align: center;
+        font-size: 16px;
+        font-weight: 700;
+        margin: 2px 12px 8px;
+        color: #777;
+    }
+
+    .popup label {
+        display: inline-block;
+        min-width: 50px;
+    }
   
-  .settings input[type='text'] {
-    padding-left: 10px;
-  }
+    .popup input[type='text'], .popup [type='number'] {
+        margin: 0 5px;
+        box-shadow: 0 0 2px 2px #555;
+    }
+
+    .popup span {
+        margin-right: 5px;;
+    }
+
+    .popup div.toggle input {
+        min-width: 50px;
+    }
   
-  .settings div.toggle label {
-    padding-left: 10px;;
-    cursor: pointer;
-  }
+    .popup div.toggle label {
+        padding-left: 10px;;
+        cursor: pointer;
+    }
   
-  .settings i {
-    width: 18px;
-    height: 18px;
-    float: left;
-    margin: 0 8px 0 0;
-    opacity: 0.7;
-  }
+    .popup i {
+        width: 18px;
+        height: 18px;
+        float: left;
+        margin: 0 8px 0 0;
+        opacity: 0.7;
+    }
   
-  .settings i.icon {
-    background-size: 18px;
-    background-color: rgba(255, 255, 255, 1);
-  }
+    .popup i.icon {
+        background-size: 18px;
+        background-color: rgba(255, 255, 255, 1);
+    }
   
