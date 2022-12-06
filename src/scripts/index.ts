@@ -8,8 +8,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const params = new URLSearchParams(window.location.search);
 
     const remoteMapFile = params.get('map');
+    const hash = window.location.hash;
+    const hideToolbar = params.get('hide-toolbar') === 'true';
 
-    const mapLoaded = await mapContainer.loadMap(remoteMapFile);
+    const mapLoaded = await mapContainer.loadMap(remoteMapFile, hash, hideToolbar);
 
     if (!mapLoaded && window.navigator.geolocation) {
         window.navigator.geolocation

@@ -1,0 +1,60 @@
+.animated {
+  -webkit-animation-duration: 1s;
+  animation-duration: 1s;
+  -webkit-animation-fill-mode: both;
+  animation-fill-mode: both;
+}
+
+.animated.faster {
+  -webkit-animation-duration: 500ms;
+  animation-duration: 500ms;
+}
+
+.fadeIn {
+    display: flex;
+  -webkit-animation-name: fadeIn;
+  animation-name: fadeIn;
+}
+
+.fadeOut {
+  -webkit-animation-name: fadeOut;
+  animation-name: fadeOut;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    display: none;
+    z-index: 0;
+  }
+
+  to {
+    opacity: 1;
+    display: flex;
+    z-index: 50;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+    display: flex;
+    z-index: 50;
+  }
+
+  to {
+    opacity: 0;
+    display: none;
+    z-index: 0;
+  }
+}
+
+#help {
+    height: 100vh;
+    padding: 10px;
+    border: 1 solid black;
+    box-shadow: 0 2px 2px 0 black;
+    background: rgba(0,0,0,.7);
+    left: 50%;
+    transform: translateX(-50%);
+}

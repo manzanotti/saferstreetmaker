@@ -4,6 +4,7 @@ import { IMapLayer } from '../layers/IMapLayer';
 import { FileActions } from './FileActions';
 import { HelpActions } from './HelpActions';
 import { SettingsControl } from './SettingsControl';
+import { SharingControl } from './SharingControl';
 
 export class Toolbar {
     static create: L.Toolbar2.Control = (map: L.Map, layers: Map<string, IMapLayer>, settings: Settings) => {
@@ -22,6 +23,8 @@ export class Toolbar {
         }
 
         actions.push(SettingsControl.getAction());
+
+        actions.push(SharingControl.getAction());
 
         const position = settings.readOnly ? 'bottomleft' : 'topleft';
 
