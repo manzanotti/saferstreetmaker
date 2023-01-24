@@ -102,6 +102,7 @@ export class MapContainer {
 
     private removeAllLayers = () => {        
         this._layers.forEach((layer, layerName) => {
+            layer.clearLayer();
             this._map.removeLayer(layer.getLayer());
         });
     }
