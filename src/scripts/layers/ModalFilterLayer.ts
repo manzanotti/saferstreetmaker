@@ -142,4 +142,8 @@ export class ModalFilterLayer implements IMapLayer {
     toGeoJSON = (): {} => {
         return this._layer.toGeoJSON();
     }
+
+    clearLayer = (): void => {
+        this._layer.clearLayers();
+    };
 }
