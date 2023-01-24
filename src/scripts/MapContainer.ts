@@ -100,9 +100,15 @@ export class MapContainer {
         });
     }
 
-    private removeAllLayers = () => {        
+    private clearAllLayers = () => {
         this._layers.forEach((layer, layerName) => {
             layer.clearLayer();
+            this._map.removeLayer(layer.getLayer());
+        });
+    }
+
+    private removeAllLayers = () => {
+        this._layers.forEach((layer, layerName) => {
             this._map.removeLayer(layer.getLayer());
         });
     }
@@ -159,7 +165,7 @@ export class MapContainer {
 
     private setupSubscribers = () => {
         PubSub.subscribe(EventTopics.fileLoaded, (msg, data) => {
-            this.removeAllLayers();
+            this.clearAllLayers();
             this.resetSettings();
             if (this.loadMapData(data)) {
                 this.saveMap();
