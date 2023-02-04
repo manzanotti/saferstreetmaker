@@ -289,6 +289,7 @@ export class MapContainer {
         let geoJSON = '';
         const errors = new Array<string>();
         let errorIntro = '';
+        let loadingFromStorage = false;
         try {
         if (remoteMapFile) {
                 errorIntro = 'There was a problem loading the map from the remote file location:';
@@ -297,6 +298,7 @@ export class MapContainer {
                 errorIntro = 'There was a problem loading the map from the hash:';
                 geoJSON = this._fileManager.loadMapFromHash(hash.slice(1));
         } else {
+                loadingFromStorage = true;
             const lastMapSelected = this._fileManager.loadLastMapSelected();
                 errorIntro = 'There was a problem loading the map from local storage:';
                 geoJSON = this._fileManager.loadMapFromStorage(lastMapSelected || this._settings.title);
@@ -306,10 +308,23 @@ export class MapContainer {
             mapLoaded = this.loadMapData(geoJSON);
         } catch (e: any) {
             errors.push(errorIntro);
+
+            if (loadingFromStorage) {
+                errors.push('<a id="downloadErrorFile">Click to download the map from local storage</a>')
+            }
+
             errors.push(e.message);
             errors.push(e.stack);
 
             this.showErrors(errors);
+
+            if (loadingFromStorage) {
+                const downloadLink = document.getElementById('downloadErrorFile');
+
+                downloadLink?.addEventListener('click', (e) => {
+                    this.downloadStorageMap();
+                });
+            }
         }
 
         this._settings.hideToolbar = hideToolbar;
@@ -318,6 +333,19 @@ export class MapContainer {
 
         return mapLoaded;
     };
+
+    downloadStorageMap = () => {
+        const lastMapSelected = this._fileManager.loadLastMapSelected();
+        const mapJSON = this._fileManager.loadMapFromStorage(lastMapSelected);
+
+        const mapString = JSON.stringify(mapJSON);
+
+        const blob = new Blob([mapString], { type: 'text/plain;charset=utf-8' });
+        const hyperlink = document.createElement("a");
+        hyperlink.href = URL.createObjectURL(blob);
+        hyperlink.download = `invalidMapData.json`;
+        hyperlink.click();
+    }
 
     saveMapToHash = () => {
         const centre = this._map.getCenter();
@@ -374,7 +402,7 @@ export class MapContainer {
         const errorMessagesElement = document.getElementById('errorMessages');
 
         if (errorMessagesElement !== null) {
-            errorMessagesElement.textContent = errorMessages.join('<br />');
+            errorMessagesElement.innerHTML = errorMessages.join('<br />');
 
             this.showPopup('errors');
         }
