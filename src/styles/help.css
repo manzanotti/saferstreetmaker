@@ -11,7 +11,7 @@
 }
 
 .fadeIn {
-    display: flex;
+  display: flex;
   -webkit-animation-name: fadeIn;
   animation-name: fadeIn;
 }
@@ -32,6 +32,10 @@
     opacity: 1;
     display: flex;
     z-index: 50;
+    height: 100vh;
+    padding: 10px;
+    border: 1 solid black;
+    box-shadow: 0 2px 2px 0 black;
   }
 }
 
@@ -50,11 +54,17 @@
 }
 
 #help {
-    height: 100vh;
-    padding: 10px;
-    border: 1 solid black;
-    box-shadow: 0 2px 2px 0 black;
-    background: rgba(0,0,0,.7);
-    left: 50%;
-    transform: translateX(-50%);
+  height: 0;
+  background: rgba(0, 0, 0, 0.7);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: -1;
+}
+
+#errors {
+  height: 0;
+  background: rgba(0, 0, 0, 0.7);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: -1;
 }

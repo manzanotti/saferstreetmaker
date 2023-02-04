@@ -103,7 +103,7 @@ export class FileManager {
         }
         const reader = new FileReader();
         reader.onload = (e) => {
-            if(e.target === null){
+            if (e.target === null) {
                 return;
             }
 

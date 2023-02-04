@@ -35,11 +35,6 @@
       integrity="sha256-kvX2nOqB13h3NzdRGWFFiasrqqWctgDvgXlqsa2v6p0="
       crossorigin="anonymous"
     ></script>
-    <script
-      src="https://cdn.jsdelivr.net/npm/leaflet-path-drag@1.8.0-beta.3/dist/L.Path.Drag.js"
-      integrity="sha256-TmpgLIEnoD/B843JgCltbvfaBvPLrExejobf1E2w1kM="
-      crossorigin="anonymous"
-    ></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet-draw@1.0.4/dist/leaflet.draw.min.js"></script>
     <script
       src="https://cdn.jsdelivr.net/npm/leaflet-toolbar@0.4.0-alpha.2/dist/leaflet.toolbar.min.js"
@@ -63,175 +58,209 @@
   </head>
 
   <body>
-    <div id="help" class="modal modal-dialog modal-dialog-scrollable modal-lg fixed w-1/2 mx-auto inset-0 z-0 overflow-x-hidden overflow-y-auto flex justify-center items-center animated fadeOut faster">
-        <div class="modal-content border-none shadow-lg relative flex flex-col w-full pointer-events-auto bg-white bg-clip-padding rounded-md outline-none text-current">
-          <div class="modal-header flex flex-shrink-0 items-center justify-between p-4 border-b border-gray-200 rounded-t-md">
-            <h5 class="text-xl font-medium leading-normal text-gray-800">
-              Using Safer Street Maker
-            </h5>
-            <button type="button" class="btn-close box-content w-4 h-4 p-1 text-black border-none rounded-none opacity-50 focus:shadow-none focus:outline-none focus:opacity-100 hover:text-black hover:opacity-75 hover:no-underline" name="closeHelp" aria-label="Close"></button>
-          </div>
-          <div class="modal-body relative p-4">
-            <p class="mb-8">
-              Welcome to the Safer Street Maker, where you can create the active
-              travel network of your dreams!
-            </p>
-            <p class="mb-8">
-              It's very early days of the site, so don't be surprised if you
-              encounter the odd issue.
-            </p>
-            <p class="mb-8">
-              You can place various active travel features on your area. The idea
-              is to use these to instigate local conversations about improving our
-              towns and cities, or you can use these to respond to council
-              consultations on infrastructure projects (I like to respond with
-              what I think a better scheme would be).
-            </p>
-            <p class="mb-8">
-              You can now also generate html to embed your map in another web
-              page, so if you want to illustrate a blog post with an
-              infrastructure map, you now can.
-            </p>
-            <h2>Modal Filters</h2>
-            <p class="mb-8">
-              Modal filters are designed to stop motorised vehicles from passing.
-              This is usually done with either bollards and planters, or Automatic
-              Number Plate Recognition cameras (ANPR). To add a modal filter,
-              click the Green Circle button in the toolbar on the left-hand side
-              of the map, and just click on the map to place one. Once placed, you
-              can click on one to delete it, or drag it to move it.
-            </p>
-            <h2>Mobility Lanes</h2>
-            <p class="mb-8">
-              Most people think of a mobility lane as a cycle lane, and it's true
-              that the majority of traffic on them would be people on bicycles.
-              However, by designating them as Mobility lanes, this indicates that
-              they are designed to also be used by people using mobility scooters,
-              wheelchairs, and electric scooters. And to enable this requires a
-              better design of a lane (including being wide enough to allow
-              passing).
-            </p>
-            <p class="mb-8">
-              To add a mobility lane , click on the Cycle button in the toolbar.
-              You draw the lane by placing a serious of points. When done, click
-              on the last point added, and you will leave lane creation mode.
-            </p>
-            <p class="mb-8">
-              To edit a lane, click anywhere on it to enter edit mode. You can
-              click on the fainter squares to add an extra point to the line, if
-              you need one. Whilst in edit mode, you will see a popup, which
-              currently has a button to delete the whole lane.
-            </p>
-            <p class="mb-8">
-              I find that the best way of placing a lane is to put the start and
-              end points of the lane whilst in create mode, click on the last
-              point you added to exit create mode, then click anywhere on the line
-              to go into edit mode. You can then place the extra points to get the
-              lane exactly where you want it.
-            </p>
-            <h2>Tram Lines</h2>
-            <p class="mb-8">
-              These work in exactly the same way as mobility lanes. To add one,
-              click on the Tram button in the toolbar. You draw the lane by
-              placing a serious of points. When done, click on the last point
-              added, and you will leave line creation mode.
-            </p>
-            <h2>Car-free Streets</h2>
-            <p class="mb-8">
-              These are streets that are not accessible to vehicles (with possible
-              limited exceptions for deliveries). Again, these work in exactly the
-              same way as mobility lanes. To add one, click on the No Vehicles
-              button in the toolbar. You draw the lane by placing a serious of
-              points. When done, click on the last point added, and you will leave
-              line creation mode.
-            </p>
-            <h2>School Streets</h2>
-            <p class="mb-8">
-              These are streets around a school that are not accessible to
-              vehicles during drop-off and pick-up times. Again, these work in
-              exactly the same way as mobility lanes. To add one, click on the No
-              Vehicles button in the toolbar. You draw the lane by placing a
-              serious of points. When done, click on the last point added, and you
-              will leave line creation mode.
-            </p>
-            <h2>Saving and loading maps</h2>
-            <p class="mb-8">
-              The map is currently automatically saved in the browser you are
-              using. If you wish to either share a map with someone, use it on
-              another device, or have more than one map, click on the Folder icon
-              to open the file menu, and hit the Disk icon to save the current map
-              to a text file on your machine. To load a map, click on the Folder
-              icon to open the file menu, and hit the cloud-like button to select
-              the file you wish to upload.
-            </p>
-            <h2>Example map</h2>
-            <p class="mb-8">
-              There is an
-              <a href="Hello Cleveland.json" title="Download example map" download
-                >example map you can download</a
-              >if you want to see what one looks like.
-            </p>
-            <h2>Exporting maps</h2>
-            <p class="mb-8">
-              If you wish to export the map as GeoJSON, for importing it into a
-              mapping application, click on the Folder icon and hit the GeoJSON
-              icon.
-            </p>
-            <h2>Sharing maps</h2>
-            <p class="mb-8">
-              Obviously, you can save the map file and send that to someone, who
-              could upload it to the site.
-            </p>
-            <p class="mb-8">
-              However, if you wish to embed a map in a web page (such as a blog
-              post), you can create your map, open the Settings (by clicking the
-              Cog button in the toolbar), setting the map title, whether the map
-              is in read-only mode (so no one can change it), and selecting which
-              layers you want visible on the map.
-  
-              <a href="test.html">Example</a>
-            </p>
-            <p class="mb-8">
-              With that done, you can click on the Share button in the toolbar.
-              Here, you can enter the dimensions of the map, and whether the
-              toolbar is visible, then hit the Create button. The html needed to
-              embed the map in your web page will be copied to your clipboard, so
-              just go to your page and paste the html into the html of your page.
-            </p>
-            <h2>Tech Details</h2>
-            <p class="mb-8">
-              If you're interested, this site uses the
-              <a href="https://leafletjs.com/" target="_blank">leaflet.js</a>
-              mapping library. It's built using
-              <a href="https://parceljs.org/" target="_blank">parcel.js</a>. The
-              code is hosted on
-              <a
-                href="https://github.com/manzanotti/saferstreetmaker"
-                target="_blank"
-                >GitHub</a
-              >. This is a public repository, so if you wish to contribute to the
-              project, feel free! The site is hosted on
-              <a href="https://www.azure.com" target="_blank">Azure</a>, as a
-              Static Web App, which is free for a ridiculous amount of traffic.
-            </p>
-            <h2>Support</h2>
-            <p class="mb-8">
-              If you have a GitHub account, you can raise an
-              <a
-                href="https://github.com/manzanotti/saferstreetmaker/issues"
-                target="_blank"
-                >issue</a
-              >, or you can use that to suggest a feature. You can also message me
-              on
-              <a href="https://twitter.com/manzanotti" target="_blank">Twitter</a
-              >.
-            </p>          </div>
-          <div class="modal-footer flex flex-shrink-0 flex-wrap items-center justify-end p-4 border-t border-gray-200 rounded-b-md">
-            <button type="button" class="inline-block px-6 py-2.5 bg-blue-600 text-white font-medium text-xs leading-tight uppercase rounded shadow-md hover:bg-blue-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg transition duration-150 ease-in-out" name="closeHelp">
-              Close
-            </button>
-          </div>
+    <div
+      id="help"
+      class="modal modal-dialog modal-dialog-scrollable modal-lg fixed w-1/2 mx-auto inset-0 z-0 overflow-x-hidden overflow-y-auto flex justify-center items-center animated fadeOut faster"
+    >
+      <div
+        class="modal-content border-none shadow-lg relative flex flex-col w-full pointer-events-auto bg-white bg-clip-padding rounded-md outline-none text-current"
+      >
+        <div
+          class="modal-header flex flex-shrink-0 items-center justify-between p-4 border-b border-gray-200 rounded-t-md"
+        >
+          <h5 class="text-xl font-medium leading-normal text-gray-800">
+            Using Safer Street Maker
+          </h5>
+          <button
+            type="button"
+            class="btn-close box-content w-4 h-4 p-1 text-black border-none rounded-none opacity-50 focus:shadow-none focus:outline-none focus:opacity-100 hover:text-black hover:opacity-75 hover:no-underline"
+            name="closeHelp"
+            aria-label="Close"
+          ></button>
         </div>
+        <div class="modal-body relative p-4">
+          <p class="mb-8">
+            Welcome to the Safer Street Maker, where you can create the active
+            travel network of your dreams!
+          </p>
+          <p class="mb-8">
+            It's very early days of the site, so don't be surprised if you
+            encounter the odd issue.
+          </p>
+          <p class="mb-8">
+            You can place various active travel features on your area. The idea
+            is to use these to instigate local conversations about improving our
+            towns and cities, or you can use these to respond to council
+            consultations on infrastructure projects (I like to respond with
+            what I think a better scheme would be).
+          </p>
+          <p class="mb-8">
+            You can now also generate html to embed your map in another web
+            page, so if you want to illustrate a blog post with an
+            infrastructure map, you now can.
+          </p>
+          <h2>Modal Filters</h2>
+          <p class="mb-8">
+            Modal filters are designed to stop motorised vehicles from passing.
+            This is usually done with either bollards and planters, or Automatic
+            Number Plate Recognition cameras (ANPR). To add a modal filter,
+            click the Green Circle button in the toolbar on the left-hand side
+            of the map, and just click on the map to place one. Once placed, you
+            can click on one to delete it, or drag it to move it.
+          </p>
+          <h2>Mobility Lanes</h2>
+          <p class="mb-8">
+            Most people think of a mobility lane as a cycle lane, and it's true
+            that the majority of traffic on them would be people on bicycles.
+            However, by designating them as Mobility lanes, this indicates that
+            they are designed to also be used by people using mobility scooters,
+            wheelchairs, and electric scooters. And to enable this requires a
+            better design of a lane (including being wide enough to allow
+            passing).
+          </p>
+          <p class="mb-8">
+            To add a mobility lane , click on the Cycle button in the toolbar.
+            You draw the lane by placing a serious of points. When done, click
+            on the last point added, and you will leave lane creation mode.
+          </p>
+          <p class="mb-8">
+            To edit a lane, click anywhere on it to enter edit mode. You can
+            click on the fainter squares to add an extra point to the line, if
+            you need one. Whilst in edit mode, you will see a popup, which
+            currently has a button to delete the whole lane.
+          </p>
+          <p class="mb-8">
+            I find that the best way of placing a lane is to put the start and
+            end points of the lane whilst in create mode, click on the last
+            point you added to exit create mode, then click anywhere on the line
+            to go into edit mode. You can then place the extra points to get the
+            lane exactly where you want it.
+          </p>
+          <h2>Tram Lines</h2>
+          <p class="mb-8">
+            These work in exactly the same way as mobility lanes. To add one,
+            click on the Tram button in the toolbar. You draw the lane by
+            placing a serious of points. When done, click on the last point
+            added, and you will leave line creation mode.
+          </p>
+          <h2>Car-free Streets</h2>
+          <p class="mb-8">
+            These are streets that are not accessible to vehicles (with possible
+            limited exceptions for deliveries). Again, these work in exactly the
+            same way as mobility lanes. To add one, click on the No Vehicles
+            button in the toolbar. You draw the lane by placing a serious of
+            points. When done, click on the last point added, and you will leave
+            line creation mode.
+          </p>
+          <h2>School Streets</h2>
+          <p class="mb-8">
+            These are streets around a school that are not accessible to
+            vehicles during drop-off and pick-up times. Again, these work in
+            exactly the same way as mobility lanes. To add one, click on the No
+            Vehicles button in the toolbar. You draw the lane by placing a
+            serious of points. When done, click on the last point added, and you
+            will leave line creation mode.
+          </p>
+          <h2>Saving and loading maps</h2>
+          <p class="mb-8">
+            The map is currently automatically saved in the browser you are
+            using. If you wish to either share a map with someone, use it on
+            another device, or have more than one map, click on the Folder icon
+            to open the file menu, and hit the Disk icon to save the current map
+            to a text file on your machine. To load a map, click on the Folder
+            icon to open the file menu, and hit the cloud-like button to select
+            the file you wish to upload.
+          </p>
+          <h2>Example map</h2>
+          <p class="mb-8">
+            There is an
+            <a href="Hello Cleveland.json" title="Download example map" download
+              >example map you can download</a
+            >if you want to see what one looks like.
+          </p>
+          <h2>Exporting maps</h2>
+          <p class="mb-8">
+            If you wish to export the map as GeoJSON, for importing it into a
+            mapping application, click on the Folder icon and hit the GeoJSON
+            icon.
+          </p>
+          <h2>Sharing maps</h2>
+          <p class="mb-8">
+            Obviously, you can save the map file and send that to someone, who
+            could upload it to the site.
+          </p>
+          <p class="mb-8">
+            However, if you wish to embed a map in a web page (such as a blog
+            post), you can create your map, open the Settings (by clicking the
+            Cog button in the toolbar), setting the map title, whether the map
+            is in read-only mode (so no one can change it), and selecting which
+            layers you want visible on the map.
+
+            <a href="test.html">Example</a>
+          </p>
+          <p class="mb-8">
+            With that done, you can click on the Share button in the toolbar.
+            Here, you can enter the dimensions of the map, and whether the
+            toolbar is visible, then hit the Create button. The html needed to
+            embed the map in your web page will be copied to your clipboard, so
+            just go to your page and paste the html into the html of your page.
+          </p>
+          <h2>Tech Details</h2>
+          <p class="mb-8">
+            If you're interested, this site uses the
+            <a href="https://leafletjs.com/" target="_blank">leaflet.js</a>
+            mapping library. It's built using
+            <a href="https://parceljs.org/" target="_blank">parcel.js</a>. The
+            code is hosted on
+            <a
+              href="https://github.com/manzanotti/saferstreetmaker"
+              target="_blank"
+              >GitHub</a
+            >. This is a public repository, so if you wish to contribute to the
+            project, feel free! The site is hosted on
+            <a href="https://www.azure.com" target="_blank">Azure</a>, as a
+            Static Web App, which is free for a ridiculous amount of traffic.
+          </p>
+          <h2>Support</h2>
+          <p class="mb-8">
+            If you have a GitHub account, you can raise an
+            <a
+              href="https://github.com/manzanotti/saferstreetmaker/issues"
+              target="_blank"
+              >issue</a
+            >, or you can use that to suggest a feature. You can also message me
+            on
+            <a href="https://twitter.com/manzanotti" target="_blank">Twitter</a
+            >.
+          </p>
+        </div>
+        <div
+          class="modal-footer flex flex-shrink-0 flex-wrap items-center justify-end p-4 border-t border-gray-200 rounded-b-md"
+        >
+          <button
+            type="button"
+            class="inline-block px-6 py-2.5 bg-blue-600 text-white font-medium text-xs leading-tight uppercase rounded shadow-md hover:bg-blue-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg transition duration-150 ease-in-out"
+            name="closeHelp"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+    <div
+      id="errors"
+      class="modal modal-dialog modal-dialog-scrollable modal-lg fixed w-1/2 mx-auto inset-0 z-0 overflow-x-hidden overflow-y-auto flex justify-center items-center animated fadeOut faster"
+    >
+      <div
+        class="modal-content border-none shadow-lg relative flex flex-col w-full pointer-events-auto bg-white bg-clip-padding rounded-md outline-none text-current"
+      >
+        <div
+          class="modal-header flex flex-shrink-0 items-center justify-between p-4 border-b border-gray-200 rounded-t-md"
+        >
+          <h1>Sorry, an error has occurred</h1>
+          <div id="errorMessages"></div>
+        </div>
+      </div>
     </div>
     <div id="map"></div>
   </body>

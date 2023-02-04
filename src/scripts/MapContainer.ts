@@ -62,9 +62,9 @@ export class MapContainer {
         this.activateAllLayers();
     };
 
-    private addLayers(settings: Settings){
+    private addLayers(settings: Settings) {
         this._layers.forEach((layer, layerName) => {
-            if(settings.activeLayers.includes(layerName)){
+            if (settings.activeLayers.includes(layerName)) {
                 this._map.addLayer(layer.getLayer());
             }
         });
@@ -78,7 +78,7 @@ export class MapContainer {
     private addOverlay = (layers: Map<string, IMapLayer>, settings: Settings) => {
         const overlays = {};
         layers.forEach((layer, layerName) => {
-            if(settings.activeLayers.includes(layerName)){
+            if (settings.activeLayers.includes(layerName)) {
                 overlays[layer.title] = layer.getLayer();
             }
         });
@@ -95,7 +95,7 @@ export class MapContainer {
     private setupCloseHelpButtons = () => {
         document.getElementsByName('closeHelp').forEach((element: HTMLElement) => {
             element.addEventListener('click', (e: Event) => {
-                this.showHelp();
+                this.showPopup('help');
             })
         });
     }
@@ -126,19 +126,19 @@ export class MapContainer {
     }
 
     private updateUI = (settings: Settings) => {
-        if(this._toolbarControl !== undefined){
+        if (this._toolbarControl !== undefined) {
             this._map.removeControl(this._toolbarControl);
         }
 
-        if(this._legend !== undefined){
+        if (this._legend !== undefined) {
             this._map.removeControl(this._legend);
         }
 
-        if(this._overlay !== undefined){
+        if (this._overlay !== undefined) {
             this._map.removeControl(this._overlay);
         }
 
-        if(!settings.hideToolbar){
+        if (!settings.hideToolbar) {
             this.addToolbar(this._layers, settings);
         }
         
@@ -167,10 +167,24 @@ export class MapContainer {
         PubSub.subscribe(EventTopics.fileLoaded, (msg, data) => {
             this.clearAllLayers();
             this.resetSettings();
-            if (this.loadMapData(data)) {
+
+            let mapLoaded = false;
+            const errors = new Array<string>();
+
+            try {
+                mapLoaded = this.loadMapData(data);
+            } catch (e: any) {
+                errors.push('There was a problem loading the map from uploaded file:');
+                errors.push(e.message);
+                errors.push(e.stack);
+
+                this.showErrors(errors);
+            }
+
+            if (mapLoaded) {
                 this.saveMap();
                 this.updateUI(this._settings);
-            };
+            }
         });
 
         PubSub.subscribe(EventTopics.layerUpdated, (msg) => {
@@ -197,7 +211,16 @@ export class MapContainer {
         });
 
         PubSub.subscribe(EventTopics.loadMapFromFile, (msg) => {
+            try {
             this._fileManager.loadMapFromFile();
+            } catch (e: any) {
+                const errors = new Array<string>();
+                errors.push('There was a problem loading the map from uploaded file:');
+                errors.push(e.message);
+                errors.push(e.stack);
+
+                this.showErrors(errors);
+            }
         });
 
         PubSub.subscribe(EventTopics.showSettings, (msg) => {
@@ -237,7 +260,7 @@ export class MapContainer {
         });
 
         PubSub.subscribe(EventTopics.showHelp, (msg) => {
-            this.showHelp();
+            this.showPopup('help');
         });
     }
 
@@ -251,7 +274,7 @@ export class MapContainer {
     }
 
     loadMap = async (remoteMapFile: string | null, hash: string, hideToolbar: boolean): Promise<boolean> => {
-        if(this._mapInitialised){
+        if (this._mapInitialised) {
             this.removeAllLayers();
             this.resetSettings();
         } else {
@@ -263,16 +286,30 @@ export class MapContainer {
 
         let mapLoaded = false;
 
+        let geoJSON = '';
+        const errors = new Array<string>();
+        let errorIntro = '';
+        try {
         if (remoteMapFile) {
-            const mapData = await this._fileManager.loadMapFromRemoteFile(remoteMapFile);
-            mapLoaded = this.loadMapData(mapData);
-        } else if(hash !== ''){
-            const mapData = this._fileManager.loadMapFromHash(hash.slice(1));
-            mapLoaded = this.loadMapData(mapData);
+                errorIntro = 'There was a problem loading the map from the remote file location:';
+                geoJSON = await this._fileManager.loadMapFromRemoteFile(remoteMapFile);
+            } else if (hash !== '') {
+                errorIntro = 'There was a problem loading the map from the hash:';
+                geoJSON = this._fileManager.loadMapFromHash(hash.slice(1));
         } else {
             const lastMapSelected = this._fileManager.loadLastMapSelected();
-            const geoJSON = this._fileManager.loadMapFromStorage(lastMapSelected || this._settings.title);
+                errorIntro = 'There was a problem loading the map from local storage:';
+                geoJSON = this._fileManager.loadMapFromStorage(lastMapSelected || this._settings.title);
+            }
+
+            errorIntro = 'There was a problem processing the map file:';
             mapLoaded = this.loadMapData(geoJSON);
+        } catch (e: any) {
+            errors.push(errorIntro);
+            errors.push(e.message);
+            errors.push(e.stack);
+
+            this.showErrors(errors);
         }
 
         this._settings.hideToolbar = hideToolbar;
@@ -312,6 +349,7 @@ export class MapContainer {
 
                 if (this._settings.activeLayers.includes(layerName)) {
                     const layerJSON = layersJSON[layerName];
+
                     layer.loadFromGeoJSON(layerJSON);
                     this._map.addLayer(layer.getLayer());
                 }
@@ -332,19 +370,29 @@ export class MapContainer {
         this._fileManager.saveMap(this._settings, this._layers, centre, zoom);
     };
 
-    private showHelp = () => {
-        const helpElement = document.getElementById('help');
+    private showErrors = (errorMessages: Array<string>) => {
+        const errorMessagesElement = document.getElementById('errorMessages');
 
-        if(helpElement === null){
+        if (errorMessagesElement !== null) {
+            errorMessagesElement.textContent = errorMessages.join('<br />');
+
+            this.showPopup('errors');
+        }
+    }
+
+    private showPopup = (popupId: string) => {
+        const popupElement = document.getElementById(popupId);
+
+        if (popupElement === null) {
             return;
         }
 
-        if (helpElement.classList.contains('fadeOut')) {
-            helpElement.classList.remove('fadeOut');
-            helpElement?.classList.add('fadeIn');
+        if (popupElement.classList.contains('fadeOut')) {
+            popupElement.classList.remove('fadeOut');
+            popupElement?.classList.add('fadeIn');
         } else {
-            helpElement?.classList.remove('fadeIn');
-            helpElement.classList.add('fadeOut');
+            popupElement?.classList.remove('fadeIn');
+            popupElement.classList.add('fadeOut');
         }
     }
 }
