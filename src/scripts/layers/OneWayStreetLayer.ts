@@ -177,10 +177,12 @@ export class OneWayStreetLayer implements IMapLayer {
 
     loadFromGeoJSON = (geoJson: L.GeoJSON) => {
         if (geoJson) {
-            const tramLines = geoJson['features'];
-            tramLines.forEach((tramLine) => {
+            const oneWayStreets = geoJson['features'];
+            oneWayStreets.forEach((oneWayStreet) => {
                 const points = new Array<L.LatLng>();
-                const coordinates = tramLine.geometry.coordinates;
+
+                // For a brief period, saving nested the coordinates inside another array, for some reason.
+                const coordinates = oneWayStreet.geometry.coordinates.length === 1 ? oneWayStreet.geometry.coordinates[0] : oneWayStreet.geometry.coordinates;
                 coordinates.forEach((coordinate) => {
                     const point = new L.LatLng(coordinate[1], coordinate[0]);
                     points.push(point);

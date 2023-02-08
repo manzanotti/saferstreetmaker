@@ -167,7 +167,9 @@ export class MobilityLaneLayer implements IMapLayer {
             const mobilityLanes = geoJson['features'];
             mobilityLanes.forEach((mobilityLane) => {
                 const points = new Array<L.LatLng>();
-                const coordinates = mobilityLane.geometry.coordinates;
+
+                // For a brief period, saving nested the coordinates inside another array, for some reason.
+                const coordinates = mobilityLane.geometry.coordinates.length === 1 ? mobilityLane.geometry.coordinates[0] : mobilityLane.geometry.coordinates;
                 coordinates.forEach((coordinate) => {
                     const point = new L.LatLng(coordinate[1], coordinate[0]);
                     points.push(point);
