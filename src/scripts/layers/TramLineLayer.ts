@@ -177,7 +177,9 @@ export class TramLineLayer implements IMapLayer {
             const tramLines = geoJson['features'];
             tramLines.forEach((tramLine) => {
                 const points = new Array<L.LatLng>();
-                const coordinates = tramLine.geometry.coordinates;
+
+                // For a brief period, saving nested the coordinates inside another array, for some reason.
+                const coordinates = tramLine.geometry.coordinates.length === 1 ? tramLine.geometry.coordinates[0] : tramLine.geometry.coordinates;
                 coordinates.forEach((coordinate) => {
                     const point = new L.LatLng(coordinate[1], coordinate[0]);
                     points.push(point);
