@@ -6,12 +6,12 @@
     "cssnano": "^5.1.13",
     "leaflet-arrowheads": "^1.4.0",
     "leaflet-geometryutil": "0.10.1",
-    "parcel": "^2.7.0"
+    "parcel": "^2.8.3"
   },
   "dependencies": {
-    "postcss": "^8.4.16",
+    "postcss": "^8.4.21",
     "tailwindcss": "^3.1.8",
-    "tw-elements": "^1.0.0-alpha12"
+    "tw-elements": "^1.0.0-alpha13"
   },
   "alias": {
     "leaflet": {
@@ -19,9 +19,6 @@
     },
     "leaflet-draw": {
       "global": "leaflet-draw"
-    },
-    "leaflet-path-drag": {
-      "global": "leaflet-path-drag"
     },
     "leaflet-svg-shape-markers": {
       "global": "leaflet-svg-shape-markers"
