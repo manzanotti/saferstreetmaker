@@ -14,6 +14,7 @@ import { Legend } from './Controls/Legend';
 import { Settings } from '../Settings';
 import { SettingsControl } from './Controls/SettingsControl';
 import { SharingControl } from './Controls/SharingControl';
+import { LtnLayer } from './layers/LtnLayer';
 
 export class MapContainer {
     private _mapInitialised: boolean = false;
@@ -58,6 +59,7 @@ export class MapContainer {
         this._layers.set(CarFreeStreetLayer.Id, new CarFreeStreetLayer());
         this._layers.set(SchoolStreetLayer.Id, new SchoolStreetLayer());
         this._layers.set(OneWayStreetLayer.Id, new OneWayStreetLayer());
+        this._layers.set(LtnLayer.Id, new LtnLayer());
 
         this.activateAllLayers();
     };
@@ -141,7 +143,7 @@ export class MapContainer {
         if (!settings.hideToolbar) {
             this.addToolbar(this._layers, settings);
         }
-        
+
         this.addOverlay(this._layers, settings);
         this.addLegend(this._layers, settings);
     }
@@ -160,6 +162,11 @@ export class MapContainer {
         this._map.on('draw:created', (e) => {
             const layer = e.layer;
             PubSub.publish(EventTopics.drawCreated, layer.getLatLngs());
+        });
+
+        this._map.on('zoomend', (e) => {
+            const zoom = this._map.getZoom();
+            PubSub.publish(EventTopics.mapZoomChanged, zoom);
         });
     }
 
@@ -212,7 +219,7 @@ export class MapContainer {
 
         PubSub.subscribe(EventTopics.loadMapFromFile, (msg) => {
             try {
-            this._fileManager.loadMapFromFile();
+                this._fileManager.loadMapFromFile();
             } catch (e: any) {
                 const errors = new Array<string>();
                 errors.push('There was a problem loading the map from uploaded file:');
@@ -291,15 +298,15 @@ export class MapContainer {
         let errorIntro = '';
         let loadingFromStorage = false;
         try {
-        if (remoteMapFile) {
+            if (remoteMapFile) {
                 errorIntro = 'There was a problem loading the map from the remote file location:';
                 geoJSON = await this._fileManager.loadMapFromRemoteFile(remoteMapFile);
             } else if (hash !== '') {
                 errorIntro = 'There was a problem loading the map from the hash:';
                 geoJSON = this._fileManager.loadMapFromHash(hash.slice(1));
-        } else {
+            } else {
                 loadingFromStorage = true;
-            const lastMapSelected = this._fileManager.loadLastMapSelected();
+                const lastMapSelected = this._fileManager.loadLastMapSelected();
                 errorIntro = 'There was a problem loading the map from local storage:';
                 geoJSON = this._fileManager.loadMapFromStorage(lastMapSelected || this._settings.title);
             }
@@ -315,7 +322,6 @@ export class MapContainer {
 
             errors.push(e.message);
             errors.push(e.stack);
-
             this.showErrors(errors);
 
             if (loadingFromStorage) {
@@ -328,7 +334,6 @@ export class MapContainer {
         }
 
         this._settings.hideToolbar = hideToolbar;
-
         this.updateUI(this._settings);
 
         return mapLoaded;

@@ -2,205 +2,244 @@
 @tailwind utilities;
 
 #map {
-    height: 100vh;
-    z-index: 1;
+  height: 100vh;
+  z-index: 1;
 }
 
 .leaflet-control-toolbar .leaflet-toolbar-1 {
-    left: 60px;
+  left: 60px;
 }
 
-.leaflet-toolbar-0 > li > .leaflet-toolbar-icon, .leaflet-control-toolbar .leaflet-toolbar-1 > li > .leaflet-toolbar-icon {
-    width: 60px;
-    height: 60px;
+.leaflet-toolbar-0 > li > .leaflet-toolbar-icon,
+.leaflet-control-toolbar .leaflet-toolbar-1 > li > .leaflet-toolbar-icon {
+  width: 60px;
+  height: 60px;
 }
 
-.leaflet-toolbar-0 > li > .leaflet-toolbar-icon > div, .leaflet-control-toolbar .leaflet-toolbar-1 > li > .leaflet-toolbar-icon > div {
-    width: 56px;
-    height: 56px;
-    margin: 0 0 0 2;
-    background-position: center;
-    background-repeat: no-repeat;
+.leaflet-toolbar-0 > li > .leaflet-toolbar-icon > div,
+.leaflet-control-toolbar .leaflet-toolbar-1 > li > .leaflet-toolbar-icon > div {
+  width: 56px;
+  height: 56px;
+  margin: 0 0 0 2;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
-.leaflet-control-toolbar .leaflet-toolbar-1>li>.leaflet-toolbar-icon {
-    padding: 0;
-    background-color: #ffffff;
+.leaflet-control-toolbar .leaflet-toolbar-1 > li > .leaflet-toolbar-icon {
+  padding: 0;
+  background-color: #ffffff;
 }
 
 .file-actions {
-    background-image: url(../img/folder-svgrepo-com.svg);
-    background-size: 40px 40px;
+  background-image: url(../img/folder-svgrepo-com.svg);
+  background-size: 40px 40px;
 }
 
 .save-file {
-    background-image: url(../img/save-svgrepo-com.svg);
-    background-size: 40px 40px;
+  background-image: url(../img/save-svgrepo-com.svg);
+  background-size: 40px 40px;
 }
 
 .save-geojson-file {
-    background-image: url(../img/geojson-file-svgrepo-com.svg);
-    background-size: 40px 40px;
+  background-image: url(../img/geojson-file-svgrepo-com.svg);
+  background-size: 40px 40px;
 }
 
 .load-file {
-    background-image: url(../img/cloud-uploading-arrow-svgrepo-com.svg);
-    background-size: 40px 40px;
+  background-image: url(../img/cloud-uploading-arrow-svgrepo-com.svg);
+  background-size: 40px 40px;
 }
 
 .mobility-lane-button {
-    background-image: url(../img/bicycle-svgrepo-com.svg);
-    background-size: 50px 50px;
+  background-image: url(../img/bicycle-svgrepo-com.svg);
+  background-size: 50px 50px;
 }
 
 .tram-line-button {
-    background-image: url(../img/tram-svgrepo-com.svg);
-    background-size: 50px 50px;
+  background-image: url(../img/tram-svgrepo-com.svg);
+  background-size: 50px 50px;
 }
 
 .car-free-street-button {
-    background-image: url(../img/ban-on-driving-147248.svg);
-    background-size: 50px 50px;
+  background-image: url(../img/ban-on-driving-147248.svg);
+  background-size: 50px 50px;
 }
 
 .school-street-button {
-    background-image: url(../img/school-street.svg);
-    background-size: 50px 50px;
+  background-image: url(../img/school-street.svg);
+  background-size: 50px 50px;
 }
 
 .one-way-street-button {
-    background-image: url(../img/one-way-street.svg);
-    background-size: 40px 50px;
+  background-image: url(../img/one-way-street.svg);
+  background-size: 40px 50px;
+}
+
+.ltn-button {
+  font-size: 2em;
+  line-height: 56px;
 }
 
 .help-button {
-    background-image: url(../img/help-svgrepo-com.svg);
-    background-size: 40px 40px;
+  background-image: url(../img/help-svgrepo-com.svg);
+  background-size: 40px 40px;
 }
 
 .settings-button {
-    background-image: url(../img/settings-svgrepo-com.svg);
-    background-size: 40px 40px;
+  background-image: url(../img/settings-svgrepo-com.svg);
+  background-size: 40px 40px;
 }
 
 .share-button {
-    background-image: url(../img/share-svgrepo-com.svg);
-    background-size: 40px 40px;
-}
-
-.ltn-cell {
-    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30'%3E%3Cpath class='leaflet-interactive' stroke='blue' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' fill='blue' fill-opacity='.2' fill-rule='evenodd' d='M5 5 h20v20h-20v-20'%3E%3C/path%3E%3C/svg%3E") 15 15, auto;
+  background-image: url(../img/share-svgrepo-com.svg);
+  background-size: 40px 40px;
 }
 
 .delete-button {
-    background-image: url(../img/outlined-trash-bin-svgrepo-com.svg);
-    width: 29px;
-    height: 29px;
-    background-size: 29px 29px;
+  background-image: url(../img/outlined-trash-bin-svgrepo-com.svg);
+  background-repeat: no-repeat;
+  width: 2em;
+  height: 2em;
+  background-size: 2em 2em;
 }
 
 .delete-button:hover {
-    box-shadow: 0 2px 2px 0 black;
-}
-
-ul.popup-buttons {
-    padding: 0;
-}
-
-ul.popup-buttons li {
-    list-style: none;
-    display: inline-block;
+  box-shadow: 0 2px 2px 0 black;
 }
 
 .hide {
-    display: none;
+  display: none;
 }
 
 h1 {
-    @apply font-medium leading-tight text-3xl mt-0 mb-8 ;
+  @apply font-medium leading-tight text-3xl mt-0 mb-8;
 }
 
 h2 {
-    @apply font-medium leading-tight text-xl mt-0 mb-2 ;
+  @apply font-medium leading-tight text-xl mt-0 mb-2;
 }
 
 .modal-filter {
-    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30'%3E%3Ccircle cx='15' cy='15' r='10' stroke='green' stroke-width='3' fill='green' fill-opacity='.2' %3E%3C/circle%3E%3C/svg%3E") 15 15, auto;
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30'%3E%3Ccircle cx='15' cy='15' r='10' stroke='green' stroke-width='3' fill='green' fill-opacity='.2' %3E%3C/circle%3E%3C/svg%3E")
+      15 15,
+    auto;
 }
 
 .tram-line [role="button"] {
-    cursor: crosshair;
+  cursor: crosshair;
 }
 
 .mobility-lane [role="button"] {
-    cursor: crosshair;
+  cursor: crosshair;
 }
 
 .car-free-street [role="button"] {
-    cursor: crosshair;
+  cursor: crosshair;
 }
 
 .school-street [role="button"] {
-    cursor: crosshair;
+  cursor: crosshair;
 }
 
-.one-way-street {
-    cursor: crosshair;
+.one-way-street [role="button"] {
+  cursor: crosshair;
+}
+
+.ltn-cell [role="button"] {
+  cursor: crosshair;
 }
 
 a {
-    color: blue;
+  color: blue;
 }
 
 .popup {
-    padding: 6px 8px;
-    font: 14px Arial, Helvetica, sans-serif;
-    background: white;
-    line-height: 24px;
-    color: #555;
+  padding: 6px 8px;
+  font: 14px Arial, Helvetica, sans-serif;
+  background: white;
+  line-height: 24px;
+  color: #555;
 }
 
-    .popup h4 {
-        text-align: center;
-        font-size: 16px;
-        font-weight: 700;
-        margin: 2px 12px 8px;
-        color: #777;
-    }
+.popup h4 {
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+  margin: 2px 12px 8px;
+  color: #777;
+}
 
-    .popup label {
-        display: inline-block;
-        min-width: 50px;
-    }
-  
-    .popup input[type='text'], .popup [type='number'] {
-        margin: 0 5px;
-        box-shadow: 0 0 2px 2px #555;
-    }
+.popup label {
+  display: inline-block;
+  min-width: 50px;
+}
 
-    .popup span {
-        margin-right: 5px;;
-    }
+.popup input[type="text"],
+.popup [type="number"] {
+  margin: 0 5px;
+  box-shadow: 0 0 2px 2px #555;
+}
 
-    .popup div.toggle input {
-        min-width: 50px;
-    }
-  
-    .popup div.toggle label {
-        padding-left: 10px;;
-        cursor: pointer;
-    }
-  
-    .popup i {
-        width: 18px;
-        height: 18px;
-        float: left;
-        margin: 0 8px 0 0;
-        opacity: 0.7;
-    }
-  
-    .popup i.icon {
-        background-size: 18px;
-        background-color: rgba(255, 255, 255, 1);
-    }
-  
+.popup span {
+  margin-right: 5px;
+}
+
+.popup div.toggle input {
+  min-width: 50px;
+}
+
+.popup div.toggle label {
+  padding-left: 10px;
+  cursor: pointer;
+}
+
+.popup i {
+  width: 18px;
+  height: 18px;
+  float: left;
+  margin: 0 8px 0 0;
+  opacity: 0.7;
+}
+
+.popup i.icon {
+  background-size: 18px;
+  background-color: rgba(255, 255, 255, 1);
+}
+
+.leaflet-popup a[role="button"],
+.leaflet-popup a > span {
+  cursor: default;
+}
+
+.leaflet-tooltip {
+  font-size: 3em;
+  font-weight: 700;
+  background-color: transparent;
+  border: 0;
+  box-shadow: none;
+  cursor: default;
+}
+
+ul.popup-buttons {
+  display: flex;
+  align-items: stretch; /* Default */
+  justify-content: space-between;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+ul.popup-buttons li {
+  list-style: none;
+  display: block;
+  flex: 0 1 auto; /* Default */
+  justify-content: center;
+  align-items: center;
+}
+
+ul.popup-buttons li .label-editor {
+  box-sizing: border-box;
+  border: 2 solid #000000;
+  height: 2em;
+  width: 8em;
+}
