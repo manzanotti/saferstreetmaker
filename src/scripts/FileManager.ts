@@ -64,7 +64,8 @@ export class FileManager {
             'settings': settings,
             'centre': centre,
             'zoom': zoom,
-            'layers': layers
+            'layers': layers,
+            'lastSaved': new Date().toISOString()
         };
 
         return mapData;
