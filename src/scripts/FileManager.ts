@@ -57,7 +57,7 @@ export class FileManager {
     private mapToJSON = (settings: Settings, layersData: Map<string, IMapLayer>, centre: L.LatLng, zoom: number): any => {
         let layers = {};
         layersData.forEach((layer, layerName) => {
-            layers[layerName] = layer.getLayer().toGeoJSON();
+            layers[layerName] = layer.toGeoJSON();
         });
 
         const mapData = {
