@@ -39,9 +39,9 @@ export class CarFreeStreetLayer implements IMapLayer {
             }
         });
 
-        PubSub.subscribe(EventTopics.drawCreated, (msg, latLng: L.LatLng) => {
+        PubSub.subscribe(EventTopics.drawCreated, (msg, latLng: Array<L.LatLng>) => {
             if (this.selected) {
-                this.addMarker([latLng]);
+                this.addMarker(latLng);
                 PubSub.publish(EventTopics.layerUpdated, CarFreeStreetLayer.Id);
             }
         });

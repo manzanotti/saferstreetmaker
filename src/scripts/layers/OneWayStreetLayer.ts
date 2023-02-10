@@ -35,9 +35,9 @@ export class OneWayStreetLayer implements IMapLayer {
             this.deselectLayer();
         });
 
-        PubSub.subscribe(EventTopics.drawCreated, (msg, latLng: L.LatLng) => {
+        PubSub.subscribe(EventTopics.drawCreated, (msg, latLng: Array<L.LatLng>) => {
             if (this.selected) {
-                this.addMarker([latLng]);
+                this.addMarker(latLng);
                 PubSub.publish(EventTopics.layerUpdated, OneWayStreetLayer.Id);
             }
         });
@@ -167,11 +167,11 @@ export class OneWayStreetLayer implements IMapLayer {
 
     setCursor = () => {
         document.getElementById('map')?.classList.remove('leaflet-grab');
-        document.getElementById('map')?.classList.add('tram-line');
+        document.getElementById('map')?.classList.add('one-way-street');
     };
 
     removeCursor = () => {
-        document.getElementById('map')?.classList.remove('tram-line');
+        document.getElementById('map')?.classList.remove('one-way-street');
         document.getElementById('map')?.classList.add('leaflet-grab');
     };
 

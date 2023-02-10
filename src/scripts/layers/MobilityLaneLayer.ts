@@ -32,9 +32,9 @@ export class MobilityLaneLayer implements IMapLayer {
             this.deselectLayer();
         });
 
-        PubSub.subscribe(EventTopics.drawCreated, (msg, latLng: L.LatLng) => {
+        PubSub.subscribe(EventTopics.drawCreated, (msg, latLng: Array<L.LatLng>) => {
             if (this.selected) {
-                this.addMarker([latLng]);
+                this.addMarker(latLng);
                 PubSub.publish(EventTopics.layerUpdated, MobilityLaneLayer.Id);
             }
         });
@@ -168,7 +168,7 @@ export class MobilityLaneLayer implements IMapLayer {
             mobilityLanes.forEach((mobilityLane) => {
                 const points = new Array<L.LatLng>();
 
-                // For a brief period, saving nested the coordinates inside another array, for some reason.
+                // For a brief period, saving nested the coordinates inside another array.
                 const coordinates = mobilityLane.geometry.coordinates.length === 1 ? mobilityLane.geometry.coordinates[0] : mobilityLane.geometry.coordinates;
                 coordinates.forEach((coordinate) => {
                     const point = new L.LatLng(coordinate[1], coordinate[0]);
