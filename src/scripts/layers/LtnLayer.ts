@@ -10,7 +10,6 @@ export class LtnLayer implements IMapLayer {
     public selected: boolean;
     private readonly _layer: L.GeoJSON;
     private readonly _layerColour = '#ff5e00';
-    private _tooltip: L.Polygon<any>;
 
     private _ltnTitle: string = '1';
 
@@ -47,11 +46,13 @@ export class LtnLayer implements IMapLayer {
         });
 
         PubSub.subscribe(EventTopics.mapZoomChanged, (msg, zoomLevel: number) => {
-            if (zoomLevel < 14) {
-                this._tooltip.closeTooltip();
-            } else {
-                this._tooltip.openTooltip();
-            }
+            this._layer.eachLayer((layer) => {
+                if (zoomLevel < 14) {
+                    layer.closeTooltip();
+                } else {
+                    layer.openTooltip();
+                }
+            });
         });
     };
 
@@ -63,14 +64,14 @@ export class LtnLayer implements IMapLayer {
                 PubSub.publish(EventTopics.layerUpdated, LtnLayer.Id);
             });
 
-        polygon.properties = {};
-        polygon.properties.label = label;
+        polygon['properties'] = {};
+        polygon['properties'].label = label;
 
-        this._tooltip = polygon.bindTooltip(label,
+        const tooltip = polygon.bindTooltip(label,
             { permanent: true, direction: "center" }
         ).openTooltip()
 
-        const popup = this.createPopup(polygon, this._tooltip, label);
+        const popup = this.createPopup(polygon, tooltip, label);
 
         polygon.on('click', (e) => {
             this.onClick(e);
@@ -96,12 +97,15 @@ export class LtnLayer implements IMapLayer {
         labelElement.addEventListener('keyup', (e) => {
             const text = labelElement.value;
             tooltip.setTooltipContent(text);
+            polygon['properties'].label = text;
 
             if (text.length == 0) {
-                this._tooltip.closeTooltip();
+                polygon.closeTooltip();
             } else {
-                this._tooltip.openTooltip();
+                polygon.openTooltip();
             }
+
+            PubSub.publish(EventTopics.layerUpdated, LtnLayer.Id);
         });
         labelControl.appendChild(labelElement);
         controlList.appendChild(labelControl);
@@ -235,16 +239,14 @@ export class LtnLayer implements IMapLayer {
             features: new Array()
         };
         this._layer.eachLayer((layer) => {
-            let layerJson = layer.toGeoJSON();
+            let layerJson = (layer as L.Polygon).toGeoJSON();
 
-            const properties = layer.properties;
+            const properties = layer['properties'];
             layerJson.properties.label = properties.label;
-            layerJson.properties.color = layer.options.color;
+            layerJson.properties.color = layer['options'].color;
 
             json.features.push(layerJson);
         });
-
-        const geoJson = this._layer.toGeoJSON();
 
         return json;
     }
