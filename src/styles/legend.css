@@ -1,33 +1,43 @@
 .legend {
-    padding: 6px 8px;
-    font: 14px Arial, Helvetica, sans-serif;
-    background: white;
-    background: rgba(255, 255, 255, 0.8);
-    line-height: 24px;
-    color: #555;
-  }
-  .legend h4 {
-    text-align: center;
-    font-size: 16px;
-    font-weight: 700;
-    margin: 2px 12px 8px;
-    color: #777;
-  }
+  padding: 6px 8px;
+  font: 14px Arial, Helvetica, sans-serif;
+  background: white;
+  background: rgba(255, 255, 255, 0.8);
+  line-height: 24px;
+  color: #555;
+}
 
-  .legend span {
-    position: relative;
-    bottom: 3px;
-  }
+.legend li {
+  list-style: none;
+  cursor: pointer;
+}
 
-  .legend i {
-    width: 18px;
-    height: 18px;
-    float: left;
-    margin: 0 8px 0 0;
-    opacity: 0.7;
-  }
+.legend li.disabled {
+  background-color: #ddd;
+}
 
-  .legend i.icon {
-    background-size: 18px;
-    background-color: rgba(255, 255, 255, 1);
-  }
+.legend h4 {
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+  margin: 2px 12px 8px;
+  color: #777;
+}
+
+.legend span {
+  position: relative;
+  bottom: 3px;
+}
+
+.legend i {
+  width: 18px;
+  height: 18px;
+  float: left;
+  margin: 0 8px 0 0;
+  opacity: 0.7;
+}
+
+.legend i.icon {
+  background-size: 18px;
+  background-color: rgba(255, 255, 255, 1);
+}

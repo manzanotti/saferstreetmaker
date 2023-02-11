@@ -18,9 +18,8 @@
 
 .leaflet-toolbar-0 > li > .leaflet-toolbar-icon > div,
 .leaflet-control-toolbar .leaflet-toolbar-1 > li > .leaflet-toolbar-icon > div {
-  width: 56px;
-  height: 56px;
-  margin: 0 0 0 2;
+  width: 60px;
+  height: 60px;
   background-position: center;
   background-repeat: no-repeat;
 }
@@ -50,32 +49,32 @@
   background-size: 40px 40px;
 }
 
-.mobility-lane-button {
+a.mobility-lane-button > div {
   background-image: url(../img/bicycle-svgrepo-com.svg);
   background-size: 50px 50px;
 }
 
-.tram-line-button {
+a.tram-line-button > div {
   background-image: url(../img/tram-svgrepo-com.svg);
   background-size: 50px 50px;
 }
 
-.car-free-street-button {
+a.car-free-street-button > div {
   background-image: url(../img/ban-on-driving-147248.svg);
   background-size: 50px 50px;
 }
 
-.school-street-button {
+a.school-street-button > div {
   background-image: url(../img/school-street.svg);
   background-size: 50px 50px;
 }
 
-.one-way-street-button {
+a.one-way-street-button > div {
   background-image: url(../img/one-way-street.svg);
   background-size: 40px 50px;
 }
 
-.ltn-button {
+a.ltn-button > div {
   font-size: 2em;
   line-height: 56px;
 }
@@ -214,7 +213,7 @@ a {
 .leaflet-tooltip {
   font-size: 3em;
   font-weight: 700;
-  background-color: transparent;
+  background-color: rgba(255, 94, 0, 0.3);
   border: 0;
   box-shadow: none;
   cursor: default;
