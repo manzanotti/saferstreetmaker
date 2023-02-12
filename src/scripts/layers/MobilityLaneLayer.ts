@@ -10,6 +10,7 @@ export class MobilityLaneLayer implements IMapLayer {
     private selected: boolean = false;
     private readonly _layer: L.GeoJSON;
     private readonly _layerColour = '#2222ff';
+    public visible: boolean = false;
 
     constructor() {
         this.id = MobilityLaneLayer.Id;
@@ -112,8 +113,9 @@ export class MobilityLaneLayer implements IMapLayer {
         const modalFilterAction = L['Toolbar2'].Action.extend({
             options: {
                 toolbarIcon: {
-                    html: '<div class="mobility-lane-button"></div>',
-                    tooltip: 'Add mobility lanes to the map'
+                    html: '<div></div>',
+                    tooltip: 'Add mobility lanes to the map',
+                    className: 'mobility-lane-button'
                 }
             },
 
@@ -141,15 +143,32 @@ export class MobilityLaneLayer implements IMapLayer {
     };
 
     getLegendEntry = () => {
+        const holdingElement = document.createElement('li');
+        holdingElement.id = `${this.id}-legend`;
+        holdingElement.setAttribute('title', 'Toggle Car-free streets from the map');
+
         const icon = document.createElement('i');
         icon.style.backgroundColor = this._layerColour;
+        holdingElement.appendChild(icon);
 
         const text = document.createElement('span');
         text.textContent = this.title;
+        holdingElement.appendChild(text);
 
         const br = document.createElement('br');
+        holdingElement.appendChild(br);
 
-        return [icon, text, br];
+        holdingElement.addEventListener('click', (e) => {
+            if (this.visible) {
+                this.visible = false;
+                PubSub.publish(EventTopics.hideLayer, this.id);
+            } else {
+                this.visible = true;
+                PubSub.publish(EventTopics.showLayer, this.id);
+            }
+        });
+
+        return holdingElement;
     }
 
     setCursor = () => {
@@ -189,5 +208,6 @@ export class MobilityLaneLayer implements IMapLayer {
 
     clearLayer = (): void => {
         this._layer.clearLayers();
+        this.visible = false;
     };
 }

@@ -16,4 +16,6 @@ export class EventTopics {
     static showSettings = 'showSettings';
     static showSharingPopup = 'showSharingPopup';
     static mapZoomChanged = 'mapZoomChanged';
+    static hideLayer = 'hideLayer';
+    static showLayer = 'showLayer';
 }

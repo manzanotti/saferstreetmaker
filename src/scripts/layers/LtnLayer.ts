@@ -10,11 +10,14 @@ export class LtnLayer implements IMapLayer {
     public selected: boolean;
     private readonly _layer: L.GeoJSON;
     private readonly _layerColour = '#ff5e00';
+    public visible: boolean = false;
 
     private _ltnTitle: string = '1';
 
     constructor() {
-        this._layer = L.geoJSON();
+        this._layer = L.geoJSON(undefined, {
+            pane: 'ltns'
+        });
 
         this.id = LtnLayer.Id;
         this.title = 'LTN Cells';
@@ -58,7 +61,10 @@ export class LtnLayer implements IMapLayer {
 
     private addLtnCell = (points: Array<L.LatLng>, label: string, color: string) => {
         const polygon = new L.Polygon(points, {
-            color: color || this._layerColour
+            color: color || this._layerColour,
+            fillOpacity: 0,
+            weight: 5,
+            pane: 'ltns'
         })
             .on('edit', (e) => {
                 PubSub.publish(EventTopics.layerUpdated, LtnLayer.Id);
@@ -158,8 +164,9 @@ export class LtnLayer implements IMapLayer {
         const modalFilterAction = L['Toolbar2'].Action.extend({
             options: {
                 toolbarIcon: {
-                    html: '<div class="ltn-button">LTN</div>',
-                    tooltip: 'Add LTN Cells to the map'
+                    html: '<div>LTN</div>',
+                    tooltip: 'Add LTN Cells to the map',
+                    className: 'ltn-button'
                 }
             },
 
@@ -190,15 +197,32 @@ export class LtnLayer implements IMapLayer {
     };
 
     getLegendEntry = () => {
+        const holdingElement = document.createElement('li');
+        holdingElement.id = `${this.id}-legend`;
+        holdingElement.setAttribute('title', 'Toggle LTNs from the map');
+
         const icon = document.createElement('i');
         icon.style.backgroundColor = this._layerColour;
+        holdingElement.appendChild(icon);
 
         const text = document.createElement('span');
         text.textContent = this.title;
+        holdingElement.appendChild(text);
 
         const br = document.createElement('br');
+        holdingElement.appendChild(br);
 
-        return [icon, text, br];
+        holdingElement.addEventListener('click', (e) => {
+            if (this.visible) {
+                this.visible = false;
+                PubSub.publish(EventTopics.hideLayer, this.id);
+            } else {
+                this.visible = true;
+                PubSub.publish(EventTopics.showLayer, this.id);
+            }
+        });
+
+        return holdingElement;
     }
 
     private setCursor = () => {
@@ -253,5 +277,6 @@ export class LtnLayer implements IMapLayer {
 
     clearLayer = (): void => {
         this._layer.clearLayers();
+        this.visible = false;
     };
 }

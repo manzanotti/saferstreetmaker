@@ -10,6 +10,7 @@ export class ModalFilterLayer implements IMapLayer {
     public selected: boolean;
     private readonly _layer: L.GeoJSON;
     private readonly _modalFilterIcon: string;
+    public visible: boolean = false;
 
     constructor() {
         this._modalFilterIcon = `<svg width="60" height="60"><circle cx="29" cy="29" r="15" stroke="green" stroke-width="3" fill="green" fill-opacity=".2" /></svg>`;
@@ -50,7 +51,8 @@ export class ModalFilterLayer implements IMapLayer {
         const modalFilter = new L.CircleMarker(coordinates, {
             draggable: true,
             color: 'green',
-            radius: 10
+            radius: 10,
+            pane: 'filters'
         })
             .on('click', (e) => { this.deleteMarker(e); });
 
@@ -84,7 +86,8 @@ export class ModalFilterLayer implements IMapLayer {
             options: {
                 toolbarIcon: {
                     html: this._modalFilterIcon,
-                    tooltip: 'Add modal filters to the map'
+                    tooltip: 'Add modal filters to the map',
+                    class: 'filters'
                 }
             },
 
@@ -106,15 +109,32 @@ export class ModalFilterLayer implements IMapLayer {
     };
 
     getLegendEntry = () => {
+        const holdingElement = document.createElement('li');
+        holdingElement.id = `${this.id}-legend`;
+        holdingElement.setAttribute('title', 'Toggle Car-free streets from the map');
+
         const icon = document.createElement('i');
         icon.innerHTML = `<svg width="30" height="30"><circle cx="10" cy="10" r="7" stroke="green" stroke-width="3" fill="green" fill-opacity=".2" /></svg>`;
+        holdingElement.appendChild(icon);
 
         const text = document.createElement('span');
         text.textContent = this.title;
+        holdingElement.appendChild(text);
 
         const br = document.createElement('br');
+        holdingElement.appendChild(br);
 
-        return [icon, text, br];
+        holdingElement.addEventListener('click', (e) => {
+            if (this.visible) {
+                this.visible = false;
+                PubSub.publish(EventTopics.hideLayer, this.id);
+            } else {
+                this.visible = true;
+                PubSub.publish(EventTopics.showLayer, this.id);
+            }
+        });
+
+        return holdingElement;
     }
 
     setCursor = () => {
@@ -145,5 +165,6 @@ export class ModalFilterLayer implements IMapLayer {
 
     clearLayer = (): void => {
         this._layer.clearLayers();
+        this.visible = false;
     };
 }

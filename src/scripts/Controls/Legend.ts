@@ -13,16 +13,19 @@ export class Legend {
 
         div.appendChild(header);
 
-        let legendEntries: Array<HTMLElement> = [];
+        const ul = document.createElement('ul');
+
         layers.forEach((layer: IMapLayer, layerName) => {
-            if(activeLayers.includes(layerName)){
-                legendEntries.push(...layer.getLegendEntry());
+            if (activeLayers.includes(layerName)) {
+                ul.appendChild(layer.getLegendEntry());
             }
         });
 
-        legendEntries.forEach((element: HTMLElement) => {
-            div.appendChild(element);
-        });
+        div.appendChild(ul);
+
+        const instructions = document.createElement('div');
+        instructions.textContent = 'Click item to toggle visibility';
+        div.appendChild(instructions);
 
         legend.onAdd = (map) => {
             return div;

@@ -26,14 +26,16 @@ export class MapContainer {
     private _sharingControl: L.Control | null = null;
     private _toolbarControl: L.Toolbar2.Control;
     private _legend: L.Control;
-    private _overlay: L.Control.Layers;
 
     constructor(fileManager: FileManager) {
         this._fileManager = fileManager;
 
-        this._map = new L.Map('map');
         this._settings = new Settings();
         this._settings.title = 'Hello Cleveland';
+
+        this._map = new L.Map('map');
+
+        this.setupPanes(this._map);
 
         this.setupLayers();
 
@@ -42,13 +44,13 @@ export class MapContainer {
         this.setupCloseHelpButtons();
     }
 
-    private addTileLayer = () => {
-        const tileLayer = new L.TileLayer('https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-            maxZoom: 20
-        });
-        this._map.addLayer(tileLayer);
-    };
+    private setupPanes = (map: L.Map) => {
+        const ltnsPane = map.createPane('ltns');
+        ltnsPane.style.zIndex = '300';
+
+        const filtersPane = map.createPane('filters');
+        filtersPane.style.zIndex = '500';
+    }
 
     private setupLayers = () => {
         this._layers = new Map<string, IMapLayer>;
@@ -64,10 +66,21 @@ export class MapContainer {
         this.activateAllLayers();
     };
 
+    private addTileLayer = () => {
+        const tileLayer = new L.TileLayer('https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+            maxZoom: 20
+        });
+        this._map.addLayer(tileLayer);
+    };
+
     private addLayers(settings: Settings) {
         this._layers.forEach((layer, layerName) => {
             if (settings.activeLayers.includes(layerName)) {
-                this._map.addLayer(layer.getLayer());
+                layer.visible = true;
+                const layerToAdd = layer.getLayer();
+
+                this._map.addLayer(layerToAdd);
             }
         });
     }
@@ -76,18 +89,6 @@ export class MapContainer {
         this._toolbarControl = Toolbar.create(this._map, layers, settings);
         this._map.addControl(this._toolbarControl);
     }
-
-    private addOverlay = (layers: Map<string, IMapLayer>, settings: Settings) => {
-        const overlays = {};
-        layers.forEach((layer, layerName) => {
-            if (settings.activeLayers.includes(layerName)) {
-                overlays[layer.title] = layer.getLayer();
-            }
-        });
-
-        this._overlay = new L.Control.Layers(undefined, overlays, { collapsed: false, position: 'bottomright' });
-        this._map.addControl(this._overlay);
-    };
 
     private addLegend = (layers: Map<string, IMapLayer>, settings: Settings) => {
         this._legend = Legend.create(layers, settings.activeLayers);
@@ -136,15 +137,10 @@ export class MapContainer {
             this._map.removeControl(this._legend);
         }
 
-        if (this._overlay !== undefined) {
-            this._map.removeControl(this._overlay);
-        }
-
         if (!settings.hideToolbar) {
             this.addToolbar(this._layers, settings);
         }
 
-        this.addOverlay(this._layers, settings);
         this.addLegend(this._layers, settings);
     }
 
@@ -268,6 +264,23 @@ export class MapContainer {
 
         PubSub.subscribe(EventTopics.showHelp, (msg) => {
             this.showPopup('help');
+        });
+
+        PubSub.subscribe(EventTopics.hideLayer, (msg, layerId) => {
+            var layer = this._layers.get(layerId);
+            if (layer !== undefined) {
+                this._map.removeLayer(layer.getLayer());
+                document.getElementById(`${layerId}-legend`)?.classList.add('disabled');
+            }
+        });
+
+        PubSub.subscribe(EventTopics.showLayer, (msg, layerId) => {
+            var layer = this._layers.get(layerId);
+            if (layer !== undefined) {
+                const layerToAdd = layer.getLayer();
+                this._map.addLayer(layerToAdd);
+                document.getElementById(`${layerId}-legend`)?.classList.remove('disabled');
+            }
         });
     }
 
