@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "postcss": "^8.4.21",
-    "tailwindcss": "^3.1.8",
+    "tailwindcss": "^3.2.6",
     "tw-elements": "^1.0.0-alpha13"
   },
   "alias": {
