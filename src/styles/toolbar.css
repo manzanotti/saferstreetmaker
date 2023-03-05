@@ -1,0 +1,92 @@
+.toolbar li {
+  height: 60px;
+  cursor: pointer;
+  position: relative;
+}
+
+.toolbar input.toolbar-button {
+  width: 60px;
+  height: 60px;
+  background-position: center;
+  background-repeat: no-repeat;
+  padding: 0;
+  background-color: #ffffff;
+}
+
+.toolbar li input.toolbar-button.selected {
+  border: 1px black solid;
+  background-color: #dddddd;
+}
+
+.toolbar li input.toolbar-button:not(.selected):hover {
+  background-color: #eeeeee;
+}
+
+.toolbar li .subToolbar:not(.hidden) {
+  height: 60px;
+  position: absolute;
+  display: inline-block;
+}
+
+.toolbar li .subToolbar > li {
+  display: inline-block;
+}
+
+.toolbar input#map-manager-button {
+  background-image: url(../img/folder-svgrepo-com.svg);
+  background-size: 40px 40px;
+}
+
+.toolbar input#modal-filter-button {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Ccircle cx='30' cy='30' r='20' stroke='green' stroke-width='3' fill='green' fill-opacity='.2' %3E%3C/circle%3E%3C/svg%3E");
+}
+
+.toolbar input#mobility-lane-button {
+  background-image: url(../img/bicycle-svgrepo-com.svg);
+  background-size: 50px 50px;
+}
+
+.toolbar input#tram-line-button {
+  background-image: url(../img/tram-svgrepo-com.svg);
+  background-size: 50px 50px;
+}
+
+.toolbar input#car-free-street-button {
+  background-image: url(../img/ban-on-driving-147248.svg);
+  background-size: 50px 50px;
+}
+
+.toolbar input#school-street-button {
+  background-image: url(../img/school-street.svg);
+  background-size: 50px 50px;
+}
+
+.toolbar input#one-way-street-button {
+  background-image: url(../img/one-way-street.svg);
+  background-size: 40px 50px;
+}
+
+.toolbar input#ltn-button {
+  font-size: 2em;
+  line-height: 56px;
+}
+
+.toolbar input#bus-gate-button {
+  background-image: url(../img/double-decker-bus-svgrepo-com.svg);
+  background-size: 50px 50px;
+}
+
+.toolbar input#settings-button {
+  background-image: url(../img/settings-svgrepo-com.svg);
+  background-size: 40px 40px;
+}
+
+.toolbar input#help-button {
+  background-image: url(../img/help-svgrepo-com.svg);
+  background-size: 40px 40px;
+}
+
+.toolbar input#share-button {
+  background-image: url(../img/share-svgrepo-com.svg);
+  background-size: 40px 40px;
+}

@@ -6,92 +6,16 @@
   z-index: 1;
 }
 
-.leaflet-control-toolbar .leaflet-toolbar-1 {
-  left: 60px;
+h1 {
+  @apply font-medium leading-tight text-3xl mt-0 mb-8;
 }
 
-.leaflet-toolbar-0 > li > .leaflet-toolbar-icon,
-.leaflet-control-toolbar .leaflet-toolbar-1 > li > .leaflet-toolbar-icon {
-  width: 60px;
-  height: 60px;
+h2 {
+  @apply font-medium leading-tight text-xl mt-0 mb-2;
 }
 
-.leaflet-toolbar-0 > li > .leaflet-toolbar-icon > div,
-.leaflet-control-toolbar .leaflet-toolbar-1 > li > .leaflet-toolbar-icon > div {
-  width: 60px;
-  height: 60px;
-  background-position: center;
-  background-repeat: no-repeat;
-}
-
-.leaflet-control-toolbar .leaflet-toolbar-1 > li > .leaflet-toolbar-icon {
-  padding: 0;
-  background-color: #ffffff;
-}
-
-.file-actions {
-  background-image: url(../img/folder-svgrepo-com.svg);
-  background-size: 40px 40px;
-}
-
-.save-file {
-  background-image: url(../img/save-svgrepo-com.svg);
-  background-size: 40px 40px;
-}
-
-.save-geojson-file {
-  background-image: url(../img/geojson-file-svgrepo-com.svg);
-  background-size: 40px 40px;
-}
-
-.load-file {
-  background-image: url(../img/cloud-uploading-arrow-svgrepo-com.svg);
-  background-size: 40px 40px;
-}
-
-a.mobility-lane-button > div {
-  background-image: url(../img/bicycle-svgrepo-com.svg);
-  background-size: 50px 50px;
-}
-
-a.tram-line-button > div {
-  background-image: url(../img/tram-svgrepo-com.svg);
-  background-size: 50px 50px;
-}
-
-a.car-free-street-button > div {
-  background-image: url(../img/ban-on-driving-147248.svg);
-  background-size: 50px 50px;
-}
-
-a.school-street-button > div {
-  background-image: url(../img/school-street.svg);
-  background-size: 50px 50px;
-}
-
-a.one-way-street-button > div {
-  background-image: url(../img/one-way-street.svg);
-  background-size: 40px 50px;
-}
-
-a.ltn-button > div {
-  font-size: 2em;
-  line-height: 56px;
-}
-
-.help-button {
-  background-image: url(../img/help-svgrepo-com.svg);
-  background-size: 40px 40px;
-}
-
-.settings-button {
-  background-image: url(../img/settings-svgrepo-com.svg);
-  background-size: 40px 40px;
-}
-
-.share-button {
-  background-image: url(../img/share-svgrepo-com.svg);
-  background-size: 40px 40px;
+.hide {
+  display: none;
 }
 
 .delete-button {
@@ -104,18 +28,6 @@ a.ltn-button > div {
 
 .delete-button:hover {
   box-shadow: 0 2px 2px 0 black;
-}
-
-.hide {
-  display: none;
-}
-
-h1 {
-  @apply font-medium leading-tight text-3xl mt-0 mb-8;
-}
-
-h2 {
-  @apply font-medium leading-tight text-xl mt-0 mb-2;
 }
 
 .modal-filter {
@@ -148,61 +60,12 @@ h2 {
   cursor: crosshair;
 }
 
+.bus-gate {
+  cursor: url("../img/double-decker-bus-svgrepo-com-cursor.svg") 15 15, auto;
+}
+
 a {
   color: blue;
-}
-
-.popup {
-  padding: 6px 8px;
-  font: 14px Arial, Helvetica, sans-serif;
-  background: white;
-  line-height: 24px;
-  color: #555;
-}
-
-.popup h4 {
-  text-align: center;
-  font-size: 16px;
-  font-weight: 700;
-  margin: 2px 12px 8px;
-  color: #777;
-}
-
-.popup label {
-  display: inline-block;
-  min-width: 50px;
-}
-
-.popup input[type="text"],
-.popup [type="number"] {
-  margin: 0 5px;
-  box-shadow: 0 0 2px 2px #555;
-}
-
-.popup span {
-  margin-right: 5px;
-}
-
-.popup div.toggle input {
-  min-width: 50px;
-}
-
-.popup div.toggle label {
-  padding-left: 10px;
-  cursor: pointer;
-}
-
-.popup i {
-  width: 18px;
-  height: 18px;
-  float: left;
-  margin: 0 8px 0 0;
-  opacity: 0.7;
-}
-
-.popup i.icon {
-  background-size: 18px;
-  background-color: rgba(255, 255, 255, 1);
 }
 
 .leaflet-popup a[role="button"],
@@ -241,4 +104,12 @@ ul.popup-buttons li .label-editor {
   border: 2 solid #000000;
   height: 2em;
   width: 8em;
+}
+
+.bus-gate-icon {
+  background-image: url(../img/double-decker-bus-svgrepo-com.svg);
+  background-size: 23px 23px;
+  background-repeat: no-repeat;
+  height: 23px !important;
+  width: 23px !important;
 }

@@ -1,0 +1,50 @@
+#map-manager input[type="button"] {
+  width: 60px;
+  height: 60px;
+  background-position: center;
+  background-repeat: no-repeat;
+  padding: 0;
+  background-color: #ffffff;
+}
+
+#map-manager input[type="button"]:hover {
+  background-color: #eeeeee;
+}
+
+.toolbar input#map-manager-button {
+  background-image: url(../img/folder-svgrepo-com.svg);
+  background-size: 40px 40px;
+}
+
+input#save-file {
+  background-image: url(../img/save-svgrepo-com.svg);
+  background-size: 40px 40px;
+}
+
+input#save-geojson-file {
+  background-image: url(../img/geojson-file-svgrepo-com.svg);
+  background-size: 40px 40px;
+}
+
+input#load-file {
+  background-image: url(../img/folder-svgrepo-com.svg);
+  background-size: 40px 40px;
+}
+
+input#new-map {
+  background-image: url(../img/add-document-svgrepo-com.svg);
+  background-size: 50px 50px;
+}
+
+#map-manager ul > li {
+  clear: both;
+}
+
+#map-manager ul > li:hover {
+  background-color: #eeeeee;
+}
+
+#map-manager ul > li .delete-button {
+  height: 30px;
+  width: 30px;
+}

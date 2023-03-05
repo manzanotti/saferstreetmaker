@@ -15,17 +15,24 @@ import { Settings } from '../Settings';
 import { SettingsControl } from './Controls/SettingsControl';
 import { SharingControl } from './Controls/SharingControl';
 import { LtnLayer } from './layers/LtnLayer';
+import { BusGateLayer } from './layers/BusGateLayer';
+import { IModalWindow } from './Controls/IModalWindow';
+import { ToolbarButton } from './Controls/ToolbarButton';
+import { HelpButton } from './Controls/HelpButton';
+import { MapManagerControl } from './Controls/MapManagerControl';
 
 export class MapContainer {
+    private static _version: string = '0.7.0';
     private _mapInitialised: boolean = false;
     private _fileManager: FileManager;
     private _map: L.Map;
     private _layers: Map<string, IMapLayer>;
     private _settings: Settings;
-    private _settingsControl: L.Control | null = null;
-    private _sharingControl: L.Control | null = null;
-    private _toolbarControl: L.Toolbar2.Control;
+    private _toolbarControl: L.Control;
     private _legend: L.Control;
+    private _helpButton: HelpButton;
+
+    private _modalWindows: Array<IModalWindow>;
 
     constructor(fileManager: FileManager) {
         this._fileManager = fileManager;
@@ -38,6 +45,10 @@ export class MapContainer {
         this.setupPanes(this._map);
 
         this.setupLayers();
+
+        this._helpButton = new HelpButton();
+
+        this.setupModalWindowControls();
 
         this.addTileLayer();
 
@@ -62,13 +73,27 @@ export class MapContainer {
         this._layers.set(SchoolStreetLayer.Id, new SchoolStreetLayer());
         this._layers.set(OneWayStreetLayer.Id, new OneWayStreetLayer());
         this._layers.set(LtnLayer.Id, new LtnLayer());
+        this._layers.set(BusGateLayer.Id, new BusGateLayer());
 
         this.activateAllLayers();
     };
 
+    private setupModalWindowControls = () => {
+        this._modalWindows = new Array<IModalWindow>();
+
+        const mapManagerControl = new MapManagerControl(this._fileManager);
+        this._modalWindows.push(mapManagerControl);
+
+        const settingsControl = new SettingsControl();
+        this._modalWindows.push(settingsControl);
+
+        const sharingControl = new SharingControl(this._fileManager);
+        this._modalWindows.push(sharingControl);
+    }
+
     private addTileLayer = () => {
         const tileLayer = new L.TileLayer('https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+            attribution: '<a href="https://saferstreetmaker.org" target="_blank">saferstreetmaker.org</a> | &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
             maxZoom: 20
         });
         this._map.addLayer(tileLayer);
@@ -85,8 +110,11 @@ export class MapContainer {
         });
     }
 
-    private addToolbar = (layers: Map<string, IMapLayer>, settings: Settings) => {
-        this._toolbarControl = Toolbar.create(this._map, layers, settings);
+    private addToolbar = (layers: Map<string, IMapLayer>, settings: Settings, modalWindows: Array<IModalWindow>) => {
+        const otherButtons = new Array<ToolbarButton>();
+        otherButtons.push(this._helpButton.getToolbarButton());
+
+        this._toolbarControl = Toolbar.createToolbarControl(layers, settings, modalWindows, otherButtons);
         this._map.addControl(this._toolbarControl);
     }
 
@@ -129,19 +157,37 @@ export class MapContainer {
     }
 
     private updateUI = (settings: Settings) => {
+        this.refreshToolbar(settings);
+        this.refreshLegend(settings);
+    }
+
+    private refreshToolbar = (settings: Settings) => {
         if (this._toolbarControl !== undefined) {
             this._map.removeControl(this._toolbarControl);
         }
 
+        if (!settings.hideToolbar) {
+            this.addToolbar(this._layers, settings, this._modalWindows);
+        }
+    }
+
+    private refreshLegend = (settings: Settings) => {
         if (this._legend !== undefined) {
             this._map.removeControl(this._legend);
         }
 
-        if (!settings.hideToolbar) {
-            this.addToolbar(this._layers, settings);
-        }
-
         this.addLegend(this._layers, settings);
+    }
+
+    private toggleModalWindowVisibility = (windowToShow: IModalWindow | null) => {
+        this._modalWindows.forEach((modalWindow) => {
+            if (windowToShow === null || modalWindow.id !== windowToShow.id) {
+                modalWindow.selected = false;
+                this._map.removeControl(modalWindow.getControl());
+            }
+        });
+
+        this.refreshToolbar(this._settings);
     }
 
     private setupMapEventHandlers = () => {
@@ -151,13 +197,14 @@ export class MapContainer {
 
         this._map.on('keyup', (e: L.LeafletKeyboardEvent) => {
             if (e.originalEvent.key === 'Escape') {
-                PubSub.publish(EventTopics.deselected);
+                this._map.closePopup();
+                PubSub.publish(EventTopics.layerDeselected);
             }
         })
 
         this._map.on('draw:created', (e) => {
             const layer = e.layer;
-            PubSub.publish(EventTopics.drawCreated, layer.getLatLngs());
+            PubSub.publish(EventTopics.drawCreated, { latLngs: layer.getLatLngs(), map: this._map });
         });
 
         this._map.on('zoomend', (e) => {
@@ -168,6 +215,7 @@ export class MapContainer {
 
     private setupSubscribers = () => {
         PubSub.subscribe(EventTopics.fileLoaded, (msg, data) => {
+            this.toggleModalWindowVisibility(null);
             this.clearAllLayers();
             this.resetSettings();
 
@@ -206,11 +254,15 @@ export class MapContainer {
             const centre = this._map.getCenter();
             const zoom = this._map.getZoom();
 
-            this._fileManager.saveMapToFile(this._settings, this._layers, centre, zoom);
+            this._fileManager.saveMapToFile(this._settings, this._layers);
+
+            this.toggleModalWindowVisibility(null);
         });
 
         PubSub.subscribe(EventTopics.saveMapToGeoJSONFile, (msg) => {
             this._fileManager.saveMapToGeoJSONFile(this._settings, this._layers);
+
+            this.toggleModalWindowVisibility(null);
         });
 
         PubSub.subscribe(EventTopics.loadMapFromFile, (msg) => {
@@ -226,17 +278,17 @@ export class MapContainer {
             }
         });
 
-        PubSub.subscribe(EventTopics.showSettings, (msg) => {
-            if (this._settingsControl === null) {
-                this._settingsControl = SettingsControl.create(this._settings, this._layers);
-                this._map.addControl(this._settingsControl);
-            } else {
-                this._map.removeControl(this._settingsControl);
-                this._settingsControl = null;
-            }
+        PubSub.subscribe(EventTopics.hideModalWindows, (msg, windowToShow: IModalWindow | null) => {
+            this.toggleModalWindowVisibility(windowToShow);
         });
 
-        PubSub.subscribe(EventTopics.saveSettings, (msg, settings) => {
+        PubSub.subscribe(EventTopics.showSettings, (msg, settingsControl: SettingsControl) => {
+            this.toggleModalWindowVisibility(settingsControl);
+            settingsControl.update(this._settings, this._layers);
+            this._map.addControl(settingsControl.getControl());
+        });
+
+        PubSub.subscribe(EventTopics.saveSettings, (msg, settings: Settings) => {
             this._settings = settings;
             this.updateUI(settings);
 
@@ -245,24 +297,41 @@ export class MapContainer {
 
             this.saveMap();
 
-            if (this._settingsControl !== null) {
-                this._map.removeControl(this._settingsControl);
-                this._settingsControl = null;
-            }
+            this.toggleModalWindowVisibility(null);
         });
 
-        PubSub.subscribe(EventTopics.showSharingPopup, (msg) => {
-            if (this._sharingControl === null) {
-                const hash = this.saveMapToHash();
-                this._sharingControl = SharingControl.create(hash, this._settings.title);
-                this._map.addControl(this._sharingControl);
-            } else {
-                this._map.removeControl(this._sharingControl);
-                this._sharingControl = null;
-            }
+        PubSub.subscribe(EventTopics.showMapManager, (msg, mapManagerControl: MapManagerControl) => {
+            this.toggleModalWindowVisibility(mapManagerControl);
+            mapManagerControl.update(this._settings, this._layers);
+            this._map.addControl(mapManagerControl.getControl());
+        });
+
+        PubSub.subscribe(EventTopics.createNewMap, (msg, settings: Settings) => {
+            this._settings = settings;
+            this.updateUI(settings);
+
+            this.clearAllLayers();
+            this.removeAllLayers();
+            this.addLayers(settings);
+
+            this.saveMap();
+
+            this.toggleModalWindowVisibility(null);
+        });
+
+        PubSub.subscribe(EventTopics.showSharingPopup, (msg, sharingControl: SharingControl) => {
+            this.toggleModalWindowVisibility(sharingControl);
+            sharingControl.update(this._settings, this._layers);
+            this._map.addControl(sharingControl.getControl());
         });
 
         PubSub.subscribe(EventTopics.showHelp, (msg) => {
+            this.refreshToolbar(this._settings);
+            this.showPopup('help');
+        });
+
+        PubSub.subscribe(EventTopics.hideHelp, (msg) => {
+            this.refreshToolbar(this._settings);
             this.showPopup('help');
         });
 
@@ -281,6 +350,14 @@ export class MapContainer {
                 this._map.addLayer(layerToAdd);
                 document.getElementById(`${layerId}-legend`)?.classList.remove('disabled');
             }
+        });
+
+        PubSub.subscribe(EventTopics.layerDeselected, (msg) => {
+            this.refreshToolbar(this._settings);
+        });
+
+        PubSub.subscribe(EventTopics.layerSelected, (msg) => {
+            this.refreshToolbar(this._settings);
         });
     }
 
@@ -365,12 +442,6 @@ export class MapContainer {
         hyperlink.click();
     }
 
-    saveMapToHash = () => {
-        const centre = this._map.getCenter();
-        const zoom = this._map.getZoom();
-        return this._fileManager.saveMapToHash(this._settings, this._layers, centre, zoom);
-    }
-
     private loadMapData = (geoJSON): boolean => {
         if (geoJSON === null) {
             return false;
@@ -393,27 +464,38 @@ export class MapContainer {
                     layerName = 'CycleLanes';
                 }
 
-                if (this._settings.activeLayers.includes(layerName)) {
-                    const layerJSON = layersJSON[layerName];
-
+                const layerJSON = layersJSON[layerName];
+                if (layerJSON) {
                     layer.loadFromGeoJSON(layerJSON);
+                }
+                if (this._settings.activeLayers.includes(layerName)) {
                     this._map.addLayer(layer.getLayer());
+                } else {
+                    this._map.removeLayer(layer.getLayer());
                 }
             });
         }
 
-        const centre = geoJSON['centre'];
-        const zoom = geoJSON['zoom'];
-        this._map.setView([centre.lat, centre.lng], zoom);
+        if (this._settings && !this._settings.centre) {
+            this._settings.centre = geoJSON['centre'];
+            this._settings.zoom = geoJSON['zoom'];
+        }
+
+        if (this._settings && !this._settings.version) {
+            this._settings.version = MapContainer._version;;
+        }
+
+        if (this._settings.centre) {
+            this._map.setView([this._settings.centre.lat, this._settings.centre.lng], this._settings.zoom);
+        } else {
+            this.setDefaultView();
+        }
 
         return true;
     }
 
     private saveMap = () => {
-        const centre = this._map.getCenter();
-        const zoom = this._map.getZoom();
-
-        this._fileManager.saveMap(this._settings, this._layers, centre, zoom);
+        this._fileManager.saveMap(this._settings, this._layers);
     };
 
     private showErrors = (errorMessages: Array<string>) => {

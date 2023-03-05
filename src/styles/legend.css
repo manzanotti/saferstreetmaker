@@ -41,3 +41,11 @@
   background-size: 18px;
   background-color: rgba(255, 255, 255, 1);
 }
+
+.legend .bus-gate-icon {
+  background-image: url(../img/double-decker-bus-svgrepo-com.svg);
+  background-size: 15px 15px;
+  background-repeat: no-repeat;
+  height: 15px !important;
+  width: 15px !important;
+}

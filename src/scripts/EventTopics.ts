@@ -1,6 +1,6 @@
 export class EventTopics {
     static closePopup = 'closePopup';
-    static deselected = 'deselected';
+    static layerDeselected = 'layerDeselected';
     static drawCreated = 'drawCreated';
     static fileLoaded = 'fileLoaded';
     static hideSettings = 'hideSettings';
@@ -13,9 +13,13 @@ export class EventTopics {
     static saveMapToGeoJSONFile = 'saveMapToGeoJSONFile';
     static saveSettings = 'saveSettings';
     static showHelp = 'showHelp';
+    static hideHelp = 'hideHelp';
     static showSettings = 'showSettings';
     static showSharingPopup = 'showSharingPopup';
     static mapZoomChanged = 'mapZoomChanged';
     static hideLayer = 'hideLayer';
     static showLayer = 'showLayer';
+    static hideModalWindows = 'hideOtherModalWindows';
+    static showMapManager = 'showMapManager';
+    static createNewMap = 'createNewMap';
 }

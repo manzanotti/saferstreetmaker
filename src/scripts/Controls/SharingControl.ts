@@ -1,7 +1,22 @@
 import * as L from 'leaflet';
+import { Settings } from '../../Settings';
 import { EventTopics } from '../EventTopics';
+import { FileManager } from '../FileManager';
+import { IMapLayer } from '../layers/IMapLayer';
+import { IModalWindow } from './IModalWindow';
+import { ToolbarButton } from './ToolbarButton';
 
-export class SharingControl {
+export class SharingControl implements IModalWindow {
+    public static Id: string = 'Sharing';
+    public id: string = SharingControl.Id;
+    public selected: boolean = false;
+
+    private _fileManager: FileManager;
+    private _sharingBox: L.Control;
+    private _settings: Settings;
+    private _layers: Map<string, IMapLayer>;
+
+    private static _prefix: string = 'share';
     private static rowMargin = 'mb-2';
     private static inputDivClasses = ['form-check', 'form-switch'];
     private static checkboxClasses = ['form-check-input', 'appearance-none', 'w-9', '-ml-10',
@@ -10,29 +25,51 @@ export class SharingControl {
     private static labelClasses = ['form-check-label', 'inline-block', 'text-gray-800'];
     private static buttonClasses = ['inline-block', 'px-6', 'py-2.5', 'bg-blue-600', 'text-white', 'font-medium', 'text-xs', 'leading-tight', 'uppercase', 'rounded', 'shadow-md', 'hover:bg-blue-700', 'hover:shadow-lg', 'hover:text-white', 'focus:bg-blue-700', 'focus:shadow-lg', 'focus:outline-none', 'focus:ring-0', 'active:bg-blue-800', 'active:shadow-lg', 'transition', 'duration-150', 'ease-in-out'];
 
-    static getAction = (): L.Toolbar2.Action => {
-        const settingsAction = L.Toolbar2.Action.extend({
-            options: {
-                toolbarIcon: {
-                    html: '<div class="share-button"></div>',
-                    tooltip: 'Share this map'
-                }
-            },
-
-            addHooks: function () {
-                PubSub.publish(EventTopics.showSharingPopup);
-            }
-        });
-
-        return settingsAction;
+    constructor(fileManager: FileManager) {
+        this._fileManager = fileManager;
+        this._sharingBox = new L.Control({ position: "bottomleft" });
+        this._sharingBox.onAdd = (map) => {
+            return this.create();
+        };
     }
 
-    static create = (hash: string, title: string): L.Control => {
-        const sharingBox = new L.Control({ position: "bottomleft" });
+    getToolbarButton = (): ToolbarButton => {
+        const button = new ToolbarButton();
+        {
+            button.id = SharingControl._prefix;
+            button.tooltip = 'Share this map';
+            button.groupName = '';
+            button.action = this.onButtonClick;
+            button.selected = this.selected;
+        };
 
+        return button;
+    }
+
+    getControl = (): L.Control => {
+        return this._sharingBox;
+    }
+
+    update = (settings: Settings, layers: Map<string, IMapLayer>) => {
+        this._settings = settings;
+        this._layers = layers;
+    }
+
+    private onButtonClick = (e: Event, map: L.Map) => {
+        if (this.selected) {
+            PubSub.publish(EventTopics.hideModalWindows, null);
+            this.selected = false;
+            return;
+        }
+
+        this.selected = true;
+        PubSub.publish(EventTopics.showSharingPopup, this);
+    }
+
+    private create = (): HTMLElement => {
         const form = document.createElement('form');
         form.id = 'sharing';
-        form.classList.add('popup');
+        form.classList.add('popup', 'modal');
 
         form.addEventListener('submit', (event) => {
             event.preventDefault();
@@ -41,7 +78,7 @@ export class SharingControl {
             const height = Number.parseInt((<HTMLInputElement>document.getElementById('height'))?.value);
             const hideToolbar = (<HTMLInputElement>document.getElementById('hide-toolbar'))?.checked;
 
-            SharingControl.CreateHtml(width, height, hideToolbar, hash, title);
+            this.CreateHtml(width, height, hideToolbar);
 
             const messageRow = document.getElementById('messageRow');
             if (messageRow !== null) {
@@ -64,13 +101,9 @@ export class SharingControl {
 
         form.appendChild(SharingControl.createMessageRow());
 
-        form.appendChild(SharingControl.createButtons(hash, title));
+        form.appendChild(SharingControl.createButtons());
 
-        sharingBox.onAdd = (map) => {
-            return form;
-        };
-
-        return sharingBox;
+        return form;
     }
 
     private static createWidth = (): HTMLElement => {
@@ -153,7 +186,7 @@ export class SharingControl {
         return div
     }
 
-    private static createButtons = (hash: string, title: string): HTMLElement => {
+    private static createButtons = (): HTMLElement => {
         const element = document.createElement('div');
         element.classList.add('flex');
         element.classList.add('justify-center');
@@ -176,7 +209,7 @@ export class SharingControl {
         });
 
         cancelButton.addEventListener('click', (event: MouseEvent) => {
-            PubSub.publish(EventTopics.showSharingPopup);
+            PubSub.publish(EventTopics.hideModalWindows, null);
         });
 
         element.appendChild(cancelButton);
@@ -193,9 +226,10 @@ export class SharingControl {
         return div;
     }
 
-    private static CreateHtml(width: number, height: number, hideToolbar: boolean, hash: string, title: string) {
+    private CreateHtml(width: number, height: number, hideToolbar: boolean) {
+        const mapHash = this._fileManager.saveMapToHash(this._settings, this._layers)
         const origin = window.location.origin;
-        const html = `<iframe src="${origin}?hide-toolbar=${hideToolbar}#${hash}" width="${width}" height="${height}" title="title"></iframe>`;
+        const html = `<iframe src="${origin}?hide-toolbar=${hideToolbar}#${mapHash}" width="${width}" height="${height}" title="title"></iframe>`;
 
         if (!navigator.clipboard) {
             // Clipboard API not available
