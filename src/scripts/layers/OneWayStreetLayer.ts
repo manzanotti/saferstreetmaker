@@ -1,27 +1,94 @@
 import * as L from 'leaflet';
 import PubSub from 'pubsub-js';
+import { ToolbarButton } from '../Controls/ToolbarButton';
 import { EventTopics } from '../EventTopics';
 import { IMapLayer } from "./IMapLayer";
 
 export class OneWayStreetLayer implements IMapLayer {
     public static Id = 'OneWayStreets';
-    public readonly id: string;
-    public readonly title: string;
-    public selected: boolean;
-    private readonly _eventTopics: EventTopics;
-    private readonly _layer: L.GeoJSON;
-    private readonly _layerColour = '#000000';
+
+    public readonly id: string = OneWayStreetLayer.Id;
+    public readonly title: string = 'One-way Streets';
+    public readonly groupName: string = '';
+    public selected: boolean = false;
     public visible: boolean = false;
 
-    constructor() {
-        this._layer = L.geoJSON();
+    private readonly _prefix = 'one-way-street';
+    private readonly _layer: L.GeoJSON;
+    private readonly _layerColour = '#000000';
 
-        this.id = OneWayStreetLayer.Id;
-        this.title = 'One-way Streets';
-        this.selected = false;
+    constructor() {
+        this._layer = new L.GeoJSON();
 
         this.setupSubscribers();
     }
+
+    getToolbarButton = (): ToolbarButton => {
+        const button = new ToolbarButton();
+        button.id = this._prefix;
+        button.tooltip = 'Add one-way streets to the map';
+        button.groupName = this.groupName;
+        button.action = this.onButtonClick;
+        button.selected = this.selected;
+
+        return button;
+    }
+
+    getLegendEntry = (): HTMLElement => {
+        const holdingElement = document.createElement('li');
+        holdingElement.id = `${this.id}-legend`;
+        holdingElement.setAttribute('title', 'Toggle Car-free streets from the map');
+
+        const icon = document.createElement('i');
+        icon.style.backgroundColor = this._layerColour;
+        holdingElement.appendChild(icon);
+
+        const text = document.createElement('span');
+        text.textContent = this.title;
+        holdingElement.appendChild(text);
+
+        holdingElement.addEventListener('click', (e) => {
+            if (this.visible) {
+                this.visible = false;
+                PubSub.publish(EventTopics.hideLayer, this.id);
+            } else {
+                this.visible = true;
+                PubSub.publish(EventTopics.showLayer, this.id);
+            }
+        });
+
+        return holdingElement;
+    }
+
+    loadFromGeoJSON = (geoJson: L.GeoJSON) => {
+        if (geoJson) {
+            const oneWayStreets = geoJson['features'];
+            oneWayStreets.forEach((oneWayStreet) => {
+                const points = new Array<L.LatLng>();
+
+                // For a brief period, saving nested the coordinates inside another array, for some reason.
+                const coordinates = oneWayStreet.geometry.coordinates.length === 1 ? oneWayStreet.geometry.coordinates[0] : oneWayStreet.geometry.coordinates;
+                coordinates.forEach((coordinate) => {
+                    const point = new L.LatLng(coordinate[1], coordinate[0]);
+                    points.push(point);
+                });
+                this.addMarker(points);
+            });
+        }
+    };
+
+    getLayer = (): L.GeoJSON => {
+        return this._layer;
+    };
+
+    toGeoJSON = (): {} => {
+        return this._layer.toGeoJSON();
+    }
+
+    clearLayer = (): void => {
+        this._layer.clearLayers();
+        this.visible = false;
+    };
 
     private setupSubscribers = () => {
         PubSub.subscribe(EventTopics.layerSelected, (msg, selectedLayerId) => {
@@ -32,19 +99,19 @@ export class OneWayStreetLayer implements IMapLayer {
             }
         });
 
-        PubSub.subscribe(EventTopics.deselected, (msg) => {
+        PubSub.subscribe(EventTopics.layerDeselected, (msg) => {
             this.deselectLayer();
         });
 
-        PubSub.subscribe(EventTopics.drawCreated, (msg, latLng: Array<L.LatLng>) => {
+        PubSub.subscribe(EventTopics.drawCreated, (msg, data: { latLngs: Array<L.LatLng>, map: L.Map }) => {
             if (this.selected) {
-                this.addMarker(latLng);
+                this.addMarker(data.latLngs);
                 PubSub.publish(EventTopics.layerUpdated, OneWayStreetLayer.Id);
             }
         });
     };
 
-    addMarker = (points: Array<L.LatLng>) => {
+    private addMarker = (points: Array<L.LatLng>) => {
         const polyline = new L.Polyline(points, {
             color: this._layerColour,
             weight: 2,
@@ -85,12 +152,12 @@ export class OneWayStreetLayer implements IMapLayer {
         this._layer.addLayer(polyline);
     };
 
-    deleteMarker = (layer: L.Draw.Polyline) => {
+    private deleteMarker = (layer: L.Draw.Polyline) => {
         this._layer.removeLayer(layer);
         PubSub.publish(EventTopics.layerUpdated, OneWayStreetLayer.Id);
     }
 
-    markerOnClick = (e) => {
+    private markerOnClick = (e) => {
         this.selectLayer();
 
         const polyline = e.target;
@@ -98,12 +165,35 @@ export class OneWayStreetLayer implements IMapLayer {
         PubSub.publish(EventTopics.layerSelected, OneWayStreetLayer.Id);
     };
 
-    selectLayer = () => {
+    private onButtonClick = (event: Event, map: L.Map) => {
+        if (this.selected) {
+            this.deselectLayer();
+            PubSub.publish(EventTopics.layerDeselected, OneWayStreetLayer.Id);
+            return;
+        }
+
+        this.selected = true;
+
+        const options = {
+            color: this._layerColour,
+            weight: 5,
+            opacity: 1,
+            smoothFactor: 1
+        };
+        const polyline = new L['Draw'].Polyline(map, options);
+
+        polyline.enable();
+        this.setCursor();
+
+        PubSub.publish(EventTopics.layerSelected, OneWayStreetLayer.Id);
+    }
+
+    private selectLayer = () => {
         this.selected = true;
         this.setCursor();
     }
 
-    deselectLayer = () => {
+    private deselectLayer = () => {
         if (!this.selected) {
             return;
         }
@@ -116,111 +206,13 @@ export class OneWayStreetLayer implements IMapLayer {
         this.selected = false;
     }
 
-    getToolbarAction = (map: L.Map) => {
-        const modalFilterAction = L['Toolbar2'].Action.extend({
-            options: {
-                toolbarIcon: {
-                    html: '<div></div>',
-                    tooltip: 'Add one-way streets to the map',
-                    className: 'one-way-street-button'
-                }
-            },
-
-            addHooks: () => {
-                if (this.selected) {
-                    this.deselectLayer();
-                    this.selected = false;
-                    this.removeCursor();
-                    PubSub.publish(EventTopics.deselected, OneWayStreetLayer.Id);
-                    return;
-                }
-
-                this.selected = true;
-
-                const options = {
-                    color: this._layerColour,
-                    weight: 5,
-                    opacity: 1,
-                    smoothFactor: 1
-                };
-                const polyline = new L['Draw'].Polyline(map, options);
-
-                polyline.enable();
-                this.setCursor();
-
-                PubSub.publish(EventTopics.layerSelected, OneWayStreetLayer.Id);
-            }
-        });
-
-        return modalFilterAction;
-    };
-
-    getLegendEntry = () => {
-        const holdingElement = document.createElement('li');
-        holdingElement.id = `${this.id}-legend`;
-        holdingElement.setAttribute('title', 'Toggle Car-free streets from the map');
-
-        const icon = document.createElement('i');
-        icon.style.backgroundColor = this._layerColour;
-        holdingElement.appendChild(icon);
-
-        const text = document.createElement('span');
-        text.textContent = this.title;
-        holdingElement.appendChild(text);
-
-        const br = document.createElement('br');
-        holdingElement.appendChild(br);
-
-        holdingElement.addEventListener('click', (e) => {
-            if (this.visible) {
-                this.visible = false;
-                PubSub.publish(EventTopics.hideLayer, this.id);
-            } else {
-                this.visible = true;
-                PubSub.publish(EventTopics.showLayer, this.id);
-            }
-        });
-
-        return holdingElement;
-    }
-
-    setCursor = () => {
+    private setCursor = () => {
         document.getElementById('map')?.classList.remove('leaflet-grab');
         document.getElementById('map')?.classList.add('one-way-street');
     };
 
-    removeCursor = () => {
+    private removeCursor = () => {
         document.getElementById('map')?.classList.remove('one-way-street');
         document.getElementById('map')?.classList.add('leaflet-grab');
-    };
-
-    loadFromGeoJSON = (geoJson: L.GeoJSON) => {
-        if (geoJson) {
-            const oneWayStreets = geoJson['features'];
-            oneWayStreets.forEach((oneWayStreet) => {
-                const points = new Array<L.LatLng>();
-
-                // For a brief period, saving nested the coordinates inside another array, for some reason.
-                const coordinates = oneWayStreet.geometry.coordinates.length === 1 ? oneWayStreet.geometry.coordinates[0] : oneWayStreet.geometry.coordinates;
-                coordinates.forEach((coordinate) => {
-                    const point = new L.LatLng(coordinate[1], coordinate[0]);
-                    points.push(point);
-                });
-                this.addMarker(points);
-            });
-        }
-    };
-
-    getLayer = (): L.GeoJSON => {
-        return this._layer;
-    };
-
-    toGeoJSON = (): {} => {
-        return this._layer.toGeoJSON();
-    }
-
-    clearLayer = (): void => {
-        this._layer.clearLayers();
-        this.visible = false;
     };
 }

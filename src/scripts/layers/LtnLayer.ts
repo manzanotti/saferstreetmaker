@@ -1,30 +1,113 @@
 import * as L from 'leaflet';
 import PubSub from 'pubsub-js';
+import { ToolbarButton } from '../Controls/ToolbarButton';
 import { EventTopics } from '../EventTopics';
 import { IMapLayer } from "./IMapLayer";
 
 export class LtnLayer implements IMapLayer {
     public static Id = 'LtnCells';
-    public readonly id: string;
-    public readonly title: string;
-    public selected: boolean;
-    private readonly _layer: L.GeoJSON;
-    private readonly _layerColour = '#ff5e00';
+
+    public readonly id: string = LtnLayer.Id;
+    public readonly title: string = 'LTN Cells';
+    public readonly groupName: string = '';
+    public selected: boolean = false;
     public visible: boolean = false;
 
+    private readonly _prefix = 'ltn';
+    private readonly _layer: L.GeoJSON;
+    private readonly _layerColour = '#cc00cc';
     private _ltnTitle: string = '1';
 
     constructor() {
-        this._layer = L.geoJSON(undefined, {
+        this._layer = new L.GeoJSON(undefined, {
             pane: 'ltns'
         });
 
-        this.id = LtnLayer.Id;
-        this.title = 'LTN Cells';
-        this.selected = false;
-
         this.setupSubscribers();
     }
+
+    getToolbarButton = (): ToolbarButton => {
+        const button = new ToolbarButton();
+        button.id = this._prefix;
+        button.tooltip = 'Add LTNs to the map';
+        button.groupName = this.groupName;
+        button.action = this.onButtonClick;
+        button.text = 'LTN';
+        button.selected = this.selected;
+
+        return button;
+    }
+
+    getLegendEntry = (): HTMLElement => {
+        const holdingElement = document.createElement('li');
+        holdingElement.id = `${this.id}-legend`;
+        holdingElement.setAttribute('title', 'Toggle LTNs from the map');
+
+        const icon = document.createElement('i');
+        icon.style.backgroundColor = this._layerColour;
+        holdingElement.appendChild(icon);
+
+        const text = document.createElement('span');
+        text.textContent = this.title;
+        holdingElement.appendChild(text);
+
+        holdingElement.addEventListener('click', (e) => {
+            if (this.visible) {
+                this.visible = false;
+                PubSub.publish(EventTopics.hideLayer, this.id);
+            } else {
+                this.visible = true;
+                PubSub.publish(EventTopics.showLayer, this.id);
+            }
+        });
+
+        return holdingElement;
+    }
+
+    loadFromGeoJSON = (geoJson: L.GeoJSON) => {
+        if (geoJson) {
+            const ltnCells = geoJson['features'];
+            ltnCells.forEach((ltnCell) => {
+                const points = new Array<L.LatLng>();
+                const coordinates = ltnCell.geometry.coordinates;
+                const polygonCoordinates = coordinates[0];
+                polygonCoordinates.forEach((coordinate) => {
+                    points.push(new L.LatLng(coordinate[1], coordinate[0]));
+                });
+
+                const properties = ltnCell.properties;
+
+                this.addLtnCell(points, properties.label, properties.color);
+            });
+        }
+    };
+
+    getLayer = (): L.GeoJSON => {
+        return this._layer;
+    };
+
+    toGeoJSON = (): {} => {
+        let json = {
+            type: 'FeatureCollection',
+            features: new Array()
+        };
+        this._layer.eachLayer((layer) => {
+            let layerJson = (layer as L.Polygon).toGeoJSON();
+
+            const properties = layer['properties'];
+            layerJson.properties.label = properties.label;
+            layerJson.properties.color = layer['options'].color;
+
+            json.features.push(layerJson);
+        });
+
+        return json;
+    }
+
+    clearLayer = (): void => {
+        this._layer.clearLayers();
+        this.visible = false;
+    };
 
     private setupSubscribers = () => {
         PubSub.subscribe(EventTopics.layerSelected, (msg, selectedLayerId) => {
@@ -35,15 +118,15 @@ export class LtnLayer implements IMapLayer {
             }
         });
 
-        PubSub.subscribe(EventTopics.deselected, (msg) => {
+        PubSub.subscribe(EventTopics.layerDeselected, (msg) => {
             if (this.selected) {
                 this.deselectLayer();
             }
         });
 
-        PubSub.subscribe(EventTopics.drawCreated, (msg, latLng: Array<L.LatLng>) => {
+        PubSub.subscribe(EventTopics.drawCreated, (msg, data: { latLngs: Array<L.LatLng>, map: L.Map }) => {
             if (this.selected) {
-                this.addLtnCell(latLng, this._ltnTitle, this._layerColour);
+                this.addLtnCell(data.latLngs, this._ltnTitle, this._layerColour);
                 PubSub.publish(EventTopics.layerUpdated, LtnLayer.Id);
             }
         });
@@ -62,7 +145,7 @@ export class LtnLayer implements IMapLayer {
     private addLtnCell = (points: Array<L.LatLng>, label: string, color: string) => {
         const polygon = new L.Polygon(points, {
             color: color || this._layerColour,
-            fillOpacity: 0,
+            fillOpacity: 0.2,
             weight: 5,
             pane: 'ltns'
         })
@@ -80,7 +163,7 @@ export class LtnLayer implements IMapLayer {
         const popup = this.createPopup(polygon, tooltip, label);
 
         polygon.on('click', (e) => {
-            this.onClick(e);
+            this.onPolygonClick(e);
 
             popup.setLatLng(e.target.getBounds().getCenter());
             PubSub.publish(EventTopics.showPopup, popup);
@@ -134,13 +217,33 @@ export class LtnLayer implements IMapLayer {
         PubSub.publish(EventTopics.layerUpdated, LtnLayer.Id);
     }
 
-    private onClick = (e) => {
+    private onPolygonClick = (e) => {
         this.selectLayer();
 
         const polygon = e.target;
         polygon.editing.enable();
         PubSub.publish(EventTopics.layerSelected, LtnLayer.Id);
     };
+
+    private onButtonClick = (event: Event, map: L.Map) => {
+        if (this.selected) {
+            this.deselectLayer();
+            PubSub.publish(EventTopics.layerDeselected, LtnLayer.Id);
+            return;
+        }
+
+        this.selected = true;
+
+        const options = {
+            color: this._layerColour
+        };
+        const polygon = new L['Draw'].Polygon(map, options);
+
+        polygon.enable();
+        this.setCursor();
+
+        PubSub.publish(EventTopics.layerSelected, LtnLayer.Id);
+    }
 
     private selectLayer = () => {
         this.selected = true;
@@ -160,71 +263,6 @@ export class LtnLayer implements IMapLayer {
         this.selected = false;
     }
 
-    getToolbarAction = (map: L.Map) => {
-        const modalFilterAction = L['Toolbar2'].Action.extend({
-            options: {
-                toolbarIcon: {
-                    html: '<div>LTN</div>',
-                    tooltip: 'Add LTN Cells to the map',
-                    className: 'ltn-button'
-                }
-            },
-
-            addHooks: () => {
-                if (this.selected) {
-                    this.deselectLayer();
-                    this.selected = false;
-                    this.removeCursor();
-                    PubSub.publish(EventTopics.deselected, LtnLayer.Id);
-                    return;
-                }
-
-                this.selected = true;
-
-                const options = {
-                    color: this._layerColour
-                };
-                const polygon = new L['Draw'].Polygon(map, options);
-
-                polygon.enable();
-                this.setCursor();
-
-                PubSub.publish(EventTopics.layerSelected, LtnLayer.Id);
-            }
-        });
-
-        return modalFilterAction;
-    };
-
-    getLegendEntry = () => {
-        const holdingElement = document.createElement('li');
-        holdingElement.id = `${this.id}-legend`;
-        holdingElement.setAttribute('title', 'Toggle LTNs from the map');
-
-        const icon = document.createElement('i');
-        icon.style.backgroundColor = this._layerColour;
-        holdingElement.appendChild(icon);
-
-        const text = document.createElement('span');
-        text.textContent = this.title;
-        holdingElement.appendChild(text);
-
-        const br = document.createElement('br');
-        holdingElement.appendChild(br);
-
-        holdingElement.addEventListener('click', (e) => {
-            if (this.visible) {
-                this.visible = false;
-                PubSub.publish(EventTopics.hideLayer, this.id);
-            } else {
-                this.visible = true;
-                PubSub.publish(EventTopics.showLayer, this.id);
-            }
-        });
-
-        return holdingElement;
-    }
-
     private setCursor = () => {
         document.getElementById('map')?.classList.remove('leaflet-grab');
         document.getElementById('map')?.classList.add('ltn-cell');
@@ -233,50 +271,5 @@ export class LtnLayer implements IMapLayer {
     private removeCursor = () => {
         document.getElementById('map')?.classList.remove('ltn-cell');
         document.getElementById('map')?.classList.add('leaflet-grab');
-    };
-
-    loadFromGeoJSON = (geoJson: L.GeoJSON) => {
-        if (geoJson) {
-            const ltnCells = geoJson['features'];
-            ltnCells.forEach((ltnCell) => {
-                const points = new Array<L.LatLng>();
-                const coordinates = ltnCell.geometry.coordinates;
-                const polygonCoordinates = coordinates[0];
-                polygonCoordinates.forEach((coordinate) => {
-                    points.push(new L.LatLng(coordinate[1], coordinate[0]));
-                });
-
-                const properties = ltnCell.properties;
-
-                this.addLtnCell(points, properties.label, properties.color);
-            });
-        }
-    };
-
-    getLayer = (): L.GeoJSON => {
-        return this._layer;
-    };
-
-    toGeoJSON = (): {} => {
-        let json = {
-            type: 'FeatureCollection',
-            features: new Array()
-        };
-        this._layer.eachLayer((layer) => {
-            let layerJson = (layer as L.Polygon).toGeoJSON();
-
-            const properties = layer['properties'];
-            layerJson.properties.label = properties.label;
-            layerJson.properties.color = layer['options'].color;
-
-            json.features.push(layerJson);
-        });
-
-        return json;
-    }
-
-    clearLayer = (): void => {
-        this._layer.clearLayers();
-        this.visible = false;
     };
 }

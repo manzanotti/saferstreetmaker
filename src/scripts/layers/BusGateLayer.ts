@@ -4,20 +4,17 @@ import { ToolbarButton } from '../Controls/ToolbarButton';
 import { EventTopics } from '../EventTopics';
 import { IMapLayer } from "./IMapLayer";
 
-export class ModalFilterLayer implements IMapLayer {
-    public static Id = 'ModalFilters';
+export class BusGateLayer implements IMapLayer {
+    public static Id = 'BusGates';
 
-    public readonly id: string = ModalFilterLayer.Id;
-    public readonly title: string = 'Modal Filters';
+    public readonly id: string = BusGateLayer.Id;
+    public readonly title: string = 'Bus Gates';
     public readonly groupName: string = 'filters';
     public selected: boolean = false;
     public visible: boolean = false;
 
-    private readonly _prefix = 'modal-filter';
+    private readonly _prefix = 'bus-gate';
     private readonly _layer: L.GeoJSON;
-    private readonly _modalFilterIcon: string = `<svg class="modal-filter-button" data-id="${ModalFilterLayer.Id}" width="60" height="60">
-            <circle cx="29" cy="29" r="15" stroke="green" stroke-width="3" fill="green" fill-opacity=".2" />
-        </svg>`;
 
     constructor() {
         this._layer = new L.GeoJSON();
@@ -27,11 +24,13 @@ export class ModalFilterLayer implements IMapLayer {
 
     getToolbarButton = (): ToolbarButton => {
         const button = new ToolbarButton();
-        button.id = this._prefix;
-        button.tooltip = 'Add modal filters to the map';
-        button.groupName = this.groupName;
-        button.action = this.onButtonClick;
-        button.selected = this.selected;
+        {
+            button.id = this._prefix;
+            button.tooltip = 'Add bus gates to the map';
+            button.groupName = this.groupName;
+            button.action = this.onButtonClick;
+            button.selected = this.selected;
+        };
 
         return button;
     }
@@ -39,10 +38,10 @@ export class ModalFilterLayer implements IMapLayer {
     getLegendEntry = (): HTMLElement => {
         const holdingElement = document.createElement('li');
         holdingElement.id = `${this.id}-legend`;
-        holdingElement.setAttribute('title', 'Toggle Car-free streets from the map');
+        holdingElement.setAttribute('title', 'Toggle bus gates from the map');
 
         const icon = document.createElement('i');
-        icon.innerHTML = `<svg width="30" height="30"><circle cx="10" cy="10" r="7" stroke="green" stroke-width="3" fill="green" fill-opacity=".2" /></svg>`;
+        icon.classList.add('bus-gate-icon');
         holdingElement.appendChild(icon);
 
         const text = document.createElement('span');
@@ -63,8 +62,8 @@ export class ModalFilterLayer implements IMapLayer {
     }
 
     loadFromGeoJSON = (geoJson: L.GeoJSON) => {
-        geoJson['features'].forEach((modelFilter) => {
-            const coordinates = modelFilter.geometry.coordinates;
+        geoJson['features'].forEach((busGate) => {
+            const coordinates = busGate.geometry.coordinates;
             const latLng = new L.LatLng(coordinates[1], coordinates[0]);
             this.addMarker(latLng);
         });
@@ -79,15 +78,16 @@ export class ModalFilterLayer implements IMapLayer {
     }
 
     clearLayer = (): void => {
-        ''
         this._layer.clearLayers();
         this.visible = false;
     };
 
     private setupSubscribers = () => {
         PubSub.subscribe(EventTopics.layerSelected, (msg, selectedLayerId) => {
-            if (selectedLayerId !== ModalFilterLayer.Id) {
+            if (selectedLayerId !== BusGateLayer.Id) {
                 this.deselectLayer();
+            } else {
+                this.selectLayer();
             }
         });
 
@@ -100,21 +100,22 @@ export class ModalFilterLayer implements IMapLayer {
                 L.DomEvent.stopPropagation(e);
                 const latLng = e.latlng;
                 this.addMarker(latLng);
-                PubSub.publish(EventTopics.layerUpdated, ModalFilterLayer.Id);
+                PubSub.publish(EventTopics.layerUpdated, BusGateLayer.Id);
             }
         });
     };
 
-    private addMarker = (latLng: L.LatLng) => {
-        const modalFilter = new L.CircleMarker(latLng, {
+    private addMarker = (latlng: L.LatLng) => {
+        const busGate = new L.Marker(latlng, {
+            icon: new L.DivIcon({
+                className: 'bus-gate-icon'
+            }),
             draggable: true,
-            color: 'green',
-            radius: 10,
             pane: 'filters'
         })
             .on('click', (e) => { this.deleteMarker(e); });
 
-        this._layer.addLayer(modalFilter);
+        this._layer.addLayer(busGate);
     };
 
     private deleteMarker = (e) => {
@@ -122,19 +123,20 @@ export class ModalFilterLayer implements IMapLayer {
 
         const marker = e.target;
         this._layer.removeLayer(marker);
-        PubSub.publish(EventTopics.layerUpdated, ModalFilterLayer.Id);
+        PubSub.publish(EventTopics.layerUpdated, BusGateLayer.Id);
     };
 
-    private onButtonClick = (event: Event, map: L.Map) => {
+    private onButtonClick = (e: Event, map: L.Map) => {
         if (this.selected) {
             this.deselectLayer();
-            PubSub.publish(EventTopics.layerDeselected, ModalFilterLayer.Id);
+            PubSub.publish(EventTopics.layerDeselected, BusGateLayer.Id);
             return;
         }
 
-        this.selectLayer();
+        this.selected = true;
+        this.setCursor();
 
-        PubSub.publish(EventTopics.layerSelected, ModalFilterLayer.Id);
+        PubSub.publish(EventTopics.layerSelected, BusGateLayer.Id);
     }
 
     private selectLayer = () => {
@@ -153,11 +155,11 @@ export class ModalFilterLayer implements IMapLayer {
 
     private setCursor = () => {
         document.getElementById('map')?.classList.remove('leaflet-grab');
-        document.getElementById('map')?.classList.add('modal-filter');
+        document.getElementById('map')?.classList.add('bus-gate');
     };
 
     private removeCursor = () => {
-        document.getElementById('map')?.classList.remove('modal-filter');
+        document.getElementById('map')?.classList.remove('bus-gate');
         document.getElementById('map')?.classList.add('leaflet-grab');
     };
 }

@@ -1,26 +1,101 @@
 import * as L from 'leaflet';
 import PubSub from 'pubsub-js';
+import { ToolbarButton } from '../Controls/ToolbarButton';
 import { EventTopics } from '../EventTopics';
 import { IMapLayer } from "./IMapLayer";
 
 export class TramLineLayer implements IMapLayer {
     public static Id = 'TramLines';
-    public readonly id: string;
-    public readonly title: string;
-    public selected: boolean;
+
+    public readonly id: string = TramLineLayer.Id;
+    public readonly title: string = 'Tram Lines';
+    public readonly groupName: string;
+    public selected: boolean = false;
+    public visible: boolean = false;
+
+    private readonly _prefix = 'tram-line';
     private readonly _layer: L.GeoJSON;
     private readonly _layerColour = '#ff5e00';
-    public visible: boolean = false;
 
     constructor() {
         this._layer = L.geoJSON();
 
-        this.id = TramLineLayer.Id;
-        this.title = 'Tram Lines';
+        this.id;
+        this.title;
         this.selected = false;
 
         this.setupSubscribers();
     }
+
+    getToolbarButton = (): ToolbarButton => {
+        const button = new ToolbarButton();
+        button.id = this._prefix;
+        button.tooltip = 'Add tram lines to the map';
+        button.groupName = this.groupName;
+        button.action = this.onButtonClick;
+        button.selected = this.selected;
+
+        return button;
+    }
+
+    getLegendEntry = () => {
+        const holdingElement = document.createElement('li');
+        holdingElement.id = `${this.id}-legend`;
+        holdingElement.setAttribute('title', 'Toggle Car-free streets from the map');
+
+        const icon = document.createElement('i');
+        icon.style.backgroundColor = this._layerColour;
+        holdingElement.appendChild(icon);
+
+        const text = document.createElement('span');
+        text.textContent = this.title;
+        holdingElement.appendChild(text);
+
+        const br = document.createElement('br');
+        holdingElement.appendChild(br);
+
+        holdingElement.addEventListener('click', (e) => {
+            if (this.visible) {
+                this.visible = false;
+                PubSub.publish(EventTopics.hideLayer, this.id);
+            } else {
+                this.visible = true;
+                PubSub.publish(EventTopics.showLayer, this.id);
+            }
+        });
+
+        return holdingElement;
+    }
+
+    loadFromGeoJSON = (geoJson: L.GeoJSON) => {
+        if (geoJson) {
+            const tramLines = geoJson['features'];
+            tramLines.forEach((tramLine) => {
+                const points = new Array<L.LatLng>();
+
+                // For a brief period, saving nested the coordinates inside another array, for some reason.
+                const coordinates = tramLine.geometry.coordinates.length === 1 ? tramLine.geometry.coordinates[0] : tramLine.geometry.coordinates;
+                coordinates.forEach((coordinate) => {
+                    const point = new L.LatLng(coordinate[1], coordinate[0]);
+                    points.push(point);
+                });
+                this.addMarker(points);
+            });
+        }
+    };
+
+    getLayer = (): L.GeoJSON => {
+        return this._layer;
+    };
+
+    toGeoJSON = (): {} => {
+        return this._layer.toGeoJSON();
+    }
+
+    clearLayer = (): void => {
+        this._layer.clearLayers();
+        this.visible = false;
+    };
 
     private setupSubscribers = () => {
         PubSub.subscribe(EventTopics.layerSelected, (msg, selectedLayerId) => {
@@ -31,21 +106,21 @@ export class TramLineLayer implements IMapLayer {
             }
         });
 
-        PubSub.subscribe(EventTopics.deselected, (msg) => {
+        PubSub.subscribe(EventTopics.layerDeselected, (msg) => {
             if (this.selected) {
                 this.deselectLayer();
             }
         });
 
-        PubSub.subscribe(EventTopics.drawCreated, (msg, latLng: Array<L.LatLng>) => {
+        PubSub.subscribe(EventTopics.drawCreated, (msg, data: { latLngs: Array<L.LatLng>, map: L.Map }) => {
             if (this.selected) {
-                this.addMarker(latLng);
+                this.addMarker(data.latLngs);
                 PubSub.publish(EventTopics.layerUpdated, TramLineLayer.Id);
             }
         });
     };
 
-    addMarker = (points: Array<L.LatLng>) => {
+    private addMarker = (points: Array<L.LatLng>) => {
         const polyline = new L.Polyline(points, {
             color: this._layerColour,
             weight: 5,
@@ -82,12 +157,12 @@ export class TramLineLayer implements IMapLayer {
         this._layer.addLayer(polyline);
     };
 
-    deleteMarker = (layer: L.Draw.Polyline) => {
+    private deleteMarker = (layer: L.Draw.Polyline) => {
         this._layer.removeLayer(layer);
         PubSub.publish(EventTopics.layerUpdated, TramLineLayer.Id);
     }
 
-    markerOnClick = (e) => {
+    private markerOnClick = (e) => {
         this.selectLayer();
 
         const polyline = e.target;
@@ -95,12 +170,35 @@ export class TramLineLayer implements IMapLayer {
         PubSub.publish(EventTopics.layerSelected, TramLineLayer.Id);
     };
 
-    selectLayer = () => {
+    private onButtonClick = (event: Event, map: L.Map) => {
+        if (this.selected) {
+            this.deselectLayer();
+            PubSub.publish(EventTopics.layerDeselected, TramLineLayer.Id);
+            return;
+        }
+
+        this.selected = true;
+
+        const options = {
+            color: this._layerColour,
+            weight: 5,
+            opacity: 1,
+            smoothFactor: 1
+        };
+        const polyline = new L['Draw'].Polyline(map, options);
+
+        polyline.enable();
+        this.setCursor();
+
+        PubSub.publish(EventTopics.layerSelected, TramLineLayer.Id);
+    }
+
+    private selectLayer = () => {
         this.selected = true;
         this.setCursor();
     }
 
-    deselectLayer = () => {
+    private deselectLayer = () => {
         if (!this.selected) {
             return;
         }
@@ -113,111 +211,13 @@ export class TramLineLayer implements IMapLayer {
         this.selected = false;
     }
 
-    getToolbarAction = (map: L.Map) => {
-        const modalFilterAction = L['Toolbar2'].Action.extend({
-            options: {
-                toolbarIcon: {
-                    html: '<div></div>',
-                    tooltip: 'Add tram lines to the map',
-                    className: 'tram-line-button'
-                }
-            },
-
-            addHooks: () => {
-                if (this.selected) {
-                    this.deselectLayer();
-                    this.selected = false;
-                    this.removeCursor();
-                    PubSub.publish(EventTopics.deselected, TramLineLayer.Id);
-                    return;
-                }
-
-                this.selected = true;
-
-                const options = {
-                    color: this._layerColour,
-                    weight: 5,
-                    opacity: 1,
-                    smoothFactor: 1
-                };
-                const polyline = new L['Draw'].Polyline(map, options);
-
-                polyline.enable();
-                this.setCursor();
-
-                PubSub.publish(EventTopics.layerSelected, TramLineLayer.Id);
-            }
-        });
-
-        return modalFilterAction;
-    };
-
-    getLegendEntry = () => {
-        const holdingElement = document.createElement('li');
-        holdingElement.id = `${this.id}-legend`;
-        holdingElement.setAttribute('title', 'Toggle Car-free streets from the map');
-
-        const icon = document.createElement('i');
-        icon.style.backgroundColor = this._layerColour;
-        holdingElement.appendChild(icon);
-
-        const text = document.createElement('span');
-        text.textContent = this.title;
-        holdingElement.appendChild(text);
-
-        const br = document.createElement('br');
-        holdingElement.appendChild(br);
-
-        holdingElement.addEventListener('click', (e) => {
-            if (this.visible) {
-                this.visible = false;
-                PubSub.publish(EventTopics.hideLayer, this.id);
-            } else {
-                this.visible = true;
-                PubSub.publish(EventTopics.showLayer, this.id);
-            }
-        });
-
-        return holdingElement;
-    }
-
-    setCursor = () => {
+    private setCursor = () => {
         document.getElementById('map')?.classList.remove('leaflet-grab');
         document.getElementById('map')?.classList.add('tram-line');
     };
 
-    removeCursor = () => {
+    private removeCursor = () => {
         document.getElementById('map')?.classList.remove('tram-line');
         document.getElementById('map')?.classList.add('leaflet-grab');
-    };
-
-    loadFromGeoJSON = (geoJson: L.GeoJSON) => {
-        if (geoJson) {
-            const tramLines = geoJson['features'];
-            tramLines.forEach((tramLine) => {
-                const points = new Array<L.LatLng>();
-
-                // For a brief period, saving nested the coordinates inside another array, for some reason.
-                const coordinates = tramLine.geometry.coordinates.length === 1 ? tramLine.geometry.coordinates[0] : tramLine.geometry.coordinates;
-                coordinates.forEach((coordinate) => {
-                    const point = new L.LatLng(coordinate[1], coordinate[0]);
-                    points.push(point);
-                });
-                this.addMarker(points);
-            });
-        }
-    };
-
-    getLayer = (): L.GeoJSON => {
-        return this._layer;
-    };
-
-    toGeoJSON = (): {} => {
-        return this._layer.toGeoJSON();
-    }
-
-    clearLayer = (): void => {
-        this._layer.clearLayers();
-        this.visible = false;
     };
 }

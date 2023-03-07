@@ -4,8 +4,8 @@ import { IMapLayer } from './layers/IMapLayer';
 import { Settings } from '../Settings';
 
 export class FileManager {
-    saveMapToFile = (settings: Settings, layersData: Map<string, IMapLayer>, centre: L.LatLng, zoom: number) => {
-        const mapData = this.mapToJSON(settings, layersData, centre, zoom);
+    saveMapToFile = (settings: Settings, layersData: Map<string, IMapLayer>) => {
+        const mapData = this.mapToJSON(settings, layersData);
         const mapString = JSON.stringify(mapData);
 
         const blob = new Blob([mapString], { type: 'text/plain;charset=utf-8' });
@@ -37,24 +37,36 @@ export class FileManager {
         hyperlink.click();
     };
 
-    saveMapToHash = (settings: Settings, layersData: Map<string, IMapLayer>, centre: L.LatLng, zoom: number): string => {
-        const mapData = this.mapToJSON(settings, layersData, centre, zoom);
+    saveMapToHash = (settings: Settings, layersData: Map<string, IMapLayer>): string => {
+        const mapData = this.mapToJSON(settings, layersData);
         const mapString = JSON.stringify(mapData);
-        const uriEncodedString = encodeURIComponent(mapString);
+        const uriEncodedString = LZString.compressToEncodedURIComponent(mapString);
 
         return uriEncodedString;
     }
 
-    saveMap = (settings: Settings, layersData: Map<string, IMapLayer>, centre: L.LatLng, zoom: number) => {
-        const mapData = this.mapToJSON(settings, layersData, centre, zoom);
+    saveMap = (settings: Settings, layersData: Map<string, IMapLayer>) => {
+        const mapData = this.mapToJSON(settings, layersData);
         const mapString = JSON.stringify(mapData);
 
         localStorage.setItem(`Map_${settings.title}`, LZString.compress(mapString));
+        this.saveMapList(settings.title);
 
         this.saveLastMapSelected(settings.title);
     };
 
-    private mapToJSON = (settings: Settings, layersData: Map<string, IMapLayer>, centre: L.LatLng, zoom: number): any => {
+    saveMapList = (mapTitle: string) => {
+        let mapList = this.loadMapListFromStorage();
+
+        if (mapList.includes(mapTitle)) {
+            mapList = mapList.filter((title) => title !== mapTitle);
+        }
+
+        mapList.splice(0, 0, mapTitle);
+        localStorage.setItem('MapList', LZString.compress(JSON.stringify(mapList)));
+    }
+
+    private mapToJSON = (settings: Settings, layersData: Map<string, IMapLayer>): any => {
         let layers = {};
         layersData.forEach((layer, layerName) => {
             layers[layerName] = layer.toGeoJSON();
@@ -62,8 +74,6 @@ export class FileManager {
 
         const mapData = {
             'settings': settings,
-            'centre': centre,
-            'zoom': zoom,
             'layers': layers,
             'lastSaved': new Date().toISOString()
         };
@@ -76,14 +86,26 @@ export class FileManager {
     };
 
     loadMapFromHash = (hash: string) => {
-        const map = decodeURIComponent(hash);
-        return JSON.parse(map);
+        let mapString: string | null = null;
+
+        if (hash.startsWith('%')) {
+            mapString = decodeURIComponent(hash);
+            return JSON.parse(mapString);
+        } else {
+            mapString = LZString.decompressFromEncodedURIComponent(hash);
+            if (mapString === null) {
+                return null;
+            }
+
+            return JSON.parse(mapString);
+        }
     }
 
     loadMapFromFile = () => {
         const fileInput = document.createElement('input');
         fileInput.type = 'file';
         fileInput.style.display = 'none';
+        fileInput.accept = '.json';
         fileInput.onchange = this.readFile;
         document.body.appendChild(fileInput);
 
@@ -127,7 +149,7 @@ export class FileManager {
 
     };
 
-    loadMapListFromStorage = () => {
+    loadMapListFromStorage = (): Array<string> => {
         const mapData = localStorage.getItem('MapList');
         if (mapData !== null && mapData !== 'undefined') {
             const map = LZString.decompress(mapData) || '';
@@ -144,4 +166,21 @@ export class FileManager {
         }
         return null;
     };
+
+    deleteMapFromStorage = (mapName: string) => {
+        localStorage.removeItem(`Map_${mapName}`);
+
+        const mapData = localStorage.getItem('MapList');
+        if (mapData !== null && mapData !== 'undefined') {
+            const data = LZString.decompress(mapData) || '';
+            const mapList = JSON.parse(data);
+
+            const index = mapList.indexOf(mapName);
+            if (index !== -1) {
+                mapList.splice(index, 1);
+                localStorage.setItem('MapList', LZString.compress(JSON.stringify(mapList)));
+            }
+        }
+        return [];
+    }
 }
