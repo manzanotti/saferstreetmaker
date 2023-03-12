@@ -70,3 +70,12 @@
   transform: translate(-50%, -10%);
   z-index: -1;
 }
+
+#help input[type="button"] {
+  width: 60px;
+  height: 60px;
+  background-position: center;
+  background-repeat: no-repeat;
+  padding: 0;
+  border: 1px solid #000;
+}

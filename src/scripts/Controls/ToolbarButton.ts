@@ -6,4 +6,5 @@ export class ToolbarButton {
     public groupName: string;
     public buttons: Array<ToolbarButton>;
     public action: (e: Event, map: L.Map) => void;
+    public isFirst: boolean;
 }

@@ -5,7 +5,6 @@ import { IMapLayer } from '../layers/IMapLayer';
 import { IModalWindow } from './IModalWindow';
 import { ToolbarButton } from './ToolbarButton';
 import { FileManager } from '../FileManager';
-import '../../styles/mapmanager.css'
 
 export class MapManagerControl implements IModalWindow {
     public static Id: string = 'MapManager';
@@ -71,7 +70,7 @@ export class MapManagerControl implements IModalWindow {
 
         div.appendChild(header);
 
-        div.appendChild(MapManagerControl.createFileButtons());
+        div.appendChild(this.createFileButtons());
 
         div.append(this.createNewMapSection());
 
@@ -86,24 +85,44 @@ export class MapManagerControl implements IModalWindow {
         return div;
     }
 
-    private static createFileButtons = (): HTMLElement => {
+    private createFileButtons = (): HTMLElement => {
         const element = document.createElement('div');
         element.classList.add(MapManagerControl.rowMargin);
 
         const newMapButton = document.createElement('input');
         newMapButton.type = 'button';
         newMapButton.id = 'new-map';
+        newMapButton.classList.add('new-map');
         newMapButton.setAttribute('title', 'Create a new map');
         newMapButton.addEventListener('click', (event: Event) => {
             event.stopPropagation();
             document.getElementById('create-new-map')?.classList.remove('hidden');
-            const title = (<HTMLInputElement>document.getElementById('new-map-title'))?.focus();
+            (<HTMLInputElement>document.getElementById('new-map-title'))?.focus();
         });
         element.appendChild(newMapButton);
+
+        const copyButton = document.createElement('input');
+        copyButton.type = 'button';
+        copyButton.id = 'copy-map';
+        copyButton.classList.add('copy-map');
+        copyButton.setAttribute('title', 'Make a copy of this map');
+        copyButton.addEventListener('click', (event: Event) => {
+            event.stopPropagation();
+            this._fileManager.copyMap(this._settings, this._layers);
+
+            const mapListElement = document.getElementById('map-list');
+            if (mapListElement) {
+                const newMapListElement = <Node>this.createLocalStorageMapList();
+                mapListElement.replaceWith(newMapListElement);
+            }
+        });
+
+        element.appendChild(copyButton);
 
         const openFileButton = document.createElement('input');
         openFileButton.type = 'button';
         openFileButton.id = 'load-file';
+        openFileButton.classList.add('load-file');
         openFileButton.setAttribute('title', 'Load a map from a JSON file');
         openFileButton.addEventListener('click', (event: Event) => {
             event.stopPropagation();
@@ -114,6 +133,7 @@ export class MapManagerControl implements IModalWindow {
         const saveFileButton = document.createElement('input');
         saveFileButton.type = 'button';
         saveFileButton.id = 'save-file';
+        saveFileButton.classList.add('save-file');
         saveFileButton.setAttribute('title', 'Save a map to a JSON file');
         saveFileButton.addEventListener('click', (event: Event) => {
             event.stopPropagation();
@@ -124,6 +144,7 @@ export class MapManagerControl implements IModalWindow {
         const exportFileButton = document.createElement('input');
         exportFileButton.type = 'button';
         exportFileButton.id = 'save-geojson-file';
+        exportFileButton.classList.add('save-geojson-file');
         exportFileButton.setAttribute('title', 'Export a map to GeoJSON');
         exportFileButton.addEventListener('click', (event: Event) => {
             event.stopPropagation();
@@ -174,6 +195,9 @@ export class MapManagerControl implements IModalWindow {
 
         createButton.addEventListener('click', (event) => {
             const settings = new Settings();
+
+            settings.zoom = this._settings.zoom;
+            settings.centre = this._settings.centre;
 
             const title = (<HTMLInputElement>document.getElementById('new-map-title'))?.value;
             const existingMapTitle = this._fileManager.loadMapListFromStorage();

@@ -122,7 +122,7 @@ export class MobilityLaneLayer implements IMapLayer {
                 PubSub.publish(EventTopics.layerUpdated, MobilityLaneLayer.Id);
             });
 
-        const popup = L.popup({ minWidth: 30, keepInView: true });
+        const popup = L.popup({ minWidth: 30, keepInView: false, offset: new L.Point(75, 75) });
 
         const controlList = document.createElement('ul');
         controlList.classList.add('popup-buttons');

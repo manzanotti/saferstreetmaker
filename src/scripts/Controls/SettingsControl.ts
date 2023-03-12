@@ -71,6 +71,10 @@ export class SettingsControl implements IModalWindow {
 
         div.appendChild(SettingsControl.createTitle(settings.title));
 
+        div.appendChild(SettingsControl.createZoom(settings.zoom));
+
+        div.appendChild(SettingsControl.createCentre(settings.centre));
+
         div.appendChild(SettingsControl.createReadOnly(settings.readOnly));
 
         const layerSettings = SettingsControl.createLayers(layers, settings);
@@ -95,6 +99,44 @@ export class SettingsControl implements IModalWindow {
         input.id = 'title';
         input.type = 'text';
         input.value = title;
+        input.classList.add('border-solid');
+        element.appendChild(input);
+
+        return element
+    }
+
+    private static createZoom = (zoom: number): HTMLElement => {
+        const element = document.createElement('div');
+        element.classList.add(SettingsControl.rowMargin);
+
+        const label = document.createElement('label');
+        label.textContent = 'Zoom';
+        label.setAttribute('for', 'zoom');
+        element.appendChild(label);
+
+        const input = document.createElement('input');
+        input.id = 'zoom';
+        input.type = 'text';
+        input.value = `${zoom}`;
+        input.classList.add('border-solid');
+        element.appendChild(input);
+
+        return element
+    }
+
+    private static createCentre = (centre: L.LatLng): HTMLElement => {
+        const element = document.createElement('div');
+        element.classList.add(SettingsControl.rowMargin);
+
+        const label = document.createElement('label');
+        label.textContent = 'Centre';
+        label.setAttribute('for', 'centre');
+        element.appendChild(label);
+
+        const input = document.createElement('input');
+        input.id = 'centre';
+        input.type = 'text';
+        input.value = `${centre.lat},${centre.lng}`;
         input.classList.add('border-solid');
         element.appendChild(input);
 
@@ -193,6 +235,8 @@ export class SettingsControl implements IModalWindow {
 
             settings.title = (<HTMLInputElement>document.getElementById('title'))?.value;
             settings.readOnly = (<HTMLInputElement>document.getElementById('read-only'))?.checked;
+            settings.zoom = this._settings.zoom;
+            settings.centre = this._settings.centre;
 
             const layers = document.getElementsByName('layer');
             const array = Array.from(layers);

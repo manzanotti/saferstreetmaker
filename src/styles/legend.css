@@ -49,3 +49,27 @@
   height: 15px !important;
   width: 15px !important;
 }
+
+.legend .traffic-lights-icon {
+  background-image: url(../img/trafficlights-black1.svg);
+  background-size: 15px 15px;
+  background-repeat: no-repeat;
+  height: 15px !important;
+  width: 15px !important;
+}
+
+.legend .pedestrian-lights-icon {
+  background-image: url(../img/UK-Traffic-Signal-Pedestrians-1975.svg);
+  background-size: 15px 15px;
+  background-repeat: no-repeat;
+  height: 15px !important;
+  width: 15px !important;
+}
+
+.legend .zebra-crossing-icon {
+  background-image: url(../img/zebra-crossing.svg);
+  background-size: 15px 15px;
+  background-repeat: no-repeat;
+  height: 15px !important;
+  width: 15px !important;
+}

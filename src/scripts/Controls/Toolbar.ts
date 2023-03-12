@@ -34,29 +34,43 @@ export class Toolbar {
             layers.forEach((layer, layerName) => {
                 if (settings.activeLayers.includes(layerName)) {
                     const button = layer.getToolbarButton();
+                    buttons.push(button);
+                }
+            });
 
-                    if (button.groupName) {
-                        let groupButtons = buttons.filter((b) => b.groupName === button.groupName);
-
-                        if (groupButtons.length > 0) {
-                            const groupButton = groupButtons[0];
-                            if (button.selected) {
-                                const index = buttons.indexOf(groupButton);
-                                button.buttons = new Array<ToolbarButton>();
-                                button.buttons.push(groupButton);
-                                buttons.splice(index, 1, button);
-                            } else {
-                                groupButton.buttons.push(button);
-                            }
-                        } else {
-                            button.buttons = new Array<ToolbarButton>();
-                            buttons.push(button);
-                        }
+            const groupButtonsToRemove = new Array<ToolbarButton>();
+            buttons.forEach((button) => {
+                if (button.groupName) {
+                    let parentButton: ToolbarButton | null = null;
+                    const selectedGroupButtons = buttons.filter((b) => b.groupName === button.groupName && b.selected);
+                    if (selectedGroupButtons.length > 0) {
+                        parentButton = selectedGroupButtons[0];
                     } else {
-                        buttons.push(button);
+                        const groupButtons = buttons.filter((b) => b.groupName === button.groupName && b.isFirst);
+                        if (groupButtons.length > 0) {
+                            parentButton = groupButtons[0];
+                        }
+                    }
+
+                    if (parentButton !== null) {
+                        if (!parentButton.buttons) {
+                            parentButton.buttons = new Array<ToolbarButton>();
+                        }
+
+                        if (parentButton.id !== button.id) {
+                            groupButtonsToRemove.push(button);
+                            parentButton.buttons.push(button);
+                        }
                     }
                 }
             });
+
+            if (groupButtonsToRemove.length > 0) {
+                groupButtonsToRemove.forEach((button) => {
+                    const index = buttons.indexOf(button);
+                    buttons.splice(index, 1);
+                });
+            }
         }
 
         modalWindows.forEach((modalWindow) => {
@@ -78,7 +92,8 @@ export class Toolbar {
 
             buttonContainer.appendChild(buttonElement);
 
-            if (button.buttons) {
+            if (button.buttons && button.buttons.length > 0) {
+                buttonContainer.classList.add('group');
                 const subToolbar = document.createElement('ul');
                 subToolbar.classList.add('hidden', 'subToolbar');
 
@@ -99,6 +114,9 @@ export class Toolbar {
                 })
 
                 buttonContainer.appendChild(subToolbar);
+
+                const indicator = document.createElement('span');
+                buttonContainer.appendChild(indicator);
             }
 
             toolbarButtons.push(buttonContainer);
@@ -111,7 +129,7 @@ export class Toolbar {
         const buttonElement = document.createElement('input');
         buttonElement.setAttribute('id', `${button.id}-button`);
         buttonElement.setAttribute('type', 'button');
-        buttonElement.classList.add('toolbar-button');
+        buttonElement.classList.add('toolbar-button', `${button.id}`);
         buttonElement.setAttribute('title', button.tooltip);
 
         if (button.text) {

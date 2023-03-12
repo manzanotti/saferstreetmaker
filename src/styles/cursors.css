@@ -1,0 +1,45 @@
+.modal-filter:not(.toolbar-button) {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30'%3E%3Ccircle cx='15' cy='15' r='10' stroke='green' stroke-width='3' fill='green' fill-opacity='.2' %3E%3C/circle%3E%3C/svg%3E")
+      15 15,
+    auto;
+}
+
+.tram-line [role="button"] {
+  cursor: crosshair;
+}
+
+.mobility-lane [role="button"] {
+  cursor: crosshair;
+}
+
+.car-free-street [role="button"] {
+  cursor: crosshair;
+}
+
+.school-street [role="button"] {
+  cursor: crosshair;
+}
+
+.one-way-street [role="button"] {
+  cursor: crosshair;
+}
+
+.ltn-cell [role="button"] {
+  cursor: crosshair;
+}
+
+.bus-gate:not(.toolbar-button) {
+  cursor: url("../img/double-decker-bus-svgrepo-com-cursor.svg") 10 10, auto;
+}
+
+.traffic-lights:not(.toolbar-button) {
+  cursor: url("../img/trafficlights-black1-cursor.svg") 6 6, auto;
+}
+
+.pedestrian-lights:not(.toolbar-button) {
+  cursor: url("../img/UK-Traffic-Signal-Pedestrians-1975-cursor.svg") 6 6, auto;
+}
+
+.zebra-crossing:not(.toolbar-button) {
+  cursor: url("../img/zebra-crossing-cursor.svg") 5.5 0, auto;
+}
