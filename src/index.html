@@ -31,10 +31,6 @@
       href="https://cdn.jsdelivr.net/npm/tw-elements/dist/css/index.min.css"
     />
     <link rel="stylesheet" href="styles/index.css" />
-    <link rel="stylesheet" href="styles/help.css" />
-    <link rel="stylesheet" href="styles/legend.css" />
-    <link rel="stylesheet" href="styles/toolbar.css" />
-    <link rel="stylesheet" href="styles/modal.css" />
     <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.min.js"></script>
     <script
       src="https://cdn.jsdelivr.net/npm/leaflet-svg-shape-markers@1.4.0/dist/leaflet-svg-shape-markers.min.js"
@@ -79,191 +75,457 @@
           </h5>
         </div>
         <div class="modal-body relative overflow-y-auto p-4">
-          <p class="mb-8">
-            Welcome to the Safer Street Maker, where you can create the active
-            travel network of your dreams!
-          </p>
-          <p class="mb-8">
-            It's very early days of the site, so don't be surprised if you
-            encounter the odd issue.
-          </p>
-          <p class="mb-8">
-            You can place various active travel features on your area. The idea
-            is to use these to instigate local conversations about improving our
-            towns and cities, or you can use these to respond to council
-            consultations on infrastructure projects (I like to respond with
-            what I think a better scheme would be).
-          </p>
-          <p class="mb-8">
-            You can now also generate html to embed your map in another web
-            page, so if you want to illustrate a blog post with an
-            infrastructure map, you now can.
-          </p>
-          <h2>Modal Filters</h2>
-          <p class="mb-8">
-            Modal filters are designed to stop motorised vehicles from passing.
-            This is usually done with either bollards and planters, or Automatic
-            Number Plate Recognition cameras (ANPR). To add a modal filter,
-            click the Green Circle button in the toolbar on the left-hand side
-            of the map, and just click on the map to place one. Once placed, you
-            can click on one to delete it, or drag it to move it.
-          </p>
-          <h2>Mobility Lanes</h2>
-          <p class="mb-8">
-            Most people think of a mobility lane as a cycle lane, and it's true
-            that the majority of traffic on them would be people on bicycles.
-            However, by designating them as Mobility lanes, this indicates that
-            they are designed to also be used by people using mobility scooters,
-            wheelchairs, and electric scooters. And to enable this requires a
-            better design of a lane (including being wide enough to allow
-            passing).
-          </p>
-          <p class="mb-8">
-            To add a mobility lane , click on the Cycle button in the toolbar.
-            You draw the lane by placing a serious of points. When done, click
-            on the last point added, and you will leave lane creation mode.
-          </p>
-          <p class="mb-8">
-            To edit a lane, click anywhere on it to enter edit mode. You can
-            click on the fainter squares to add an extra point to the line, if
-            you need one. Whilst in edit mode, you will see a popup, which
-            currently has a button to delete the whole lane.
-          </p>
-          <p class="mb-8">
-            I find that the best way of placing a lane is to put the start and
-            end points of the lane whilst in create mode, click on the last
-            point you added to exit create mode, then click anywhere on the line
-            to go into edit mode. You can then place the extra points to get the
-            lane exactly where you want it.
-          </p>
-          <h2>Tram Lines</h2>
-          <p class="mb-8">
-            These work in exactly the same way as mobility lanes. To add one,
-            click on the Tram button in the toolbar. You draw the lane by
-            placing a serious of points. When done, click on the last point
-            added, and you will leave line creation mode.
-          </p>
-          <h2>Car-free Streets</h2>
-          <p class="mb-8">
-            These are streets that are not accessible to vehicles (with possible
-            limited exceptions for deliveries). Again, these work in exactly the
-            same way as mobility lanes. To add one, click on the No Vehicles
-            button in the toolbar. You draw the lane by placing a serious of
-            points. When done, click on the last point added, and you will leave
-            line creation mode.
-          </p>
-          <h2>School Streets</h2>
-          <p class="mb-8">
-            These are streets around a school that are not accessible to
-            vehicles during drop-off and pick-up times. Again, these work in
-            exactly the same way as mobility lanes. To add one, click on the No
-            Vehicles button in the toolbar. You draw the lane by placing a
-            serious of points. When done, click on the last point added, and you
-            will leave line creation mode.
-          </p>
-          <h2>LTNs</h2>
-          <p class="mb-8">
-            LTNs, or Low Traffic Neighbourhoods/Healthy Living Zones, are
-            residential areas that restrict through-traffic, usually by placing
-            modal filters on a group of roads. They are a critical part of a
-            safe cycling network, as they provide a safe cycling environment on
-            roads that cannot have mobility lanes on them (often due to
-            on-street parking).
-          </p>
-          <p class="mb-8">
-            Cars can still get to everywhere they could previously, but may have
-            to take a slightly longer route. That hasn't stopped
-          </p>
-          <p class="mb-8">
-            You draw a polygon in much the same way as you draw a line, this
-            time clicking on the first point added to complete the shape.
-            Clicking on one allows you to set the label text for each LTN block.
-          </p>
-          <h2>Saving and loading maps</h2>
-          <p class="mb-8">
-            The map is currently automatically saved in the browser you are
-            using. If you wish to either share a map with someone, use it on
-            another device, or have more than one map, click on the Folder icon
-            to open the file menu, and hit the Disk icon to save the current map
-            to a text file on your machine. To load a map, click on the Folder
-            icon to open the file menu, and hit the cloud-like button to select
-            the file you wish to upload.
-          </p>
-          <h2>Example map</h2>
-          <p class="mb-8">
-            There is an
-            <a href="Hello Cleveland.json" title="Download example map" download
-              >example map you can download</a
+          <ul
+            class="mb-5 flex list-none flex-col flex-wrap border-b-0 pl-0 md:flex-row"
+            role="tablist"
+            data-te-nav-ref
+          >
+            <li role="presentation">
+              <a
+                href="#tabs-home"
+                class="my-2 block border-x-0 border-t-0 border-b-2 border-transparent px-3 pt-4 pb-3.5 text-xs font-medium uppercase leading-tight text-neutral-500 hover:isolate hover:border-transparent hover:bg-neutral-100 focus:isolate focus:border-transparent data-[te-nav-active]:border-primary data-[te-nav-active]:text-primary dark:text-neutral-400 dark:hover:bg-transparent dark:data-[te-nav-active]:border-primary-400 dark:data-[te-nav-active]:text-primary-400"
+                data-te-toggle="pill"
+                data-te-target="#tabs-home"
+                data-te-nav-active
+                role="tab"
+                aria-controls="tabs-home"
+                aria-selected="true"
+                >Welcome</a
+              >
+            </li>
+            <li role="presentation">
+              <a
+                href="#tabs-features"
+                class="focus:border-transparen my-2 block border-x-0 border-t-0 border-b-2 border-transparent px-3 pt-4 pb-3.5 text-xs font-medium uppercase leading-tight text-neutral-500 hover:isolate hover:border-transparent hover:bg-neutral-100 focus:isolate data-[te-nav-active]:border-primary data-[te-nav-active]:text-primary dark:text-neutral-400 dark:hover:bg-transparent dark:data-[te-nav-active]:border-primary-400 dark:data-[te-nav-active]:text-primary-400"
+                data-te-toggle="pill"
+                data-te-target="#tabs-features"
+                role="tab"
+                aria-controls="tabs-features"
+                aria-selected="false"
+                >Features</a
+              >
+            </li>
+            <li role="presentation">
+              <a
+                href="#tabs-management"
+                class="my-2 block border-x-0 border-t-0 border-b-2 border-transparent px-3 pt-4 pb-3.5 text-xs font-medium uppercase leading-tight text-neutral-500 hover:isolate hover:border-transparent hover:bg-neutral-100 focus:isolate focus:border-transparent data-[te-nav-active]:border-primary data-[te-nav-active]:text-primary dark:text-neutral-400 dark:hover:bg-transparent dark:data-[te-nav-active]:border-primary-400 dark:data-[te-nav-active]:text-primary-400"
+                data-te-toggle="pill"
+                data-te-target="#tabs-management"
+                role="tab"
+                aria-controls="tabs-management"
+                aria-selected="false"
+                >Map Management</a
+              >
+            </li>
+            <li role="presentation">
+              <a
+                href="#tabs-settings"
+                class="my-2 block border-x-0 border-t-0 border-b-2 border-transparent px-3 pt-4 pb-3.5 text-xs font-medium uppercase leading-tight text-neutral-500 hover:isolate hover:border-transparent hover:bg-neutral-100 focus:isolate focus:border-transparent data-[te-nav-active]:border-primary data-[te-nav-active]:text-primary dark:text-neutral-400 dark:hover:bg-transparent dark:data-[te-nav-active]:border-primary-400 dark:data-[te-nav-active]:text-primary-400"
+                data-te-toggle="pill"
+                data-te-target="#tabs-settings"
+                role="tab"
+                aria-controls="tabs-settings"
+                aria-selected="false"
+                >Settings</a
+              >
+            </li>
+            <li role="presentation">
+              <a
+                href="#tabs-sharing"
+                class="my-2 block border-x-0 border-t-0 border-b-2 border-transparent px-3 pt-4 pb-3.5 text-xs font-medium uppercase leading-tight text-neutral-500 hover:isolate hover:border-transparent hover:bg-neutral-100 focus:isolate focus:border-transparent data-[te-nav-active]:border-primary data-[te-nav-active]:text-primary dark:text-neutral-400 dark:hover:bg-transparent dark:data-[te-nav-active]:border-primary-400 dark:data-[te-nav-active]:text-primary-400"
+                data-te-toggle="pill"
+                data-te-target="#tabs-sharing"
+                role="tab"
+                aria-controls="tabs-sharing"
+                aria-selected="false"
+                >Sharing Maps</a
+              >
+            </li>
+            <li role="presentation">
+              <a
+                href="#tabs-tech"
+                class="my-2 block border-x-0 border-t-0 border-b-2 border-transparent px-3 pt-4 pb-3.5 text-xs font-medium uppercase leading-tight text-neutral-500 hover:isolate hover:border-transparent hover:bg-neutral-100 focus:isolate focus:border-transparent data-[te-nav-active]:border-primary data-[te-nav-active]:text-primary dark:text-neutral-400 dark:hover:bg-transparent dark:data-[te-nav-active]:border-primary-400 dark:data-[te-nav-active]:text-primary-400"
+                data-te-toggle="pill"
+                data-te-target="#tabs-tech"
+                role="tab"
+                aria-controls="tabs-tech"
+                aria-selected="false"
+                >The Tech</a
+              >
+            </li>
+            <li role="presentation">
+              <a
+                href="#tabs-support"
+                class="my-2 block border-x-0 border-t-0 border-b-2 border-transparent px-3 pt-4 pb-3.5 text-xs font-medium uppercase leading-tight text-neutral-500 hover:isolate hover:border-transparent hover:bg-neutral-100 focus:isolate focus:border-transparent data-[te-nav-active]:border-primary data-[te-nav-active]:text-primary dark:text-neutral-400 dark:hover:bg-transparent dark:data-[te-nav-active]:border-primary-400 dark:data-[te-nav-active]:text-primary-400"
+                data-te-toggle="pill"
+                data-te-target="#tabs-support"
+                role="tab"
+                aria-controls="tabs-support"
+                aria-selected="false"
+                >Support</a
+              >
+            </li>
+          </ul>
+          <div class="mb-6">
+            <div
+              class="hidden opacity-0 opacity-100 transition-opacity duration-150 ease-linear data-[te-tab-active]:block"
+              id="tabs-home"
+              role="tabpanel"
+              aria-labelledby="tabs-home-tab"
+              data-te-tab-active
             >
-            if you want to see what one looks like.
-          </p>
-          <h2>Exporting maps</h2>
-          <p class="mb-8">
-            If you wish to export the map as GeoJSON, for importing it into a
-            mapping application, click on the Folder icon and hit the GeoJSON
-            icon.
-          </p>
-          <h2>Sharing maps</h2>
-          <p class="mb-8">
-            Obviously, you can save the map file and send that to someone, who
-            could upload it to the site.
-          </p>
-          <p class="mb-8">
-            If you have somewhere you can host the json file, you can add a
-            querystring parameter to the url for this site, and it will be
-            automatically loaded. Please note that the file extension must be
-            .json, as otherwise your browser will refuse to download the file.
-            You can see an example of a link
-            <a
-              target="_blank"
-              href="https://saferstreetmaker.org?map=https://saferstreetmaker.org/Hello Cleveland.json"
-              >here</a
-            >.
-          </p>
-          <p class="mb-8">
-            However, if you wish to embed a map in a web page (such as a blog
-            post), you can create your map, open the Settings (by clicking the
-            Cog button in the toolbar), setting the map title, whether the map
-            is in read-only mode (so no one can change it), and selecting which
-            layers you want visible on the map.
+              <p class="mb-8">
+                Welcome to the Safer Street Maker, where you can create the
+                active travel network of your dreams!
+              </p>
+              <p class="mb-8">
+                It's very early days of the site, so don't be surprised if you
+                encounter the odd issue.
+              </p>
+              <p class="mb-8">
+                You can place various active travel features on your area. The
+                idea is to use these to instigate local conversations about
+                improving our towns and cities, or you can use these to respond
+                to council consultations on infrastructure projects (I like to
+                respond with what I think a better scheme would be).
+              </p>
+              <p class="mb-8">
+                You can now also generate html to embed your map in another web
+                page, so if you want to illustrate a blog post with an
+                infrastructure map, you now can.
+              </p>
+            </div>
+            <div
+              class="hidden opacity-0 transition-opacity duration-150 ease-linear data-[te-tab-active]:block"
+              id="tabs-features"
+              role="tabpanel"
+              aria-labelledby="tabs-features-tab"
+            >
+              <h2><input type="button" class="modal-filter"></input> Modal Filters</h2>
+              <p class="mb-8">
+                Modal
+                filters are designed to stop motorised vehicles from passing.
+                This is usually done with either bollards and planters, or
+                Automatic Number Plate Recognition cameras (ANPR). To add a
+                modal filter, click the Green Circle button in the toolbar on
+                the left-hand side of the map, and just click on the map to
+                place one. Once placed, you can click on one to delete it, or
+                drag it to move it.
+              </p>
+              <h2><input type="button" class="bus-gate"></input> Bus Gates</h2>
+              <p class="mb-8">
+                Modal 
+                filters are designed to stop all motorised vehicles APART
+                FROM BUSES from passing. This is usually done with either
+                mechanically raised bollards, or Automatic Number Plate
+                Recognition cameras (ANPR). To add a bus gate, right-click the
+                Green Circle button in the toolbar on the left-hand side of the
+                map, select the bus icon, and just click on the map to place
+                one. Once placed, you can click on one to delete it, or drag it
+                to move it.
+              </p>
+              <h2><input type="button" class="mobility-lane"></input> Mobility Lanes</h2>
+              <p class="mb-8">
+                Most people think of a mobility lane as a cycle lane, and it's
+                true that the majority of traffic on them would be people on
+                bicycles. However, by designating them as Mobility lanes, this
+                indicates that they are designed to also be used by people using
+                mobility scooters, wheelchairs, and electric scooters. And to
+                enable this requires a better design of a lane (including being
+                wide enough to allow passing).
+              </p>
+              <p class="mb-8">
+                To add a mobility lane , click on the Cycle button in the
+                toolbar. You draw the lane by placing a serious of points. When
+                done, click on the last point added, and you will leave lane
+                creation mode.
+              </p>
+              <p class="mb-8">
+                To edit a lane, click anywhere on it to enter edit mode. You can
+                click on the fainter squares to add an extra point to the line,
+                if you need one. Whilst in edit mode, you will see a popup,
+                which currently has a button to delete the whole lane.
+              </p>
+              <p class="mb-8">
+                I find that the best way of placing a lane is to put the start
+                and end points of the lane whilst in create mode, click on the
+                last point you added to exit create mode, then click anywhere on
+                the line to go into edit mode. You can then place the extra
+                points to get the lane exactly where you want it.
+              </p>
+              <h2><input type="button" class="tram-line"></input> Tram Lines</h2>
+              <p class="mb-8">
+                These work in exactly the same way as mobility lanes. To add
+                one, click on the Tram button in the toolbar. You draw the lane
+                by placing a serious of points. When done, click on the last
+                point added, and you will leave line creation mode.
+              </p>
+              <h2><input type="button" class="car-free-street"></input> Car-free Streets</h2>
+              <p class="mb-8">
+                These are streets that are not accessible to vehicles (with
+                possible limited exceptions for deliveries). Again, these work
+                in exactly the same way as mobility lanes. To add one, click on
+                the No Vehicles button in the toolbar. You draw the lane by
+                placing a serious of points. When done, click on the last point
+                added, and you will leave line creation mode.
+              </p>
+              <h2><input type="button" class="school-street"></input> School Streets</h2>
+              <p class="mb-8">
+                These are streets around a school that are not accessible to
+                vehicles during drop-off and pick-up times. Again, these work in
+                exactly the same way as mobility lanes. To add one, click on the
+                No Vehicles button in the toolbar. You draw the lane by placing
+                a serious of points. When done, click on the last point added,
+                and you will leave line creation mode.
+              </p>
+              <h2><input type="button" class="ltn" value="LTN"></input> LTNs</h2>
+              <p class="mb-8">
+                LTNs, or Low Traffic Neighbourhoods/Healthy Living Zones, are
+                residential areas that restrict through-traffic, usually by
+                placing modal filters on a group of roads. They are a critical
+                part of a safe cycling network, as they provide a safe cycling
+                environment on roads that cannot have mobility lanes on them
+                (often due to on-street parking).
+              </p>
+              <p class="mb-8">
+                Cars can still get to everywhere they could previously, but may
+                have to take a slightly longer route. That hasn't stopped
+              </p>
+              <p class="mb-8">
+                You draw a polygon in much the same way as you draw a line, this
+                time clicking on the first point added to complete the shape.
+                Clicking on one allows you to set the label text for each LTN
+                block.
+              </p>
+              <h2><input type="button" class="traffic-lights"></input> Traffic Lights</h2>
+              <p class="mb-8">
+                This feature is to define a set of traffic lights used to
+                control traffic at junctions. This usually includes phases that
+                allow pedestrians to cross the road, however if you want a set
+                of traffic lights that are purely pedestrian crossings, use the
+                Pedestrian Crossing Traffic Lights feature.
+              </p>
+              <p class="mb-8">
+                To add a traffic light, click the Traffic Light button in the
+                toolbar on the left-hand side of the map, and just click on the
+                map to place one. Once placed, you can click on one to delete
+                it, or drag it to move it.
+              </p>
+              <h2><input type="button" class="pedestrian-lights"></input> Pedestrian Crossing Traffic Lights</h2>
+              <p class="mb-8">
+                This feature is to define a set of traffic lights only used to
+                allow pedestrians to cross a road.
+              </p>
+              <p class="mb-8">
+                To add a pedestrian crossing traffic light, right-click the
+                Traffic Light button in the toolbar on the left-hand side of the
+                map, click on the Pedestrian Light button, and just click on the
+                map to place one. Once placed, you can click on one to delete
+                it, or drag it to move it.
+              </p>
+              <h2><input type="button" class="zebra-crossing"></input> Zebra Crossings</h2>
+              <p class="mb-8">
+                This feature is to define a zebra crossing, to allow pedestrians
+                to safely cross a road.
+              </p>
+              <p class="mb-8">
+                To add a zebra crossing, right-click the Traffic Light button in
+                the toolbar on the left-hand side of the map, click on the Zebra
+                Crossing button, and just click on the map to place one. Once
+                placed, you can click on one to delete it, or drag it to move
+                it.
+              </p>
+            </div>
+            <div
+              class="hidden opacity-0 transition-opacity duration-150 ease-linear data-[te-tab-active]:block"
+              id="tabs-management"
+              role="tabpanel"
+              aria-labelledby="tabs-management-tab"
+            >
+              <h2><input type="button" class="map-manager"></input> Managing your maps</h2>
+              <p class="mb-8">
+                Your maps are currently automatically saved in the browser you are
+                using every time you change the map, either the features or zooming/moving the map.
+                You can use the map management window to create new maps. copy or delete maps, 
+                download map files, and open files.
+              </p>
+              <p class="mb-8">
+                The window consists of a series of action buttons at the top of the window,
+                and a list of all the maps that are currently stored in this browser.
+              </p>
+              <h2><input type="button" class="new-map"></input> Creating a new map</h2>
+              <p class="mb-8">
+                Clicking on the New Map button will bring up a text box to enter a title
+                for the new map. Enter a title and hit the Create button, and a new, blank,
+                map will be created.
+              </p>
+              <h2><input type="button" class="copy-map"></input> Copying the current map</h2>
+              <p class="mb-8">
+                Clicking on the Copy Map button will create a new map with the name
+                {current map name}_copy_{x}, where x is the number of copies you've made
+                of that map (so that you don't accidentally overwrite a previous copy you made).
+              </p>
+              <h2><input type="button" class="load-file"></input> Load a map from a file</h2>
+              <p class="mb-8">
+                Clicking on the Load File button to open up a file dialog to select the map json file
+                that you want to load to the map.
+              </p>
+              <h2><input type="button" class="save-file"></input> Download the current map as a file</h2>
+              <p class="mb-8">
+                Clicking on the Save file button will automatically download the map JSON to your device.
+                This will be in the form {current map name}.json. You can then send this files to other
+                devices for you to work on, or to other people for them to work on, or just back-up
+                your map file.
+              </p>
+              <h2>Example map</h2>
+              <p class="mb-8">
+                If you wish to see what the file format is, there is an
+                <a
+                  href="Hello Cleveland.json"
+                  title="Download example map"
+                  download
+                  >example map you can download</a
+                >
+                that you can look at.
+              </p>
+              <h2><input type="button" class="save-geojson-file"></input> Download the current map as a GeoJSON file</h2>
+              <p class="mb-8">
+                Clicking on the Export to GeoJSON will save the map as a GeoJson file, which you can import into most GIS
+                software programs.
+              </p>
+              <h2>Maps stored in the browser</h2>
+              <p class="mb-8">
+                All the maps that are stored in the current browser you are on will be listed in this section.
+                The current map will be in bold at the top of the list, while the other maps will be listed below it.
+                If you wish to switch maps, just click on the one you want to load. Your current map will be saved before
+                swapping. You can also hit the delete button to delete any of the other maps.
+              </p>
+            </div>
+            <div
+              class="hidden opacity-0 transition-opacity duration-150 ease-linear data-[te-tab-active]:block"
+              id="tabs-settings"
+              role="tabpanel"
+              aria-labelledby="tabs-settings-tab"
+            >
+              <h2><input type="button" class="settings"></input> Settings</h2>
+              <p class="mb-8">
+                The settings window allows you to set the title of the map, see the current zoom level and centre point 
+                of the map.
+              </p>
+              <p class="mb-8">
+                You can choose to make the map read-only, which will remove all the buttons for adding features
+                to the map (but still shows the map management, settings, sharing, and help buttons).
+              </p>
+              <p class="mb-8">
+                Finally, you can choose which layers are active on the map. Switching a layer off will remove 
+                the button from the toolbar and the layer from the legend. So, if you're not interested in adding
+                Tram Lines to your map, you can switch that layer off.
+              </p>
+            </div>
+            <div
+              class="hidden opacity-0 transition-opacity duration-150 ease-linear data-[te-tab-active]:block"
+              id="tabs-sharing"
+              role="tabpanel"
+              aria-labelledby="tabs-sharing-tab"
+            >
+              <h2>Sharing maps</h2>
+              <p class="mb-8">
+                Obviously, you can save the map file and send that to someone,
+                who could upload it to the site, work on it, save it, and send it back to you.
+              </p>
+              <p class="mb-8">
+                If you have somewhere you can host the json file, you can add a
+                querystring parameter to the url for this site, and it will be
+                automatically loaded. Please note that the file extension must
+                be .json, as otherwise your browser will refuse to download the
+                file.
+              </p>
+              <p class="mb-8">
+                Furthermore, if you wish to link to different parts of the same map, there are also querystring
+                parameters to enable you to set the zoom level and the centre point of the map:
+                </p>
+                <p class="mb-8">
+                  https://saferstreetmaker.org?map=https://saferstreetmaker.org/Hello Cleveland.json&zoom=14&centre=52.43937399964168,-1.8881893157958987
+                </p>
+                <p class="mb-8">
+                  The current values for zoom and the centre point can be found in the settings window.
+                  Additionally, you can add the hide-toolbar=true parameter to remove the whole toolbar from the map.
+                </p>
+                <p class="mb-8">
+                  You can see an example of a link
+                <a
+                  target="_blank"
+                  href="https://saferstreetmaker.org?map=https://saferstreetmaker.org/Hello Cleveland.json&zoom=14&centre=52.43937399964168,-1.8881893157958987&hide-toolbar=true"
+                  >here</a
+                >.
+                </p>
+                <h2><input type="button" class="share"></input> Embedding a map in a web page</h2>
+              <p class="mb-8">
+                However, if you wish to embed a map in a web page (such as a
+                blog post), you can create your map, open the Settings (by
+                clicking the Cog button in the toolbar), setting the map title,
+                whether the map is in read-only mode (so no one can change it),
+                and selecting which layers you want visible on the map.
 
-            <a href="test.html" target="_blank">Example</a>
-          </p>
-          <p class="mb-8">
-            With that done, you can click on the Share button in the toolbar.
-            Here, you can enter the dimensions of the map, and whether the
-            toolbar is visible, then hit the Create button. The html needed to
-            embed the map in your web page will be copied to your clipboard, so
-            just go to your page and paste the html into the html of your page.
-          </p>
-          <h2>Tech Details</h2>
-          <p class="mb-8">
-            If you're interested, this site uses the
-            <a href="https://leafletjs.com/" target="_blank">leaflet.js</a>
-            mapping library. It's built using
-            <a href="https://parceljs.org/" target="_blank">parcel.js</a>. The
-            code is hosted on
-            <a
-              href="https://github.com/manzanotti/saferstreetmaker"
-              target="_blank"
-              >GitHub</a
-            >. This is a public repository, so if you wish to contribute to the
-            project, feel free! The site is hosted on
-            <a href="https://www.azure.com" target="_blank">Azure</a>, as a
-            Static Web App, which is free for a ridiculous amount of traffic.
-          </p>
-          <h2>Support</h2>
-          <p class="mb-8">
-            If you have a GitHub account, you can raise an
-            <a
-              href="https://github.com/manzanotti/saferstreetmaker/issues"
-              target="_blank"
-              >issue</a
-            >, or you can use that to suggest a feature. You can also message me
-            on
-            <a href="https://twitter.com/manzanotti" target="_blank">Twitter</a
-            >.
-          </p>
+                <a href="test.html" target="_blank">Example</a>
+              </p>
+              <p class="mb-8">
+                With that done, you can click on the Share button in the
+                toolbar. Here, you can enter the dimensions of the map, and
+                whether the toolbar is visible, then hit the Create button. The
+                html needed to embed the map in your web page will be copied to
+                your clipboard, so just go to your page and paste the html into
+                the html of your page.
+              </p>
+              <p class="mb-8">
+                Be warned: this can be a very large amount of data!
+              </p>
+            </div>
+            <div
+              class="hidden opacity-0 transition-opacity duration-150 ease-linear data-[te-tab-active]:block"
+              id="tabs-tech"
+              role="tabpanel"
+              aria-labelledby="tabs-tech-tab"
+            >
+              <h2>Tech Details</h2>
+              <p class="mb-8">
+                If you're interested, this site uses the
+                <a href="https://leafletjs.com/" target="_blank">leaflet.js</a>
+                mapping library. It's built using
+                <a href="https://parceljs.org/" target="_blank">parcel.js</a>.
+                The code is hosted on
+                <a
+                  href="https://github.com/manzanotti/saferstreetmaker"
+                  target="_blank"
+                  >GitHub</a
+                >. This is a public repository, so if you wish to contribute to
+                the project, feel free! The site is hosted on
+                <a href="https://www.azure.com" target="_blank">Azure</a>, as a
+                Static Web App, which is free for a ridiculous amount of
+                traffic.
+              </p>
+            </div>
+            <div
+              class="hidden opacity-0 transition-opacity duration-150 ease-linear data-[te-tab-active]:block"
+              id="tabs-support"
+              role="tabpanel"
+              aria-labelledby="tabs-support-tab"
+            >
+              <h2>Support</h2>
+              <p class="mb-8">
+                If you have a GitHub account, you can raise an
+                <a
+                  href="https://github.com/manzanotti/saferstreetmaker/issues"
+                  target="_blank"
+                  >issue</a
+                >, or you can use that to suggest a feature. You can also
+                message me on
+                <a href="https://twitter.com/manzanotti" target="_blank"
+                  >Twitter</a
+                >.
+              </p>
+            </div>
+          </div>
         </div>
         <div
           class="modal-footer flex flex-shrink-0 flex-wrap items-center justify-end p-4 border-t border-gray-200 rounded-b-md"

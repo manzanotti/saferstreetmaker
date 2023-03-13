@@ -11,28 +11,33 @@
   background-color: #eeeeee;
 }
 
-.toolbar input#map-manager-button {
+input[type="button"].map-manager {
   background-image: url(../img/folder-svgrepo-com.svg);
   background-size: 40px 40px;
 }
 
-input#save-file {
+input[type="button"].save-file {
   background-image: url(../img/save-svgrepo-com.svg);
   background-size: 40px 40px;
 }
 
-input#save-geojson-file {
+input[type="button"].save-geojson-file {
   background-image: url(../img/geojson-file-svgrepo-com.svg);
   background-size: 40px 40px;
 }
 
-input#load-file {
+input[type="button"].load-file {
   background-image: url(../img/folder-svgrepo-com.svg);
   background-size: 40px 40px;
 }
 
-input#new-map {
+input[type="button"].new-map {
   background-image: url(../img/add-document-svgrepo-com.svg);
+  background-size: 50px 50px;
+}
+
+input[type="button"].copy-map {
+  background-image: url(../img/copy-file-svgrepo-com.svg);
   background-size: 50px 50px;
 }
 

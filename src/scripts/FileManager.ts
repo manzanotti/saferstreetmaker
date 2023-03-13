@@ -85,6 +85,16 @@ export class FileManager {
         localStorage.setItem('LastMapSelected', LZString.compress(mapName));
     };
 
+    copyMap = (settings: Settings, layersData: Map<string, IMapLayer>) => {
+        let newIndex = 1;
+        const mapList = this.loadMapListFromStorage();
+        while (mapList.includes(`Map_${settings.title}_copy_${newIndex}`)) {
+            newIndex++;
+        }
+        settings.title = `${settings.title}_copy_${newIndex}`;
+        this.saveMap(settings, layersData);
+    }
+
     loadMapFromHash = (hash: string) => {
         let mapString: string | null = null;
 
@@ -150,10 +160,10 @@ export class FileManager {
     };
 
     loadMapListFromStorage = (): Array<string> => {
-        const mapData = localStorage.getItem('MapList');
-        if (mapData !== null && mapData !== 'undefined') {
-            const map = LZString.decompress(mapData) || '';
-            return JSON.parse(map);
+        const mapListData = localStorage.getItem('MapList');
+        if (mapListData !== null && mapListData !== 'undefined') {
+            const mapList = LZString.decompress(mapListData) || '';
+            return JSON.parse(mapList);
         }
         return [];
     };

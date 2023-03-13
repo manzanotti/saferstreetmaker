@@ -2,6 +2,18 @@
   height: 60px;
   cursor: pointer;
   position: relative;
+  background-color: #ffffff;
+}
+
+.toolbar li.group span {
+  background: linear-gradient(-135deg, #444 10px, rgba(0, 0, 0, 0) 0);
+  width: 60px;
+  height: 50px;
+  display: inline-block;
+  position: absolute;
+  left: 0;
+  top: 5px;
+  pointer-events: none;
 }
 
 .toolbar input.toolbar-button {
@@ -10,7 +22,6 @@
   background-position: center;
   background-repeat: no-repeat;
   padding: 0;
-  background-color: #ffffff;
 }
 
 .toolbar li input.toolbar-button.selected {
@@ -25,68 +36,84 @@
 .toolbar li .subToolbar:not(.hidden) {
   height: 60px;
   position: absolute;
-  display: inline-block;
+  display: inline;
+  white-space: nowrap;
 }
 
 .toolbar li .subToolbar > li {
   display: inline-block;
 }
 
-.toolbar input#map-manager-button {
+input[type="button"].map-manager {
   background-image: url(../img/folder-svgrepo-com.svg);
   background-size: 40px 40px;
 }
 
-.toolbar input#modal-filter-button {
+input[type="button"].modal-filter {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Ccircle cx='30' cy='30' r='20' stroke='green' stroke-width='3' fill='green' fill-opacity='.2' %3E%3C/circle%3E%3C/svg%3E");
 }
 
-.toolbar input#mobility-lane-button {
+input[type="button"].mobility-lane {
   background-image: url(../img/bicycle-svgrepo-com.svg);
   background-size: 50px 50px;
 }
 
-.toolbar input#tram-line-button {
+input[type="button"].tram-line {
   background-image: url(../img/tram-svgrepo-com.svg);
   background-size: 50px 50px;
 }
 
-.toolbar input#car-free-street-button {
+input[type="button"].car-free-street {
   background-image: url(../img/ban-on-driving-147248.svg);
   background-size: 50px 50px;
 }
 
-.toolbar input#school-street-button {
+input[type="button"].school-street {
   background-image: url(../img/school-street.svg);
   background-size: 50px 50px;
 }
 
-.toolbar input#one-way-street-button {
+input[type="button"].one-way-street {
   background-image: url(../img/one-way-street.svg);
   background-size: 40px 50px;
 }
 
-.toolbar input#ltn-button {
+input[type="button"].ltn {
   font-size: 2em;
   line-height: 56px;
 }
 
-.toolbar input#bus-gate-button {
+input[type="button"].bus-gate {
   background-image: url(../img/double-decker-bus-svgrepo-com.svg);
   background-size: 50px 50px;
 }
 
-.toolbar input#settings-button {
+input[type="button"].traffic-lights {
+  background-image: url(../img/trafficlights-black1.svg);
+  background-size: 50px 50px;
+}
+
+input[type="button"].pedestrian-lights {
+  background-image: url(../img/UK-Traffic-Signal-Pedestrians-1975.svg);
+  background-size: 50px 50px;
+}
+
+input[type="button"].zebra-crossing {
+  background-image: url(../img/zebra-crossing-svgrepo-com.svg);
+  background-size: 50px 50px;
+}
+
+input[type="button"].settings {
   background-image: url(../img/settings-svgrepo-com.svg);
   background-size: 40px 40px;
 }
 
-.toolbar input#help-button {
+input[type="button"].help {
   background-image: url(../img/help-svgrepo-com.svg);
   background-size: 40px 40px;
 }
 
-.toolbar input#share-button {
+input[type="button"].share {
   background-image: url(../img/share-svgrepo-com.svg);
   background-size: 40px 40px;
 }

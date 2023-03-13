@@ -20,9 +20,12 @@ import { IModalWindow } from './Controls/IModalWindow';
 import { ToolbarButton } from './Controls/ToolbarButton';
 import { HelpButton } from './Controls/HelpButton';
 import { MapManagerControl } from './Controls/MapManagerControl';
+import { TrafficLightsLayer } from './layers/TrafficLightsLayer';
+import { PedestrianLightsLayer } from './layers/PedestrianLightsLayer';
+import { ZebraCrossingLayer } from './layers/ZebraCrossingLayer';
 
 export class MapContainer {
-    private static _version: string = '0.7.0';
+    private static _version: string = '0.8.0';
     private _mapInitialised: boolean = false;
     private _fileManager: FileManager;
     private _map: L.Map;
@@ -74,6 +77,9 @@ export class MapContainer {
         this._layers.set(OneWayStreetLayer.Id, new OneWayStreetLayer());
         this._layers.set(LtnLayer.Id, new LtnLayer());
         this._layers.set(BusGateLayer.Id, new BusGateLayer());
+        this._layers.set(TrafficLightsLayer.Id, new TrafficLightsLayer());
+        this._layers.set(PedestrianLightsLayer.Id, new PedestrianLightsLayer());
+        this._layers.set(ZebraCrossingLayer.Id, new ZebraCrossingLayer());
 
         this.activateAllLayers();
     };
@@ -209,7 +215,30 @@ export class MapContainer {
 
         this._map.on('zoomend', (e) => {
             const zoom = this._map.getZoom();
+            const mapElement = document.getElementById('map');
+            if (mapElement) {
+                for (let i = mapElement.classList.length - 1; i >= 0; i--) {
+                    const className = mapElement.classList[i];
+                    if (className.startsWith('zoom')) {
+                        mapElement.classList.remove(className);
+                    }
+                }
+
+                mapElement.classList.add(`zoom-${zoom}`);
+            }
+
             PubSub.publish(EventTopics.mapZoomChanged, zoom);
+
+            this._settings.zoom = zoom;
+            this._settings.centre = this._map.getCenter();
+
+            this.saveMap();
+        });
+
+        this._map.on('moveend', (e) => {
+            this._settings.zoom = this._map.getZoom();
+            this._settings.centre = this._map.getCenter();
+            this.saveMap()
         });
     }
 
@@ -223,7 +252,7 @@ export class MapContainer {
             const errors = new Array<string>();
 
             try {
-                mapLoaded = this.loadMapData(data);
+                mapLoaded = this.loadMapData(data, null, null);
             } catch (e: any) {
                 errors.push('There was a problem loading the map from uploaded file:');
                 errors.push(e.message);
@@ -370,7 +399,7 @@ export class MapContainer {
         this._map.setView([52.5, -1.9], 12);
     }
 
-    loadMap = async (remoteMapFile: string | null, hash: string, hideToolbar: boolean): Promise<boolean> => {
+    loadMap = async (remoteMapFile: string | null, hash: string, hideToolbar: boolean, zoom: string | null, centre: Array<number> | null): Promise<boolean> => {
         if (this._mapInitialised) {
             this.removeAllLayers();
             this.resetSettings();
@@ -402,7 +431,7 @@ export class MapContainer {
             }
 
             errorIntro = 'There was a problem processing the map file:';
-            mapLoaded = this.loadMapData(geoJSON);
+            mapLoaded = this.loadMapData(geoJSON, zoom, centre);
         } catch (e: any) {
             errors.push(errorIntro);
 
@@ -442,7 +471,7 @@ export class MapContainer {
         hyperlink.click();
     }
 
-    private loadMapData = (geoJSON): boolean => {
+    private loadMapData = (geoJSON, zoom: string | null, centre: Array<number> | null): boolean => {
         if (geoJSON === null) {
             return false;
         }
@@ -483,6 +512,14 @@ export class MapContainer {
 
         if (this._settings && !this._settings.version) {
             this._settings.version = MapContainer._version;;
+        }
+
+        if (zoom) {
+            this._settings.zoom = Number(zoom);
+        }
+
+        if (centre && centre.length === 2) {
+            this._settings.centre = new L.LatLng(centre[0], centre[1]);
         }
 
         if (this._settings.centre) {
