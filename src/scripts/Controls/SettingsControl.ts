@@ -237,6 +237,7 @@ export class SettingsControl implements IModalWindow {
             settings.readOnly = (<HTMLInputElement>document.getElementById('read-only'))?.checked;
             settings.zoom = this._settings.zoom;
             settings.centre = this._settings.centre;
+            settings.version = this._settings.version;
 
             const layers = document.getElementsByName('layer');
             const array = Array.from(layers);

@@ -1,16 +1,16 @@
 {
   "devDependencies": {
-    "@types/leaflet": "^1.9.1",
-    "@types/lz-string": "^1.3.34",
+    "@types/leaflet": "^1.9.3",
+    "@types/lz-string": "^1.5.0",
     "@types/pubsub-js": "^1.8.3",
-    "cssnano": "^5.1.15",
+    "cssnano": "^6.0.1",
     "leaflet-arrowheads": "^1.4.0",
-    "leaflet-geometryutil": "0.10.1",
-    "parcel": "^2.8.3"
+    "leaflet-geometryutil": "^0.10.2",
+    "parcel": "^2.9.3"
   },
   "dependencies": {
-    "postcss": "^8.4.21",
-    "tailwindcss": "^3.2.7",
+    "postcss": "^8.4.26",
+    "tailwindcss": "^3.3.3",
     "tw-elements": "^1.0.0-beta1"
   },
   "alias": {
@@ -39,5 +39,6 @@
       "global": "leaflet-arrowheads"
     }
   },
-  "packageManager": "yarn@3.2.3"
+  "packageManager": "yarn@3.6.1",
+  "version": "0.0.0"
 }

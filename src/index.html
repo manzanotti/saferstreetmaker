@@ -9,6 +9,10 @@
     <title>Safer Street Maker</title>
     <link
       rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/tw-elements@1.0.0-beta1/dist/css/index.min.css"
+    />
+    <link
+      rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"
       integrity="sha256-kLaT2GOSpHechhsozzB+flnD+zUyjE2LlfWPgU04xyI="
       crossorigin="anonymous"
@@ -26,11 +30,12 @@
       crossorigin="anonymous"
       referrerpolicy="no-referrer"
     />
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/tw-elements/dist/css/index.min.css"
-    />
     <link rel="stylesheet" href="styles/index.css" />
+
+    <script
+      src="https://cdn.jsdelivr.net/npm/tw-elements@1.0.0-beta1/dist/js/index.min.js"
+      crossorigin="anonymous"
+    ></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.min.js"></script>
     <script
       src="https://cdn.jsdelivr.net/npm/leaflet-svg-shape-markers@1.4.0/dist/leaflet-svg-shape-markers.min.js"
@@ -43,7 +48,7 @@
       integrity="sha256-D786FM7MvDhViw9bYPPYnyP5Q+HsCRlMqzTZTdtcVnk="
       crossorigin="anonymous"
     ></script>
-    <script src="https://cdn.jsdelivr.net/npm/leaflet-geometryutil@0.10.1/src/leaflet.geometryutil.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-geometryutil@0.10.2/src/leaflet.geometryutil.min.js"></script>
     <script
       src="https://cdn.jsdelivr.net/npm/leaflet-arrowheads@1.4.0/src/leaflet-arrowheads.js"
       integrity="sha256-PLobpKQDaE50Wqsi+gJzmIvlpIT+fAAIQhBFHzoddAE="
@@ -51,11 +56,10 @@
     ></script>
     <script src="https://cdn.jsdelivr.net/npm/pubsub-js@1.9.4/src/pubsub.min.js"></script>
     <script
-      src="https://cdn.jsdelivr.net/npm/lz-string@1.4.4/libs/lz-string.min.js"
-      integrity="sha256-nRoO8HoupfqozUr7YKBRgHXmdx40Hl/04OSBzv7e7L8="
+      src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"
+      integrity="sha256-lfTRy/CZ9XFhtmS8BIQm7D35JjeAGkx5EW6DMVqnh+c="
       crossorigin="anonymous"
     ></script>
-    <script src="https://cdn.jsdelivr.net/npm/tw-elements/dist/js/index.min.js"></script>
     <script type="module" src="scripts/index.ts"></script>
   </head>
 
@@ -201,21 +205,21 @@
               role="tabpanel"
               aria-labelledby="tabs-features-tab"
             >
-              <h2><input type="button" class="modal-filter"></input> Modal Filters</h2>
+              <h2>
+                <input type="button" class="modal-filter" /> Modal Filters
+              </h2>
               <p class="mb-8">
-                Modal
-                filters are designed to stop motorised vehicles from passing.
-                This is usually done with either bollards and planters, or
-                Automatic Number Plate Recognition cameras (ANPR). To add a
+                Modal filters are designed to stop motorised vehicles from
+                passing. This is usually done with either bollards and planters,
+                or Automatic Number Plate Recognition cameras (ANPR). To add a
                 modal filter, click the Green Circle button in the toolbar on
                 the left-hand side of the map, and just click on the map to
                 place one. Once placed, you can click on one to delete it, or
                 drag it to move it.
               </p>
-              <h2><input type="button" class="bus-gate"></input> Bus Gates</h2>
+              <h2><input type="button" class="bus-gate" /> Bus Gates</h2>
               <p class="mb-8">
-                Modal 
-                filters are designed to stop all motorised vehicles APART
+                Modal filters are designed to stop all motorised vehicles APART
                 FROM BUSES from passing. This is usually done with either
                 mechanically raised bollards, or Automatic Number Plate
                 Recognition cameras (ANPR). To add a bus gate, right-click the
@@ -224,7 +228,9 @@
                 one. Once placed, you can click on one to delete it, or drag it
                 to move it.
               </p>
-              <h2><input type="button" class="mobility-lane"></input> Mobility Lanes</h2>
+              <h2>
+                <input type="button" class="mobility-lane" /> Mobility Lanes
+              </h2>
               <p class="mb-8">
                 Most people think of a mobility lane as a cycle lane, and it's
                 true that the majority of traffic on them would be people on
@@ -253,14 +259,16 @@
                 the line to go into edit mode. You can then place the extra
                 points to get the lane exactly where you want it.
               </p>
-              <h2><input type="button" class="tram-line"></input> Tram Lines</h2>
+              <h2><input type="button" class="tram-line" /> Tram Lines</h2>
               <p class="mb-8">
                 These work in exactly the same way as mobility lanes. To add
                 one, click on the Tram button in the toolbar. You draw the lane
                 by placing a serious of points. When done, click on the last
                 point added, and you will leave line creation mode.
               </p>
-              <h2><input type="button" class="car-free-street"></input> Car-free Streets</h2>
+              <h2>
+                <input type="button" class="car-free-street" /> Car-free Streets
+              </h2>
               <p class="mb-8">
                 These are streets that are not accessible to vehicles (with
                 possible limited exceptions for deliveries). Again, these work
@@ -269,7 +277,9 @@
                 placing a serious of points. When done, click on the last point
                 added, and you will leave line creation mode.
               </p>
-              <h2><input type="button" class="school-street"></input> School Streets</h2>
+              <h2>
+                <input type="button" class="school-street" /> School Streets
+              </h2>
               <p class="mb-8">
                 These are streets around a school that are not accessible to
                 vehicles during drop-off and pick-up times. Again, these work in
@@ -278,7 +288,7 @@
                 a serious of points. When done, click on the last point added,
                 and you will leave line creation mode.
               </p>
-              <h2><input type="button" class="ltn" value="LTN"></input> LTNs</h2>
+              <h2><input type="button" class="ltn" value="LTN" /> LTNs</h2>
               <p class="mb-8">
                 LTNs, or Low Traffic Neighbourhoods/Healthy Living Zones, are
                 residential areas that restrict through-traffic, usually by
@@ -297,7 +307,9 @@
                 Clicking on one allows you to set the label text for each LTN
                 block.
               </p>
-              <h2><input type="button" class="traffic-lights"></input> Traffic Lights</h2>
+              <h2>
+                <input type="button" class="traffic-lights" /> Traffic Lights
+              </h2>
               <p class="mb-8">
                 This feature is to define a set of traffic lights used to
                 control traffic at junctions. This usually includes phases that
@@ -311,7 +323,10 @@
                 map to place one. Once placed, you can click on one to delete
                 it, or drag it to move it.
               </p>
-              <h2><input type="button" class="pedestrian-lights"></input> Pedestrian Crossing Traffic Lights</h2>
+              <h2>
+                <input type="button" class="pedestrian-lights" /> Pedestrian
+                Crossing Traffic Lights
+              </h2>
               <p class="mb-8">
                 This feature is to define a set of traffic lights only used to
                 allow pedestrians to cross a road.
@@ -323,7 +338,9 @@
                 map to place one. Once placed, you can click on one to delete
                 it, or drag it to move it.
               </p>
-              <h2><input type="button" class="zebra-crossing"></input> Zebra Crossings</h2>
+              <h2>
+                <input type="button" class="zebra-crossing" /> Zebra Crossings
+              </h2>
               <p class="mb-8">
                 This feature is to define a zebra crossing, to allow pedestrians
                 to safely cross a road.
@@ -342,63 +359,81 @@
               role="tabpanel"
               aria-labelledby="tabs-management-tab"
             >
-              <h2><input type="button" class="map-manager"></input> Managing your maps</h2>
+              <h2>
+                <input type="button" class="map-manager" /> Managing your maps
+              </h2>
               <p class="mb-8">
-                Your maps are currently automatically saved in the browser you are
-                using every time you change the map, either the features or zooming/moving the map.
-                You can use the map management window to create new maps. copy or delete maps, 
-                download map files, and open files.
+                Your maps are currently automatically saved in the browser you
+                are using every time you change the map, either the features or
+                zooming/moving the map. You can use the map management window to
+                create new maps. copy or delete maps, download map files, and
+                open files.
               </p>
               <p class="mb-8">
-                The window consists of a series of action buttons at the top of the window,
-                and a list of all the maps that are currently stored in this browser.
+                The window consists of a series of action buttons at the top of
+                the window, and a list of all the maps that are currently stored
+                in this browser.
               </p>
-              <h2><input type="button" class="new-map"></input> Creating a new map</h2>
+              <h2>
+                <input type="button" class="new-map" /> Creating a new map
+              </h2>
               <p class="mb-8">
-                Clicking on the New Map button will bring up a text box to enter a title
-                for the new map. Enter a title and hit the Create button, and a new, blank,
-                map will be created.
+                Clicking on the New Map button will bring up a text box to enter
+                a title for the new map. Enter a title and hit the Create
+                button, and a new, blank, map will be created.
               </p>
-              <h2><input type="button" class="copy-map"></input> Copying the current map</h2>
+              <h2>
+                <input type="button" class="copy-map" /> Copying the current map
+              </h2>
               <p class="mb-8">
-                Clicking on the Copy Map button will create a new map with the name
-                {current map name}_copy_{x}, where x is the number of copies you've made
-                of that map (so that you don't accidentally overwrite a previous copy you made).
+                Clicking on the Copy Map button will create a new map with the
+                name {current map name}_copy_{x}, where x is the number of
+                copies you've made of that map (so that you don't accidentally
+                overwrite a previous copy you made).
               </p>
-              <h2><input type="button" class="load-file"></input> Load a map from a file</h2>
+              <h2>
+                <input type="button" class="load-file" /> Load a map from a file
+              </h2>
               <p class="mb-8">
-                Clicking on the Load File button to open up a file dialog to select the map json file
-                that you want to load to the map.
+                Clicking on the Load File button to open up a file dialog to
+                select the map json file that you want to load to the map.
               </p>
-              <h2><input type="button" class="save-file"></input> Download the current map as a file</h2>
+              <h2>
+                <input type="button" class="save-file" /> Download the current
+                map as a file
+              </h2>
               <p class="mb-8">
-                Clicking on the Save file button will automatically download the map JSON to your device.
-                This will be in the form {current map name}.json. You can then send this files to other
-                devices for you to work on, or to other people for them to work on, or just back-up
-                your map file.
+                Clicking on the Save file button will automatically download the
+                map JSON to your device. This will be in the form {current map
+                name}.json. You can then send this files to other devices for
+                you to work on, or to other people for them to work on, or just
+                back-up your map file.
               </p>
               <h2>Example map</h2>
               <p class="mb-8">
                 If you wish to see what the file format is, there is an
-                <a
-                  href="Birmingham.json"
-                  title="Download example map"
-                  download
+                <a href="Birmingham.json" title="Download example map" download
                   >example map you can download</a
                 >
                 that you can look at.
               </p>
-              <h2><input type="button" class="save-geojson-file"></input> Download the current map as a GeoJSON file</h2>
+              <h2>
+                <input type="button" class="save-geojson-file" /> Download the
+                current map as a GeoJSON file
+              </h2>
               <p class="mb-8">
-                Clicking on the Export to GeoJSON will save the map as a GeoJson file, which you can import into most GIS
-                software programs.
+                Clicking on the Export to GeoJSON will save the map as a GeoJson
+                file, which you can import into most GIS software programs.
               </p>
               <h2>Maps stored in the browser</h2>
               <p class="mb-8">
-                All the maps that are stored in the current browser you are on will be listed in this section.
-                The current map will be in bold at the top of the list, while the other maps will be listed below it.
-                If you wish to switch maps, just click on the one you want to load. Your current map will be saved before
-                swapping. You can also hit the delete button to delete any of the other maps.
+                All the maps that are stored in the current browser you are on
+                will be listed in this section. The current map will be in bold
+                at the top of the list, while the other maps will be listed
+                below it. If you wish to switch maps, just click on the one you
+                want to load. Your current map will be saved before swapping.
+                You can also hit the delete button to delete any of the other
+                maps.
               </p>
             </div>
             <div
@@ -407,19 +442,21 @@
               role="tabpanel"
               aria-labelledby="tabs-settings-tab"
             >
-              <h2><input type="button" class="settings"></input> Settings</h2>
+              <h2><input type="button" class="settings" /> Settings</h2>
               <p class="mb-8">
-                The settings window allows you to set the title of the map, see the current zoom level and centre point 
-                of the map.
+                The settings window allows you to set the title of the map, see
+                the current zoom level and centre point of the map.
               </p>
               <p class="mb-8">
-                You can choose to make the map read-only, which will remove all the buttons for adding features
-                to the map (but still shows the map management, settings, sharing, and help buttons).
+                You can choose to make the map read-only, which will remove all
+                the buttons for adding features to the map (but still shows the
+                map management, settings, sharing, and help buttons).
               </p>
               <p class="mb-8">
-                Finally, you can choose which layers are active on the map. Switching a layer off will remove 
-                the button from the toolbar and the layer from the legend. So, if you're not interested in adding
-                Tram Lines to your map, you can switch that layer off.
+                Finally, you can choose which layers are active on the map.
+                Switching a layer off will remove the button from the toolbar
+                and the layer from the legend. So, if you're not interested in
+                adding Tram Lines to your map, you can switch that layer off.
               </p>
             </div>
             <div
@@ -431,7 +468,8 @@
               <h2>Sharing maps</h2>
               <p class="mb-8">
                 Obviously, you can save the map file and send that to someone,
-                who could upload it to the site, work on it, save it, and send it back to you.
+                who could upload it to the site, work on it, save it, and send
+                it back to you.
               </p>
               <p class="mb-8">
                 If you have somewhere you can host the json file, you can add a
@@ -441,25 +479,31 @@
                 file.
               </p>
               <p class="mb-8">
-                Furthermore, if you wish to link to different parts of the same map, there are also querystring
-                parameters to enable you to set the zoom level and the centre point of the map:
-                </p>
-                <p class="mb-8">
-                  https://saferstreetmaker.org?map=https://saferstreetmaker.org/Birmigham.json&zoom=14&centre=52.43937399964168,-1.8881893157958987
-                </p>
-                <p class="mb-8">
-                  The current values for zoom and the centre point can be found in the settings window.
-                  Additionally, you can add the hide-toolbar=true parameter to remove the whole toolbar from the map.
-                </p>
-                <p class="mb-8">
-                  You can see an example of a link
+                Furthermore, if you wish to link to different parts of the same
+                map, there are also querystring parameters to enable you to set
+                the zoom level and the centre point of the map:
+              </p>
+              <p class="mb-8">
+                https://saferstreetmaker.org?map=https://saferstreetmaker.org/Birmigham.json&zoom=14&centre=52.43937399964168,-1.8881893157958987
+              </p>
+              <p class="mb-8">
+                The current values for zoom and the centre point can be found in
+                the settings window. Additionally, you can add the
+                hide-toolbar=true parameter to remove the whole toolbar from the
+                map.
+              </p>
+              <p class="mb-8">
+                You can see an example of a link
                 <a
                   target="_blank"
                   href="https://saferstreetmaker.org?map=https://saferstreetmaker.org/Birmingham.json&zoom=14&centre=52.43937399964168,-1.8881893157958987&hide-toolbar=true"
                   >here</a
                 >.
-                </p>
-                <h2><input type="button" class="share"></input> Embedding a map in a web page</h2>
+              </p>
+              <h2>
+                <input type="button" class="share" /> Embedding a map in a web
+                page
+              </h2>
               <p class="mb-8">
                 However, if you wish to embed a map in a web page (such as a
                 blog post), you can create your map, open the Settings (by
