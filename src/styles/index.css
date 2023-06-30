@@ -8,6 +8,10 @@
 @import "./mapmanager.css";
 @import "./help.css";
 
+body{
+  margin:0;
+}
+
 #map {
   height: 100vh;
   z-index: 1;

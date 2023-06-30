@@ -32,7 +32,7 @@
     opacity: 1;
     display: flex;
     z-index: 50;
-    height: 100vh;
+    height: 90vh;
     padding: 10px;
     border: 1 solid black;
     box-shadow: 0 2px 2px 0 black;
@@ -60,6 +60,12 @@
   top: 10%;
   transform: translate(-50%, -10%);
   z-index: -1;
+  color:white;
+  overflow:scroll;
+}
+
+#help a{
+  color: white;
 }
 
 #errors {
@@ -78,4 +84,10 @@
   background-repeat: no-repeat;
   padding: 0;
   border: 1px solid #000;
+}
+
+#help-close-button{
+  position: absolute;
+  right:0px;
+  top:0px;
 }
