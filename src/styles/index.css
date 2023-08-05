@@ -1,12 +1,13 @@
-@tailwind components;
-@tailwind utilities;
-
 @import "./cursors.css";
 @import "./legend.css";
 @import "./modal.css";
 @import "./toolbar.css";
 @import "./mapmanager.css";
 @import "./help.css";
+@import "npm:tw-elements/dist/css/tw-elements.min.css";
+
+@tailwind components;
+@tailwind utilities;
 
 #map {
   height: 100vh;
@@ -21,7 +22,11 @@ h2 {
   @apply font-medium leading-tight text-xl mt-0 mb-2;
 }
 
-.hide {
+li {
+  list-style-type: none;
+}
+
+.hidden {
   display: none;
 }
 
@@ -65,7 +70,6 @@ ul.popup-buttons {
 }
 
 ul.popup-buttons li {
-  list-style: none;
   display: block;
   flex: 0 1 auto; /* Default */
   justify-content: center;

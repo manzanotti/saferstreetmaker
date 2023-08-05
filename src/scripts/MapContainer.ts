@@ -1,5 +1,6 @@
 import * as L from 'leaflet';
 import PubSub from 'pubsub-js';
+
 import { ModalFilterLayer } from './layers/ModalFilterLayer';
 import { IMapLayer } from './layers/IMapLayer';
 import { FileManager } from './FileManager';
@@ -25,7 +26,7 @@ import { PedestrianLightsLayer } from './layers/PedestrianLightsLayer';
 import { ZebraCrossingLayer } from './layers/ZebraCrossingLayer';
 
 export class MapContainer {
-    private static _version: string = '0.8.0';
+    private static _version: string = '0.8.1';
     private _mapInitialised: boolean = false;
     private _fileManager: FileManager;
     private _map: L.Map;
@@ -510,7 +511,7 @@ export class MapContainer {
             this._settings.zoom = geoJSON['zoom'];
         }
 
-        if (this._settings && !this._settings.version) {
+        if (this._settings) {
             this._settings.version = MapContainer._version;;
         }
 

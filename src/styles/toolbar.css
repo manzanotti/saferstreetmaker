@@ -38,6 +38,7 @@
   position: absolute;
   display: inline;
   white-space: nowrap;
+  padding: 0;
 }
 
 .toolbar li .subToolbar > li {
