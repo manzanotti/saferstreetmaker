@@ -69,7 +69,7 @@ export class SettingsControl implements IModalWindow {
 
         div.appendChild(header);
 
-        div.appendChild(SettingsControl.createTitle(settings.title));
+        div.appendChild(SettingsControl.createTitle(settings.title, settings.readOnly));
 
         div.appendChild(SettingsControl.createZoom(settings.zoom));
 
@@ -86,7 +86,7 @@ export class SettingsControl implements IModalWindow {
         return div;
     }
 
-    private static createTitle = (title: string): HTMLElement => {
+    private static createTitle = (title: string, isReadOnly: boolean): HTMLElement => {
         const element = document.createElement('div');
         element.classList.add(SettingsControl.rowMargin);
 
@@ -100,6 +100,7 @@ export class SettingsControl implements IModalWindow {
         input.type = 'text';
         input.value = title;
         input.classList.add('border-solid');
+        input.readOnly = isReadOnly;
         element.appendChild(input);
 
         return element
