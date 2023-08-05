@@ -9,6 +9,10 @@
 @tailwind components;
 @tailwind utilities;
 
+body{
+  margin:0;
+}
+
 #map {
   height: 100vh;
   z-index: 1;
