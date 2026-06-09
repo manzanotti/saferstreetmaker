@@ -3,3 +3,5 @@ node_modules/
 .vscode/
 .yarn/
 dist/
+test-results/.last-run.json
+playwright-report/index.html

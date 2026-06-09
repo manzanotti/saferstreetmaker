@@ -88,7 +88,7 @@ export class FileManager {
     copyMap = (settings: Settings, layersData: Map<string, IMapLayer>) => {
         let newIndex = 1;
         const mapList = this.loadMapListFromStorage();
-        while (mapList.includes(`Map_${settings.title}_copy_${newIndex}`)) {
+        while (mapList.includes(`${settings.title}_copy_${newIndex}`)) {
             newIndex++;
         }
         settings.title = `${settings.title}_copy_${newIndex}`;
