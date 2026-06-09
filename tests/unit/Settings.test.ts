@@ -16,7 +16,7 @@ vi.mock('leaflet', () => ({
 describe('Settings', () => {
     it('has correct default title', () => {
         const s = new Settings();
-        expect(s.title).toBe('Hello, Cleveland');
+        expect(s.title).toBe('Hello Cleveland');
     });
 
     it('defaults readOnly to false', () => {

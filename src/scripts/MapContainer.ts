@@ -32,11 +32,12 @@ export class MapContainer {
     private _map: L.Map;
     private _layers: Map<string, IMapLayer>;
     private _settings: Settings;
-    private _toolbarControl: L.Control;
-    private _legend: L.Control;
+    private _toolbarControl!: L.Control;
+    private _legend!: L.Control;
     private _helpButton: HelpButton;
 
-    private _modalWindows: Array<IModalWindow>;
+    private _modalWindows!: Array<IModalWindow>;
+    private _saveViewTimer: ReturnType<typeof setTimeout> | undefined;
 
     constructor(fileManager: FileManager) {
         this._fileManager = fileManager;
@@ -48,7 +49,8 @@ export class MapContainer {
 
         this.setupPanes(this._map);
 
-        this.setupLayers();
+        this._layers = new Map<string, IMapLayer>;
+        this.setupLayers(this._layers);
 
         this._helpButton = new HelpButton();
 
@@ -67,20 +69,18 @@ export class MapContainer {
         filtersPane.style.zIndex = '500';
     }
 
-    private setupLayers = () => {
-        this._layers = new Map<string, IMapLayer>;
-
-        this._layers.set(ModalFilterLayer.Id, new ModalFilterLayer());
-        this._layers.set(MobilityLaneLayer.Id, new MobilityLaneLayer());
-        this._layers.set(TramLineLayer.Id, new TramLineLayer());
-        this._layers.set(CarFreeStreetLayer.Id, new CarFreeStreetLayer());
-        this._layers.set(SchoolStreetLayer.Id, new SchoolStreetLayer());
-        this._layers.set(OneWayStreetLayer.Id, new OneWayStreetLayer());
-        this._layers.set(LtnLayer.Id, new LtnLayer());
-        this._layers.set(BusGateLayer.Id, new BusGateLayer());
-        this._layers.set(TrafficLightsLayer.Id, new TrafficLightsLayer());
-        this._layers.set(PedestrianLightsLayer.Id, new PedestrianLightsLayer());
-        this._layers.set(ZebraCrossingLayer.Id, new ZebraCrossingLayer());
+    private setupLayers = (layers: Map<string, IMapLayer>) => {
+        layers.set(ModalFilterLayer.Id, new ModalFilterLayer());
+        layers.set(MobilityLaneLayer.Id, new MobilityLaneLayer());
+        layers.set(TramLineLayer.Id, new TramLineLayer());
+        layers.set(CarFreeStreetLayer.Id, new CarFreeStreetLayer());
+        layers.set(SchoolStreetLayer.Id, new SchoolStreetLayer());
+        layers.set(OneWayStreetLayer.Id, new OneWayStreetLayer());
+        layers.set(LtnLayer.Id, new LtnLayer());
+        layers.set(BusGateLayer.Id, new BusGateLayer());
+        layers.set(TrafficLightsLayer.Id, new TrafficLightsLayer());
+        layers.set(PedestrianLightsLayer.Id, new PedestrianLightsLayer());
+        layers.set(ZebraCrossingLayer.Id, new ZebraCrossingLayer());
 
         this.activateAllLayers();
     };
@@ -133,7 +133,7 @@ export class MapContainer {
     private setupCloseHelpButtons = () => {
         document.getElementsByName('closeHelp').forEach((element: HTMLElement) => {
             element.addEventListener('click', (e: Event) => {
-                this.showPopup('help');
+                this.setPopupVisibility('help', false);
             })
         });
     }
@@ -233,13 +233,13 @@ export class MapContainer {
             this._settings.zoom = zoom;
             this._settings.centre = this._map.getCenter();
 
-            this.saveMap();
+            this.saveViewDebounced();
         });
 
         this._map.on('moveend', (e) => {
             this._settings.zoom = this._map.getZoom();
             this._settings.centre = this._map.getCenter();
-            this.saveMap()
+            this.saveViewDebounced();
         });
     }
 
@@ -281,9 +281,6 @@ export class MapContainer {
         });
 
         PubSub.subscribe(EventTopics.saveMapToFile, (msg) => {
-            const centre = this._map.getCenter();
-            const zoom = this._map.getZoom();
-
             this._fileManager.saveMapToFile(this._settings, this._layers);
 
             this.toggleModalWindowVisibility(null);
@@ -357,12 +354,12 @@ export class MapContainer {
 
         PubSub.subscribe(EventTopics.showHelp, (msg) => {
             this.refreshToolbar(this._settings);
-            this.showPopup('help');
+            this.setPopupVisibility('help', true);
         });
 
         PubSub.subscribe(EventTopics.hideHelp, (msg) => {
             this.refreshToolbar(this._settings);
-            this.showPopup('help');
+            this.setPopupVisibility('help', false);
         });
 
         PubSub.subscribe(EventTopics.hideLayer, (msg, layerId) => {
@@ -472,7 +469,7 @@ export class MapContainer {
         hyperlink.click();
     }
 
-    private loadMapData = (geoJSON, zoom: string | null, centre: Array<number> | null): boolean => {
+    private loadMapData = (geoJSON: any, zoom: string | null, centre: Array<number> | null): boolean => {
         if (geoJSON === null) {
             return false;
         }
@@ -482,7 +479,7 @@ export class MapContainer {
         }
 
         if (geoJSON['settings'] !== undefined) {
-            this._settings = geoJSON['settings'];
+            this._settings = Object.assign(new Settings(), geoJSON['settings']);
         }
 
         if (geoJSON['layers'] !== undefined) {
@@ -512,7 +509,7 @@ export class MapContainer {
         }
 
         if (this._settings) {
-            this._settings.version = MapContainer._version;;
+            this._settings.version = MapContainer._version;
         }
 
         if (zoom) {
@@ -536,28 +533,38 @@ export class MapContainer {
         this._fileManager.saveMap(this._settings, this._layers);
     };
 
+    private saveViewDebounced = () => {
+        if (this._saveViewTimer !== undefined) {
+            clearTimeout(this._saveViewTimer);
+        }
+        this._saveViewTimer = setTimeout(() => {
+            this._saveViewTimer = undefined;
+            this.saveMap();
+        }, 500);
+    };
+
     private showErrors = (errorMessages: Array<string>) => {
         const errorMessagesElement = document.getElementById('errorMessages');
 
         if (errorMessagesElement !== null) {
             errorMessagesElement.innerHTML = errorMessages.join('<br />');
 
-            this.showPopup('errors');
+            this.setPopupVisibility('errors', true);
         }
     }
 
-    private showPopup = (popupId: string) => {
+    private setPopupVisibility = (popupId: string, visible: boolean) => {
         const popupElement = document.getElementById(popupId);
 
         if (popupElement === null) {
             return;
         }
 
-        if (popupElement.classList.contains('fadeOut')) {
+        if (visible) {
             popupElement.classList.remove('fadeOut');
-            popupElement?.classList.add('fadeIn');
+            popupElement.classList.add('fadeIn');
         } else {
-            popupElement?.classList.remove('fadeIn');
+            popupElement.classList.remove('fadeIn');
             popupElement.classList.add('fadeOut');
         }
     }

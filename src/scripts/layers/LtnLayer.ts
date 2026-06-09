@@ -3,6 +3,12 @@ import PubSub from 'pubsub-js';
 import { ToolbarButton } from '../Controls/ToolbarButton';
 import { EventTopics } from '../EventTopics';
 import { IMapLayer } from "./IMapLayer";
+import {
+    buildLegendEntry,
+    buildToolbarButton,
+    deselectPolylineLayer,
+    selectLayer,
+} from './LayerHelpers';
 
 export class LtnLayer implements IMapLayer {
     public static Id = 'LtnCells';
@@ -14,55 +20,38 @@ export class LtnLayer implements IMapLayer {
     public visible: boolean = false;
 
     private readonly _prefix = 'ltn';
+    private readonly _cursorCss = 'ltn-cell';
     private readonly _layer: L.GeoJSON;
     private readonly _layerColour = '#cc00cc';
     private _ltnTitle: string = '1';
+    private _otherLayerSelected: boolean = false;
 
     constructor() {
-        this._layer = new L.GeoJSON(undefined, {
-            pane: 'ltns'
-        });
-
+        this._layer = new L.GeoJSON(undefined, { pane: 'ltns' });
         this.setupSubscribers();
     }
 
-    getToolbarButton = (): ToolbarButton => {
-        const button = new ToolbarButton();
-        button.id = this._prefix;
-        button.tooltip = 'Add LTNs to the map';
-        button.groupName = this.groupName;
-        button.action = this.onButtonClick;
-        button.text = 'LTN';
-        button.selected = this.selected;
-
-        return button;
-    }
-
-    getLegendEntry = (): HTMLElement => {
-        const holdingElement = document.createElement('li');
-        holdingElement.id = `${this.id}-legend`;
-        holdingElement.setAttribute('title', 'Toggle LTNs from the map');
-
-        const icon = document.createElement('i');
-        icon.style.backgroundColor = this._layerColour;
-        holdingElement.appendChild(icon);
-
-        const text = document.createElement('span');
-        text.textContent = this.title;
-        holdingElement.appendChild(text);
-
-        holdingElement.addEventListener('click', (e) => {
-            if (this.visible) {
-                this.visible = false;
-                PubSub.publish(EventTopics.hideLayer, this.id);
-            } else {
-                this.visible = true;
-                PubSub.publish(EventTopics.showLayer, this.id);
-            }
+    getToolbarButton = (): ToolbarButton =>
+        buildToolbarButton({
+            id: this._prefix,
+            tooltip: 'Add LTNs to the map',
+            groupName: this.groupName,
+            action: this.onButtonClick,
+            selected: this.selected,
+            text: 'LTN',
         });
 
-        return holdingElement;
-    }
+    getLegendEntry = (): HTMLElement => {
+        const icon = document.createElement('i');
+        icon.style.backgroundColor = this._layerColour;
+        return buildLegendEntry({
+            layerId: this.id,
+            title: this.title,
+            toggleTitle: 'Toggle LTNs from the map',
+            iconEl: icon,
+            visibilityState: this,
+        });
+    };
 
     loadFromGeoJSON = (geoJson: L.GeoJSON) => {
         if (geoJson) {
@@ -71,7 +60,7 @@ export class LtnLayer implements IMapLayer {
                 const points = new Array<L.LatLng>();
                 const coordinates = ltnCell.geometry.coordinates;
                 const polygonCoordinates = coordinates[0];
-                polygonCoordinates.forEach((coordinate) => {
+                polygonCoordinates.forEach((coordinate: Array<number>) => {
                     points.push(new L.LatLng(coordinate[1], coordinate[0]));
                 });
 
@@ -112,16 +101,17 @@ export class LtnLayer implements IMapLayer {
     private setupSubscribers = () => {
         PubSub.subscribe(EventTopics.layerSelected, (msg, selectedLayerId) => {
             if (selectedLayerId !== LtnLayer.Id) {
-                this.deselectLayer();
+                deselectPolylineLayer(this, this._cursorCss, this._layer);
+                this._otherLayerSelected = true;
             } else {
-                this.selectLayer();
+                selectLayer(this, this._cursorCss);
+                this._otherLayerSelected = false;
             }
         });
 
-        PubSub.subscribe(EventTopics.layerDeselected, (msg) => {
-            if (this.selected) {
-                this.deselectLayer();
-            }
+        PubSub.subscribe(EventTopics.layerDeselected, () => {
+            deselectPolylineLayer(this, this._cursorCss, this._layer);
+            this._otherLayerSelected = false;
         });
 
         PubSub.subscribe(EventTopics.drawCreated, (msg, data: { latLngs: Array<L.LatLng>, map: L.Map }) => {
@@ -147,32 +137,34 @@ export class LtnLayer implements IMapLayer {
             color: color || this._layerColour,
             fillOpacity: 0.2,
             weight: 5,
-            pane: 'ltns'
-        })
-            .on('edit', (e) => {
-                PubSub.publish(EventTopics.layerUpdated, LtnLayer.Id);
-            });
+            pane: 'ltns',
+            className: 'ltn-cell',
+        }).on('edit', () => {
+            PubSub.publish(EventTopics.layerUpdated, LtnLayer.Id);
+        });
 
-        polygon['properties'] = {};
-        polygon['properties'].label = label;
+        polygon['properties'] = { label };
 
         const tooltip = polygon.bindTooltip(label,
             { permanent: true, direction: "center" }
-        ).openTooltip()
+        ).openTooltip();
 
         const popup = this.createPopup(polygon, tooltip, label);
 
         polygon.on('click', (e) => {
-            this.onPolygonClick(e);
-
-            popup.setLatLng(e.target.getBounds().getCenter());
-            PubSub.publish(EventTopics.showPopup, popup);
+            if (!this._otherLayerSelected) {
+                selectLayer(this, this._cursorCss);
+                e.target.editing.enable();
+                PubSub.publish(EventTopics.layerSelected, LtnLayer.Id);
+                popup.setLatLng(e.target.getBounds().getCenter());
+                PubSub.publish(EventTopics.showPopup, popup);
+            }
         });
 
         this._layer.addLayer(polygon);
     };
 
-    private createPopup = (polygon, tooltip, label): L.Popup => {
+    private createPopup = (polygon: L.Polygon, tooltip: L.Layer, label: string): L.Popup => {
         const popup = L.popup({ minWidth: 30, keepInView: true });
 
         const controlList = document.createElement('ul');
@@ -183,7 +175,7 @@ export class LtnLayer implements IMapLayer {
         labelElement.type = 'text';
         labelElement.value = label;
         labelElement.classList.add('label-editor');
-        labelElement.addEventListener('keyup', (e) => {
+        labelElement.addEventListener('keyup', () => {
             const text = labelElement.value;
             tooltip.setTooltipContent(text);
             polygon['properties'].label = text;
@@ -201,8 +193,9 @@ export class LtnLayer implements IMapLayer {
 
         const deleteControl = document.createElement('li');
         deleteControl.classList.add('delete-button');
-        deleteControl.addEventListener('click', (e) => {
-            this.delete(polygon);
+        deleteControl.addEventListener('click', () => {
+            this._layer.removeLayer(polygon);
+            PubSub.publish(EventTopics.layerUpdated, LtnLayer.Id);
             PubSub.publish(EventTopics.closePopup, popup);
         });
         controlList.appendChild(deleteControl);
@@ -210,66 +203,16 @@ export class LtnLayer implements IMapLayer {
         popup.setContent(controlList);
 
         return popup;
-    }
-
-    private delete = (layer: L.Draw.Polygon) => {
-        this._layer.removeLayer(layer);
-        PubSub.publish(EventTopics.layerUpdated, LtnLayer.Id);
-    }
-
-    private onPolygonClick = (e) => {
-        this.selectLayer();
-
-        const polygon = e.target;
-        polygon.editing.enable();
-        PubSub.publish(EventTopics.layerSelected, LtnLayer.Id);
     };
 
     private onButtonClick = (event: Event, map: L.Map) => {
         if (this.selected) {
-            this.deselectLayer();
+            deselectPolylineLayer(this, this._cursorCss, this._layer);
             PubSub.publish(EventTopics.layerDeselected, LtnLayer.Id);
             return;
         }
-
-        this.selected = true;
-
-        const options = {
-            color: this._layerColour
-        };
-        const polygon = new L['Draw'].Polygon(map, options);
-
-        polygon.enable();
-        this.setCursor();
-
+        new L['Draw'].Polygon(map, { color: this._layerColour }).enable();
+        selectLayer(this, this._cursorCss);
         PubSub.publish(EventTopics.layerSelected, LtnLayer.Id);
-    }
-
-    private selectLayer = () => {
-        this.selected = true;
-        this.setCursor();
-    }
-
-    private deselectLayer = () => {
-        if (!this.selected) {
-            return;
-        }
-
-        this._layer.eachLayer((layer: L.Draw.Polygon) => {
-            layer.editing.disable();
-        });
-
-        this.removeCursor();
-        this.selected = false;
-    }
-
-    private setCursor = () => {
-        document.getElementById('map')?.classList.remove('leaflet-grab');
-        document.getElementById('map')?.classList.add('ltn-cell');
-    };
-
-    private removeCursor = () => {
-        document.getElementById('map')?.classList.remove('ltn-cell');
-        document.getElementById('map')?.classList.add('leaflet-grab');
     };
 }

@@ -3,6 +3,13 @@ import PubSub from 'pubsub-js';
 import { ToolbarButton } from '../Controls/ToolbarButton';
 import { EventTopics } from '../EventTopics';
 import { IMapLayer } from "./IMapLayer";
+import {
+    buildLegendEntry,
+    buildToolbarButton,
+    deselectPointLayer,
+    selectLayer,
+    subscribePointLayerEvents,
+} from './LayerHelpers';
 
 export class PedestrianLightsLayer implements IMapLayer {
     public static Id = 'PedestrianLights';
@@ -18,148 +25,71 @@ export class PedestrianLightsLayer implements IMapLayer {
 
     constructor() {
         this._layer = new L.GeoJSON();
-
-        this.setupSubscribers();
+        subscribePointLayerEvents(
+            PedestrianLightsLayer.Id,
+            this,
+            this._baseCssName,
+            (latLng) => this.addMarker(latLng)
+        );
     }
 
-    getToolbarButton = (): ToolbarButton => {
-        const button = new ToolbarButton();
-        {
-            button.id = this._baseCssName;
-            button.tooltip = 'Add pedestrian lights to the map';
-            button.groupName = this.groupName;
-            button.action = this.onButtonClick;
-            button.selected = this.selected;
-        };
-
-        return button;
-    }
+    getToolbarButton = (): ToolbarButton =>
+        buildToolbarButton({
+            id: this._baseCssName,
+            tooltip: 'Add pedestrian lights to the map',
+            groupName: this.groupName,
+            action: this.onButtonClick,
+            selected: this.selected,
+        });
 
     getLegendEntry = (): HTMLElement => {
-        const holdingElement = document.createElement('li');
-        holdingElement.id = `${this.id}-legend`;
-        holdingElement.setAttribute('title', 'Toggle pedestrian lights from the map');
-
         const icon = document.createElement('i');
         icon.classList.add(`${this._baseCssName}-icon`);
-        holdingElement.appendChild(icon);
-
-        const text = document.createElement('span');
-        text.textContent = this.title;
-        holdingElement.appendChild(text);
-
-        holdingElement.addEventListener('click', (e) => {
-            if (this.visible) {
-                this.visible = false;
-                PubSub.publish(EventTopics.hideLayer, this.id);
-            } else {
-                this.visible = true;
-                PubSub.publish(EventTopics.showLayer, this.id);
-            }
+        return buildLegendEntry({
+            layerId: this.id,
+            title: this.title,
+            toggleTitle: 'Toggle pedestrian lights from the map',
+            iconEl: icon,
+            visibilityState: this,
         });
-
-        return holdingElement;
-    }
+    };
 
     loadFromGeoJSON = (geoJson: L.GeoJSON) => {
-        geoJson['features'].forEach((pedestrianLight) => {
-            const coordinates = pedestrianLight.geometry.coordinates;
-            const latLng = new L.LatLng(coordinates[1], coordinates[0]);
-            this.addMarker(latLng);
+        geoJson['features'].forEach((feature) => {
+            const coordinates = feature.geometry.coordinates;
+            this.addMarker(new L.LatLng(coordinates[1], coordinates[0]));
         });
     };
 
-    getLayer = (): L.GeoJSON => {
-        return this._layer;
-    };
+    getLayer = (): L.GeoJSON => this._layer;
 
-    toGeoJSON = (): {} => {
-        return this._layer.toGeoJSON();
-    }
+    toGeoJSON = (): {} => this._layer.toGeoJSON();
 
     clearLayer = (): void => {
         this._layer.clearLayers();
         this.visible = false;
     };
 
-    private setupSubscribers = () => {
-        PubSub.subscribe(EventTopics.layerSelected, (msg, selectedLayerId) => {
-            if (selectedLayerId !== PedestrianLightsLayer.Id) {
-                this.deselectLayer();
-            } else {
-                this.selectLayer();
-            }
-        });
-
-        PubSub.subscribe(EventTopics.layerDeselected, (msg) => {
-            this.deselectLayer();
-        });
-
-        PubSub.subscribe(EventTopics.mapClicked, (msg, e: L.LeafletMouseEvent) => {
-            if (this.selected) {
-                L.DomEvent.stopPropagation(e);
-                const latLng = e.latlng;
-                this.addMarker(latLng);
-                PubSub.publish(EventTopics.layerUpdated, PedestrianLightsLayer.Id);
-            }
-        });
-    };
-
     private addMarker = (latlng: L.LatLng) => {
-        const busGate = new L.Marker(latlng, {
-            icon: new L.DivIcon({
-                className: `${this._baseCssName}-icon`
-            }),
+        const marker = new L.Marker(latlng, {
+            icon: new L.DivIcon({ className: `${this._baseCssName}-icon` }),
             draggable: true,
-            pane: 'filters'
-        })
-            .on('click', (e) => { this.deleteMarker(e); });
-
-        this._layer.addLayer(busGate);
-    };
-
-    private deleteMarker = (e) => {
-        L.DomEvent.stopPropagation(e);
-
-        const marker = e.target;
-        this._layer.removeLayer(marker);
-        PubSub.publish(EventTopics.layerUpdated, PedestrianLightsLayer.Id);
+            pane: 'filters',
+        }).on('click', (e) => {
+            L.DomEvent.stopPropagation(e);
+            this._layer.removeLayer(e.target);
+            PubSub.publish(EventTopics.layerUpdated, PedestrianLightsLayer.Id);
+        });
+        this._layer.addLayer(marker);
     };
 
     private onButtonClick = (e: Event, map: L.Map) => {
         if (this.selected) {
-            this.deselectLayer();
+            deselectPointLayer(this, this._baseCssName);
             PubSub.publish(EventTopics.layerDeselected, PedestrianLightsLayer.Id);
             return;
         }
-
-        this.selected = true;
-        this.setCursor();
-
+        selectLayer(this, this._baseCssName);
         PubSub.publish(EventTopics.layerSelected, PedestrianLightsLayer.Id);
-    }
-
-    private selectLayer = () => {
-        this.selected = true;
-        this.setCursor();
-    }
-
-    private deselectLayer = () => {
-        if (!this.selected) {
-            return;
-        }
-
-        this.removeCursor();
-        this.selected = false;
-    }
-
-    private setCursor = () => {
-        document.getElementById('map')?.classList.remove('leaflet-grab');
-        document.getElementById('map')?.classList.add(this._baseCssName);
-    };
-
-    private removeCursor = () => {
-        document.getElementById('map')?.classList.remove(this._baseCssName);
-        document.getElementById('map')?.classList.add('leaflet-grab');
     };
 }

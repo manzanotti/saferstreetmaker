@@ -23,6 +23,8 @@ jobs:
       - name: Enable Corepack
         run: corepack enable
       - run: yarn install
+      - name: Type check
+        run: yarn typecheck
       - name: Run unit tests
         run: yarn test:unit
       - name: Install Playwright browsers

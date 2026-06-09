@@ -1,4 +1,5 @@
 import LZString from 'lz-string';
+import PubSub from 'pubsub-js';
 import { EventTopics } from './EventTopics';
 import { IMapLayer } from './layers/IMapLayer';
 import { Settings } from '../Settings';
@@ -67,7 +68,7 @@ export class FileManager {
     }
 
     private mapToJSON = (settings: Settings, layersData: Map<string, IMapLayer>): any => {
-        let layers = {};
+        let layers: Record<string, unknown> = {};
         layersData.forEach((layer, layerName) => {
             layers[layerName] = layer.toGeoJSON();
         });
@@ -122,20 +123,20 @@ export class FileManager {
         fileInput.click();
     };
 
-    loadMapFromRemoteFile = async (url) => {
+    loadMapFromRemoteFile = async (url: string) => {
         var response = await fetch(url);
 
         return response.json();
     }
 
-    private readFile = (e) => {
-        let fileInput = e.target;
-        const file = fileInput.files[0];
+    private readFile = (e: Event) => {
+        let fileInput = e.target as HTMLInputElement;
+        const file = fileInput.files?.[0];
         if (!file) {
             return;
         }
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = (e: ProgressEvent<FileReader>) => {
             if (e.target === null) {
                 return;
             }
@@ -191,6 +192,16 @@ export class FileManager {
                 localStorage.setItem('MapList', LZString.compress(JSON.stringify(mapList)));
             }
         }
+
+        if (this.loadLastMapSelected() === mapName) {
+            const remainingMaps = this.loadMapListFromStorage();
+            if (remainingMaps.length > 0) {
+                this.saveLastMapSelected(remainingMaps[0]);
+            } else {
+                localStorage.removeItem('LastMapSelected');
+            }
+        }
+
         return [];
     }
 }
