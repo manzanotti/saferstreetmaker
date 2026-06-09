@@ -506,7 +506,7 @@ export class MapContainer {
             });
         }
 
-        if (this._settings && !this._settings.centre) {
+        if (this._settings && geoJSON['centre'] !== undefined && geoJSON['zoom'] !== undefined) {
             this._settings.centre = geoJSON['centre'];
             this._settings.zoom = geoJSON['zoom'];
         }

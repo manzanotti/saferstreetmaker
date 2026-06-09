@@ -10,16 +10,39 @@ on:
       - main
 
 jobs:
-  build_and_deploy_job:
+  test_job:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
     runs-on: ubuntu-latest
-    name: Build and Deploy Job
+    name: Test Job
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup Node.js environment
-        uses: actions/setup-node@v3.4.1
+        uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
+      - name: Enable Corepack
+        run: corepack enable
+      - run: yarn install
+      - name: Run unit tests
+        run: yarn test:unit
+      - name: Install Playwright browsers
+        run: yarn playwright install --with-deps chromium
+      - name: Run Playwright tests
+        run: yarn test
+
+  build_and_deploy_job:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    name: Build and Deploy Job
+    needs: test_job
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Enable Corepack
+        run: corepack enable
       - run: yarn install
       - run: yarn parcel build ./src/index.html
       - name: Build And Deploy

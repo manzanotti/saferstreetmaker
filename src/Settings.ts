@@ -5,7 +5,7 @@ export class Settings {
     readOnly: boolean = false;
     hideToolbar: boolean = false;
     activeLayers: string[] = new Array<string>();
-    centre: LatLng;
-    zoom: number;
-    version: string;
+    centre: LatLng = new LatLng(0, 0);
+    zoom: number = 0;
+    version: string = '';
 }
