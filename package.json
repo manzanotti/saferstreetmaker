@@ -4,24 +4,26 @@
     "build": "parcel build src/index.html",
     "test": "playwright test",
     "test:unit": "vitest run",
-    "test:unit:watch": "vitest"
+    "test:unit:watch": "vitest",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
-    "@types/leaflet": "^1.9.3",
+    "@types/leaflet": "^1.9.21",
     "@types/lz-string": "^1.5.0",
-    "@types/pubsub-js": "^1.8.3",
+    "@types/pubsub-js": "^1.8.6",
     "cssnano": "^6.0.1",
     "jsdom": "^29.1.1",
     "leaflet-arrowheads": "^1.4.0",
-    "leaflet-geometryutil": "^0.10.2",
+    "leaflet-geometryutil": "^0.10.3",
     "lz-string": "^1.5.0",
-    "parcel": "^2.9.3",
+    "parcel": "^2.16.4",
     "pubsub-js": "^1.9.5",
+    "typescript": "^5.4.0",
     "vitest": "^4.1.8"
   },
   "dependencies": {
-    "postcss": "^8.4.26",
+    "postcss": "^8.5.15",
     "tailwindcss": "^3.3.3",
     "tw-elements": "^1.0.0-beta1"
   },
