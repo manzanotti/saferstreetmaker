@@ -30,4 +30,17 @@ test.describe('Help Modal', () => {
     await page.locator('#help-button').click();
     await expect(page.locator('#tabs-home')).toContainText('Welcome to the Safer Street Maker');
   });
+
+  test('clicking a tab switches the visible panel', async ({ page }) => {
+    await page.locator('#help-button').click();
+
+    // The Welcome panel is shown by default; the Features panel is hidden.
+    await expect(page.locator('#tabs-home')).toBeVisible();
+    await expect(page.locator('#tabs-features')).not.toBeVisible();
+
+    await page.locator('a[data-tab-target="#tabs-features"]').click();
+
+    await expect(page.locator('#tabs-features')).toBeVisible();
+    await expect(page.locator('#tabs-home')).not.toBeVisible();
+  });
 });

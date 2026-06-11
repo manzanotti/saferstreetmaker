@@ -2,7 +2,7 @@ import LZString from 'lz-string';
 import PubSub from 'pubsub-js';
 import { EventTopics } from './EventTopics';
 import { IMapLayer } from './layers/IMapLayer';
-import { Settings } from '../Settings';
+import { Settings } from './Settings';
 
 export class FileManager {
     saveMapToFile = (settings: Settings, layersData: Map<string, IMapLayer>) => {

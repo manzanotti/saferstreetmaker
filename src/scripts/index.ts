@@ -1,7 +1,10 @@
 import { FileManager } from './FileManager';
 import { MapContainer } from './MapContainer';
+import { initTabs } from './initTabs';
 
 document.addEventListener('DOMContentLoaded', async () => {
+    initTabs();
+
     const fileManager = new FileManager();
     const mapContainer = new MapContainer(fileManager);
 

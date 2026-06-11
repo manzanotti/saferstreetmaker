@@ -1,5 +1,5 @@
 import * as L from 'leaflet';
-import { Settings } from '../../Settings';
+import { Settings } from '../Settings';
 import { EventTopics } from '../EventTopics';
 import { IMapLayer } from '../layers/IMapLayer';
 import { IModalWindow } from './IModalWindow';

@@ -12,7 +12,7 @@ import { OneWayStreetLayer } from './layers/OneWayStreetLayer';
 import { EventTopics } from './EventTopics';
 import { Toolbar } from './Controls/Toolbar';
 import { Legend } from './Controls/Legend';
-import { Settings } from '../Settings';
+import { Settings } from './Settings';
 import { SettingsControl } from './Controls/SettingsControl';
 import { SharingControl } from './Controls/SharingControl';
 import { LtnLayer } from './layers/LtnLayer';

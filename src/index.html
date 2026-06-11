@@ -9,10 +9,6 @@
     <title>Safer Street Maker</title>
     <link
       rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/tw-elements@1.0.0-beta1/dist/css/index.min.css"
-    />
-    <link
-      rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"
       integrity="sha256-kLaT2GOSpHechhsozzB+flnD+zUyjE2LlfWPgU04xyI="
       crossorigin="anonymous"
@@ -32,10 +28,6 @@
     />
     <link rel="stylesheet" href="styles/index.css" />
 
-    <script
-      src="https://cdn.jsdelivr.net/npm/tw-elements@1.0.0-beta1/dist/js/index.min.js"
-      crossorigin="anonymous"
-    ></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.min.js"></script>
     <script
       src="https://cdn.jsdelivr.net/npm/leaflet-svg-shape-markers@1.4.0/dist/leaflet-svg-shape-markers.min.js"
@@ -66,13 +58,13 @@
   <body>
     <div
       id="help"
-      class="modal modal-dialog modal-dialog-scrollable modal-lg fixed w-1/2 mx-auto inset-0 z-0 overflow-x-hidden overflow-y-hidden flex justify-center items-center animated fadeOut faster"
+      class="modal modal-dialog modal-dialog-scrollable modal-lg z-0 overflow-hidden animated fadeOut faster"
     >
       <div
-        class="modal-content border-none shadow-lg relative flex flex-col w-full pointer-events-auto bg-white bg-clip-padding rounded-md outline-none text-current"
+        class="modal-content border-none shadow-lg relative flex flex-col w-full pointer-events-auto bg-white bg-clip-padding rounded-md outline-hidden text-current"
       >
         <div
-          class="modal-header flex flex-shrink-0 items-center justify-between p-4 border-b border-gray-200 rounded-t-md"
+          class="modal-header flex shrink-0 items-center justify-between p-4 border-b border-gray-200 rounded-t-md"
         >
           <h5 class="text-xl font-medium leading-normal text-gray-800">
             Using Safer Street Maker
@@ -82,15 +74,15 @@
           <ul
             class="mb-5 flex list-none flex-col flex-wrap border-b-0 pl-0 md:flex-row"
             role="tablist"
-            data-te-nav-ref
+            data-tab-nav
           >
             <li role="presentation">
               <a
                 href="#tabs-home"
-                class="my-2 block border-x-0 border-t-0 border-b-2 border-transparent px-3 pt-4 pb-3.5 text-xs font-medium uppercase leading-tight text-neutral-500 hover:isolate hover:border-transparent hover:bg-neutral-100 focus:isolate focus:border-transparent data-[te-nav-active]:border-primary data-[te-nav-active]:text-primary dark:text-neutral-400 dark:hover:bg-transparent dark:data-[te-nav-active]:border-primary-400 dark:data-[te-nav-active]:text-primary-400"
-                data-te-toggle="pill"
-                data-te-target="#tabs-home"
-                data-te-nav-active
+                class="my-2 block border-x-0 border-t-0 border-b-2 border-transparent px-3 pt-4 pb-3.5 text-xs font-medium uppercase leading-tight text-neutral-500 hover:isolate hover:border-transparent hover:bg-neutral-100 focus:isolate focus:border-transparent data-[tab-nav-active]:border-primary data-[tab-nav-active]:text-primary dark:text-neutral-400 dark:hover:bg-transparent dark:data-[tab-nav-active]:border-primary-400 dark:data-[tab-nav-active]:text-primary-400"
+                data-tab-toggle
+                data-tab-target="#tabs-home"
+                data-tab-nav-active
                 role="tab"
                 aria-controls="tabs-home"
                 aria-selected="true"
@@ -100,9 +92,9 @@
             <li role="presentation">
               <a
                 href="#tabs-features"
-                class="focus:border-transparen my-2 block border-x-0 border-t-0 border-b-2 border-transparent px-3 pt-4 pb-3.5 text-xs font-medium uppercase leading-tight text-neutral-500 hover:isolate hover:border-transparent hover:bg-neutral-100 focus:isolate data-[te-nav-active]:border-primary data-[te-nav-active]:text-primary dark:text-neutral-400 dark:hover:bg-transparent dark:data-[te-nav-active]:border-primary-400 dark:data-[te-nav-active]:text-primary-400"
-                data-te-toggle="pill"
-                data-te-target="#tabs-features"
+                class="focus:border-transparent my-2 block border-x-0 border-t-0 border-b-2 border-transparent px-3 pt-4 pb-3.5 text-xs font-medium uppercase leading-tight text-neutral-500 hover:isolate hover:border-transparent hover:bg-neutral-100 focus:isolate data-[tab-nav-active]:border-primary data-[tab-nav-active]:text-primary dark:text-neutral-400 dark:hover:bg-transparent dark:data-[tab-nav-active]:border-primary-400 dark:data-[tab-nav-active]:text-primary-400"
+                data-tab-toggle
+                data-tab-target="#tabs-features"
                 role="tab"
                 aria-controls="tabs-features"
                 aria-selected="false"
@@ -112,9 +104,9 @@
             <li role="presentation">
               <a
                 href="#tabs-management"
-                class="my-2 block border-x-0 border-t-0 border-b-2 border-transparent px-3 pt-4 pb-3.5 text-xs font-medium uppercase leading-tight text-neutral-500 hover:isolate hover:border-transparent hover:bg-neutral-100 focus:isolate focus:border-transparent data-[te-nav-active]:border-primary data-[te-nav-active]:text-primary dark:text-neutral-400 dark:hover:bg-transparent dark:data-[te-nav-active]:border-primary-400 dark:data-[te-nav-active]:text-primary-400"
-                data-te-toggle="pill"
-                data-te-target="#tabs-management"
+                class="my-2 block border-x-0 border-t-0 border-b-2 border-transparent px-3 pt-4 pb-3.5 text-xs font-medium uppercase leading-tight text-neutral-500 hover:isolate hover:border-transparent hover:bg-neutral-100 focus:isolate focus:border-transparent data-[tab-nav-active]:border-primary data-[tab-nav-active]:text-primary dark:text-neutral-400 dark:hover:bg-transparent dark:data-[tab-nav-active]:border-primary-400 dark:data-[tab-nav-active]:text-primary-400"
+                data-tab-toggle
+                data-tab-target="#tabs-management"
                 role="tab"
                 aria-controls="tabs-management"
                 aria-selected="false"
@@ -124,9 +116,9 @@
             <li role="presentation">
               <a
                 href="#tabs-settings"
-                class="my-2 block border-x-0 border-t-0 border-b-2 border-transparent px-3 pt-4 pb-3.5 text-xs font-medium uppercase leading-tight text-neutral-500 hover:isolate hover:border-transparent hover:bg-neutral-100 focus:isolate focus:border-transparent data-[te-nav-active]:border-primary data-[te-nav-active]:text-primary dark:text-neutral-400 dark:hover:bg-transparent dark:data-[te-nav-active]:border-primary-400 dark:data-[te-nav-active]:text-primary-400"
-                data-te-toggle="pill"
-                data-te-target="#tabs-settings"
+                class="my-2 block border-x-0 border-t-0 border-b-2 border-transparent px-3 pt-4 pb-3.5 text-xs font-medium uppercase leading-tight text-neutral-500 hover:isolate hover:border-transparent hover:bg-neutral-100 focus:isolate focus:border-transparent data-[tab-nav-active]:border-primary data-[tab-nav-active]:text-primary dark:text-neutral-400 dark:hover:bg-transparent dark:data-[tab-nav-active]:border-primary-400 dark:data-[tab-nav-active]:text-primary-400"
+                data-tab-toggle
+                data-tab-target="#tabs-settings"
                 role="tab"
                 aria-controls="tabs-settings"
                 aria-selected="false"
@@ -136,9 +128,9 @@
             <li role="presentation">
               <a
                 href="#tabs-sharing"
-                class="my-2 block border-x-0 border-t-0 border-b-2 border-transparent px-3 pt-4 pb-3.5 text-xs font-medium uppercase leading-tight text-neutral-500 hover:isolate hover:border-transparent hover:bg-neutral-100 focus:isolate focus:border-transparent data-[te-nav-active]:border-primary data-[te-nav-active]:text-primary dark:text-neutral-400 dark:hover:bg-transparent dark:data-[te-nav-active]:border-primary-400 dark:data-[te-nav-active]:text-primary-400"
-                data-te-toggle="pill"
-                data-te-target="#tabs-sharing"
+                class="my-2 block border-x-0 border-t-0 border-b-2 border-transparent px-3 pt-4 pb-3.5 text-xs font-medium uppercase leading-tight text-neutral-500 hover:isolate hover:border-transparent hover:bg-neutral-100 focus:isolate focus:border-transparent data-[tab-nav-active]:border-primary data-[tab-nav-active]:text-primary dark:text-neutral-400 dark:hover:bg-transparent dark:data-[tab-nav-active]:border-primary-400 dark:data-[tab-nav-active]:text-primary-400"
+                data-tab-toggle
+                data-tab-target="#tabs-sharing"
                 role="tab"
                 aria-controls="tabs-sharing"
                 aria-selected="false"
@@ -148,9 +140,9 @@
             <li role="presentation">
               <a
                 href="#tabs-tech"
-                class="my-2 block border-x-0 border-t-0 border-b-2 border-transparent px-3 pt-4 pb-3.5 text-xs font-medium uppercase leading-tight text-neutral-500 hover:isolate hover:border-transparent hover:bg-neutral-100 focus:isolate focus:border-transparent data-[te-nav-active]:border-primary data-[te-nav-active]:text-primary dark:text-neutral-400 dark:hover:bg-transparent dark:data-[te-nav-active]:border-primary-400 dark:data-[te-nav-active]:text-primary-400"
-                data-te-toggle="pill"
-                data-te-target="#tabs-tech"
+                class="my-2 block border-x-0 border-t-0 border-b-2 border-transparent px-3 pt-4 pb-3.5 text-xs font-medium uppercase leading-tight text-neutral-500 hover:isolate hover:border-transparent hover:bg-neutral-100 focus:isolate focus:border-transparent data-[tab-nav-active]:border-primary data-[tab-nav-active]:text-primary dark:text-neutral-400 dark:hover:bg-transparent dark:data-[tab-nav-active]:border-primary-400 dark:data-[tab-nav-active]:text-primary-400"
+                data-tab-toggle
+                data-tab-target="#tabs-tech"
                 role="tab"
                 aria-controls="tabs-tech"
                 aria-selected="false"
@@ -160,9 +152,9 @@
             <li role="presentation">
               <a
                 href="#tabs-support"
-                class="my-2 block border-x-0 border-t-0 border-b-2 border-transparent px-3 pt-4 pb-3.5 text-xs font-medium uppercase leading-tight text-neutral-500 hover:isolate hover:border-transparent hover:bg-neutral-100 focus:isolate focus:border-transparent data-[te-nav-active]:border-primary data-[te-nav-active]:text-primary dark:text-neutral-400 dark:hover:bg-transparent dark:data-[te-nav-active]:border-primary-400 dark:data-[te-nav-active]:text-primary-400"
-                data-te-toggle="pill"
-                data-te-target="#tabs-support"
+                class="my-2 block border-x-0 border-t-0 border-b-2 border-transparent px-3 pt-4 pb-3.5 text-xs font-medium uppercase leading-tight text-neutral-500 hover:isolate hover:border-transparent hover:bg-neutral-100 focus:isolate focus:border-transparent data-[tab-nav-active]:border-primary data-[tab-nav-active]:text-primary dark:text-neutral-400 dark:hover:bg-transparent dark:data-[tab-nav-active]:border-primary-400 dark:data-[tab-nav-active]:text-primary-400"
+                data-tab-toggle
+                data-tab-target="#tabs-support"
                 role="tab"
                 aria-controls="tabs-support"
                 aria-selected="false"
@@ -172,11 +164,11 @@
           </ul>
           <div class="mb-6">
             <div
-              class="hidden opacity-0 opacity-100 transition-opacity duration-150 ease-linear data-[te-tab-active]:block"
+              class="hidden opacity-0 transition-opacity duration-150 ease-linear data-[tab-active]:block data-[tab-active]:opacity-100"
               id="tabs-home"
               role="tabpanel"
               aria-labelledby="tabs-home-tab"
-              data-te-tab-active
+              data-tab-active
             >
               <p class="mb-8">
                 Welcome to the Safer Street Maker, where you can create the
@@ -200,7 +192,7 @@
               </p>
             </div>
             <div
-              class="hidden opacity-0 transition-opacity duration-150 ease-linear data-[te-tab-active]:block"
+              class="hidden opacity-0 transition-opacity duration-150 ease-linear data-[tab-active]:block data-[tab-active]:opacity-100"
               id="tabs-features"
               role="tabpanel"
               aria-labelledby="tabs-features-tab"
@@ -219,10 +211,10 @@
               </p>
               <h2><input type="button" class="bus-gate" /> Bus Gates</h2>
               <p class="mb-8">
-                Modal filters are designed to stop all motorised vehicles APART
+                Bus gates are designed to stop all motorised vehicles APART
                 FROM BUSES from passing. This is usually done with either
                 mechanically raised bollards, or Automatic Number Plate
-                Recognition cameras (ANPR). To add a bus gate, right-click the
+                Recognition cameras (ANPR). To add a bus gate, right-click or hold the
                 Green Circle button in the toolbar on the left-hand side of the
                 map, select the bus icon, and just click on the map to place
                 one. Once placed, you can click on one to delete it, or drag it
@@ -332,7 +324,7 @@
                 allow pedestrians to cross a road.
               </p>
               <p class="mb-8">
-                To add a pedestrian crossing traffic light, right-click the
+                To add a pedestrian crossing traffic light, right-click or hold the
                 Traffic Light button in the toolbar on the left-hand side of the
                 map, click on the Pedestrian Light button, and just click on the
                 map to place one. Once placed, you can click on one to delete
@@ -346,7 +338,7 @@
                 to safely cross a road.
               </p>
               <p class="mb-8">
-                To add a zebra crossing, right-click the Traffic Light button in
+                To add a zebra crossing, right-click or hold the Traffic Light button in
                 the toolbar on the left-hand side of the map, click on the Zebra
                 Crossing button, and just click on the map to place one. Once
                 placed, you can click on one to delete it, or drag it to move
@@ -354,7 +346,7 @@
               </p>
             </div>
             <div
-              class="hidden opacity-0 transition-opacity duration-150 ease-linear data-[te-tab-active]:block"
+              class="hidden opacity-0 transition-opacity duration-150 ease-linear data-[tab-active]:block data-[tab-active]:opacity-100"
               id="tabs-management"
               role="tabpanel"
               aria-labelledby="tabs-management-tab"
@@ -437,7 +429,7 @@
               </p>
             </div>
             <div
-              class="hidden opacity-0 transition-opacity duration-150 ease-linear data-[te-tab-active]:block"
+              class="hidden opacity-0 transition-opacity duration-150 ease-linear data-[tab-active]:block data-[tab-active]:opacity-100"
               id="tabs-settings"
               role="tabpanel"
               aria-labelledby="tabs-settings-tab"
@@ -460,7 +452,7 @@
               </p>
             </div>
             <div
-              class="hidden opacity-0 transition-opacity duration-150 ease-linear data-[te-tab-active]:block"
+              class="hidden opacity-0 transition-opacity duration-150 ease-linear data-[tab-active]:block data-[tab-active]:opacity-100"
               id="tabs-sharing"
               role="tabpanel"
               aria-labelledby="tabs-sharing-tab"
@@ -484,7 +476,7 @@
                 the zoom level and the centre point of the map:
               </p>
               <p class="mb-8">
-                https://saferstreetmaker.org?map=https://saferstreetmaker.org/Birmigham.json&zoom=14&centre=52.43937399964168,-1.8881893157958987
+                https://saferstreetmaker.org?map=https://saferstreetmaker.org/Birmingham.json&amp;zoom=14&amp;centre=52.43937399964168,-1.8881893157958987
               </p>
               <p class="mb-8">
                 The current values for zoom and the centre point can be found in
@@ -496,7 +488,7 @@
                 You can see an example of a link
                 <a
                   target="_blank"
-                  href="https://saferstreetmaker.org?map=https://saferstreetmaker.org/Birmingham.json&zoom=14&centre=52.43937399964168,-1.8881893157958987&hide-toolbar=true"
+                  href="https://saferstreetmaker.org?map=https://saferstreetmaker.org/Birmingham.json&amp;zoom=14&amp;centre=52.43937399964168,-1.8881893157958987&amp;hide-toolbar=true"
                   >here</a
                 >.
               </p>
@@ -526,7 +518,7 @@
               </p>
             </div>
             <div
-              class="hidden opacity-0 transition-opacity duration-150 ease-linear data-[te-tab-active]:block"
+              class="hidden opacity-0 transition-opacity duration-150 ease-linear data-[tab-active]:block data-[tab-active]:opacity-100"
               id="tabs-tech"
               role="tabpanel"
               aria-labelledby="tabs-tech-tab"
@@ -536,7 +528,7 @@
                 If you're interested, this site uses the
                 <a href="https://leafletjs.com/" target="_blank">leaflet.js</a>
                 mapping library. It's built using
-                <a href="https://parceljs.org/" target="_blank">parcel.js</a>.
+                <a href="https://vitejs.dev/" target="_blank">Vite</a>.
                 The code is hosted on
                 <a
                   href="https://github.com/manzanotti/saferstreetmaker"
@@ -550,7 +542,7 @@
               </p>
             </div>
             <div
-              class="hidden opacity-0 transition-opacity duration-150 ease-linear data-[te-tab-active]:block"
+              class="hidden opacity-0 transition-opacity duration-150 ease-linear data-[tab-active]:block data-[tab-active]:opacity-100"
               id="tabs-support"
               role="tabpanel"
               aria-labelledby="tabs-support-tab"
@@ -572,11 +564,11 @@
           </div>
         </div>
         <div
-          class="modal-footer flex flex-shrink-0 flex-wrap items-center justify-end p-4 border-t border-gray-200 rounded-b-md"
+          class="modal-footer flex shrink-0 flex-wrap items-center justify-end p-4 border-t border-gray-200 rounded-b-md"
         >
           <button
             type="button"
-            class="inline-block px-6 py-2.5 bg-blue-600 text-white font-medium text-xs leading-tight uppercase rounded shadow-md hover:bg-blue-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg transition duration-150 ease-in-out"
+            class="inline-block px-6 py-2.5 bg-blue-600 text-white font-medium text-xs leading-tight uppercase rounded-sm shadow-md hover:bg-blue-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-hidden focus:ring-0 active:bg-purple-800 active:shadow-lg transition duration-150 ease-in-out"
             name="closeHelp"
           >
             Close
@@ -586,13 +578,13 @@
     </div>
     <div
       id="errors"
-      class="modal modal-dialog modal-dialog-scrollable modal-lg fixed w-1/2 mx-auto inset-0 z-0 overflow-x-hidden overflow-y-auto flex justify-center items-center animated fadeOut faster"
+      class="modal modal-dialog modal-dialog-scrollable modal-lg z-0 overflow-hidden animated fadeOut faster"
     >
       <div
-        class="modal-content border-none shadow-lg relative flex flex-col w-full pointer-events-auto bg-white bg-clip-padding rounded-md outline-none text-current"
+        class="modal-content border-none shadow-lg relative flex flex-col w-full pointer-events-auto bg-white bg-clip-padding rounded-md outline-hidden text-current"
       >
         <div
-          class="modal-header flex flex-shrink-0 items-center justify-between p-4 border-b border-gray-200 rounded-t-md"
+          class="modal-header flex shrink-0 items-center justify-between p-4 border-b border-gray-200 rounded-t-md"
         >
           <h1>Sorry, an error has occurred</h1>
           <div id="errorMessages"></div>

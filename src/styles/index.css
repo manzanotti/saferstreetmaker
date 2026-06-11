@@ -1,13 +1,19 @@
-@import "./cursors.css";
-@import "./legend.css";
-@import "./modal.css";
-@import "./toolbar.css";
-@import "./mapmanager.css";
-@import "./help.css";
-@import "npm:tw-elements/dist/css/tw-elements.min.css";
+@import 'tailwindcss/theme' layer(theme);
+@import 'tailwindcss/preflight' layer(base);
+@reference 'tailwindcss';
+@import './cursors.css';
+@import './legend.css';
+@import './modal.css';
+@import './toolbar.css';
+@import './mapmanager.css';
+@import './help.css';
+@import 'tailwindcss/utilities';
 
-@tailwind components;
-@tailwind utilities;
+@config '../../tailwind.config.js';
+
+body {
+  margin: 0;
+}
 
 #map {
   height: 100vh;

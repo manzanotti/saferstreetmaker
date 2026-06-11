@@ -1,7 +1,6 @@
 node_modules/
-.parcel-cache/
 .vscode/
 .yarn/
 dist/
 test-results/.last-run.json
-playwright-report/index.html
+playwright-report/

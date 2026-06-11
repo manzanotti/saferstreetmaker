@@ -46,7 +46,7 @@ jobs:
       - name: Enable Corepack
         run: corepack enable
       - run: yarn install
-      - run: yarn parcel build ./src/index.html
+      - run: yarn build
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
