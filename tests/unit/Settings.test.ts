@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { Settings } from '../../src/Settings';
+import { Settings } from '../../src/scripts/Settings';
 
 // LatLng is used in Settings defaults – mock leaflet
 vi.mock('leaflet', () => ({

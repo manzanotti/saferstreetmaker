@@ -2,17 +2,18 @@ module.exports = {
   future: {
   },
   content: [
-    "./src/**/*.{html,js,ts}",
-    "./node_modules/tw-elements/dist/js/**/*.js"
+    "./src/**/*.{html,js,ts}"
   ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        primary: {
+          DEFAULT: "#3b71ca",
+          400: "#8fabdf",
+        },
+      },
+    },
   },
   variants: {},
-  plugins: [
-    require("tw-elements/dist/plugin.cjs")
-  ],
-  corePlugins: {
-    preflight: false,
-  }
+  plugins: [],
 }

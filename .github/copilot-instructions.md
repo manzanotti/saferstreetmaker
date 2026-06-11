@@ -24,9 +24,9 @@
 - `src/scripts/Controls/` — UI controls (Toolbar, Legend, Settings, MapManager, Sharing, Help)
 
 ## Build & Dev
-- **Bundler**: Parcel (`yarn start` → dev server on `http://localhost:1234`, `yarn build` → production)
+- **Bundler/dev server**: Vite (`yarn start` → dev server on `http://localhost:1234`, `yarn build` → production, `yarn preview` → preview build)
 - **Package manager**: Yarn (v3 - Berry)
-- **Tests**: `yarn test` (Playwright, config in `playwright.config.ts`, test files in `tests/`)
+- **Tests**: `yarn test` (Playwright, config in `tests/playwright.config.ts`, test files in `tests/playwright/`), plus `yarn test:unit` for Vitest (config in `tests/vitest.config.ts`, tests in `tests/unit/`)
 
 ## Map Layers
 Eleven layers, each in `src/scripts/layers/`. Two interaction patterns:
@@ -38,8 +38,8 @@ BusGate, and TrafficLights/PedestrianLights/ZebraCrossing are grouped in toolbar
 Map data is saved to `localStorage` as LZ-string compressed JSON, key `Map_<title>`.
 
 ## Playwright Testing Notes
-- **Dev server**: Playwright config auto-starts `yarn start` (Parcel) on port 1234.
-- **#help modal blocks map clicks**: The tw-elements/Bootstrap help modal (z-index ~1055) covers the viewport even when faded, intercepting clicks. In `beforeEach`, inject: `await page.addStyleTag({ content: '#help { display: none !important; }' })`.
+- **Dev server**: Playwright config auto-starts `yarn start` (Vite) on port 1234.
+- **#help modal blocks map clicks**: The help modal sits above the map and can intercept clicks when visible. In `beforeEach`, inject: `await page.addStyleTag({ content: '#help { display: none !important; }' })` when the test only needs the map surface.
 - **Map view timing**: Leaflet's `setView()` is called from the geolocation success callback (async). Wait for it with `context.grantPermissions(['geolocation'])` + `context.setGeolocation(...)` + `page.waitForFunction(() => Array.from(document.getElementById('map')?.classList ?? []).some(c => c.startsWith('zoom-')))`.
 - **leaflet.draw needs click delays**: Rapid back-to-back `page.mouse.click` calls confuse leaflet.draw's state machine and prevent `draw:created` from firing. Add `await page.waitForTimeout(200)` between each click when drawing polylines/polygons.
 - **Legend shares icon CSS classes**: e.g. `.traffic-lights-icon` matches both the legend `<li>` and the map `DivIcon` marker. Always scope to `.leaflet-marker-icon.traffic-lights-icon` when targeting map markers.

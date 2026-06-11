@@ -1,4 +1,4 @@
-import { Settings } from "../../Settings";
+import { Settings } from '../Settings';
 import { IMapLayer } from "../layers/IMapLayer";
 import { ToolbarButton } from "./ToolbarButton";
 

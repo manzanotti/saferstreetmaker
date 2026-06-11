@@ -5,7 +5,7 @@ I got tired of using screenshots of Google Maps and Paint.net to create maps of 
 
 Using the leaflet.js [https://leafletjs.com] mapping library to show OpenStreetMap [https://www.openstreetmap.org] maps.
 
-The project is written in TypeScript, uses yarn for package management tailwind [https://www.tailwindcss.com] for styling, and parcel.js [https://parceljs.org] to build everything. As my version of the site is being hosted as a Static Web App on Azure, I took the decision to pull in all third-party libraries from external CDNs, to make sure my site would stay within the, admittedly generous, traffic limits.
+The project is written in TypeScript, uses yarn for package management, Tailwind [https://www.tailwindcss.com] for styling, and Vite for the dev server and production build. As my version of the site is being hosted as a Static Web App on Azure, I took the decision to pull in all third-party libraries from external CDNs, to make sure my site would stay within the, admittedly generous, traffic limits.
 
 It also uses the following leaflet.js add-ons:
 
@@ -26,10 +26,18 @@ Additionally, you can load a JSON version of a map.
 
 If I was developing this for a client, then I would write a backend and database to store the maps, as this would allow for user accounts, map sharing, collaborative working. As this would not be free to run, I've not gone down that route, though if any organisation would like to sponsor this project, I have plenty of ideas for functionality that could unlock.
 
-To run this project locally, clone the repo, install yarn (if you don't already have it).
+To run this project locally, clone the repo and install dependencies:
 
+```sh
 yarn install
+```
 
-yarn parcel src/index.html
+Useful commands:
 
-The site will be available at http://localhost:1234
+```sh
+yarn start      # dev server at http://localhost:1234
+yarn build      # production build
+yarn preview    # preview the production build
+yarn test       # Playwright tests (tests/playwright.config.ts)
+yarn test:unit  # Vitest tests (tests/vitest.config.ts)
+```

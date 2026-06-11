@@ -1,25 +1,25 @@
-export class EventTopics {
-    static closePopup = 'closePopup';
-    static layerDeselected = 'layerDeselected';
-    static drawCreated = 'drawCreated';
-    static fileLoaded = 'fileLoaded';
-    static hideSettings = 'hideSettings';
-    static layerSelected = 'layerSelected';
-    static layerUpdated = 'layerUpdated';
-    static loadMapFromFile = 'loadMapFromFile';
-    static mapClicked = 'mapClicked';
-    static showPopup = 'showPopup';
-    static saveMapToFile = 'saveMapToFile';
-    static saveMapToGeoJSONFile = 'saveMapToGeoJSONFile';
-    static saveSettings = 'saveSettings';
-    static showHelp = 'showHelp';
-    static hideHelp = 'hideHelp';
-    static showSettings = 'showSettings';
-    static showSharingPopup = 'showSharingPopup';
-    static mapZoomChanged = 'mapZoomChanged';
-    static hideLayer = 'hideLayer';
-    static showLayer = 'showLayer';
-    static hideModalWindows = 'hideOtherModalWindows';
-    static showMapManager = 'showMapManager';
-    static createNewMap = 'createNewMap';
-}
+export const EventTopics = {
+    closePopup: 'closePopup',
+    layerDeselected: 'layerDeselected',
+    drawCreated: 'drawCreated',
+    fileLoaded: 'fileLoaded',
+    hideSettings: 'hideSettings',
+    layerSelected: 'layerSelected',
+    layerUpdated: 'layerUpdated',
+    loadMapFromFile: 'loadMapFromFile',
+    mapClicked: 'mapClicked',
+    showPopup: 'showPopup',
+    saveMapToFile: 'saveMapToFile',
+    saveMapToGeoJSONFile: 'saveMapToGeoJSONFile',
+    saveSettings: 'saveSettings',
+    showHelp: 'showHelp',
+    hideHelp: 'hideHelp',
+    showSettings: 'showSettings',
+    showSharingPopup: 'showSharingPopup',
+    mapZoomChanged: 'mapZoomChanged',
+    hideLayer: 'hideLayer',
+    showLayer: 'showLayer',
+    hideModalWindows: 'hideOtherModalWindows',
+    showMapManager: 'showMapManager',
+    createNewMap: 'createNewMap',
+} as const;

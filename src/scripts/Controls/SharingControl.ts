@@ -1,5 +1,5 @@
 import * as L from 'leaflet';
-import { Settings } from '../../Settings';
+import { Settings } from '../Settings';
 import { EventTopics } from '../EventTopics';
 import { FileManager } from '../FileManager';
 import { IMapLayer } from '../layers/IMapLayer';
@@ -21,9 +21,9 @@ export class SharingControl implements IModalWindow {
     private static inputDivClasses = ['form-check', 'form-switch'];
     private static checkboxClasses = ['form-check-input', 'appearance-none', 'w-9', '-ml-10',
         'rounded-full', 'float-left', 'h-5', 'align-top', 'bg-white', 'bg-no-repeat', 'bg-contain',
-        'bg-gray-300', 'focus:outline-none', 'cursor-pointer', 'shadow-sm'];
+        'bg-gray-300', 'focus:outline-hidden', 'cursor-pointer', 'shadow-xs'];
     private static labelClasses = ['form-check-label', 'inline-block', 'text-gray-800'];
-    private static buttonClasses = ['inline-block', 'px-6', 'py-2.5', 'bg-blue-600', 'text-white', 'font-medium', 'text-xs', 'leading-tight', 'uppercase', 'rounded', 'shadow-md', 'hover:bg-blue-700', 'hover:shadow-lg', 'hover:text-white', 'focus:bg-blue-700', 'focus:shadow-lg', 'focus:outline-none', 'focus:ring-0', 'active:bg-blue-800', 'active:shadow-lg', 'transition', 'duration-150', 'ease-in-out'];
+    private static buttonClasses = ['inline-block', 'px-6', 'py-2.5', 'bg-blue-600', 'text-white', 'font-medium', 'text-xs', 'leading-tight', 'uppercase', 'rounded-sm', 'shadow-md', 'hover:bg-blue-700', 'hover:shadow-lg', 'hover:text-white', 'focus:bg-blue-700', 'focus:shadow-lg', 'focus:outline-hidden', 'focus:ring-0', 'active:bg-blue-800', 'active:shadow-lg', 'transition', 'duration-150', 'ease-in-out'];
 
     constructor(fileManager: FileManager) {
         this._fileManager = fileManager;

@@ -1,5 +1,5 @@
 import * as L from 'leaflet';
-import { Settings } from '../../Settings';
+import { Settings } from '../Settings';
 import { IMapLayer } from '../layers/IMapLayer';
 import { IModalWindow } from './IModalWindow';
 import { ToolbarButton } from './ToolbarButton';
@@ -38,39 +38,38 @@ export class Toolbar {
                 }
             });
 
-            const groupButtonsToRemove = new Array<ToolbarButton>();
+            // Collapse each grouped set of buttons into a single entry that
+            // sits at the position of the group's anchor (its `isFirst`)
+            // button. Because the anchor slot is fixed, selecting a different
+            // member of the group no longer moves the group around the toolbar.
+            const collapsedButtons = new Array<ToolbarButton>();
+            const handledGroups = new Set<string>();
+
             buttons.forEach((button) => {
-                if (button.groupName) {
-                    let parentButton: ToolbarButton | null = null;
-                    const selectedGroupButtons = buttons.filter((b) => b.groupName === button.groupName && b.selected);
-                    if (selectedGroupButtons.length > 0) {
-                        parentButton = selectedGroupButtons[0];
-                    } else {
-                        const groupButtons = buttons.filter((b) => b.groupName === button.groupName && b.isFirst);
-                        if (groupButtons.length > 0) {
-                            parentButton = groupButtons[0];
-                        }
-                    }
-
-                    if (parentButton !== null) {
-                        if (!parentButton.buttons) {
-                            parentButton.buttons = new Array<ToolbarButton>();
-                        }
-
-                        if (parentButton.id !== button.id) {
-                            groupButtonsToRemove.push(button);
-                            parentButton.buttons.push(button);
-                        }
-                    }
+                if (!button.groupName) {
+                    collapsedButtons.push(button);
+                    return;
                 }
+
+                const groupButtons = buttons.filter((b) => b.groupName === button.groupName);
+                const anchorButton = groupButtons.find((b) => b.isFirst) ?? groupButtons[0];
+
+                // Emit the group exactly once, when we reach its anchor button,
+                // so the collapsed group keeps the anchor's toolbar position.
+                if (button !== anchorButton || handledGroups.has(button.groupName)) {
+                    return;
+                }
+                handledGroups.add(button.groupName);
+
+                const selectedButton = groupButtons.find((b) => b.selected);
+                const parentButton = selectedButton ?? anchorButton;
+                parentButton.buttons = groupButtons.filter((b) => b.id !== parentButton.id);
+
+                collapsedButtons.push(parentButton);
             });
 
-            if (groupButtonsToRemove.length > 0) {
-                groupButtonsToRemove.forEach((button) => {
-                    const index = buttons.indexOf(button);
-                    buttons.splice(index, 1);
-                });
-            }
+            buttons.length = 0;
+            buttons.push(...collapsedButtons);
         }
 
         modalWindows.forEach((modalWindow) => {

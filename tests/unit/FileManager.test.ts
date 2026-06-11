@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { FileManager } from '../../src/scripts/FileManager';
-import { Settings } from '../../src/Settings';
+import { Settings } from '../../src/scripts/Settings';
 import { IMapLayer } from '../../src/scripts/layers/IMapLayer';
 
 // --------------------------------------------------------------------------
