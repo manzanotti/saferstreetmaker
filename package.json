@@ -1,7 +1,7 @@
 {
   "scripts": {
     "start": "vite",
-    "build": "prettier --check . && vite build",
+    "build": "prettier --check . --ignore-path .gitignore && vite build",
     "preview": "vite preview",
     "format": "prettier --write .",
     "test": "playwright test --config=tests/playwright.config.ts",

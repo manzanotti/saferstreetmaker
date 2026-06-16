@@ -40,6 +40,7 @@
   font-weight: 700;
   margin: 2px 12px 8px;
   color: #777;
+  cursor: pointer;
 }
 
 .legend span {

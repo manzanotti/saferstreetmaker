@@ -595,7 +595,6 @@ export class MapContainer {
     } else {
       popupElement.classList.remove('fadeIn');
       popupElement.classList.add('fadeOut');
-      popupElement.classList.add('hidden');
     }
   };
 }
