@@ -71,7 +71,7 @@
   z-index: -1;
 }
 
-#help input[type="button"] {
+#help input[type='button'] {
   width: 60px;
   height: 60px;
   background-position: center;

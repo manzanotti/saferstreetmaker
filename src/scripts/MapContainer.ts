@@ -26,553 +26,576 @@ import { PedestrianLightsLayer } from './layers/PedestrianLightsLayer';
 import { ZebraCrossingLayer } from './layers/ZebraCrossingLayer';
 
 export class MapContainer {
-    private static _version: string = '0.8.1';
-    private _mapInitialised: boolean = false;
-    private _fileManager: FileManager;
-    private _map: L.Map;
-    private _layers: Map<string, IMapLayer>;
-    private _settings: Settings;
-    private _toolbarControl!: L.Control;
-    private _legend!: L.Control;
-    private _helpButton: HelpButton;
+  private static _version: string = '0.8.1';
+  private _mapInitialised: boolean = false;
+  private _fileManager: FileManager;
+  private _map: L.Map;
+  private _layers: Map<string, IMapLayer>;
+  private _settings: Settings;
+  private _toolbarControl!: L.Control;
+  private _legend!: L.Control;
+  private _helpButton: HelpButton;
 
-    private _modalWindows!: Array<IModalWindow>;
-    private _saveViewTimer: ReturnType<typeof setTimeout> | undefined;
+  private _modalWindows!: Array<IModalWindow>;
+  private _saveViewTimer: ReturnType<typeof setTimeout> | undefined;
 
-    constructor(fileManager: FileManager) {
-        this._fileManager = fileManager;
+  constructor(fileManager: FileManager) {
+    this._fileManager = fileManager;
 
-        this._settings = new Settings();
-        this._settings.title = 'Hello Cleveland';
+    this._settings = new Settings();
+    this._settings.title = 'Hello Cleveland';
 
-        this._map = new L.Map('map');
+    this._map = new L.Map('map');
 
-        this.setupPanes(this._map);
+    this.setupPanes(this._map);
 
-        this._layers = new Map<string, IMapLayer>;
-        this.setupLayers(this._layers);
+    this._layers = new Map<string, IMapLayer>();
+    this.setupLayers(this._layers);
 
-        this._helpButton = new HelpButton();
+    this._helpButton = new HelpButton();
 
-        this.setupModalWindowControls();
+    this.setupModalWindowControls();
 
-        this.addTileLayer();
+    this.addTileLayer();
 
-        this.setupCloseHelpButtons();
-    }
+    this.setupCloseHelpButtons();
+  }
 
-    private setupPanes = (map: L.Map) => {
-        const ltnsPane = map.createPane('ltns');
-        ltnsPane.style.zIndex = '300';
+  private setupPanes = (map: L.Map) => {
+    const ltnsPane = map.createPane('ltns');
+    ltnsPane.style.zIndex = '300';
 
-        const filtersPane = map.createPane('filters');
-        filtersPane.style.zIndex = '500';
-    }
+    const filtersPane = map.createPane('filters');
+    filtersPane.style.zIndex = '500';
+  };
 
-    private setupLayers = (layers: Map<string, IMapLayer>) => {
-        layers.set(ModalFilterLayer.Id, new ModalFilterLayer());
-        layers.set(MobilityLaneLayer.Id, new MobilityLaneLayer());
-        layers.set(TramLineLayer.Id, new TramLineLayer());
-        layers.set(CarFreeStreetLayer.Id, new CarFreeStreetLayer());
-        layers.set(SchoolStreetLayer.Id, new SchoolStreetLayer());
-        layers.set(OneWayStreetLayer.Id, new OneWayStreetLayer());
-        layers.set(LtnLayer.Id, new LtnLayer());
-        layers.set(BusGateLayer.Id, new BusGateLayer());
-        layers.set(TrafficLightsLayer.Id, new TrafficLightsLayer());
-        layers.set(PedestrianLightsLayer.Id, new PedestrianLightsLayer());
-        layers.set(ZebraCrossingLayer.Id, new ZebraCrossingLayer());
+  private setupLayers = (layers: Map<string, IMapLayer>) => {
+    layers.set(ModalFilterLayer.Id, new ModalFilterLayer());
+    layers.set(MobilityLaneLayer.Id, new MobilityLaneLayer());
+    layers.set(TramLineLayer.Id, new TramLineLayer());
+    layers.set(CarFreeStreetLayer.Id, new CarFreeStreetLayer());
+    layers.set(SchoolStreetLayer.Id, new SchoolStreetLayer());
+    layers.set(OneWayStreetLayer.Id, new OneWayStreetLayer());
+    layers.set(LtnLayer.Id, new LtnLayer());
+    layers.set(BusGateLayer.Id, new BusGateLayer());
+    layers.set(TrafficLightsLayer.Id, new TrafficLightsLayer());
+    layers.set(PedestrianLightsLayer.Id, new PedestrianLightsLayer());
+    layers.set(ZebraCrossingLayer.Id, new ZebraCrossingLayer());
 
-        this.activateAllLayers();
-    };
+    this.activateAllLayers();
+  };
 
-    private setupModalWindowControls = () => {
-        this._modalWindows = new Array<IModalWindow>();
+  private setupModalWindowControls = () => {
+    this._modalWindows = new Array<IModalWindow>();
 
-        const mapManagerControl = new MapManagerControl(this._fileManager);
-        this._modalWindows.push(mapManagerControl);
+    const mapManagerControl = new MapManagerControl(this._fileManager);
+    this._modalWindows.push(mapManagerControl);
 
-        const settingsControl = new SettingsControl();
-        this._modalWindows.push(settingsControl);
+    const settingsControl = new SettingsControl();
+    this._modalWindows.push(settingsControl);
 
-        const sharingControl = new SharingControl(this._fileManager);
-        this._modalWindows.push(sharingControl);
-    }
+    const sharingControl = new SharingControl(this._fileManager);
+    this._modalWindows.push(sharingControl);
+  };
 
-    private addTileLayer = () => {
-        const tileLayer = new L.TileLayer('https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
-            attribution: '<a href="https://saferstreetmaker.org" target="_blank">saferstreetmaker.org</a> | &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
-            maxZoom: 20
-        });
-        this._map.addLayer(tileLayer);
-    };
+  private addTileLayer = () => {
+    const tileLayer = new L.TileLayer('https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+      attribution:
+        '<a href="https://saferstreetmaker.org" target="_blank">saferstreetmaker.org</a> | &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
+      maxZoom: 20,
+    });
+    this._map.addLayer(tileLayer);
+  };
 
-    private addLayers(settings: Settings) {
-        this._layers.forEach((layer, layerName) => {
-            if (settings.activeLayers.includes(layerName)) {
-                layer.visible = true;
-                const layerToAdd = layer.getLayer();
+  private addLayers(settings: Settings) {
+    this._layers.forEach((layer, layerName) => {
+      if (settings.activeLayers.includes(layerName)) {
+        layer.visible = true;
+        const layerToAdd = layer.getLayer();
 
-                this._map.addLayer(layerToAdd);
-            }
-        });
-    }
+        this._map.addLayer(layerToAdd);
+      }
+    });
+  }
 
-    private addToolbar = (layers: Map<string, IMapLayer>, settings: Settings, modalWindows: Array<IModalWindow>) => {
-        const otherButtons = new Array<ToolbarButton>();
-        otherButtons.push(this._helpButton.getToolbarButton());
+  private addToolbar = (
+    layers: Map<string, IMapLayer>,
+    settings: Settings,
+    modalWindows: Array<IModalWindow>,
+  ) => {
+    const otherButtons = new Array<ToolbarButton>();
+    otherButtons.push(this._helpButton.getToolbarButton());
 
-        this._toolbarControl = Toolbar.createToolbarControl(layers, settings, modalWindows, otherButtons);
-        this._map.addControl(this._toolbarControl);
-    }
+    this._toolbarControl = Toolbar.createToolbarControl(
+      layers,
+      settings,
+      modalWindows,
+      otherButtons,
+    );
+    this._map.addControl(this._toolbarControl);
+  };
 
-    private addLegend = (layers: Map<string, IMapLayer>, settings: Settings) => {
-        this._legend = Legend.create(layers, settings.activeLayers);
-        this._map.addControl(this._legend);
-    }
+  private addLegend = (layers: Map<string, IMapLayer>, settings: Settings) => {
+    this._legend = Legend.create(layers, settings.activeLayers);
+    this._map.addControl(this._legend);
+  };
 
-    private setupCloseHelpButtons = () => {
-        document.getElementsByName('closeHelp').forEach((element: HTMLElement) => {
-            element.addEventListener('click', (e: Event) => {
-                this.setPopupVisibility('help', false);
-            })
-        });
-    }
-
-    private clearAllLayers = () => {
-        this._layers.forEach((layer, layerName) => {
-            layer.clearLayer();
-            this._map.removeLayer(layer.getLayer());
-        });
-    }
-
-    private removeAllLayers = () => {
-        this._layers.forEach((layer, layerName) => {
-            this._map.removeLayer(layer.getLayer());
-        });
-    }
-
-    private activateAllLayers = () => {
-        this._settings.activeLayers = [];
-        this._layers.forEach((layer, layerName) => {
-            this._settings.activeLayers.push(layerName);
-        });
-    }
-
-    private resetSettings = () => {
-        this._settings.readOnly = false;
-        this.activateAllLayers();
-    }
-
-    private updateUI = (settings: Settings) => {
-        this.refreshToolbar(settings);
-        this.refreshLegend(settings);
-    }
-
-    private refreshToolbar = (settings: Settings) => {
-        if (this._toolbarControl !== undefined) {
-            this._map.removeControl(this._toolbarControl);
-        }
-
-        if (!settings.hideToolbar) {
-            this.addToolbar(this._layers, settings, this._modalWindows);
-        }
-    }
-
-    private refreshLegend = (settings: Settings) => {
-        if (this._legend !== undefined) {
-            this._map.removeControl(this._legend);
-        }
-
-        this.addLegend(this._layers, settings);
-    }
-
-    private toggleModalWindowVisibility = (windowToShow: IModalWindow | null) => {
-        this._helpButton.selected = false;
+  private setupCloseHelpButtons = () => {
+    document.getElementsByName('closeHelp').forEach((element: HTMLElement) => {
+      element.addEventListener('click', (e: Event) => {
         this.setPopupVisibility('help', false);
+      });
+    });
+  };
 
-        this._modalWindows.forEach((modalWindow) => {
-            if (windowToShow === null || modalWindow.id !== windowToShow.id) {
-                modalWindow.selected = false;
-                this._map.removeControl(modalWindow.getControl());
-            }
-        });
+  private clearAllLayers = () => {
+    this._layers.forEach((layer, layerName) => {
+      layer.clearLayer();
+      this._map.removeLayer(layer.getLayer());
+    });
+  };
 
-        this.refreshToolbar(this._settings);
+  private removeAllLayers = () => {
+    this._layers.forEach((layer, layerName) => {
+      this._map.removeLayer(layer.getLayer());
+    });
+  };
+
+  private activateAllLayers = () => {
+    this._settings.activeLayers = [];
+    this._layers.forEach((layer, layerName) => {
+      this._settings.activeLayers.push(layerName);
+    });
+  };
+
+  private resetSettings = () => {
+    this._settings.readOnly = false;
+    this.activateAllLayers();
+  };
+
+  private updateUI = (settings: Settings) => {
+    this.refreshToolbar(settings);
+    this.refreshLegend(settings);
+  };
+
+  private refreshToolbar = (settings: Settings) => {
+    if (this._toolbarControl !== undefined) {
+      this._map.removeControl(this._toolbarControl);
     }
 
-    private setupMapEventHandlers = () => {
-        this._map.on('click', (e: L.LeafletMouseEvent) => {
-            PubSub.publish(EventTopics.mapClicked, e);
-        });
+    if (!settings.hideToolbar) {
+      this.addToolbar(this._layers, settings, this._modalWindows);
+    }
+  };
 
-        this._map.on('keyup', (e: L.LeafletKeyboardEvent) => {
-            if (e.originalEvent.key === 'Escape') {
-                this._map.closePopup();
-                PubSub.publish(EventTopics.layerDeselected);
-            }
-        })
-
-        this._map.on('draw:created', (e) => {
-            const layer = e.layer;
-            PubSub.publish(EventTopics.drawCreated, { latLngs: layer.getLatLngs(), map: this._map });
-        });
-
-        this._map.on('zoomend', (e) => {
-            const zoom = this._map.getZoom();
-            const mapElement = document.getElementById('map');
-            if (mapElement) {
-                for (let i = mapElement.classList.length - 1; i >= 0; i--) {
-                    const className = mapElement.classList[i];
-                    if (className.startsWith('zoom')) {
-                        mapElement.classList.remove(className);
-                    }
-                }
-
-                mapElement.classList.add(`zoom-${zoom}`);
-            }
-
-            PubSub.publish(EventTopics.mapZoomChanged, zoom);
-
-            this._settings.zoom = zoom;
-            this._settings.centre = this._map.getCenter();
-
-            this.saveViewDebounced();
-        });
-
-        this._map.on('moveend', (e) => {
-            this._settings.zoom = this._map.getZoom();
-            this._settings.centre = this._map.getCenter();
-            this.saveViewDebounced();
-        });
+  private refreshLegend = (settings: Settings) => {
+    if (this._legend !== undefined) {
+      this._map.removeControl(this._legend);
     }
 
-    private setupSubscribers = () => {
-        PubSub.subscribe(EventTopics.fileLoaded, (msg, data) => {
-            this.toggleModalWindowVisibility(null);
-            this.clearAllLayers();
-            this.resetSettings();
+    this.addLegend(this._layers, settings);
+  };
 
-            let mapLoaded = false;
-            const errors = new Array<string>();
+  private toggleModalWindowVisibility = (windowToShow: IModalWindow | null) => {
+    this._helpButton.selected = false;
+    this.setPopupVisibility('help', false);
 
-            try {
-                mapLoaded = this.loadMapData(data, null, null);
-            } catch (e: any) {
-                errors.push('There was a problem loading the map from uploaded file:');
-                errors.push(e.message);
-                errors.push(e.stack);
+    this._modalWindows.forEach((modalWindow) => {
+      if (windowToShow === null || modalWindow.id !== windowToShow.id) {
+        modalWindow.selected = false;
+        this._map.removeControl(modalWindow.getControl());
+      }
+    });
 
-                this.showErrors(errors);
-            }
+    this.refreshToolbar(this._settings);
+  };
 
-            if (mapLoaded) {
-                this.saveMap();
-                this.updateUI(this._settings);
-            }
-        });
+  private setupMapEventHandlers = () => {
+    this._map.on('click', (e: L.LeafletMouseEvent) => {
+      PubSub.publish(EventTopics.mapClicked, e);
+    });
 
-        PubSub.subscribe(EventTopics.layerUpdated, (msg) => {
-            this.saveMap();
-        });
+    this._map.on('keyup', (e: L.LeafletKeyboardEvent) => {
+      if (e.originalEvent.key === 'Escape') {
+        this._map.closePopup();
+        PubSub.publish(EventTopics.layerDeselected);
+      }
+    });
 
-        PubSub.subscribe(EventTopics.showPopup, (msg, popup) => {
-            this._map.openPopup(popup);
-        });
+    this._map.on('draw:created', (e) => {
+      const layer = e.layer;
+      PubSub.publish(EventTopics.drawCreated, { latLngs: layer.getLatLngs(), map: this._map });
+    });
 
-        PubSub.subscribe(EventTopics.closePopup, (msg, popup) => {
-            this._map.closePopup(popup);
-        });
-
-        PubSub.subscribe(EventTopics.saveMapToFile, (msg) => {
-            this._fileManager.saveMapToFile(this._settings, this._layers);
-
-            this.toggleModalWindowVisibility(null);
-        });
-
-        PubSub.subscribe(EventTopics.saveMapToGeoJSONFile, (msg) => {
-            this._fileManager.saveMapToGeoJSONFile(this._settings, this._layers);
-
-            this.toggleModalWindowVisibility(null);
-        });
-
-        PubSub.subscribe(EventTopics.loadMapFromFile, (msg) => {
-            try {
-                this._fileManager.loadMapFromFile();
-            } catch (e: any) {
-                const errors = new Array<string>();
-                errors.push('There was a problem loading the map from uploaded file:');
-                errors.push(e.message);
-                errors.push(e.stack);
-
-                this.showErrors(errors);
-            }
-        });
-
-        PubSub.subscribe(EventTopics.hideModalWindows, (msg, windowToShow: IModalWindow | null) => {
-            this.toggleModalWindowVisibility(windowToShow);
-        });
-
-        PubSub.subscribe(EventTopics.showSettings, (msg, settingsControl: SettingsControl) => {
-            this.toggleModalWindowVisibility(settingsControl);
-            settingsControl.update(this._settings, this._layers);
-            this._map.addControl(settingsControl.getControl());
-        });
-
-        PubSub.subscribe(EventTopics.saveSettings, (msg, settings: Settings) => {
-            this._settings = settings;
-            this.updateUI(settings);
-
-            this.removeAllLayers();
-            this.addLayers(settings);
-
-            this.saveMap();
-
-            this.toggleModalWindowVisibility(null);
-        });
-
-        PubSub.subscribe(EventTopics.showMapManager, (msg, mapManagerControl: MapManagerControl) => {
-            this.toggleModalWindowVisibility(mapManagerControl);
-            mapManagerControl.update(this._settings, this._layers);
-            this._map.addControl(mapManagerControl.getControl());
-        });
-
-        PubSub.subscribe(EventTopics.createNewMap, (msg, settings: Settings) => {
-            this._settings = settings;
-            this.updateUI(settings);
-
-            this.clearAllLayers();
-            this.removeAllLayers();
-            this.addLayers(settings);
-
-            this.saveMap();
-
-            this.toggleModalWindowVisibility(null);
-        });
-
-        PubSub.subscribe(EventTopics.showSharingPopup, (msg, sharingControl: SharingControl) => {
-            this.toggleModalWindowVisibility(sharingControl);
-            sharingControl.update(this._settings, this._layers);
-            this._map.addControl(sharingControl.getControl());
-        });
-
-        PubSub.subscribe(EventTopics.showHelp, (msg) => {
-            this.toggleModalWindowVisibility(null);
-            this._helpButton.selected = true;
-            this.refreshToolbar(this._settings);
-            this.setPopupVisibility('help', true);
-        });
-
-        PubSub.subscribe(EventTopics.hideHelp, (msg) => {
-            this.refreshToolbar(this._settings);
-            this.setPopupVisibility('help', false);
-        });
-
-        PubSub.subscribe(EventTopics.hideLayer, (msg, layerId) => {
-            var layer = this._layers.get(layerId);
-            if (layer !== undefined) {
-                this._map.removeLayer(layer.getLayer());
-                document.getElementById(`${layerId}-legend`)?.classList.add('disabled');
-            }
-        });
-
-        PubSub.subscribe(EventTopics.showLayer, (msg, layerId) => {
-            var layer = this._layers.get(layerId);
-            if (layer !== undefined) {
-                const layerToAdd = layer.getLayer();
-                this._map.addLayer(layerToAdd);
-                document.getElementById(`${layerId}-legend`)?.classList.remove('disabled');
-            }
-        });
-
-        PubSub.subscribe(EventTopics.layerDeselected, (msg) => {
-            this.refreshToolbar(this._settings);
-        });
-
-        PubSub.subscribe(EventTopics.layerSelected, (msg) => {
-            this.refreshToolbar(this._settings);
-        });
-    }
-
-    setUserLocation = (userLocation: any) => {
-        const coordinates = userLocation.coords;
-        this._map.setView([coordinates.latitude, coordinates.longitude], 17);
-    };
-
-    setDefaultView = () => {
-        this._map.setView([52.5, -1.9], 12);
-    }
-
-    loadMap = async (remoteMapFile: string | null, hash: string, hideToolbar: boolean, zoom: string | null, centre: Array<number> | null): Promise<boolean> => {
-        if (this._mapInitialised) {
-            this.removeAllLayers();
-            this.resetSettings();
-        } else {
-            this.addLayers(this._settings);
-            this.setupMapEventHandlers();
-            this.setupSubscribers();
-            this._mapInitialised = true;
+    this._map.on('zoomend', (e) => {
+      const zoom = this._map.getZoom();
+      const mapElement = document.getElementById('map');
+      if (mapElement) {
+        for (let i = mapElement.classList.length - 1; i >= 0; i--) {
+          const className = mapElement.classList[i];
+          if (className.startsWith('zoom')) {
+            mapElement.classList.remove(className);
+          }
         }
 
-        let mapLoaded = false;
+        mapElement.classList.add(`zoom-${zoom}`);
+      }
 
-        let geoJSON = '';
-        const errors = new Array<string>();
-        let errorIntro = '';
-        let loadingFromStorage = false;
-        try {
-            if (remoteMapFile) {
-                errorIntro = 'There was a problem loading the map from the remote file location:';
-                geoJSON = await this._fileManager.loadMapFromRemoteFile(remoteMapFile);
-            } else if (hash !== '') {
-                errorIntro = 'There was a problem loading the map from the hash:';
-                geoJSON = this._fileManager.loadMapFromHash(hash.slice(1));
-            } else {
-                loadingFromStorage = true;
-                const lastMapSelected = this._fileManager.loadLastMapSelected();
-                errorIntro = 'There was a problem loading the map from local storage:';
-                geoJSON = this._fileManager.loadMapFromStorage(lastMapSelected || this._settings.title);
-            }
+      PubSub.publish(EventTopics.mapZoomChanged, zoom);
 
-            errorIntro = 'There was a problem processing the map file:';
-            mapLoaded = this.loadMapData(geoJSON, zoom, centre);
-        } catch (e: any) {
-            errors.push(errorIntro);
+      this._settings.zoom = zoom;
+      this._settings.centre = this._map.getCenter();
 
-            if (loadingFromStorage) {
-                errors.push('<a id="downloadErrorFile">Click to download the map from local storage</a>')
-            }
+      this.saveViewDebounced();
+    });
 
-            errors.push(e.message);
-            errors.push(e.stack);
-            this.showErrors(errors);
+    this._map.on('moveend', (e) => {
+      this._settings.zoom = this._map.getZoom();
+      this._settings.centre = this._map.getCenter();
+      this.saveViewDebounced();
+    });
+  };
 
-            if (loadingFromStorage) {
-                const downloadLink = document.getElementById('downloadErrorFile');
+  private setupSubscribers = () => {
+    PubSub.subscribe(EventTopics.fileLoaded, (msg, data) => {
+      this.toggleModalWindowVisibility(null);
+      this.clearAllLayers();
+      this.resetSettings();
 
-                downloadLink?.addEventListener('click', (e) => {
-                    this.downloadStorageMap();
-                });
-            }
-        }
+      let mapLoaded = false;
+      const errors = new Array<string>();
 
-        this._settings.hideToolbar = hideToolbar;
+      try {
+        mapLoaded = this.loadMapData(data, null, null);
+      } catch (e: any) {
+        errors.push('There was a problem loading the map from uploaded file:');
+        errors.push(e.message);
+        errors.push(e.stack);
+
+        this.showErrors(errors);
+      }
+
+      if (mapLoaded) {
+        this.saveMap();
         this.updateUI(this._settings);
+      }
+    });
 
-        return mapLoaded;
-    };
+    PubSub.subscribe(EventTopics.layerUpdated, (msg) => {
+      this.saveMap();
+    });
 
-    downloadStorageMap = () => {
+    PubSub.subscribe(EventTopics.showPopup, (msg, popup) => {
+      this._map.openPopup(popup);
+    });
+
+    PubSub.subscribe(EventTopics.closePopup, (msg, popup) => {
+      this._map.closePopup(popup);
+    });
+
+    PubSub.subscribe(EventTopics.saveMapToFile, (msg) => {
+      this._fileManager.saveMapToFile(this._settings, this._layers);
+
+      this.toggleModalWindowVisibility(null);
+    });
+
+    PubSub.subscribe(EventTopics.saveMapToGeoJSONFile, (msg) => {
+      this._fileManager.saveMapToGeoJSONFile(this._settings, this._layers);
+
+      this.toggleModalWindowVisibility(null);
+    });
+
+    PubSub.subscribe(EventTopics.loadMapFromFile, (msg) => {
+      try {
+        this._fileManager.loadMapFromFile();
+      } catch (e: any) {
+        const errors = new Array<string>();
+        errors.push('There was a problem loading the map from uploaded file:');
+        errors.push(e.message);
+        errors.push(e.stack);
+
+        this.showErrors(errors);
+      }
+    });
+
+    PubSub.subscribe(EventTopics.hideModalWindows, (msg, windowToShow: IModalWindow | null) => {
+      this.toggleModalWindowVisibility(windowToShow);
+    });
+
+    PubSub.subscribe(EventTopics.showSettings, (msg, settingsControl: SettingsControl) => {
+      this.toggleModalWindowVisibility(settingsControl);
+      settingsControl.update(this._settings, this._layers);
+      this._map.addControl(settingsControl.getControl());
+    });
+
+    PubSub.subscribe(EventTopics.saveSettings, (msg, settings: Settings) => {
+      this._settings = settings;
+      this.updateUI(settings);
+
+      this.removeAllLayers();
+      this.addLayers(settings);
+
+      this.saveMap();
+
+      this.toggleModalWindowVisibility(null);
+    });
+
+    PubSub.subscribe(EventTopics.showMapManager, (msg, mapManagerControl: MapManagerControl) => {
+      this.toggleModalWindowVisibility(mapManagerControl);
+      mapManagerControl.update(this._settings, this._layers);
+      this._map.addControl(mapManagerControl.getControl());
+    });
+
+    PubSub.subscribe(EventTopics.createNewMap, (msg, settings: Settings) => {
+      this._settings = settings;
+      this.updateUI(settings);
+
+      this.clearAllLayers();
+      this.removeAllLayers();
+      this.addLayers(settings);
+
+      this.saveMap();
+
+      this.toggleModalWindowVisibility(null);
+    });
+
+    PubSub.subscribe(EventTopics.showSharingPopup, (msg, sharingControl: SharingControl) => {
+      this.toggleModalWindowVisibility(sharingControl);
+      sharingControl.update(this._settings, this._layers);
+      this._map.addControl(sharingControl.getControl());
+    });
+
+    PubSub.subscribe(EventTopics.showHelp, (msg) => {
+      this.toggleModalWindowVisibility(null);
+      this._helpButton.selected = true;
+      this.refreshToolbar(this._settings);
+      this.setPopupVisibility('help', true);
+    });
+
+    PubSub.subscribe(EventTopics.hideHelp, (msg) => {
+      this.refreshToolbar(this._settings);
+      this.setPopupVisibility('help', false);
+    });
+
+    PubSub.subscribe(EventTopics.hideLayer, (msg, layerId) => {
+      var layer = this._layers.get(layerId);
+      if (layer !== undefined) {
+        this._map.removeLayer(layer.getLayer());
+        document.getElementById(`${layerId}-legend`)?.classList.add('disabled');
+      }
+    });
+
+    PubSub.subscribe(EventTopics.showLayer, (msg, layerId) => {
+      var layer = this._layers.get(layerId);
+      if (layer !== undefined) {
+        const layerToAdd = layer.getLayer();
+        this._map.addLayer(layerToAdd);
+        document.getElementById(`${layerId}-legend`)?.classList.remove('disabled');
+      }
+    });
+
+    PubSub.subscribe(EventTopics.layerDeselected, (msg) => {
+      this.refreshToolbar(this._settings);
+    });
+
+    PubSub.subscribe(EventTopics.layerSelected, (msg) => {
+      this.refreshToolbar(this._settings);
+    });
+  };
+
+  setUserLocation = (userLocation: any) => {
+    const coordinates = userLocation.coords;
+    this._map.setView([coordinates.latitude, coordinates.longitude], 17);
+  };
+
+  setDefaultView = () => {
+    this._map.setView([52.5, -1.9], 12);
+  };
+
+  loadMap = async (
+    remoteMapFile: string | null,
+    hash: string,
+    hideToolbar: boolean,
+    zoom: string | null,
+    centre: Array<number> | null,
+  ): Promise<boolean> => {
+    if (this._mapInitialised) {
+      this.removeAllLayers();
+      this.resetSettings();
+    } else {
+      this.addLayers(this._settings);
+      this.setupMapEventHandlers();
+      this.setupSubscribers();
+      this._mapInitialised = true;
+    }
+
+    let mapLoaded = false;
+
+    let geoJSON = '';
+    const errors = new Array<string>();
+    let errorIntro = '';
+    let loadingFromStorage = false;
+    try {
+      if (remoteMapFile) {
+        errorIntro = 'There was a problem loading the map from the remote file location:';
+        geoJSON = await this._fileManager.loadMapFromRemoteFile(remoteMapFile);
+      } else if (hash !== '') {
+        errorIntro = 'There was a problem loading the map from the hash:';
+        geoJSON = this._fileManager.loadMapFromHash(hash.slice(1));
+      } else {
+        loadingFromStorage = true;
         const lastMapSelected = this._fileManager.loadLastMapSelected();
-        const mapJSON = this._fileManager.loadMapFromStorage(lastMapSelected);
+        errorIntro = 'There was a problem loading the map from local storage:';
+        geoJSON = this._fileManager.loadMapFromStorage(lastMapSelected || this._settings.title);
+      }
 
-        const mapString = JSON.stringify(mapJSON);
+      errorIntro = 'There was a problem processing the map file:';
+      mapLoaded = this.loadMapData(geoJSON, zoom, centre);
+    } catch (e: any) {
+      errors.push(errorIntro);
 
-        const blob = new Blob([mapString], { type: 'text/plain;charset=utf-8' });
-        const hyperlink = document.createElement("a");
-        hyperlink.href = URL.createObjectURL(blob);
-        hyperlink.download = `invalidMapData.json`;
-        hyperlink.click();
+      if (loadingFromStorage) {
+        errors.push('<a id="downloadErrorFile">Click to download the map from local storage</a>');
+      }
+
+      errors.push(e.message);
+      errors.push(e.stack);
+      this.showErrors(errors);
+
+      if (loadingFromStorage) {
+        const downloadLink = document.getElementById('downloadErrorFile');
+
+        downloadLink?.addEventListener('click', (e) => {
+          this.downloadStorageMap();
+        });
+      }
     }
 
-    private loadMapData = (geoJSON: any, zoom: string | null, centre: Array<number> | null): boolean => {
-        if (geoJSON === null) {
-            return false;
+    this._settings.hideToolbar = hideToolbar;
+    this.updateUI(this._settings);
+
+    return mapLoaded;
+  };
+
+  downloadStorageMap = () => {
+    const lastMapSelected = this._fileManager.loadLastMapSelected();
+    const mapJSON = this._fileManager.loadMapFromStorage(lastMapSelected);
+
+    const mapString = JSON.stringify(mapJSON);
+
+    const blob = new Blob([mapString], { type: 'text/plain;charset=utf-8' });
+    const hyperlink = document.createElement('a');
+    hyperlink.href = URL.createObjectURL(blob);
+    hyperlink.download = `invalidMapData.json`;
+    hyperlink.click();
+  };
+
+  private loadMapData = (
+    geoJSON: any,
+    zoom: string | null,
+    centre: Array<number> | null,
+  ): boolean => {
+    if (geoJSON === null) {
+      return false;
+    }
+
+    if (geoJSON['title'] !== undefined) {
+      this._settings.title = geoJSON['title'];
+    }
+
+    if (geoJSON['settings'] !== undefined) {
+      this._settings = Object.assign(new Settings(), geoJSON['settings']);
+    }
+
+    if (geoJSON['layers'] !== undefined) {
+      const layersJSON = geoJSON['layers'];
+      this._layers.forEach((layer, layerName) => {
+        if (layerName === ModalFilterLayer.Id && layersJSON['Modals'] !== undefined) {
+          layerName = 'Modals';
+        } else if (layerName === MobilityLaneLayer.Id && layersJSON['CycleLanes'] !== undefined) {
+          layerName = 'CycleLanes';
         }
 
-        if (geoJSON['title'] !== undefined) {
-            this._settings.title = geoJSON['title'];
+        const layerJSON = layersJSON[layerName];
+        if (layerJSON) {
+          layer.loadFromGeoJSON(layerJSON);
         }
-
-        if (geoJSON['settings'] !== undefined) {
-            this._settings = Object.assign(new Settings(), geoJSON['settings']);
-        }
-
-        if (geoJSON['layers'] !== undefined) {
-            const layersJSON = geoJSON['layers'];
-            this._layers.forEach((layer, layerName) => {
-                if (layerName === ModalFilterLayer.Id && layersJSON['Modals'] !== undefined) {
-                    layerName = 'Modals';
-                } else if (layerName === MobilityLaneLayer.Id && layersJSON['CycleLanes'] !== undefined) {
-                    layerName = 'CycleLanes';
-                }
-
-                const layerJSON = layersJSON[layerName];
-                if (layerJSON) {
-                    layer.loadFromGeoJSON(layerJSON);
-                }
-                if (this._settings.activeLayers.includes(layerName)) {
-                    this._map.addLayer(layer.getLayer());
-                } else {
-                    this._map.removeLayer(layer.getLayer());
-                }
-            });
-        }
-
-        if (this._settings && geoJSON['centre'] !== undefined && geoJSON['zoom'] !== undefined) {
-            this._settings.centre = geoJSON['centre'];
-            this._settings.zoom = geoJSON['zoom'];
-        }
-
-        if (this._settings) {
-            this._settings.version = MapContainer._version;
-        }
-
-        if (zoom) {
-            this._settings.zoom = Number(zoom);
-        }
-
-        if (centre && centre.length === 2) {
-            this._settings.centre = new L.LatLng(centre[0], centre[1]);
-        }
-
-        if (this._settings.centre) {
-            this._map.setView([this._settings.centre.lat, this._settings.centre.lng], this._settings.zoom);
+        if (this._settings.activeLayers.includes(layerName)) {
+          this._map.addLayer(layer.getLayer());
         } else {
-            this.setDefaultView();
+          this._map.removeLayer(layer.getLayer());
         }
-
-        return true;
+      });
     }
 
-    private saveMap = () => {
-        this._fileManager.saveMap(this._settings, this._layers);
-    };
-
-    private saveViewDebounced = () => {
-        if (this._saveViewTimer !== undefined) {
-            clearTimeout(this._saveViewTimer);
-        }
-        this._saveViewTimer = setTimeout(() => {
-            this._saveViewTimer = undefined;
-            this.saveMap();
-        }, 500);
-    };
-
-    private showErrors = (errorMessages: Array<string>) => {
-        const errorMessagesElement = document.getElementById('errorMessages');
-
-        if (errorMessagesElement !== null) {
-            errorMessagesElement.innerHTML = errorMessages.join('<br />');
-
-            this.setPopupVisibility('errors', true);
-        }
+    if (this._settings && geoJSON['centre'] !== undefined && geoJSON['zoom'] !== undefined) {
+      this._settings.centre = geoJSON['centre'];
+      this._settings.zoom = geoJSON['zoom'];
     }
 
-    private setPopupVisibility = (popupId: string, visible: boolean) => {
-        const popupElement = document.getElementById(popupId);
-
-        if (popupElement === null) {
-            return;
-        }
-
-        if (visible) {
-            popupElement.classList.remove('fadeOut');
-            popupElement.classList.add('fadeIn');
-            popupElement.classList.remove('hidden');
-        } else {
-            popupElement.classList.remove('fadeIn');
-            popupElement.classList.add('fadeOut');
-            popupElement.classList.add('hidden');
-        }
+    if (this._settings) {
+      this._settings.version = MapContainer._version;
     }
+
+    if (zoom) {
+      this._settings.zoom = Number(zoom);
+    }
+
+    if (centre && centre.length === 2) {
+      this._settings.centre = new L.LatLng(centre[0], centre[1]);
+    }
+
+    if (this._settings.centre) {
+      this._map.setView(
+        [this._settings.centre.lat, this._settings.centre.lng],
+        this._settings.zoom,
+      );
+    } else {
+      this.setDefaultView();
+    }
+
+    return true;
+  };
+
+  private saveMap = () => {
+    this._fileManager.saveMap(this._settings, this._layers);
+  };
+
+  private saveViewDebounced = () => {
+    if (this._saveViewTimer !== undefined) {
+      clearTimeout(this._saveViewTimer);
+    }
+    this._saveViewTimer = setTimeout(() => {
+      this._saveViewTimer = undefined;
+      this.saveMap();
+    }, 500);
+  };
+
+  private showErrors = (errorMessages: Array<string>) => {
+    const errorMessagesElement = document.getElementById('errorMessages');
+
+    if (errorMessagesElement !== null) {
+      errorMessagesElement.innerHTML = errorMessages.join('<br />');
+
+      this.setPopupVisibility('errors', true);
+    }
+  };
+
+  private setPopupVisibility = (popupId: string, visible: boolean) => {
+    const popupElement = document.getElementById(popupId);
+
+    if (popupElement === null) {
+      return;
+    }
+
+    if (visible) {
+      popupElement.classList.remove('fadeOut');
+      popupElement.classList.add('fadeIn');
+      popupElement.classList.remove('hidden');
+    } else {
+      popupElement.classList.remove('fadeIn');
+      popupElement.classList.add('fadeOut');
+      popupElement.classList.add('hidden');
+    }
+  };
 }

@@ -61,7 +61,9 @@ test.describe('Help Modal', () => {
     await expect(page.locator('#read-only')).toBeVisible();
   });
 
-  test('opening help while another modal is open closes that modal and clears its selected button', async ({ page }) => {
+  test('opening help while another modal is open closes that modal and clears its selected button', async ({
+    page,
+  }) => {
     await page.locator('#settings-button').click();
     await expect(page.locator('#read-only')).toBeVisible();
     await expect(page.locator('#settings-button')).toHaveClass(/selected/);

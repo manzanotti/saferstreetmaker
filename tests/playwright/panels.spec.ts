@@ -43,13 +43,19 @@ test.describe('Settings Panel', () => {
     await expect(page.getByText('Visible Layers')).toBeVisible();
 
     const map = page.locator('#map');
-    const initialZoom = await map.evaluate((element) => Array.from(element.classList).find((className) => className.startsWith('zoom-')) ?? '');
+    const initialZoom = await map.evaluate(
+      (element) =>
+        Array.from(element.classList).find((className) => className.startsWith('zoom-')) ?? '',
+    );
 
     await page.locator('button:has-text("Cancel")').dblclick();
 
     await page.waitForTimeout(200);
 
-    const zoomAfter = await map.evaluate((element) => Array.from(element.classList).find((className) => className.startsWith('zoom-')) ?? '');
+    const zoomAfter = await map.evaluate(
+      (element) =>
+        Array.from(element.classList).find((className) => className.startsWith('zoom-')) ?? '',
+    );
 
     expect(zoomAfter).toBe(initialZoom);
   });
@@ -105,7 +111,9 @@ test.describe('Map Manager Panel', () => {
     await expect(page.locator('#map-list li')).toHaveCount(2);
   });
 
-  test('clicking create in the new map form shows the duplicate-title error for existing names', async ({ page }) => {
+  test('clicking create in the new map form shows the duplicate-title error for existing names', async ({
+    page,
+  }) => {
     await page.goto('/');
     await page.waitForSelector('.toolbar');
 
@@ -125,7 +133,9 @@ test.describe('Map Manager Panel', () => {
     await page.locator('#new-map-title').fill('Hello Cleveland');
     await page.locator('#create-new-map button').click();
 
-    await expect(page.locator('#duplicate-title-error')).toContainText('You already have a map named Hello Cleveland');
+    await expect(page.locator('#duplicate-title-error')).toContainText(
+      'You already have a map named Hello Cleveland',
+    );
   });
 });
 
@@ -173,7 +183,12 @@ test.describe('Sharing Panel', () => {
     await page.addInitScript(() => {
       (window as any).__clipboardText = '';
       Object.defineProperty(navigator, 'clipboard', {
-        value: { writeText: (text: string) => ((window as any).__clipboardText = text, Promise.resolve()) },
+        value: {
+          writeText: (text: string) => (
+            ((window as any).__clipboardText = text),
+            Promise.resolve()
+          ),
+        },
         configurable: true,
       });
     });

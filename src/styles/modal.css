@@ -2,7 +2,10 @@
 
 .modal {
   padding: 6px 8px;
-  font: 14px Arial, Helvetica, sans-serif;
+  font:
+    14px Arial,
+    Helvetica,
+    sans-serif;
   background: white;
   line-height: 24px;
   color: #555;
@@ -49,8 +52,8 @@
   min-width: 50px;
 }
 
-.modal input[type="text"],
-.modal [type="number"] {
+.modal input[type='text'],
+.modal [type='number'] {
   margin: 0 5px;
   box-shadow: 0 0 2px 2px #555;
   padding: 1px 2px;
@@ -76,7 +79,7 @@
   @apply inline-block m-2 px-6 py-2.5 bg-blue-600 text-white font-medium text-xs leading-tight uppercase rounded-sm shadow-md hover:bg-blue-700 hover:shadow-lg hover:text-white focus:bg-blue-700 focus:shadow-lg focus:outline-hidden focus:ring-0 active:bg-blue-800 active:shadow-lg transition duration-150 ease-in-out;
 }
 
-.leaflet-popup a[role="button"],
+.leaflet-popup a[role='button'],
 .leaflet-popup a > span {
   cursor: default;
 }

@@ -1,6 +1,9 @@
 .legend {
   padding: 6px 8px;
-  font: 14px Arial, Helvetica, sans-serif;
+  font:
+    14px Arial,
+    Helvetica,
+    sans-serif;
   background: white;
   background: rgba(255, 255, 255, 0.8);
   line-height: 24px;
