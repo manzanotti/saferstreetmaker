@@ -187,6 +187,9 @@ export class MapContainer {
     }
 
     private toggleModalWindowVisibility = (windowToShow: IModalWindow | null) => {
+        this._helpButton.selected = false;
+        this.setPopupVisibility('help', false);
+
         this._modalWindows.forEach((modalWindow) => {
             if (windowToShow === null || modalWindow.id !== windowToShow.id) {
                 modalWindow.selected = false;
@@ -353,6 +356,8 @@ export class MapContainer {
         });
 
         PubSub.subscribe(EventTopics.showHelp, (msg) => {
+            this.toggleModalWindowVisibility(null);
+            this._helpButton.selected = true;
             this.refreshToolbar(this._settings);
             this.setPopupVisibility('help', true);
         });
@@ -563,9 +568,11 @@ export class MapContainer {
         if (visible) {
             popupElement.classList.remove('fadeOut');
             popupElement.classList.add('fadeIn');
+            popupElement.classList.remove('hidden');
         } else {
             popupElement.classList.remove('fadeIn');
             popupElement.classList.add('fadeOut');
+            popupElement.classList.add('hidden');
         }
     }
 }

@@ -67,6 +67,13 @@ async function drawPolygon(page: Page) {
   await page.waitForTimeout(500);
 }
 
+async function deleteFirstShape(page: Page) {
+  await page.locator('.leaflet-overlay-pane path, .leaflet-polygon-pane path, .leaflet-ltns-pane path').first().dispatchEvent('click');
+  await page.waitForSelector('.popup-buttons .delete-button');
+  await page.locator('.popup-buttons .delete-button').first().click();
+  await page.waitForTimeout(100);
+}
+
 // ---------------------------------------------------------------------------
 // Shared beforeEach – clear storage so each test starts from a blank map
 // ---------------------------------------------------------------------------
@@ -273,6 +280,16 @@ test.describe('Layer: Mobility Lane (polyline)', () => {
     expect(count).toBeGreaterThanOrEqual(1);
   });
 
+  test('deleting a drawn mobility lane removes it from storage', async ({ page }) => {
+    await page.locator('#mobility-lane-button').click();
+    await drawPolyline(page);
+    expect(await getLayerFeatureCount(page, 'MobilityLanes')).toBeGreaterThanOrEqual(1);
+
+    await deleteFirstShape(page);
+
+    expect(await getLayerFeatureCount(page, 'MobilityLanes')).toBe(0);
+  });
+
   test('deactivating the button removes selected state', async ({ page }) => {
     const btn = page.locator('#mobility-lane-button');
     await btn.click();
@@ -362,6 +379,16 @@ test.describe('Layer: LTN Cell (polygon)', () => {
     await drawPolygon(page);
     const count = await getLayerFeatureCount(page, 'LtnCells');
     expect(count).toBeGreaterThanOrEqual(1);
+  });
+
+  test('deleting a drawn LTN cell removes it from storage', async ({ page }) => {
+    await page.locator('#ltn-button').click();
+    await drawPolygon(page);
+    expect(await getLayerFeatureCount(page, 'LtnCells')).toBeGreaterThanOrEqual(1);
+
+    await deleteFirstShape(page);
+
+    expect(await getLayerFeatureCount(page, 'LtnCells')).toBe(0);
   });
 
   test('deactivating the button removes selected state', async ({ page }) => {

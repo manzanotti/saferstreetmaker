@@ -14,6 +14,26 @@ test.describe('Legend', () => {
     await expect(page.locator('.legend h4')).toHaveText('Legend');
   });
 
+  test('clicking the legend title collapses and expands the legend', async ({ page }) => {
+    const legend = page.locator('.legend');
+    const legendTitle = legend.locator('h4');
+
+    await expect(legend.locator('ul')).toBeVisible();
+    await expect(legend.locator('text=Click item to toggle visibility')).toBeVisible();
+
+    await legendTitle.click();
+
+    await expect(legend).toHaveClass(/collapsed/);
+    await expect(legend.locator('ul')).not.toBeVisible();
+    await expect(legend.locator('text=Click item to toggle visibility')).not.toBeVisible();
+
+    await legendTitle.click();
+
+    await expect(legend).not.toHaveClass(/collapsed/);
+    await expect(legend.locator('ul')).toBeVisible();
+    await expect(legend.locator('text=Click item to toggle visibility')).toBeVisible();
+  });
+
   test('legend contains modal filter entry', async ({ page }) => {
     await expect(page.locator('#ModalFilters-legend')).toBeVisible();
   });

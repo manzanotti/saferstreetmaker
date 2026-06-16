@@ -7,11 +7,24 @@ export class Legend {
 
         const div = document.createElement('div');
         div.classList.add('legend');
+        L.DomEvent.disableClickPropagation(div);
+        L.DomEvent.disableScrollPropagation(div);
 
         const header = document.createElement('h4');
         header.textContent = 'Legend';
+        header.classList.add('legend-title');
+        header.addEventListener('click', () => {
+            div.classList.toggle('collapsed');
+            const content = div.querySelector('.legend-content');
+            if (content) {
+                content.classList.toggle('hidden');
+            }
+        });
 
         div.appendChild(header);
+
+        const content = document.createElement('div');
+        content.classList.add('legend-content');
 
         const ul = document.createElement('ul');
 
@@ -21,11 +34,13 @@ export class Legend {
             }
         });
 
-        div.appendChild(ul);
+        content.appendChild(ul);
 
         const instructions = document.createElement('div');
         instructions.textContent = 'Click item to toggle visibility';
-        div.appendChild(instructions);
+        content.appendChild(instructions);
+
+        div.appendChild(content);
 
         legend.onAdd = (map) => {
             return div;

@@ -19,8 +19,8 @@ export class SharingControl implements IModalWindow {
     private static _prefix: string = 'share';
     private static rowMargin = 'mb-2';
     private static inputDivClasses = ['form-check', 'form-switch'];
-    private static checkboxClasses = ['form-check-input', 'appearance-none', 'w-9', '-ml-10',
-        'rounded-full', 'float-left', 'h-5', 'align-top', 'bg-white', 'bg-no-repeat', 'bg-contain',
+    private static checkboxClasses = ['form-check-input', 'appearance-none', 'w-9',
+        'rounded-full', 'h-5', 'align-top', 'bg-white', 'bg-no-repeat', 'bg-contain',
         'bg-gray-300', 'focus:outline-hidden', 'cursor-pointer', 'shadow-xs'];
     private static labelClasses = ['form-check-label', 'inline-block', 'text-gray-800'];
     private static buttonClasses = ['inline-block', 'px-6', 'py-2.5', 'bg-blue-600', 'text-white', 'font-medium', 'text-xs', 'leading-tight', 'uppercase', 'rounded-sm', 'shadow-md', 'hover:bg-blue-700', 'hover:shadow-lg', 'hover:text-white', 'focus:bg-blue-700', 'focus:shadow-lg', 'focus:outline-hidden', 'focus:ring-0', 'active:bg-blue-800', 'active:shadow-lg', 'transition', 'duration-150', 'ease-in-out'];
@@ -70,6 +70,8 @@ export class SharingControl implements IModalWindow {
         const form = document.createElement('form');
         form.id = 'sharing';
         form.classList.add('popup', 'modal');
+        L.DomEvent.disableClickPropagation(form);
+        L.DomEvent.disableScrollPropagation(form);
 
         form.addEventListener('submit', (event) => {
             event.preventDefault();
@@ -163,6 +165,7 @@ export class SharingControl implements IModalWindow {
         SharingControl.inputDivClasses.forEach(className => {
             element.classList.add(className);
         });
+        element.classList.add('flex', 'items-center', 'gap-2');
 
         const input = document.createElement('input');
         input.id = 'hide-toolbar';

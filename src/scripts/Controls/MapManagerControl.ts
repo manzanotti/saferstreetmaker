@@ -64,6 +64,8 @@ export class MapManagerControl implements IModalWindow {
         const div = document.createElement('div');
         div.classList.add('modal');
         div.id = MapManagerControl._prefix;
+        L.DomEvent.disableClickPropagation(div);
+        L.DomEvent.disableScrollPropagation(div);
 
         const header = document.createElement('h4');
         header.textContent = 'Manage maps';

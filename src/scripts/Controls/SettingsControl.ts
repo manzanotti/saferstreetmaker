@@ -63,6 +63,8 @@ export class SettingsControl implements IModalWindow {
     create = (settings: Settings, layers: Map<string, IMapLayer>): HTMLElement => {
         const div = document.createElement('div');
         div.classList.add('modal');
+        L.DomEvent.disableClickPropagation(div);
+        L.DomEvent.disableScrollPropagation(div);
 
         const header = document.createElement('h4');
         header.textContent = 'Settings';
