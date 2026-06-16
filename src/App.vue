@@ -1,9 +1,10 @@
 <script setup lang="ts">
-// Phase 1: App.vue is the Vue root for overlay components (Phase 2+).
-// The Leaflet map is bootstrapped separately in main.ts via DOMContentLoaded
-// so its setup timing is identical to the original scripts/index.ts.
+import HelpModal from './components/HelpModal.vue';
+import ErrorModal from './components/ErrorModal.vue';
 </script>
 
 <template>
-  <!-- Vue overlay components go here in Phase 2+ -->
+  <!-- HelpModal is always in the DOM so #help CSS selectors always match. -->
+  <HelpModal />
+  <ErrorModal />
 </template>
