@@ -15,6 +15,8 @@
     "@types/leaflet": "^1.9.21",
     "@types/lz-string": "^1.5.0",
     "@types/pubsub-js": "^1.8.6",
+    "@vitejs/plugin-vue": "^6.0.7",
+    "@vue/tsconfig": "^0.9.1",
     "jsdom": "^29.1.1",
     "leaflet-arrowheads": "^1.4.0",
     "leaflet-geometryutil": "^0.10.3",
@@ -24,10 +26,13 @@
     "typescript": "^6.0.3",
     "vite": "^8.0.16",
     "vite-plugin-externals": "^0.6.2",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.8",
+    "vue-tsc": "^3.3.5"
   },
   "dependencies": {
-    "tailwindcss": "^4.3.0"
+    "pinia": "^3.0.4",
+    "tailwindcss": "^4.3.0",
+    "vue": "^3.5.38"
   },
   "packageManager": "yarn@3.6.1",
   "version": "0.0.0"
