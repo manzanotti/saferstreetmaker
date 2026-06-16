@@ -2,35 +2,50 @@ import * as L from 'leaflet';
 import { IMapLayer } from '../layers/IMapLayer';
 
 export class Legend {
-    static create = (layers: Map<string, IMapLayer>, activeLayers: Array<string>) => {
-        const legend = new L.Control({ position: "topright" });
+  static create = (layers: Map<string, IMapLayer>, activeLayers: Array<string>) => {
+    const legend = new L.Control({ position: 'topright' });
 
-        const div = document.createElement('div');
-        div.classList.add('legend');
+    const div = document.createElement('div');
+    div.classList.add('legend');
+    L.DomEvent.disableClickPropagation(div);
+    L.DomEvent.disableScrollPropagation(div);
 
-        const header = document.createElement('h4');
-        header.textContent = 'Legend';
+    const header = document.createElement('h4');
+    header.textContent = 'Legend';
+    header.classList.add('legend-title');
+    header.addEventListener('click', () => {
+      div.classList.toggle('collapsed');
+      const content = div.querySelector('.legend-content');
+      if (content) {
+        content.classList.toggle('hidden');
+      }
+    });
 
-        div.appendChild(header);
+    div.appendChild(header);
 
-        const ul = document.createElement('ul');
+    const content = document.createElement('div');
+    content.classList.add('legend-content');
 
-        layers.forEach((layer: IMapLayer, layerName) => {
-            if (activeLayers.includes(layerName)) {
-                ul.appendChild(layer.getLegendEntry());
-            }
-        });
+    const ul = document.createElement('ul');
 
-        div.appendChild(ul);
+    layers.forEach((layer: IMapLayer, layerName) => {
+      if (activeLayers.includes(layerName)) {
+        ul.appendChild(layer.getLegendEntry());
+      }
+    });
 
-        const instructions = document.createElement('div');
-        instructions.textContent = 'Click item to toggle visibility';
-        div.appendChild(instructions);
+    content.appendChild(ul);
 
-        legend.onAdd = (map) => {
-            return div;
-        };
+    const instructions = document.createElement('div');
+    instructions.textContent = 'Click item to toggle visibility';
+    content.appendChild(instructions);
 
-        return legend;
-    }
+    div.appendChild(content);
+
+    legend.onAdd = (map) => {
+      return div;
+    };
+
+    return legend;
+  };
 }

@@ -5,163 +5,182 @@ import { IModalWindow } from './IModalWindow';
 import { ToolbarButton } from './ToolbarButton';
 
 export class Toolbar {
-    static createToolbarControl = (layers: Map<string, IMapLayer>, settings: Settings, modalWindows: Array<IModalWindow>, otherButtons: Array<ToolbarButton>): L.Control => {
-        const position = settings.readOnly ? 'bottomleft' : 'topleft';
-        const toolbarControl = new L.Control({ position: position });
+  static createToolbarControl = (
+    layers: Map<string, IMapLayer>,
+    settings: Settings,
+    modalWindows: Array<IModalWindow>,
+    otherButtons: Array<ToolbarButton>,
+  ): L.Control => {
+    const position = settings.readOnly ? 'bottomleft' : 'topleft';
+    const toolbarControl = new L.Control({ position: position });
 
-        toolbarControl.onAdd = (map: L.Map) => {
-            return Toolbar.generateToolbar(layers, settings, modalWindows, map, otherButtons);
-        };
-        return toolbarControl;
-    }
+    toolbarControl.onAdd = (map: L.Map) => {
+      return Toolbar.generateToolbar(layers, settings, modalWindows, map, otherButtons);
+    };
+    return toolbarControl;
+  };
 
-    private static generateToolbar = (layers: Map<string, IMapLayer>, settings: Settings, modalWindows: Array<IModalWindow>, map: L.Map, otherButtons: Array<ToolbarButton>): HTMLElement => {
-        const buttons = Toolbar.getButtons(layers, settings, modalWindows, otherButtons);
+  private static generateToolbar = (
+    layers: Map<string, IMapLayer>,
+    settings: Settings,
+    modalWindows: Array<IModalWindow>,
+    map: L.Map,
+    otherButtons: Array<ToolbarButton>,
+  ): HTMLElement => {
+    const buttons = Toolbar.getButtons(layers, settings, modalWindows, otherButtons);
 
-        const toolbarElement = document.createElement('ul');
-        toolbarElement.classList.add('toolbar');
+    const toolbarElement = document.createElement('ul');
+    toolbarElement.classList.add('toolbar');
 
-        const toolbarButtons = Toolbar.generateToolbarButtons(buttons, map);
+    const toolbarButtons = Toolbar.generateToolbarButtons(buttons, map);
 
-        toolbarElement.append(...toolbarButtons);
-        return toolbarElement;
-    }
+    toolbarElement.append(...toolbarButtons);
+    return toolbarElement;
+  };
 
-    private static getButtons = (layers: Map<string, IMapLayer>, settings: Settings, modalWindows: Array<IModalWindow>, otherButtons: Array<ToolbarButton>): Array<ToolbarButton> => {
-        const buttons = new Array<ToolbarButton>();
+  private static getButtons = (
+    layers: Map<string, IMapLayer>,
+    settings: Settings,
+    modalWindows: Array<IModalWindow>,
+    otherButtons: Array<ToolbarButton>,
+  ): Array<ToolbarButton> => {
+    const buttons = new Array<ToolbarButton>();
 
-        if (!settings.readOnly) {
-            layers.forEach((layer, layerName) => {
-                if (settings.activeLayers.includes(layerName)) {
-                    const button = layer.getToolbarButton();
-                    buttons.push(button);
-                }
-            });
+    if (!settings.readOnly) {
+      layers.forEach((layer, layerName) => {
+        if (settings.activeLayers.includes(layerName)) {
+          const button = layer.getToolbarButton();
+          buttons.push(button);
+        }
+      });
 
-            // Collapse each grouped set of buttons into a single entry that
-            // sits at the position of the group's anchor (its `isFirst`)
-            // button. Because the anchor slot is fixed, selecting a different
-            // member of the group no longer moves the group around the toolbar.
-            const collapsedButtons = new Array<ToolbarButton>();
-            const handledGroups = new Set<string>();
+      // Collapse each grouped set of buttons into a single entry that
+      // sits at the position of the group's anchor (its `isFirst`)
+      // button. Because the anchor slot is fixed, selecting a different
+      // member of the group no longer moves the group around the toolbar.
+      const collapsedButtons = new Array<ToolbarButton>();
+      const handledGroups = new Set<string>();
 
-            buttons.forEach((button) => {
-                if (!button.groupName) {
-                    collapsedButtons.push(button);
-                    return;
-                }
-
-                const groupButtons = buttons.filter((b) => b.groupName === button.groupName);
-                const anchorButton = groupButtons.find((b) => b.isFirst) ?? groupButtons[0];
-
-                // Emit the group exactly once, when we reach its anchor button,
-                // so the collapsed group keeps the anchor's toolbar position.
-                if (button !== anchorButton || handledGroups.has(button.groupName)) {
-                    return;
-                }
-                handledGroups.add(button.groupName);
-
-                const selectedButton = groupButtons.find((b) => b.selected);
-                const parentButton = selectedButton ?? anchorButton;
-                parentButton.buttons = groupButtons.filter((b) => b.id !== parentButton.id);
-
-                collapsedButtons.push(parentButton);
-            });
-
-            buttons.length = 0;
-            buttons.push(...collapsedButtons);
+      buttons.forEach((button) => {
+        if (!button.groupName) {
+          collapsedButtons.push(button);
+          return;
         }
 
-        modalWindows.forEach((modalWindow) => {
-            buttons.push(modalWindow.getToolbarButton());
-        });
+        const groupButtons = buttons.filter((b) => b.groupName === button.groupName);
+        const anchorButton = groupButtons.find((b) => b.isFirst) ?? groupButtons[0];
 
-        buttons.push(...otherButtons);
-
-        return buttons;
-    }
-
-    private static generateToolbarButtons = (buttons: Array<ToolbarButton>, map: L.Map): Array<Node> => {
-        const toolbarButtons = new Array<HTMLElement>();
-
-        buttons.forEach((button) => {
-            const buttonContainer = document.createElement('li');
-
-            const buttonElement = Toolbar.createButtonElement(button, map);
-
-            buttonContainer.appendChild(buttonElement);
-
-            if (button.buttons && button.buttons.length > 0) {
-                buttonContainer.classList.add('group');
-                const subToolbar = document.createElement('ul');
-                subToolbar.classList.add('hidden', 'subToolbar');
-
-                button.buttons.forEach((b) => {
-                    const container = document.createElement('li');
-                    container.appendChild(Toolbar.createButtonElement(b, map));
-                    subToolbar.appendChild(container);
-                });
-
-                buttonElement.addEventListener('contextmenu', (event: Event) => {
-                    L.DomEvent.preventDefault(event);
-                    subToolbar.classList.remove('hidden');
-                });
-
-                Toolbar.onLongPress(buttonElement, (event: Event) => {
-                    L.DomEvent.preventDefault(event);
-                    subToolbar.classList.remove('hidden');
-                })
-
-                buttonContainer.appendChild(subToolbar);
-
-                const indicator = document.createElement('span');
-                buttonContainer.appendChild(indicator);
-            }
-
-            toolbarButtons.push(buttonContainer);
-        });
-
-        return toolbarButtons;
-    }
-
-    private static createButtonElement = (button: ToolbarButton, map: L.Map) => {
-        const buttonElement = document.createElement('input');
-        buttonElement.setAttribute('id', `${button.id}-button`);
-        buttonElement.setAttribute('type', 'button');
-        buttonElement.classList.add('toolbar-button', `${button.id}`);
-        buttonElement.setAttribute('title', button.tooltip);
-
-        if (button.text) {
-            buttonElement.setAttribute('value', button.text);
+        // Emit the group exactly once, when we reach its anchor button,
+        // so the collapsed group keeps the anchor's toolbar position.
+        if (button !== anchorButton || handledGroups.has(button.groupName)) {
+          return;
         }
+        handledGroups.add(button.groupName);
 
-        if (button.selected) {
-            buttonElement.classList.add('selected');
-        }
+        const selectedButton = groupButtons.find((b) => b.selected);
+        const parentButton = selectedButton ?? anchorButton;
+        parentButton.buttons = groupButtons.filter((b) => b.id !== parentButton.id);
 
-        buttonElement.addEventListener('click', (event: Event) => {
-            L.DomEvent.disableClickPropagation(buttonElement);
-            button.action(event, map);
-        });
+        collapsedButtons.push(parentButton);
+      });
 
-        return buttonElement;
+      buttons.length = 0;
+      buttons.push(...collapsedButtons);
     }
 
-    private static onLongPress = (element: HTMLElement, callback: Function) => {
-        let timer: number | undefined;
+    modalWindows.forEach((modalWindow) => {
+      buttons.push(modalWindow.getToolbarButton());
+    });
 
-        element.addEventListener('touchstart', () => {
-            timer = setTimeout(() => {
-                timer = undefined;
-                callback();
-            }, 500);
+    buttons.push(...otherButtons);
+
+    return buttons;
+  };
+
+  private static generateToolbarButtons = (
+    buttons: Array<ToolbarButton>,
+    map: L.Map,
+  ): Array<Node> => {
+    const toolbarButtons = new Array<HTMLElement>();
+
+    buttons.forEach((button) => {
+      const buttonContainer = document.createElement('li');
+
+      const buttonElement = Toolbar.createButtonElement(button, map);
+
+      buttonContainer.appendChild(buttonElement);
+
+      if (button.buttons && button.buttons.length > 0) {
+        buttonContainer.classList.add('group');
+        const subToolbar = document.createElement('ul');
+        subToolbar.classList.add('hidden', 'subToolbar');
+
+        button.buttons.forEach((b) => {
+          const container = document.createElement('li');
+          container.appendChild(Toolbar.createButtonElement(b, map));
+          subToolbar.appendChild(container);
         });
 
-        function cancel() {
-            clearTimeout(timer);
-        }
+        buttonElement.addEventListener('contextmenu', (event: Event) => {
+          L.DomEvent.preventDefault(event);
+          subToolbar.classList.remove('hidden');
+        });
 
-        element.addEventListener('touchend', cancel);
-        element.addEventListener('touchmove', cancel);
+        Toolbar.onLongPress(buttonElement, (event: Event) => {
+          L.DomEvent.preventDefault(event);
+          subToolbar.classList.remove('hidden');
+        });
+
+        buttonContainer.appendChild(subToolbar);
+
+        const indicator = document.createElement('span');
+        buttonContainer.appendChild(indicator);
+      }
+
+      toolbarButtons.push(buttonContainer);
+    });
+
+    return toolbarButtons;
+  };
+
+  private static createButtonElement = (button: ToolbarButton, map: L.Map) => {
+    const buttonElement = document.createElement('input');
+    buttonElement.setAttribute('id', `${button.id}-button`);
+    buttonElement.setAttribute('type', 'button');
+    buttonElement.classList.add('toolbar-button', `${button.id}`);
+    buttonElement.setAttribute('title', button.tooltip);
+
+    if (button.text) {
+      buttonElement.setAttribute('value', button.text);
     }
+
+    if (button.selected) {
+      buttonElement.classList.add('selected');
+    }
+
+    buttonElement.addEventListener('click', (event: Event) => {
+      L.DomEvent.disableClickPropagation(buttonElement);
+      button.action(event, map);
+    });
+
+    return buttonElement;
+  };
+
+  private static onLongPress = (element: HTMLElement, callback: Function) => {
+    let timer: number | undefined;
+
+    element.addEventListener('touchstart', () => {
+      timer = setTimeout(() => {
+        timer = undefined;
+        callback();
+      }, 500);
+    });
+
+    function cancel() {
+      clearTimeout(timer);
+    }
+
+    element.addEventListener('touchend', cancel);
+    element.addEventListener('touchmove', cancel);
+  };
 }

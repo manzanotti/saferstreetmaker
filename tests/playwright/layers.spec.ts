@@ -21,10 +21,7 @@ async function clickMap(page: Page, offsetX = 0, offsetY = 0) {
   const map = page.locator('.leaflet-container');
   const box = await map.boundingBox();
   if (!box) throw new Error('Map bounding box not found');
-  await page.mouse.click(
-    box.x + box.width / 2 + offsetX,
-    box.y + box.height / 2 + offsetY
-  );
+  await page.mouse.click(box.x + box.width / 2 + offsetX, box.y + box.height / 2 + offsetY);
   // PubSub.js dispatches subscribers asynchronously (via setTimeout(fn,0)).
   // Wait for the mapClicked subscribers (addMarker → layerUpdated → saveMap) to run.
   await page.waitForTimeout(100);
@@ -61,10 +58,20 @@ async function drawPolygon(page: Page) {
   await page.waitForTimeout(200);
   await page.mouse.click(cx + 60, cy - 40);
   await page.waitForTimeout(200);
-  await page.mouse.click(cx,      cy + 40);
+  await page.mouse.click(cx, cy + 40);
   await page.waitForTimeout(200);
   await page.mouse.dblclick(cx, cy + 60);
   await page.waitForTimeout(500);
+}
+
+async function deleteFirstShape(page: Page) {
+  await page
+    .locator('.leaflet-overlay-pane path, .leaflet-polygon-pane path, .leaflet-ltns-pane path')
+    .first()
+    .dispatchEvent('click');
+  await page.waitForSelector('.popup-buttons .delete-button');
+  await page.locator('.popup-buttons .delete-button').first().click();
+  await page.waitForTimeout(100);
 }
 
 // ---------------------------------------------------------------------------
@@ -91,8 +98,9 @@ function setupFreshPage() {
     // zoomend handler after setView() is called from the geolocation callback).
     await page.waitForFunction(() => {
       const mapEl = document.getElementById('map');
-      return mapEl !== null &&
-        Array.from(mapEl.classList).some((c: string) => c.startsWith('zoom-'));
+      return (
+        mapEl !== null && Array.from(mapEl.classList).some((c: string) => c.startsWith('zoom-'))
+      );
     });
   });
 }
@@ -221,7 +229,9 @@ test.describe('Layer: Traffic Lights (point, primary button)', () => {
 test.describe('Layer: Pedestrian Lights (point, submenu button)', () => {
   setupFreshPage();
 
-  test('right-clicking traffic lights button reveals pedestrian lights button', async ({ page }) => {
+  test('right-clicking traffic lights button reveals pedestrian lights button', async ({
+    page,
+  }) => {
     await page.locator('#traffic-lights-button').dispatchEvent('contextmenu');
     await expect(page.locator('#pedestrian-lights-button')).toBeVisible();
   });
@@ -271,6 +281,16 @@ test.describe('Layer: Mobility Lane (polyline)', () => {
     await drawPolyline(page);
     const count = await getLayerFeatureCount(page, 'MobilityLanes');
     expect(count).toBeGreaterThanOrEqual(1);
+  });
+
+  test('deleting a drawn mobility lane removes it from storage', async ({ page }) => {
+    await page.locator('#mobility-lane-button').click();
+    await drawPolyline(page);
+    expect(await getLayerFeatureCount(page, 'MobilityLanes')).toBeGreaterThanOrEqual(1);
+
+    await deleteFirstShape(page);
+
+    expect(await getLayerFeatureCount(page, 'MobilityLanes')).toBe(0);
   });
 
   test('deactivating the button removes selected state', async ({ page }) => {
@@ -362,6 +382,16 @@ test.describe('Layer: LTN Cell (polygon)', () => {
     await drawPolygon(page);
     const count = await getLayerFeatureCount(page, 'LtnCells');
     expect(count).toBeGreaterThanOrEqual(1);
+  });
+
+  test('deleting a drawn LTN cell removes it from storage', async ({ page }) => {
+    await page.locator('#ltn-button').click();
+    await drawPolygon(page);
+    expect(await getLayerFeatureCount(page, 'LtnCells')).toBeGreaterThanOrEqual(1);
+
+    await deleteFirstShape(page);
+
+    expect(await getLayerFeatureCount(page, 'LtnCells')).toBe(0);
   });
 
   test('deactivating the button removes selected state', async ({ page }) => {

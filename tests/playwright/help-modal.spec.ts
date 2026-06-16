@@ -43,4 +43,35 @@ test.describe('Help Modal', () => {
     await expect(page.locator('#tabs-features')).toBeVisible();
     await expect(page.locator('#tabs-home')).not.toBeVisible();
   });
+
+  test('clicking the help modal close button hides the modal', async ({ page }) => {
+    await page.locator('#help-button').click();
+    await page.locator('button[name="closeHelp"]').first().click();
+
+    await expect(page.locator('#help')).toHaveClass(/fadeOut/);
+  });
+
+  test('opening another modal closes the help popup first', async ({ page }) => {
+    await page.locator('#help-button').click();
+    await expect(page.locator('#help')).toHaveClass(/fadeIn/);
+
+    await page.locator('#settings-button').click();
+
+    await expect(page.locator('#help')).toHaveClass(/fadeOut/);
+    await expect(page.locator('#read-only')).toBeVisible();
+  });
+
+  test('opening help while another modal is open closes that modal and clears its selected button', async ({
+    page,
+  }) => {
+    await page.locator('#settings-button').click();
+    await expect(page.locator('#read-only')).toBeVisible();
+    await expect(page.locator('#settings-button')).toHaveClass(/selected/);
+
+    await page.locator('#help-button').click();
+
+    await expect(page.locator('#help')).toHaveClass(/fadeIn/);
+    await expect(page.locator('#read-only')).not.toBeVisible();
+    await expect(page.locator('#settings-button')).not.toHaveClass(/selected/);
+  });
 });

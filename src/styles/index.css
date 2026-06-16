@@ -52,7 +52,7 @@ a {
   color: blue;
 }
 
-.leaflet-popup a[role="button"],
+.leaflet-popup a[role='button'],
 .leaflet-popup a > span {
   cursor: default;
 }

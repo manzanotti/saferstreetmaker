@@ -81,7 +81,7 @@ test.describe('Toolbar button groups', () => {
       const toolbar = document.querySelector('.toolbar');
       if (!toolbar) return false;
       const li = Array.from(toolbar.children).find((c) =>
-        c.querySelector(':scope > #bus-gate-button')
+        c.querySelector(':scope > #bus-gate-button'),
       );
       return li !== undefined;
     });
@@ -90,7 +90,9 @@ test.describe('Toolbar button groups', () => {
     expect(indexAfter).toBe(indexBefore);
   });
 
-  test('selecting a different traffic-controls-group member keeps the group in place', async ({ page }) => {
+  test('selecting a different traffic-controls-group member keeps the group in place', async ({
+    page,
+  }) => {
     const members = ['traffic-lights-button', 'pedestrian-lights-button', 'zebra-crossing-button'];
 
     await expect(page.locator('#traffic-lights-button')).toBeVisible();
@@ -103,7 +105,7 @@ test.describe('Toolbar button groups', () => {
       const toolbar = document.querySelector('.toolbar');
       if (!toolbar) return false;
       const li = Array.from(toolbar.children).find((c) =>
-        c.querySelector(':scope > #zebra-crossing-button')
+        c.querySelector(':scope > #zebra-crossing-button'),
       );
       return li !== undefined;
     });

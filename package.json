@@ -1,8 +1,9 @@
 {
   "scripts": {
     "start": "vite",
-    "build": "vite build",
+    "build": "prettier --check . --ignore-path .gitignore && vite build",
     "preview": "vite preview",
+    "format": "prettier --write .",
     "test": "playwright test --config=tests/playwright.config.ts",
     "test:unit": "vitest run --config=tests/vitest.config.ts",
     "test:unit:watch": "vitest --config=tests/vitest.config.ts",
@@ -18,6 +19,7 @@
     "leaflet-arrowheads": "^1.4.0",
     "leaflet-geometryutil": "^0.10.3",
     "lz-string": "^1.5.0",
+    "prettier": "^3.8.4",
     "pubsub-js": "^1.9.5",
     "typescript": "^6.0.3",
     "vite": "^8.0.16",
