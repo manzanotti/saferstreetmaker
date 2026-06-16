@@ -39,6 +39,9 @@
   to {
     display: none;
     height: 0;
+    padding: 0;
+    border: none;
+    box-shadow: none;
   }
 }
 
