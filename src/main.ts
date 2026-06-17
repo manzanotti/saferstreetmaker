@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Pre-populate activeLayers so the toolbar and legend render before loadMap.
   settingsStore.activeLayers = allLayers.map((l) => l.id);
 
-  // ── Set up map manager (loads/saves maps, bridges PubSub events) ─────────
+  // ── Set up map manager (loads/saves maps, wires layer-update and file-loaded callbacks) ─────
   const { loadMap, setUserLocation, setDefaultView } = setupMapManager(fileManager);
 
   // ── Add Vue-backed Leaflet controls ──────────────────────────────────────
@@ -56,7 +56,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (parts.length === 2) {
       const lat = Number(parts[0]);
       const lng = Number(parts[1]);
-      if (!isNaN(lat) && !isNaN(lng)) centre = [lat, lng];
+      if (!isNaN(lat) && !isNaN(lng)) {
+        centre = [lat, lng];
+      }
     }
   }
 

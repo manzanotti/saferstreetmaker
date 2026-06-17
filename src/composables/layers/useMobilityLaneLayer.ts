@@ -1,5 +1,5 @@
 import * as L from 'leaflet';
-import { createPolylineLayer } from './usePolylineLayer';
+import { createPolylineLayer, type EditablePolylineLayer } from './usePolylineLayer';
 import { addPolylineToLayer, loadPolylineGeoJSON } from './polylineHelpers';
 import type { IMapLayer } from './IMapLayer';
 
@@ -10,6 +10,7 @@ function addLine(
   latLngs: L.LatLng[],
   geoJsonLayer: L.GeoJSON,
   map: L.Map,
+  selectForEdit: () => void,
   reinit?: (m: L.Map) => void,
 ) {
   addPolylineToLayer({
@@ -18,6 +19,7 @@ function addLine(
     map,
     polylineOpts: { color: COLOUR, weight: WEIGHT, opacity: 1, smoothFactor: 1 },
     buttonId: 'mobility-lane',
+    selectForEdit,
     popupKeepInView: false,
     reinitDrawing: reinit,
   });
@@ -25,6 +27,7 @@ function addLine(
 
 export function createMobilityLaneLayer(map: L.Map): IMapLayer {
   let _drawingTool: any = null;
+  let layer: EditablePolylineLayer;
 
   const reinit = (m: L.Map) => {
     _drawingTool = new L.Draw.Polyline(m, {
@@ -36,7 +39,7 @@ export function createMobilityLaneLayer(map: L.Map): IMapLayer {
     _drawingTool.enable();
   };
 
-  const layer = createPolylineLayer(
+  layer = createPolylineLayer(
     {
       id: 'MobilityLanes',
       title: 'Mobility Lanes',
@@ -55,7 +58,7 @@ export function createMobilityLaneLayer(map: L.Map): IMapLayer {
         return _drawingTool;
       },
       onDrawCreated(latLngs, geoJsonLayer, m) {
-        addLine(latLngs, geoJsonLayer, m, reinit);
+        addLine(latLngs, geoJsonLayer, m, () => layer.selectForEdit(), reinit);
       },
       buildIconEl() {
         const icon = document.createElement('i');
@@ -67,7 +70,9 @@ export function createMobilityLaneLayer(map: L.Map): IMapLayer {
   );
 
   layer.loadFromGeoJSON = (geoJson: any) => {
-    loadPolylineGeoJSON(geoJson, (pts) => addLine(pts, layer.getLayer(), map));
+    loadPolylineGeoJSON(geoJson, (pts) =>
+      addLine(pts, layer.getLayer(), map, () => layer.selectForEdit()),
+    );
   };
 
   return layer;

@@ -4,7 +4,7 @@
  * Replaces MapContainer's map-data responsibilities:
  *  - loadMap / loadMapData / saveMap / createNewMap / applySettings
  *
- * PubSub fully removed — layerUpdated is now a Pinia counter watch,
+ * All PubSub removed — layerUpdated is now a Pinia counter watch,
  * fileLoaded is a FileManager callback.
  */
 import * as L from 'leaflet';
@@ -40,12 +40,16 @@ let _instance: MapManager | null = null;
 let _fileManager: FileManager | null = null;
 
 export function getMapManager(): MapManager {
-  if (!_instance) throw new Error('MapManager not initialised');
+  if (!_instance) {
+    throw new Error('MapManager not initialised');
+  }
   return _instance;
 }
 
 export function getFileManager(): FileManager {
-  if (!_fileManager) throw new Error('FileManager not initialised');
+  if (!_fileManager) {
+    throw new Error('FileManager not initialised');
+  }
   return _fileManager;
 }
 
@@ -58,7 +62,9 @@ export function setupMapManager(fileManager: FileManager): MapManager {
   // ── Helpers ───────────────────────────────────────────────────────────────
   const getMap = (): L.Map => {
     const m = mapStore.map;
-    if (!m) throw new Error('Leaflet map not initialised');
+    if (!m) {
+      throw new Error('Leaflet map not initialised');
+    }
     return m;
   };
 
@@ -66,7 +72,9 @@ export function setupMapManager(fileManager: FileManager): MapManager {
   let saveViewTimer: ReturnType<typeof setTimeout> | undefined;
 
   const saveViewDebounced = () => {
-    if (saveViewTimer !== undefined) clearTimeout(saveViewTimer);
+    if (saveViewTimer !== undefined) {
+      clearTimeout(saveViewTimer);
+    }
     saveViewTimer = setTimeout(() => {
       saveViewTimer = undefined;
       saveMap();
@@ -118,7 +126,9 @@ export function setupMapManager(fileManager: FileManager): MapManager {
     zoom: string | null,
     centre: number[] | null,
   ): boolean => {
-    if (geoJSON === null) return false;
+    if (geoJSON === null) {
+      return false;
+    }
 
     const map = getMap();
 
@@ -128,13 +138,16 @@ export function setupMapManager(fileManager: FileManager): MapManager {
     }
 
     if (geoJSON.settings !== undefined) {
+      const rawCentre = geoJSON.settings.centre;
+      const settingsCentre = rawCentre ? new L.LatLng(rawCentre.lat, rawCentre.lng) : null;
+
       const s: Settings = Object.assign(new Settings(), geoJSON.settings);
       settingsStore.applyFromSettings({
         title: s.title,
         readOnly: s.readOnly,
         hideToolbar: s.hideToolbar,
         activeLayers: s.activeLayers,
-        centre: s.centre,
+        centre: settingsCentre,
         zoom: s.zoom,
         version: s.version,
       });
@@ -149,12 +162,14 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         // Handle legacy key renames
         if (layerName === 'ModalFilters' && layersJSON['Modals'] !== undefined) {
           layerName = 'Modals';
-        } else if (layerName === 'CycleLanes' && layersJSON['CycleLanes'] !== undefined) {
+        } else if (layerName === 'MobilityLanes' && layersJSON['CycleLanes'] !== undefined) {
           layerName = 'CycleLanes';
         }
 
         const layerJSON = layersJSON[layerName];
-        if (layerJSON) layer.loadFromGeoJSON(layerJSON as L.GeoJSON);
+        if (layerJSON) {
+          layer.loadFromGeoJSON(layerJSON as L.GeoJSON);
+        }
 
         if (settingsStore.activeLayers.includes(layer.id)) {
           layer.visible = true;
@@ -167,15 +182,19 @@ export function setupMapManager(fileManager: FileManager): MapManager {
 
     // Apply stored centre/zoom from the JSON document itself
     if (geoJSON.centre !== undefined && geoJSON.zoom !== undefined) {
-      settingsStore.centre = geoJSON.centre as unknown as L.LatLng;
+      settingsStore.centre = new L.LatLng(geoJSON.centre.lat, geoJSON.centre.lng);
       settingsStore.zoom = geoJSON.zoom;
     }
 
     settingsStore.version = APP_VERSION;
 
     // URL param overrides
-    if (zoom) settingsStore.zoom = Number(zoom);
-    if (centre && centre.length === 2) settingsStore.centre = new L.LatLng(centre[0], centre[1]);
+    if (zoom) {
+      settingsStore.zoom = Number(zoom);
+    }
+    if (centre && centre.length === 2) {
+      settingsStore.centre = new L.LatLng(centre[0], centre[1]);
+    }
 
     // Set view
     if (settingsStore.centre) {
@@ -296,7 +315,9 @@ export function setupMapManager(fileManager: FileManager): MapManager {
    */
   const createNewMap = (title: string): boolean => {
     const existing = fileManager.loadMapListFromStorage();
-    if (existing.includes(title)) return false;
+    if (existing.includes(title)) {
+      return false;
+    }
 
     clearAllLayers();
 
@@ -377,7 +398,9 @@ export function setupMapManager(fileManager: FileManager): MapManager {
     const errors: string[] = [];
     try {
       const ok = loadMapData(data as SerializedMap | null, null, null);
-      if (ok) saveMap();
+      if (ok) {
+        saveMap();
+      }
     } catch (e: any) {
       errors.push('There was a problem loading the map from uploaded file:');
       errors.push(e.message);

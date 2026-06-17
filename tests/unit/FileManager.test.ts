@@ -50,6 +50,9 @@ describe('FileManager', () => {
   beforeEach(() => {
     fm = new FileManager();
     localStorage.clear();
+    document.body.innerHTML = '';
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   // -----------------------------------------------------------------------
@@ -255,6 +258,103 @@ describe('FileManager', () => {
       const settings = makeSettings('Town');
       fm.copyMap(settings, new Map());
       expect(settings.title).toBe('Town_copy_1');
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // loadMapFromRemoteFile
+  // -----------------------------------------------------------------------
+  describe('loadMapFromRemoteFile', () => {
+    it('returns parsed JSON for a successful response', async () => {
+      const payload = {
+        settings: {
+          title: 'Remote City',
+          readOnly: false,
+          hideToolbar: false,
+          activeLayers: [],
+          centre: null,
+          zoom: 12,
+          version: '1',
+        },
+        layers: {},
+      };
+
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue(payload),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      await expect(fm.loadMapFromRemoteFile('https://example.com/map.json')).resolves.toEqual(
+        payload,
+      );
+      expect(fetchMock).toHaveBeenCalledWith('https://example.com/map.json');
+    });
+
+    it('throws a clear error for non-OK responses', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+        json: vi.fn(),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      await expect(fm.loadMapFromRemoteFile('https://example.com/missing.json')).rejects.toThrow(
+        'Failed to load remote map: 404 Not Found',
+      );
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // loadMapFromFile / _readFile cleanup
+  // -----------------------------------------------------------------------
+  describe('loadMapFromFile cleanup', () => {
+    it('removes the hidden input when the user cancels the file picker', () => {
+      fm.loadMapFromFile();
+
+      const fileInput = document.body.querySelector('input[type="file"]') as HTMLInputElement;
+      expect(fileInput).toBeTruthy();
+
+      (fm as any)._readFile({ target: fileInput } as Event);
+
+      expect(document.body.querySelector('input[type="file"]')).toBeNull();
+    });
+
+    it('removes the hidden input when JSON.parse fails for an invalid file', () => {
+      const OriginalFileReader = globalThis.FileReader;
+
+      class MockFileReader {
+        onload: ((e: ProgressEvent<FileReader>) => void) | null = null;
+        onerror: (() => void) | null = null;
+
+        readAsText() {
+          this.onload?.({
+            target: { result: '{invalid json' },
+          } as unknown as ProgressEvent<FileReader>);
+        }
+      }
+
+      try {
+        (globalThis as any).FileReader = MockFileReader;
+
+        fm.loadMapFromFile();
+        const fileInput = document.body.querySelector('input[type="file"]') as HTMLInputElement;
+        expect(fileInput).toBeTruthy();
+
+        Object.defineProperty(fileInput, 'files', {
+          value: [{ name: 'bad.json' }],
+          configurable: true,
+        });
+
+        expect(() => {
+          (fm as any)._readFile({ target: fileInput } as Event);
+        }).toThrow();
+
+        expect(document.body.querySelector('input[type="file"]')).toBeNull();
+      } finally {
+        (globalThis as any).FileReader = OriginalFileReader;
+      }
     });
   });
 });

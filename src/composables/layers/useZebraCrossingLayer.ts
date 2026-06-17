@@ -1,5 +1,4 @@
 import * as L from 'leaflet';
-import { watch } from 'vue';
 import { createPointLayer } from './usePointLayer';
 import type { IMapLayer } from './IMapLayer';
 import { useMapStore } from '../../stores/mapStore';

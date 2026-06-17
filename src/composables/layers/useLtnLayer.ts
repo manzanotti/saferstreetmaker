@@ -4,18 +4,20 @@ import { useMapStore } from '../../stores/mapStore';
 import { pinia } from '../../stores/index';
 import { setMapCursor, removeMapCursor, buildToolbarButton, buildLegendEntry } from './layerUtils';
 import type { IMapLayer } from './IMapLayer';
+import { type EditablePolylineLayer } from './usePolylineLayer';
 
 const COLOUR = '#cc00cc';
 const BUTTON_ID = 'ltn';
 const CURSOR_CSS = 'ltn-cell';
 
-export function createLtnLayer(map: L.Map): IMapLayer {
+export function createLtnLayer(map: L.Map): EditablePolylineLayer {
   const mapStore = useMapStore(pinia);
   const geoJsonLayer = new L.GeoJSON(undefined, { pane: 'ltns' });
   let _selected = false;
   let _visible = false;
   let _drawingTool: any = null;
   let _ltnTitle = '1';
+  let selectionMode: 'draw' | 'edit' = 'draw';
 
   // ── Add a single LTN polygon ─────────────────────────────────────────────
   const addLtnCell = (points: L.LatLng[], label: string, color: string) => {
@@ -40,10 +42,15 @@ export function createLtnLayer(map: L.Map): IMapLayer {
     const popup = createLtnPopup(polygon, tooltip, label);
 
     polygon.on('click', (e: any) => {
-      if (!_selected) {
-        // Another layer is active — don't intercept
-        return;
-      }
+      // Disable editing on all other polygons in this layer first.
+      geoJsonLayer.eachLayer((l: any) => {
+        if (l !== e.target) {
+          l.editing?.disable();
+        }
+      });
+      map.closePopup();
+      // Switch to this layer for editing (deselects any active point/polyline layer).
+      selectForEdit();
       setMapCursor(CURSOR_CSS);
       e.target.editing.enable();
       popup.setLatLng(e.target.getBounds().getCenter());
@@ -93,7 +100,9 @@ export function createLtnLayer(map: L.Map): IMapLayer {
 
   // ── draw:created handler ─────────────────────────────────────────────────
   const handleDrawCreated = (e: any) => {
-    if (!_selected) return;
+    if (!_selected) {
+      return;
+    }
     const latLngs = e.layer.getLatLngs()[0]; // polygon outer ring
     addLtnCell(latLngs, _ltnTitle, COLOUR);
     mapStore.markLayerUpdated();
@@ -119,9 +128,11 @@ export function createLtnLayer(map: L.Map): IMapLayer {
       if (shouldBeSelected && !_selected) {
         _selected = true;
         setMapCursor(CURSOR_CSS);
-        _drawingTool = new L.Draw.Polygon(map, { color: COLOUR });
-        _drawingTool.enable();
-        map.on('draw:created', handleDrawCreated);
+        if (selectionMode === 'draw') {
+          _drawingTool = new L.Draw.Polygon(map, { color: COLOUR });
+          _drawingTool.enable();
+          map.on('draw:created', handleDrawCreated);
+        }
       } else if (!shouldBeSelected && _selected) {
         _selected = false;
         _drawingTool?.disable();
@@ -129,12 +140,21 @@ export function createLtnLayer(map: L.Map): IMapLayer {
         geoJsonLayer.eachLayer((l: any) => l.editing?.disable());
         removeMapCursor(CURSOR_CSS);
         map.off('draw:created', handleDrawCreated);
+        selectionMode = 'draw';
       }
     },
     { flush: 'sync' },
   );
 
-  const action = (_e: Event, _m: L.Map): void => {};
+  const action = (_e: Event, _m: L.Map): void => {
+    selectionMode = 'draw';
+  };
+
+  /** Switch to this layer for editing an existing polygon without enabling draw mode. */
+  const selectForEdit = (): void => {
+    selectionMode = 'edit';
+    mapStore.setActiveLayer(BUTTON_ID);
+  };
 
   const visibilityProxy = {
     get visible() {
@@ -191,7 +211,9 @@ export function createLtnLayer(map: L.Map): IMapLayer {
     },
 
     loadFromGeoJSON(geoJson: any): void {
-      if (!geoJson?.features) return;
+      if (!geoJson?.features) {
+        return;
+      }
       geoJson.features.forEach((feature: any) => {
         const points: L.LatLng[] = [];
         const polygonCoords = feature.geometry.coordinates[0];
@@ -220,5 +242,7 @@ export function createLtnLayer(map: L.Map): IMapLayer {
       geoJsonLayer.clearLayers();
       _visible = false;
     },
+
+    selectForEdit,
   };
 }

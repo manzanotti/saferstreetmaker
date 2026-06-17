@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import LZString from 'lz-string';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useMapStore } from '../../stores/mapStore';
 import { useUiStore } from '../../stores/uiStore';
@@ -16,19 +15,28 @@ const hideToolbar = ref(false);
 const showCopiedMessage = ref(false);
 
 function onCreate() {
-  if (!width.value || !height.value) return;
+  if (!width.value || !height.value) {
+    return;
+  }
 
   const mapHash = getFileManager().saveMapToHash(settingsStore.toSettings(), mapStore.toLayers());
   const origin = window.location.origin;
   const html = `<iframe src="${origin}?hide-toolbar=${hideToolbar.value}#${mapHash}" width="${width.value}" height="${height.value}" title="title"></iframe>`;
 
-  showCopiedMessage.value = true;
+  if (!navigator.clipboard) {
+    showCopiedMessage.value = false;
+    return;
+  }
 
-  if (!navigator.clipboard) return;
-
-  navigator.clipboard.writeText(html).catch((err) => {
-    console.warn('Clipboard write failed:', err);
-  });
+  navigator.clipboard
+    .writeText(html)
+    .then(() => {
+      showCopiedMessage.value = true;
+    })
+    .catch((err) => {
+      showCopiedMessage.value = false;
+      console.warn('Clipboard write failed:', err);
+    });
 }
 
 function onClose() {

@@ -4,7 +4,7 @@
  * (no drawing-tool re-init after draw:created)
  */
 import * as L from 'leaflet';
-import { createPolylineLayer } from './usePolylineLayer';
+import { createPolylineLayer, type EditablePolylineLayer } from './usePolylineLayer';
 import { addPolylineToLayer, loadPolylineGeoJSON } from './polylineHelpers';
 import type { IMapLayer } from './IMapLayer';
 
@@ -21,6 +21,8 @@ interface SimplePolylineConfig {
 }
 
 function createSimplePolylineLayer(cfg: SimplePolylineConfig, map: L.Map): IMapLayer {
+  let layer: EditablePolylineLayer;
+
   const addLine = (latLngs: L.LatLng[], geoJsonLayer: L.GeoJSON) => {
     addPolylineToLayer({
       points: latLngs,
@@ -28,11 +30,12 @@ function createSimplePolylineLayer(cfg: SimplePolylineConfig, map: L.Map): IMapL
       map,
       polylineOpts: { color: cfg.colour, weight: cfg.weight, opacity: 1, smoothFactor: 1 },
       buttonId: cfg.buttonId,
+      selectForEdit: () => layer.selectForEdit(),
       arrowheads: cfg.arrowheads,
     });
   };
 
-  const layer = createPolylineLayer(
+  layer = createPolylineLayer(
     {
       id: cfg.id,
       title: cfg.title,
@@ -56,7 +59,9 @@ function createSimplePolylineLayer(cfg: SimplePolylineConfig, map: L.Map): IMapL
       buildIconEl() {
         const icon = document.createElement('i');
         icon.style.backgroundColor = cfg.colour;
-        if (cfg.iconExtra) cfg.iconExtra(icon);
+        if (cfg.iconExtra) {
+          cfg.iconExtra(icon);
+        }
         return icon;
       },
     },

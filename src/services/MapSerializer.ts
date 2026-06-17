@@ -69,14 +69,20 @@ export class MapSerializer {
 
   /**
    * Deserialise a hash (produced by `toEncodedHash`) back to a SerializedMap.
-   * Returns `null` if the hash is invalid.
+   * Returns `null` if the hash is invalid, malformed, or cannot be parsed.
    */
   fromEncodedHash(hash: string): SerializedMap | null {
-    if (hash.startsWith('%')) {
-      return JSON.parse(decodeURIComponent(hash));
+    try {
+      if (hash.startsWith('%')) {
+        return JSON.parse(decodeURIComponent(hash));
+      }
+      const decompressed = LZString.decompressFromEncodedURIComponent(hash);
+      if (decompressed === null) {
+        return null;
+      }
+      return JSON.parse(decompressed);
+    } catch {
+      return null;
     }
-    const decompressed = LZString.decompressFromEncodedURIComponent(hash);
-    if (decompressed === null) return null;
-    return JSON.parse(decompressed);
   }
 }

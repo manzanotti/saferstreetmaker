@@ -90,7 +90,9 @@ export class FileManager {
     const geoJSON: any = { type: 'FeatureCollection', features: [] };
     layersData.forEach((layer) => {
       const fc = layer.toGeoJSON() as any;
-      if (fc?.features) geoJSON.features.push(...fc.features);
+      if (fc?.features) {
+        geoJSON.features.push(...fc.features);
+      }
     });
     this._downloadBlob(JSON.stringify(geoJSON), `${settings.title}.json`);
   }
@@ -118,21 +120,42 @@ export class FileManager {
   private _readFile = (e: Event): void => {
     const fileInput = e.target as HTMLInputElement;
     const file = fileInput.files?.[0];
-    if (!file) return;
+    if (!file) {
+      this._removeFileInput(fileInput);
+      return;
+    }
 
     const reader = new FileReader();
+    reader.onerror = () => {
+      this._removeFileInput(fileInput);
+    };
     reader.onload = (ev: ProgressEvent<FileReader>) => {
-      if (ev.target === null) return;
-      const map = JSON.parse(ev.target.result as string);
-      this._onFileLoaded?.(map);
-      document.body.removeChild(fileInput);
+      try {
+        if (ev.target === null) {
+          return;
+        }
+        const map = JSON.parse(ev.target.result as string);
+        this._onFileLoaded?.(map);
+      } finally {
+        this._removeFileInput(fileInput);
+      }
     };
     reader.readAsText(file, 'text/plain;charset=utf-8');
   };
 
+  private _removeFileInput(fileInput: HTMLInputElement): void {
+    if (document.body.contains(fileInput)) {
+      document.body.removeChild(fileInput);
+    }
+  }
+
   // ── Remote fetch ──────────────────────────────────────────────────────────
 
-  loadMapFromRemoteFile(url: string): Promise<SerializedMap> {
-    return fetch(url).then((r) => r.json() as Promise<SerializedMap>);
+  async loadMapFromRemoteFile(url: string): Promise<SerializedMap> {
+    const r = await fetch(url);
+    if (!r.ok) {
+      throw new Error(`Failed to load remote map: ${r.status} ${r.statusText}`);
+    }
+    return await (r.json() as Promise<SerializedMap>);
   }
 }

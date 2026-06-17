@@ -43,7 +43,9 @@ type ToolbarItem = GroupItem | SingleItem;
 
 /** Build the ordered list of toolbar items from active layers. */
 const layerItems = computed<ToolbarItem[]>(() => {
-  if (settingsStore.readOnly) return [];
+  if (settingsStore.readOnly) {
+    return [];
+  }
 
   const allButtons = mapStore.layers
     .filter((l) => settingsStore.activeLayers.includes(l.id))
@@ -58,7 +60,9 @@ const layerItems = computed<ToolbarItem[]>(() => {
       continue;
     }
 
-    if (handledGroups.has(btn.groupName)) continue;
+    if (handledGroups.has(btn.groupName)) {
+      continue;
+    }
     handledGroups.add(btn.groupName);
 
     const groupBtns = allButtons.filter((b) => b.groupName === btn.groupName);
@@ -89,19 +93,17 @@ function hideSubmenu(groupName: string) {
 // ── Button click handlers ──────────────────────────────────────────────────
 function onLayerButtonClick(btn: ToolbarButton) {
   const map = mapStore.map;
-  if (!map) return;
+  if (!map) {
+    return;
+  }
+
+  // Let the layer set up any selection intent first (e.g. draw vs edit mode),
+  // then flip the store state so the sync watcher sees the correct mode.
+  btn.action(new Event('click'), map);
 
   // Update Vue store immediately for the toolbar's visual selected state.
-  // The layer engine's state (state.selected, drawing tool init) is driven
-  // by btn.action() below which runs synchronously.
   const newId = mapStore.activeLayerId === btn.id ? null : btn.id;
   mapStore.setActiveLayer(newId);
-
-  // Call the layer's own action directly — this is synchronous and:
-  //  • sets layer.selected (needed before any map click)
-  //  • initialises the leaflet-draw tool for polyline/polygon layers
-  //  • publishes PubSub.layerSelected / layerDeselected for cross-layer deselection
-  btn.action(new Event('click'), map);
 }
 
 function onModalButtonClick(modalId: ModalId) {
@@ -141,7 +143,7 @@ function cancelLongPress(groupName: string) {
 </script>
 
 <template>
-  <ul class="toolbar">
+  <ul v-if="!settingsStore.hideToolbar" class="toolbar">
     <!-- Layer buttons (single + grouped) -->
     <template
       v-for="item in layerItems"

@@ -52,7 +52,9 @@ export function setupMapEngine(): MapEngineResult {
     if (mapEl) {
       for (let i = mapEl.classList.length - 1; i >= 0; i--) {
         const cls = mapEl.classList[i];
-        if (cls.startsWith('zoom')) mapEl.classList.remove(cls);
+        if (cls.startsWith('zoom')) {
+          mapEl.classList.remove(cls);
+        }
       }
       mapEl.classList.add(`zoom-${zoom}`);
     }

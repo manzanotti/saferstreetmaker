@@ -32,15 +32,29 @@ export interface PolylineLayerConfig {
   buildIconEl: () => HTMLElement;
 }
 
-export function createPolylineLayer(config: PolylineLayerConfig, map: L.Map): IMapLayer {
+export interface EditablePolylineLayer extends IMapLayer {
+  /**
+   * Select this layer for editing an existing feature without enabling
+   * leaflet.draw create mode.
+   */
+  selectForEdit: () => void;
+}
+
+export function createPolylineLayer(
+  config: PolylineLayerConfig,
+  map: L.Map,
+): EditablePolylineLayer {
   const mapStore = useMapStore(pinia);
   const geoJsonLayer = new L.GeoJSON();
   let _selected = false;
   let _visible = false;
   let _drawingTool: { disable(): void } | null = null;
+  let selectionMode: 'draw' | 'edit' = 'draw';
 
   const handleDrawCreated = (e: any) => {
-    if (!_selected) return;
+    if (!_selected) {
+      return;
+    }
     config.onDrawCreated(e.layer.getLatLngs(), geoJsonLayer, map);
     mapStore.markLayerUpdated();
   };
@@ -52,8 +66,10 @@ export function createPolylineLayer(config: PolylineLayerConfig, map: L.Map): IM
       if (shouldBeSelected && !_selected) {
         _selected = true;
         setMapCursor(config.buttonId);
-        _drawingTool = config.createDrawingTool(map);
-        map.on('draw:created', handleDrawCreated);
+        if (selectionMode === 'draw') {
+          _drawingTool = config.createDrawingTool(map);
+          map.on('draw:created', handleDrawCreated);
+        }
       } else if (!shouldBeSelected && _selected) {
         _selected = false;
         _drawingTool?.disable();
@@ -61,12 +77,20 @@ export function createPolylineLayer(config: PolylineLayerConfig, map: L.Map): IM
         geoJsonLayer.eachLayer((l: any) => l.editing?.disable());
         removeMapCursor(config.buttonId);
         map.off('draw:created', handleDrawCreated);
+        selectionMode = 'draw';
       }
     },
     { flush: 'sync' },
   );
 
-  const action = (_event: Event, _map: L.Map): void => {};
+  const action = (_event: Event, _map: L.Map): void => {
+    selectionMode = 'draw';
+  };
+
+  const selectForEdit = (): void => {
+    selectionMode = 'edit';
+    mapStore.setActiveLayer(config.buttonId);
+  };
 
   const visibilityProxy = {
     get visible() {
@@ -129,5 +153,7 @@ export function createPolylineLayer(config: PolylineLayerConfig, map: L.Map): IM
       geoJsonLayer.clearLayers();
       _visible = false;
     },
+
+    selectForEdit,
   };
 }

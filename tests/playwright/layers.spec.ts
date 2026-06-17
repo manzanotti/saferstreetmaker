@@ -22,8 +22,9 @@ async function clickMap(page: Page, offsetX = 0, offsetY = 0) {
   const box = await map.boundingBox();
   if (!box) throw new Error('Map bounding box not found');
   await page.mouse.click(box.x + box.width / 2 + offsetX, box.y + box.height / 2 + offsetY);
-  // PubSub.js dispatches subscribers asynchronously (via setTimeout(fn,0)).
-  // Wait for the mapClicked subscribers (addMarker → layerUpdated → saveMap) to run.
+  // Layer click handlers call mapStore.markLayerUpdated() synchronously, which
+  // triggers a debounced save via a Pinia watch. The 100 ms pause lets the
+  // microtask queue flush and the save to complete before we read localStorage.
   await page.waitForTimeout(100);
 }
 
@@ -37,13 +38,13 @@ async function drawPolyline(page: Page) {
   if (!box) throw new Error('Map bounding box not found');
   const cx = box.x + box.width / 2;
   const cy = box.y + box.height / 2;
-  await page.waitForTimeout(200); // let button-click PubSub (refreshToolbar) settle
+  await page.waitForTimeout(200); // let Vue reactivity settle after button click
   await page.mouse.click(cx - 60, cy);
   await page.waitForTimeout(200);
   await page.mouse.click(cx + 60, cy);
   await page.waitForTimeout(200);
   await page.mouse.dblclick(cx + 60, cy + 60);
-  await page.waitForTimeout(500); // two-level PubSub async chain (drawCreated → layerUpdated → saveMap)
+  await page.waitForTimeout(500); // wait for the debounced save (draw:created → markLayerUpdated → saveMap)
 }
 
 /** Draw a three-vertex polygon by clicking three times then double-clicking to finish. */
@@ -400,6 +401,84 @@ test.describe('Layer: LTN Cell (polygon)', () => {
     await btn.click();
     await expect(btn).not.toHaveClass(/selected/);
   });
+
+  test('clicking an existing LTN polygon enters edit mode without enabling draw mode', async ({
+    page,
+  }) => {
+    // Draw one polygon
+    await page.locator('#ltn-button').click();
+    await drawPolygon(page);
+    expect(await getLayerFeatureCount(page, 'LtnCells')).toBeGreaterThanOrEqual(1);
+
+    // Deselect the layer so the polygon click starts from a neutral state
+    await page.locator('#ltn-button').click();
+    await expect(page.locator('#ltn-button')).not.toHaveClass(/selected/);
+
+    // Click the existing polygon — should enter edit mode for the LTN layer
+    await page
+      .locator('.leaflet-overlay-pane path, .leaflet-polygon-pane path, .leaflet-ltns-pane path')
+      .first()
+      .dispatchEvent('click');
+    await page.waitForTimeout(200);
+
+    // LTN button should now be selected
+    await expect(page.locator('#ltn-button')).toHaveClass(/selected/);
+
+    // A map click should NOT create a new LTN cell (edit mode, not draw mode)
+    await clickMap(page, 0, -150);
+    expect(await getLayerFeatureCount(page, 'LtnCells')).toBe(1);
+  });
+
+  test('clicking a second LTN polygon deselects the first one', async ({ page }) => {
+    // Draw first polygon at map center
+    await page.locator('#ltn-button').click();
+    await drawPolygon(page);
+    expect(await getLayerFeatureCount(page, 'LtnCells')).toBe(1);
+
+    // Deactivate then reactivate to clearly draw a second polygon
+    await page.locator('#ltn-button').click(); // deselect
+    await page.locator('#ltn-button').click(); // select for draw
+
+    // Draw second polygon in the top-left quarter to avoid overlapping the first
+    const map = page.locator('.leaflet-container');
+    const box = await map.boundingBox();
+    if (!box) throw new Error('no map box');
+    const cx = box.x + box.width / 4;
+    const cy = box.y + box.height / 4;
+    await page.waitForTimeout(200);
+    await page.mouse.click(cx - 40, cy - 25);
+    await page.waitForTimeout(200);
+    await page.mouse.click(cx + 40, cy - 25);
+    await page.waitForTimeout(200);
+    await page.mouse.click(cx, cy + 25);
+    await page.waitForTimeout(200);
+    await page.mouse.dblclick(cx, cy + 40);
+    await page.waitForTimeout(500);
+
+    expect(await getLayerFeatureCount(page, 'LtnCells')).toBe(2);
+
+    // Deselect draw mode
+    await page.locator('#ltn-button').click();
+
+    // Click the first polygon to enter edit mode — a popup should open
+    const polygons = page.locator(
+      '.leaflet-overlay-pane path, .leaflet-polygon-pane path, .leaflet-ltns-pane path',
+    );
+    await polygons.first().dispatchEvent('click');
+    await page.waitForTimeout(200);
+    await expect(page.locator('#ltn-button')).toHaveClass(/selected/);
+    await expect(page.locator('.popup-buttons')).toBeVisible();
+
+    // Click the second polygon — popup should switch to the second polygon
+    await polygons.last().dispatchEvent('click');
+    await page.waitForTimeout(200);
+
+    // LTN button still selected (edit mode)
+    await expect(page.locator('#ltn-button')).toHaveClass(/selected/);
+
+    // Only one popup open at a time
+    await expect(page.locator('.popup-buttons')).toHaveCount(1);
+  });
 });
 
 // ===========================================================================
@@ -429,5 +508,30 @@ test.describe('Layer exclusivity', () => {
 
     expect(await getLayerFeatureCount(page, 'ModalFilters')).toBe(1);
     expect(await getLayerFeatureCount(page, 'TrafficLights')).toBe(1);
+  });
+
+  test('clicking an existing polyline deselects an active point layer', async ({ page }) => {
+    // Create one mobility lane to edit later.
+    await page.locator('#mobility-lane-button').click();
+    await drawPolyline(page);
+    expect(await getLayerFeatureCount(page, 'MobilityLanes')).toBeGreaterThanOrEqual(1);
+
+    // Switch to a point layer.
+    await page.locator('#modal-filter-button').click();
+    await expect(page.locator('#modal-filter-button')).toHaveClass(/selected/);
+
+    // Click the existing mobility lane to enter edit mode.
+    await page
+      .locator('.leaflet-overlay-pane path, .leaflet-polygon-pane path, .leaflet-ltns-pane path')
+      .first()
+      .dispatchEvent('click');
+
+    await expect(page.locator('#mobility-lane-button')).toHaveClass(/selected/);
+    await expect(page.locator('#modal-filter-button')).not.toHaveClass(/selected/);
+
+    // A subsequent map click should not place a modal filter marker.
+    await clickMap(page, 100, 0);
+    expect(await getLayerFeatureCount(page, 'ModalFilters')).toBe(0);
+    expect(await getLayerFeatureCount(page, 'MobilityLanes')).toBeGreaterThanOrEqual(1);
   });
 });

@@ -33,7 +33,9 @@ function onCopyMap() {
 
 function onCreate() {
   const title = newMapTitle.value.trim();
-  if (!title) return;
+  if (!title) {
+    return;
+  }
 
   const ok = getMapManager().createNewMap(title);
   if (!ok) {

@@ -1,3 +1,5 @@
+import type * as L from 'leaflet';
+
 export interface ToolbarButton {
   id: string;
   text?: string;

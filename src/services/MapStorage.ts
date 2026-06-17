@@ -37,7 +37,9 @@ export class MapStorage {
    */
   loadMap(mapName: string): SerializedMap | null {
     const raw = localStorage.getItem(`Map_${mapName}`);
-    if (raw === null || raw === 'undefined') return null;
+    if (raw === null || raw === 'undefined') {
+      return null;
+    }
     const decompressed = LZString.decompress(raw);
     return decompressed ? (JSON.parse(decompressed) as SerializedMap) : null;
   }
@@ -76,7 +78,9 @@ export class MapStorage {
   /** Returns stored map titles in most-recently-saved order. */
   listMaps(): string[] {
     const raw = localStorage.getItem('MapList');
-    if (raw === null || raw === 'undefined') return [];
+    if (raw === null || raw === 'undefined') {
+      return [];
+    }
     const decompressed = LZString.decompress(raw);
     return decompressed ? JSON.parse(decompressed) : [];
   }
@@ -95,7 +99,9 @@ export class MapStorage {
 
   loadLastSelected(): string {
     const raw = localStorage.getItem('LastMapSelected');
-    if (raw === null || raw === 'undefined') return '';
+    if (raw === null || raw === 'undefined') {
+      return '';
+    }
     return LZString.decompress(raw) ?? '';
   }
 }

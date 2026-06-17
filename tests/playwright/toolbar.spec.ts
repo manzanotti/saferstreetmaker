@@ -75,7 +75,7 @@ test.describe('Toolbar button groups', () => {
     await page.locator('#modal-filter-button').click({ button: 'right' });
     await page.locator('#bus-gate-button').click();
 
-    // Toolbar redraws asynchronously (PubSub); wait for bus gates to become
+    // Toolbar re-renders reactively via Pinia; wait for bus gates to become
     // the collapsed group button.
     await page.waitForFunction(() => {
       const toolbar = document.querySelector('.toolbar');
@@ -112,5 +112,21 @@ test.describe('Toolbar button groups', () => {
 
     const indexAfter = await page.evaluate(groupIndex(members));
     expect(indexAfter).toBe(indexBefore);
+  });
+});
+
+test.describe('hide-toolbar URL parameter', () => {
+  test('toolbar is hidden when hide-toolbar=true is in the URL', async ({ page }) => {
+    await page.goto('/?hide-toolbar=true');
+    // The Leaflet map container should appear without a toolbar
+    await page.waitForSelector('#map');
+    await page.waitForTimeout(500); // allow map + settings to initialise
+    await expect(page.locator('.toolbar')).not.toBeAttached();
+  });
+
+  test('toolbar is visible when hide-toolbar is absent', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForSelector('.toolbar');
+    await expect(page.locator('.toolbar')).toBeVisible();
   });
 });

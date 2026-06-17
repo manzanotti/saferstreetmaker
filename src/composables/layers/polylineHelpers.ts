@@ -24,6 +24,12 @@ export interface AddPolylineOpts {
   map: L.Map;
   polylineOpts: PolylineOptions;
   buttonId: string;
+  /**
+   * Switch the owning layer into "edit existing feature" mode.
+   * This must deselect any previously-active point layer without enabling
+   * leaflet.draw create mode for the polyline layer.
+   */
+  selectForEdit: () => void;
   /** If true, re-create and enable the drawing tool after draw:created. */
   reinitDrawing?: (map: L.Map) => void;
   popupKeepInView?: boolean;
@@ -55,6 +61,7 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
   );
 
   polyline.on('click', (e: any) => {
+    opts.selectForEdit();
     setMapCursor(buttonId);
     e.target.editing.enable();
     popup.setLatLng(e.latlng);
@@ -73,7 +80,9 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
  * Handles the legacy "nested coordinates" format.
  */
 export function loadPolylineGeoJSON(geoJson: any, addFn: (points: L.LatLng[]) => void): void {
-  if (!geoJson?.features) return;
+  if (!geoJson?.features) {
+    return;
+  }
   geoJson.features.forEach((feature: any) => {
     const points: L.LatLng[] = [];
     const raw = feature.geometry.coordinates;

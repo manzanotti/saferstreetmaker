@@ -23,7 +23,7 @@ function onSave() {
   s.readOnly = form.readOnly;
   s.hideToolbar = settingsStore.hideToolbar;
   s.zoom = settingsStore.zoom;
-  s.centre = settingsStore.centre ?? null!;
+  s.centre = settingsStore.centre ?? settingsStore.toSettings().centre;
   s.version = settingsStore.version;
   s.activeLayers = form.activeLayers;
 
@@ -47,7 +47,7 @@ function onCancel() {
         v-model="form.title"
         type="text"
         class="border-solid"
-        :readonly="settingsStore.readOnly"
+        :readonly="form.readOnly"
       />
     </div>
 

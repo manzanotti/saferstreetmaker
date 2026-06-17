@@ -8,24 +8,31 @@
 ## Tech Stack
 
 - **HTML**: Single page (`src/index.html`)
-- **TypeScript**: All logic/interactivity (`src/scripts/`)
+- **Vue 3**: UI layer — Composition API with `<script setup lang="ts">` throughout (`src/components/`, `src/composables/`)
+- **Pinia**: State management (`src/stores/`) — `mapStore`, `settingsStore`, `uiStore`
+- **TypeScript**: All logic (`src/composables/`, `src/services/`, `src/models/`)
 - **Leaflet.js**: Map management and rendering
 - **Tailwind CSS**: Styling
-- **PubSub.js**: Event bus used for all inter-component communication (layer selection, map clicks, show/hide modals, save/load, etc.)
 
-## PubSub.js Notes
+## Architecture
 
-- All `PubSub.publish()` calls are **asynchronous** — subscribers fire via `setTimeout(fn, 0)`, so side-effects (e.g. `addMarker`, `saveMap`) do not happen synchronously after a `publish()` call.
-- In Playwright tests, always add `await page.waitForTimeout(100)` (or longer for multi-hop chains like `drawCreated → layerUpdated → saveMap`) after triggering any action that internally uses PubSub.
-- Event topic names are defined in `src/scripts/EventTopics.ts`.
+- UI controls (Toolbar, Legend, modal container) are Vue components mounted into Leaflet `L.Control` containers via `makeLeafletVueControl()` in `src/composables/useLeafletVueControl.ts`. All share a single Pinia instance so stores are reactive across controls.
+- Layer state and selection is managed via `mapStore.activeLayerId` (a `ref<string | null>`). Layer composables use `watch({ flush: 'sync' })` on this value to attach/detach Leaflet event listeners and Leaflet.draw tools synchronously.
+- Map data persistence is handled by `src/services/FileManager.ts`, which delegates to `MapSerializer` (JSON ↔ LZ-string) and `MapStorage` (localStorage CRUD).
+- There is **no event bus** — PubSub.js was removed. Cross-layer communication uses Pinia store mutations and direct Leaflet event listeners.
 
 ## Project Structure
 
 - `src/index.html` — main (and only) HTML page
-- `src/scripts/` — TypeScript source files
+- `src/main.ts` — app bootstrap (Vue mount + Leaflet init + layer setup)
+- `src/App.vue` — Vue root (mounts `HelpModal` and `ErrorModal`)
+- `src/components/` — Vue components (controls and modals)
+- `src/composables/` — composable factories and layer implementations
+- `src/composables/layers/` — one composable per layer + shared helpers
+- `src/stores/` — Pinia stores
+- `src/services/` — `FileManager`, `MapSerializer`, `MapStorage`
+- `src/models/` — plain TS types: `Settings`, `ToolbarButton`
 - `src/styles/` — CSS files
-- `src/scripts/layers/` — Leaflet map layer implementations (11 layers)
-- `src/scripts/Controls/` — UI controls (Toolbar, Legend, Settings, MapManager, Sharing, Help)
 
 ## Build & Dev
 
@@ -42,9 +49,13 @@
 - **Do not mark a task complete until all four checks above have been run successfully.**
 - **Tests**: `yarn test` (Playwright, config in `tests/playwright.config.ts`, test files in `tests/playwright/`), plus `yarn test:unit` for Vitest (config in `tests/vitest.config.ts`, tests in `tests/unit/`)
 
+## Coding Style
+
+- **Always use braces for control-flow statements.** `if`, `else`, `for`, `while`, and `do` bodies must always be wrapped in `{ }`, even when the body is a single statement. Never write inline/braceless forms such as `if (x) return;`.
+
 ## Map Layers
 
-Eleven layers, each in `src/scripts/layers/`. Two interaction patterns:
+Eleven layers, each in `src/composables/layers/`. Two interaction patterns:
 
 - **Point layers** (click map to place a marker): ModalFilter, BusGate, TrafficLights, PedestrianLights, ZebraCrossing
 - **Polyline/Polygon layers** (leaflet.draw): MobilityLane, CarFreeStreet, SchoolStreet, OneWayStreet, TramLine (polylines), LtnCell (polygon)
@@ -59,5 +70,6 @@ Map data is saved to `localStorage` as LZ-string compressed JSON, key `Map_<titl
 - **#help modal blocks map clicks**: The help modal sits above the map and can intercept clicks when visible. In `beforeEach`, inject: `await page.addStyleTag({ content: '#help { display: none !important; }' })` when the test only needs the map surface.
 - **Map view timing**: Leaflet's `setView()` is called from the geolocation success callback (async). Wait for it with `context.grantPermissions(['geolocation'])` + `context.setGeolocation(...)` + `page.waitForFunction(() => Array.from(document.getElementById('map')?.classList ?? []).some(c => c.startsWith('zoom-')))`.
 - **leaflet.draw needs click delays**: Rapid back-to-back `page.mouse.click` calls confuse leaflet.draw's state machine and prevent `draw:created` from firing. Add `await page.waitForTimeout(200)` between each click when drawing polylines/polygons.
+- **Add `waitForTimeout` after map interactions**: Layer composables call `mapStore.markLayerUpdated()` synchronously, but the debounced save runs asynchronously. Add `await page.waitForTimeout(100)` after placing a marker, or `await page.waitForTimeout(500)` after drawing a polyline/polygon, before reading localStorage.
 - **Legend shares icon CSS classes**: e.g. `.traffic-lights-icon` matches both the legend `<li>` and the map `DivIcon` marker. Always scope to `.leaflet-marker-icon.traffic-lights-icon` when targeting map markers.
 - **Deleting markers**: Use `dispatchEvent('click')` rather than `.click()` on DivIcon markers and SVG paths — Playwright's actionability checks can fail on these elements.

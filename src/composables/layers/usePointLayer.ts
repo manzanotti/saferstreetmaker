@@ -117,7 +117,9 @@ export function createPointLayer(config: PointLayerConfig, map: L.Map): IMapLaye
     },
 
     loadFromGeoJSON(geoJson: any): void {
-      if (!geoJson?.features) return;
+      if (!geoJson?.features) {
+        return;
+      }
       geoJson.features.forEach((feature: any) => {
         const [lng, lat] = feature.geometry.coordinates;
         addMarker(new L.LatLng(lat, lng));
