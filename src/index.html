@@ -1,61 +1,61 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=90vw, height=90vh, initial-scale=1.0, user-scalable=0, minimum-scale=1.0, maximum-scale=1.0"
-    />
-    <title>Safer Street Maker</title>
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"
-      integrity="sha256-kLaT2GOSpHechhsozzB+flnD+zUyjE2LlfWPgU04xyI="
-      crossorigin="anonymous"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/leaflet-toolbar@0.4.0-alpha.2/dist/leaflet.toolbar.min.css"
-      integrity="sha256-Hq/lzTa412WZxxgNti0P4Prfg6SdXehbpqbC1b8yqzs="
-      crossorigin="anonymous"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"
-      integrity="sha512-gc3xjCmIy673V6MyOAZhIW93xhM9ei1I+gLbmFjUHIjocENRsLX/QUE1htk5q1XV2D/iie/VQ8DXI6Vu8bexvQ=="
-      crossorigin="anonymous"
-      referrerpolicy="no-referrer"
-    />
-    <link rel="stylesheet" href="styles/index.css" />
+    <head>
+        <meta charset="utf-8" />
+        <meta
+            name="viewport"
+            content="width=90vw, height=90vh, initial-scale=1.0, user-scalable=0, minimum-scale=1.0, maximum-scale=1.0"
+        />
+        <title>Safer Street Maker</title>
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"
+            integrity="sha256-kLaT2GOSpHechhsozzB+flnD+zUyjE2LlfWPgU04xyI="
+            crossorigin="anonymous"
+        />
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/leaflet-toolbar@0.4.0-alpha.2/dist/leaflet.toolbar.min.css"
+            integrity="sha256-Hq/lzTa412WZxxgNti0P4Prfg6SdXehbpqbC1b8yqzs="
+            crossorigin="anonymous"
+        />
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"
+            integrity="sha512-gc3xjCmIy673V6MyOAZhIW93xhM9ei1I+gLbmFjUHIjocENRsLX/QUE1htk5q1XV2D/iie/VQ8DXI6Vu8bexvQ=="
+            crossorigin="anonymous"
+            referrerpolicy="no-referrer"
+        />
+        <link rel="stylesheet" href="styles/index.css" />
 
-    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.min.js"></script>
-    <script
-      src="https://cdn.jsdelivr.net/npm/leaflet-svg-shape-markers@1.4.0/dist/leaflet-svg-shape-markers.min.js"
-      integrity="sha256-kvX2nOqB13h3NzdRWFFiasrqqWctgDvgXlqsa2v6p0="
-      crossorigin="anonymous"
-    ></script>
-    <script src="https://cdn.jsdelivr.net/npm/leaflet-draw@1.0.4/dist/leaflet.draw.min.js"></script>
-    <script
-      src="https://cdn.jsdelivr.net/npm/leaflet-toolbar@0.4.0-alpha.2/dist/leaflet.toolbar.min.js"
-      integrity="sha256-D786FM7MvDhViw9bYPPYnyP5Q+HsCRlMqzTZTdtcVnk="
-      crossorigin="anonymous"
-    ></script>
-    <script src="https://cdn.jsdelivr.net/npm/leaflet-geometryutil@0.10.2/src/leaflet.geometryutil.min.js"></script>
-    <script
-      src="https://cdn.jsdelivr.net/npm/leaflet-arrowheads@1.4.0/src/leaflet-arrowheads.js"
-      integrity="sha256-PLobpKQDaE50Wqsi+gJzmIvlpIT+fAAIQhBFHzoddAE="
-      crossorigin="anonymous"
-    ></script>
-    <script
-      src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"
-      integrity="sha256-lfTRy/CZ9XFhtmS8BIQm7D35JjeAGkx5EW6DMVqnh+c="
-      crossorigin="anonymous"
-    ></script>
-    <script type="module" src="main.ts"></script>
-  </head>
+        <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.min.js"></script>
+        <script
+            src="https://cdn.jsdelivr.net/npm/leaflet-svg-shape-markers@1.4.0/dist/leaflet-svg-shape-markers.min.js"
+            integrity="sha256-kvX2nOqB13h3NzdRWFFiasrqqWctgDvgXlqsa2v6p0="
+            crossorigin="anonymous"
+        ></script>
+        <script src="https://cdn.jsdelivr.net/npm/leaflet-draw@1.0.4/dist/leaflet.draw.min.js"></script>
+        <script
+            src="https://cdn.jsdelivr.net/npm/leaflet-toolbar@0.4.0-alpha.2/dist/leaflet.toolbar.min.js"
+            integrity="sha256-D786FM7MvDhViw9bYPPYnyP5Q+HsCRlMqzTZTdtcVnk="
+            crossorigin="anonymous"
+        ></script>
+        <script src="https://cdn.jsdelivr.net/npm/leaflet-geometryutil@0.10.2/src/leaflet.geometryutil.min.js"></script>
+        <script
+            src="https://cdn.jsdelivr.net/npm/leaflet-arrowheads@1.4.0/src/leaflet-arrowheads.js"
+            integrity="sha256-PLobpKQDaE50Wqsi+gJzmIvlpIT+fAAIQhBFHzoddAE="
+            crossorigin="anonymous"
+        ></script>
+        <script
+            src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"
+            integrity="sha256-lfTRy/CZ9XFhtmS8BIQm7D35JjeAGkx5EW6DMVqnh+c="
+            crossorigin="anonymous"
+        ></script>
+        <script type="module" src="main.ts"></script>
+    </head>
 
-  <body>
-    <div id="app"></div>
-    <div id="map"></div>
-  </body>
+    <body>
+        <div id="app"></div>
+        <div id="map"></div>
+    </body>
 </html>

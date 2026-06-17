@@ -12,18 +12,18 @@ import { pinia } from '../stores/index';
  * forwarded to the map.
  */
 export function makeLeafletVueControl(
-  Component: Component,
-  position: L.ControlPosition = 'topleft',
+    Component: Component,
+    position: L.ControlPosition = 'topleft',
 ): L.Control {
-  const control = new L.Control({ position });
+    const control = new L.Control({ position });
 
-  control.onAdd = (): HTMLElement => {
-    const container = L.DomUtil.create('div');
-    L.DomEvent.disableClickPropagation(container);
-    L.DomEvent.disableScrollPropagation(container);
-    createApp(Component).use(pinia).mount(container);
-    return container;
-  };
+    control.onAdd = (): HTMLElement => {
+        const container = L.DomUtil.create('div');
+        L.DomEvent.disableClickPropagation(container);
+        L.DomEvent.disableScrollPropagation(container);
+        createApp(Component).use(pinia).mount(container);
+        return container;
+    };
 
-  return control;
+    return control;
 }

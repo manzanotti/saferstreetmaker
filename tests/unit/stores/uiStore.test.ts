@@ -4,66 +4,66 @@ import { useUiStore } from '../../../src/stores/uiStore';
 import type { ModalId } from '../../../src/stores/uiStore';
 
 describe('uiStore', () => {
-  beforeEach(() => {
-    setActivePinia(createPinia());
-  });
-
-  it('initialises with no active modal and no errors', () => {
-    const store = useUiStore();
-    expect(store.activeModal).toBeNull();
-    expect(store.errorMessages).toEqual([]);
-  });
-
-  describe('openModal() / closeModal()', () => {
-    it('sets activeModal', () => {
-      const store = useUiStore();
-      store.openModal('settings');
-      expect(store.activeModal).toBe('settings');
+    beforeEach(() => {
+        setActivePinia(createPinia());
     });
 
-    it('switches to a different modal', () => {
-      const store = useUiStore();
-      store.openModal('settings');
-      store.openModal('help');
-      expect(store.activeModal).toBe('help');
-    });
-
-    it('closeModal() resets to null', () => {
-      const store = useUiStore();
-      store.openModal('mapManager');
-      store.closeModal();
-      expect(store.activeModal).toBeNull();
-    });
-
-    const modals: ModalId[] = ['settings', 'mapManager', 'sharing', 'help'];
-    modals.forEach((id) => {
-      it(`accepts modal id '${id}'`, () => {
+    it('initialises with no active modal and no errors', () => {
         const store = useUiStore();
-        store.openModal(id);
-        expect(store.activeModal).toBe(id);
-      });
-    });
-  });
-
-  describe('showErrors() / clearErrors()', () => {
-    it('stores error messages', () => {
-      const store = useUiStore();
-      store.showErrors(['Something went wrong', 'Details here']);
-      expect(store.errorMessages).toEqual(['Something went wrong', 'Details here']);
+        expect(store.activeModal).toBeNull();
+        expect(store.errorMessages).toEqual([]);
     });
 
-    it('replaces existing errors on subsequent calls', () => {
-      const store = useUiStore();
-      store.showErrors(['first']);
-      store.showErrors(['second', 'third']);
-      expect(store.errorMessages).toEqual(['second', 'third']);
+    describe('openModal() / closeModal()', () => {
+        it('sets activeModal', () => {
+            const store = useUiStore();
+            store.openModal('settings');
+            expect(store.activeModal).toBe('settings');
+        });
+
+        it('switches to a different modal', () => {
+            const store = useUiStore();
+            store.openModal('settings');
+            store.openModal('help');
+            expect(store.activeModal).toBe('help');
+        });
+
+        it('closeModal() resets to null', () => {
+            const store = useUiStore();
+            store.openModal('mapManager');
+            store.closeModal();
+            expect(store.activeModal).toBeNull();
+        });
+
+        const modals: ModalId[] = ['settings', 'mapManager', 'sharing', 'help'];
+        modals.forEach((id) => {
+            it(`accepts modal id '${id}'`, () => {
+                const store = useUiStore();
+                store.openModal(id);
+                expect(store.activeModal).toBe(id);
+            });
+        });
     });
 
-    it('clearErrors() empties the list', () => {
-      const store = useUiStore();
-      store.showErrors(['oops']);
-      store.clearErrors();
-      expect(store.errorMessages).toHaveLength(0);
+    describe('showErrors() / clearErrors()', () => {
+        it('stores error messages', () => {
+            const store = useUiStore();
+            store.showErrors(['Something went wrong', 'Details here']);
+            expect(store.errorMessages).toEqual(['Something went wrong', 'Details here']);
+        });
+
+        it('replaces existing errors on subsequent calls', () => {
+            const store = useUiStore();
+            store.showErrors(['first']);
+            store.showErrors(['second', 'third']);
+            expect(store.errorMessages).toEqual(['second', 'third']);
+        });
+
+        it('clearErrors() empties the list', () => {
+            const store = useUiStore();
+            store.showErrors(['oops']);
+            store.clearErrors();
+            expect(store.errorMessages).toHaveLength(0);
+        });
     });
-  });
 });

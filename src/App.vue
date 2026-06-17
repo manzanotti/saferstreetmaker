@@ -4,7 +4,7 @@ import ErrorModal from './components/ErrorModal.vue';
 </script>
 
 <template>
-  <!-- HelpModal is always in the DOM so #help CSS selectors always match. -->
-  <HelpModal />
-  <ErrorModal />
+    <!-- HelpModal is always in the DOM so #help CSS selectors always match. -->
+    <HelpModal />
+    <ErrorModal />
 </template>

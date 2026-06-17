@@ -4,31 +4,31 @@ import { ref } from 'vue';
 export type ModalId = 'settings' | 'mapManager' | 'sharing' | 'help';
 
 export const useUiStore = defineStore('ui', () => {
-  const activeModal = ref<ModalId | null>(null);
-  const errorMessages = ref<string[]>([]);
+    const activeModal = ref<ModalId | null>(null);
+    const errorMessages = ref<string[]>([]);
 
-  function openModal(id: ModalId) {
-    activeModal.value = id;
-  }
+    function openModal(id: ModalId) {
+        activeModal.value = id;
+    }
 
-  function closeModal() {
-    activeModal.value = null;
-  }
+    function closeModal() {
+        activeModal.value = null;
+    }
 
-  function showErrors(messages: string[]) {
-    errorMessages.value = messages;
-  }
+    function showErrors(messages: string[]) {
+        errorMessages.value = messages;
+    }
 
-  function clearErrors() {
-    errorMessages.value = [];
-  }
+    function clearErrors() {
+        errorMessages.value = [];
+    }
 
-  return {
-    activeModal,
-    errorMessages,
-    openModal,
-    closeModal,
-    showErrors,
-    clearErrors,
-  };
+    return {
+        activeModal,
+        errorMessages,
+        openModal,
+        closeModal,
+        showErrors,
+        clearErrors,
+    };
 });

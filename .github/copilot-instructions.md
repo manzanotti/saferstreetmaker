@@ -38,14 +38,14 @@
 
 - **Bundler/dev server**: Vite (`yarn start` → dev server on `http://localhost:1234`, `yarn build` → production, `yarn preview` → preview build)
 - **Docs and skills workflow**:
-  - Use the Context7 MCP to query official documentation whenever external library or framework guidance is needed.
-  - Check any locally installed skills before starting a task to see whether they provide relevant guidance or reusable patterns.
+    - Use the Context7 MCP to query official documentation whenever external library or framework guidance is needed.
+    - Check any locally installed skills before starting a task to see whether they provide relevant guidance or reusable patterns.
 - **Package manager**: Yarn (v3 - Berry)
 - **Validation order before completion**:
-  1. Run `yarn typecheck` for TypeScript validation.
-  2. Run `yarn build` for HTML/build validation and to confirm the app still compiles cleanly.
-  3. Run `yarn test:unit` for the Vitest suite.
-  4. Run `yarn test` for the Playwright suite.
+    1. Run `yarn typecheck` for TypeScript validation.
+    2. Run `yarn build` for HTML/build validation and to confirm the app still compiles cleanly.
+    3. Run `yarn test:unit` for the Vitest suite.
+    4. Run `yarn test` for the Playwright suite.
 - **Do not mark a task complete until all four checks above have been run successfully.**
 - **Tests**: `yarn test` (Playwright, config in `tests/playwright.config.ts`, test files in `tests/playwright/`), plus `yarn test:unit` for Vitest (config in `tests/vitest.config.ts`, tests in `tests/unit/`)
 

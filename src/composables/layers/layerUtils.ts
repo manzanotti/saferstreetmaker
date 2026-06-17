@@ -18,15 +18,15 @@ import { ToolbarButton } from '../../models/ToolbarButton';
 // ---------------------------------------------------------------------------
 
 export function setMapCursor(cssClass: string): void {
-  const map = document.getElementById('map');
-  map?.classList.remove('leaflet-grab');
-  map?.classList.add(cssClass);
+    const map = document.getElementById('map');
+    map?.classList.remove('leaflet-grab');
+    map?.classList.add(cssClass);
 }
 
 export function removeMapCursor(cssClass: string): void {
-  const map = document.getElementById('map');
-  map?.classList.remove(cssClass);
-  map?.classList.add('leaflet-grab');
+    const map = document.getElementById('map');
+    map?.classList.remove(cssClass);
+    map?.classList.add('leaflet-grab');
 }
 
 // ---------------------------------------------------------------------------
@@ -34,25 +34,25 @@ export function removeMapCursor(cssClass: string): void {
 // ---------------------------------------------------------------------------
 
 export interface ToolbarButtonOpts {
-  id: string;
-  tooltip: string;
-  groupName: string;
-  action: (e: Event, map: L.Map) => void;
-  selected: boolean;
-  isFirst?: boolean;
-  text?: string;
+    id: string;
+    tooltip: string;
+    groupName: string;
+    action: (e: Event, map: L.Map) => void;
+    selected: boolean;
+    isFirst?: boolean;
+    text?: string;
 }
 
 export function buildToolbarButton(opts: ToolbarButtonOpts): ToolbarButton {
-  return {
-    id: opts.id,
-    tooltip: opts.tooltip,
-    groupName: opts.groupName,
-    action: opts.action,
-    selected: opts.selected,
-    ...(opts.isFirst !== undefined && { isFirst: opts.isFirst }),
-    ...(opts.text !== undefined && { text: opts.text }),
-  };
+    return {
+        id: opts.id,
+        tooltip: opts.tooltip,
+        groupName: opts.groupName,
+        action: opts.action,
+        selected: opts.selected,
+        ...(opts.isFirst !== undefined && { isFirst: opts.isFirst }),
+        ...(opts.text !== undefined && { text: opts.text }),
+    };
 }
 
 // ---------------------------------------------------------------------------
@@ -60,30 +60,30 @@ export function buildToolbarButton(opts: ToolbarButtonOpts): ToolbarButton {
 // ---------------------------------------------------------------------------
 
 export interface LegendEntryOpts {
-  layerId: string;
-  title: string;
-  toggleTitle: string;
-  iconEl: HTMLElement;
-  /** Object whose `visible` property is toggled on click. */
-  visibilityState: { visible: boolean };
+    layerId: string;
+    title: string;
+    toggleTitle: string;
+    iconEl: HTMLElement;
+    /** Object whose `visible` property is toggled on click. */
+    visibilityState: { visible: boolean };
 }
 
 export function buildLegendEntry(opts: LegendEntryOpts): HTMLElement {
-  const li = document.createElement('li');
-  li.id = `${opts.layerId}-legend`;
-  li.setAttribute('title', opts.toggleTitle);
-  li.appendChild(opts.iconEl);
+    const li = document.createElement('li');
+    li.id = `${opts.layerId}-legend`;
+    li.setAttribute('title', opts.toggleTitle);
+    li.appendChild(opts.iconEl);
 
-  const span = document.createElement('span');
-  span.textContent = opts.title;
-  li.appendChild(span);
+    const span = document.createElement('span');
+    span.textContent = opts.title;
+    li.appendChild(span);
 
-  li.addEventListener('click', () => {
-    opts.visibilityState.visible = !opts.visibilityState.visible;
-    // Actual map visibility is handled by TheLegend.vue → mapStore.toggleLayerVisibility()
-  });
+    li.addEventListener('click', () => {
+        opts.visibilityState.visible = !opts.visibilityState.visible;
+        // Actual map visibility is handled by TheLegend.vue → mapStore.toggleLayerVisibility()
+    });
 
-  return li;
+    return li;
 }
 
 // ---------------------------------------------------------------------------
@@ -91,23 +91,23 @@ export function buildLegendEntry(opts: LegendEntryOpts): HTMLElement {
 // ---------------------------------------------------------------------------
 
 export function buildDeletePopup(
-  map: L.Map,
-  popupOptions: L.PopupOptions,
-  onDelete: () => void,
+    map: L.Map,
+    popupOptions: L.PopupOptions,
+    onDelete: () => void,
 ): L.Popup {
-  const popup = L.popup(popupOptions);
+    const popup = L.popup(popupOptions);
 
-  const controlList = document.createElement('ul');
-  controlList.classList.add('popup-buttons');
+    const controlList = document.createElement('ul');
+    controlList.classList.add('popup-buttons');
 
-  const deleteControl = document.createElement('li');
-  deleteControl.classList.add('delete-button');
-  deleteControl.addEventListener('click', () => {
-    onDelete();
-    map.closePopup(popup);
-  });
-  controlList.appendChild(deleteControl);
-  popup.setContent(controlList);
+    const deleteControl = document.createElement('li');
+    deleteControl.classList.add('delete-button');
+    deleteControl.addEventListener('click', () => {
+        onDelete();
+        map.closePopup(popup);
+    });
+    controlList.appendChild(deleteControl);
+    popup.setContent(controlList);
 
-  return popup;
+    return popup;
 }

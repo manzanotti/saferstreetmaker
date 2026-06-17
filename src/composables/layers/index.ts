@@ -10,25 +10,25 @@ import { createTrafficLightsLayer, createPedestrianLightsLayer } from './useTraf
 import { createZebraCrossingLayer } from './useZebraCrossingLayer';
 import { createMobilityLaneLayer } from './useMobilityLaneLayer';
 import {
-  createTramLineLayer,
-  createCarFreeStreetLayer,
-  createSchoolStreetLayer,
-  createOneWayStreetLayer,
+    createTramLineLayer,
+    createCarFreeStreetLayer,
+    createSchoolStreetLayer,
+    createOneWayStreetLayer,
 } from './useSimplePolylineLayers';
 import { createLtnLayer } from './useLtnLayer';
 
 export function createAllLayers(map: L.Map): IMapLayer[] {
-  return [
-    createModalFilterLayer(map),
-    createMobilityLaneLayer(map),
-    createTramLineLayer(map),
-    createCarFreeStreetLayer(map),
-    createSchoolStreetLayer(map),
-    createOneWayStreetLayer(map),
-    createLtnLayer(map),
-    createBusGateLayer(map),
-    createTrafficLightsLayer(map),
-    createPedestrianLightsLayer(map),
-    createZebraCrossingLayer(map),
-  ];
+    return [
+        createModalFilterLayer(map),
+        createMobilityLaneLayer(map),
+        createTramLineLayer(map),
+        createCarFreeStreetLayer(map),
+        createSchoolStreetLayer(map),
+        createOneWayStreetLayer(map),
+        createLtnLayer(map),
+        createBusGateLayer(map),
+        createTrafficLightsLayer(map),
+        createPedestrianLightsLayer(map),
+        createZebraCrossingLayer(map),
+    ];
 }
