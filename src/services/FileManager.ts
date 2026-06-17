@@ -1,10 +1,18 @@
 import LZString from 'lz-string';
-import PubSub from 'pubsub-js';
-import { EventTopics } from './EventTopics';
-import { IMapLayer } from './layers/IMapLayer';
-import { Settings } from './Settings';
+import { IMapLayer } from '../composables/layers/IMapLayer';
+import { Settings } from '../models/Settings';
 
 export class FileManager {
+  private _onFileLoaded: ((data: unknown) => void) | null = null;
+
+  /**
+   * Register a callback that fires when a file is loaded via the OS file picker.
+   * Replaces the PubSub-based fileLoaded event used in Phase 2.
+   */
+  setOnFileLoaded(callback: (data: unknown) => void): void {
+    this._onFileLoaded = callback;
+  }
+
   saveMapToFile = (settings: Settings, layersData: Map<string, IMapLayer>) => {
     const mapData = this.mapToJSON(settings, layersData);
     const mapString = JSON.stringify(mapData);
@@ -143,7 +151,9 @@ export class FileManager {
 
       const contents = e.target.result || '';
       const map = JSON.parse(<string>contents);
-      PubSub.publish(EventTopics.fileLoaded, map);
+      if (this._onFileLoaded) {
+        this._onFileLoaded(map);
+      }
       document.body.removeChild(fileInput);
     };
     reader.readAsText(file, 'text/plain;charset=utf-8');

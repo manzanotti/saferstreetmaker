@@ -70,7 +70,7 @@ async function deleteFirstShape(page: Page) {
     .first()
     .dispatchEvent('click');
   await page.waitForSelector('.popup-buttons .delete-button');
-  await page.locator('.popup-buttons .delete-button').first().click();
+  await page.locator('.popup-buttons .delete-button').first().dispatchEvent('click');
   await page.waitForTimeout(100);
 }
 

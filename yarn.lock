@@ -670,13 +670,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/pubsub-js@npm:^1.8.6":
-  version: 1.8.6
-  resolution: "@types/pubsub-js@npm:1.8.6"
-  checksum: 98247e1fb5a83405f8f03f25bd0add697314782d3ed30d4567d3e9996bf86a271f0484aa9d376e6ba71dc309f9925363fb1e02bba7dd1d91b0ae4720a6520f9e
-  languageName: node
-  linkType: hard
-
 "@vitejs/plugin-vue@npm:^6.0.7":
   version: 6.0.7
   resolution: "@vitejs/plugin-vue@npm:6.0.7"
@@ -2242,13 +2235,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pubsub-js@npm:^1.9.5":
-  version: 1.9.5
-  resolution: "pubsub-js@npm:1.9.5"
-  checksum: e92b36b9e54db6d2a130440d1acfc2d95472f11f425b45e8399202608952dd2d7499c7e154f00623c61533267e78876c8e16861b8a1e4ae072bc45ebe0f3b971
-  languageName: node
-  linkType: hard
-
 "punycode@npm:^2.3.1":
   version: 2.3.1
   resolution: "punycode@npm:2.3.1"
@@ -2365,7 +2351,6 @@ __metadata:
     "@tailwindcss/vite": ^4.3.0
     "@types/leaflet": ^1.9.21
     "@types/lz-string": ^1.5.0
-    "@types/pubsub-js": ^1.8.6
     "@vitejs/plugin-vue": ^6.0.7
     "@vue/tsconfig": ^0.9.1
     jsdom: ^29.1.1
@@ -2374,7 +2359,6 @@ __metadata:
     lz-string: ^1.5.0
     pinia: ^3.0.4
     prettier: ^3.8.4
-    pubsub-js: ^1.9.5
     tailwindcss: ^4.3.0
     typescript: ^6.0.3
     vite: ^8.0.16

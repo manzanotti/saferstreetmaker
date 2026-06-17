@@ -71,3 +71,8 @@
   padding: 0;
   border: 1px solid #000;
 }
+
+#help input[type='button'].ltn {
+  font-size: 1em;
+  line-height: 60px;
+}

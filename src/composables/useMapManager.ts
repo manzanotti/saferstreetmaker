@@ -3,18 +3,15 @@
  *
  * Replaces MapContainer's map-data responsibilities:
  *  - loadMap / loadMapData / saveMap / createNewMap / applySettings
- *  - PubSub subscriptions from the legacy layer engine (layerUpdated, fileLoaded)
- *    – removed in Phase 3 when layers become composables
  *
- * Exported functions are called from main.ts and from Vue components via
- * the module-singleton returned by getMapManager().
+ * PubSub fully removed — layerUpdated is now a Pinia counter watch,
+ * fileLoaded is a FileManager callback.
  */
 import * as L from 'leaflet';
-import PubSub from 'pubsub-js';
-import { EventTopics } from '../scripts/EventTopics';
-import { FileManager } from '../scripts/FileManager';
-import { Settings } from '../scripts/Settings';
-import type { IMapLayer } from '../scripts/layers/IMapLayer';
+import { watch } from 'vue';
+import { FileManager } from '../services/FileManager';
+import { Settings } from '../models/Settings';
+import type { IMapLayer } from './layers/IMapLayer';
 import { useMapStore } from '../stores/mapStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useUiStore } from '../stores/uiStore';
@@ -94,8 +91,9 @@ export function setupMapManager(fileManager: FileManager): MapManager {
     }, 500);
   };
 
-  // Listen for zoom/move to save view
-  PubSub.subscribe(EventTopics.mapZoomChanged, () => {
+  // Watch settingsStore.zoom/centre changes (set by useMapEngine on zoom/move events)
+  // to trigger a debounced save. Replaces the PubSub mapZoomChanged subscription.
+  watch([() => settingsStore.zoom, () => settingsStore.centre], () => {
     saveViewDebounced();
   });
 
@@ -382,9 +380,10 @@ export function setupMapManager(fileManager: FileManager): MapManager {
     a.click();
   };
 
-  // ── PubSub subscriptions from legacy layer engine (Phase 2 bridge) ────────
-  // fileLoaded: fired by FileManager when a file is loaded via the OS picker.
-  PubSub.subscribe(EventTopics.fileLoaded, (_msg: string, data: any) => {
+  // ── Wire event bridges (replaces PubSub subscriptions) ───────────────────
+
+  // fileLoaded: FileManager calls this callback when a file is loaded via OS picker.
+  fileManager.setOnFileLoaded((data: unknown) => {
     uiStore.closeModal();
     clearAllLayers();
     resetSettings();
@@ -401,18 +400,14 @@ export function setupMapManager(fileManager: FileManager): MapManager {
     }
   });
 
-  // layerUpdated: fired by legacy layer classes when the map data changes.
-  PubSub.subscribe(EventTopics.layerUpdated, () => {
-    saveMap();
-  });
-
-  // moveend: save view position after map pan (zoomend is handled via mapZoomChanged above)
-  const map = mapStore.map;
-  if (map) {
-    map.on('moveend', () => {
-      saveViewDebounced();
-    });
-  }
+  // layerUpdateCount: watch Pinia counter incremented by layer composables.
+  // Replaces PubSub.subscribe(EventTopics.layerUpdated, saveMap).
+  watch(
+    () => mapStore.layerUpdateCount,
+    () => {
+      saveMap();
+    },
+  );
 
   _instance = {
     loadMap,

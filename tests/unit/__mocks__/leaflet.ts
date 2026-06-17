@@ -198,7 +198,60 @@ const Draw = {
     enable() {}
     disable() {}
   },
+  Polygon: class {
+    constructor(_map: any, _opts?: any) {}
+    enable() {}
+    disable() {}
+  },
 };
+
+class Map {
+  private _handlers: Record<string, Function[]> = {};
+
+  constructor(_el?: any, _opts?: any) {}
+
+  on(event: string, fn: Function) {
+    (this._handlers[event] ??= []).push(fn);
+    return this;
+  }
+  off(event: string, fn: Function) {
+    if (this._handlers[event]) {
+      this._handlers[event] = this._handlers[event].filter((f) => f !== fn);
+    }
+    return this;
+  }
+  addLayer(_layer: any) {
+    return this;
+  }
+  removeLayer(_layer: any) {
+    return this;
+  }
+  openPopup(_popup: any) {
+    return this;
+  }
+  closePopup(_popup?: any) {
+    return this;
+  }
+  getZoom() {
+    return 10;
+  }
+  getCenter() {
+    return new LatLng(0, 0);
+  }
+  setView(_center: any, _zoom?: any) {
+    return this;
+  }
+  createPane(_name: string) {
+    return { style: {} };
+  }
+}
+
+class TileLayer {
+  constructor(_url: string, _opts?: any) {}
+  addTo(_map: any) {
+    return this;
+  }
+}
 
 export {
   LatLng,
@@ -211,6 +264,8 @@ export {
   DivIcon,
   DomEvent,
   Draw,
+  Map,
+  TileLayer,
   Point,
   popup,
 };

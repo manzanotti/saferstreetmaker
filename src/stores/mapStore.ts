@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { shallowRef, ref } from 'vue';
 import type * as L from 'leaflet';
-import type { IMapLayer } from '../scripts/layers/IMapLayer';
+import type { IMapLayer } from '../composables/layers/IMapLayer';
 
 export const useMapStore = defineStore('map', () => {
   /** The Leaflet map instance. shallowRef prevents Vue wrapping Leaflet internals. */
@@ -15,6 +15,12 @@ export const useMapStore = defineStore('map', () => {
 
   /** IDs of layers currently shown on the map. */
   const visibleLayerIds = ref<Set<string>>(new Set());
+
+  /**
+   * Monotonically incremented whenever any layer's data changes.
+   * useMapManager watches this to trigger debounced saves.
+   */
+  const layerUpdateCount = ref(0);
 
   function setMap(instance: L.Map) {
     map.value = instance;
@@ -39,10 +45,9 @@ export const useMapStore = defineStore('map', () => {
     visibleLayerIds.value = next;
   }
 
+  /** Called by layer composables whenever map data changes (replaces PubSub layerUpdated). */
   function markLayerUpdated() {
-    // Placeholder called by layer composables (Phase 3) in place of
-    // PubSub.publish(EventTopics.layerUpdated). MapManager listens via
-    // watch() in Phase 2, and directly in Phase 3.
+    layerUpdateCount.value++;
   }
 
   return {
@@ -50,6 +55,7 @@ export const useMapStore = defineStore('map', () => {
     layers,
     activeLayerId,
     visibleLayerIds,
+    layerUpdateCount,
     setMap,
     setLayers,
     setActiveLayer,

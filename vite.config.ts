@@ -13,7 +13,6 @@ export default defineConfig({
     // by mapping their bare imports to the global variables they expose.
     viteExternalsPlugin({
       leaflet: 'L',
-      'pubsub-js': 'PubSub',
       'lz-string': 'LZString',
     }),
   ],

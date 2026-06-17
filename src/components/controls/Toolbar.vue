@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { useMapStore } from '../../stores/mapStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useUiStore, type ModalId } from '../../stores/uiStore';
-import type { ToolbarButton } from '../../scripts/Controls/ToolbarButton';
+import type { ToolbarButton } from '../../models/ToolbarButton';
 
 const mapStore = useMapStore();
 const settingsStore = useSettingsStore();

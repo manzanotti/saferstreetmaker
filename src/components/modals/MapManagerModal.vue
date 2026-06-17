@@ -5,7 +5,7 @@ import { useSettingsStore } from '../../stores/settingsStore';
 import { useMapStore } from '../../stores/mapStore';
 import { useUiStore } from '../../stores/uiStore';
 import { getMapManager, getFileManager } from '../../composables/useMapManager';
-import { Settings } from '../../scripts/Settings';
+import { Settings } from '../../models/Settings';
 
 const settingsStore = useSettingsStore();
 const mapStore = useMapStore();

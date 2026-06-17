@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ToolbarButton } from '../../src/scripts/Controls/ToolbarButton';
+import { ToolbarButton } from '../../src/models/ToolbarButton';
 
 describe('ToolbarButton', () => {
   it('can be instantiated with no arguments', () => {

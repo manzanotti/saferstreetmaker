@@ -1,5 +1,5 @@
 import * as L from 'leaflet';
-import { ToolbarButton } from '../Controls/ToolbarButton';
+import { ToolbarButton } from '../../models/ToolbarButton';
 
 export interface IMapLayer {
   id: string;

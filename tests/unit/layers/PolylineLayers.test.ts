@@ -1,20 +1,23 @@
 /**
- * Unit tests for all polyline layers:
- *   MobilityLaneLayer, CarFreeStreetLayer, SchoolStreetLayer,
- *   OneWayStreetLayer, TramLineLayer
+ * Unit tests for all polyline layers (composable API).
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { setActivePinia, createPinia } from 'pinia';
 
 vi.mock('leaflet', () => import('../__mocks__/leaflet'));
-vi.mock('pubsub-js', () => ({
-  default: { subscribe: vi.fn(), publish: vi.fn() },
-}));
 
-import { MobilityLaneLayer } from '../../../src/scripts/layers/MobilityLaneLayer';
-import { CarFreeStreetLayer } from '../../../src/scripts/layers/CarFreeStreetLayer';
-import { SchoolStreetLayer } from '../../../src/scripts/layers/SchoolStreetLayer';
-import { OneWayStreetLayer } from '../../../src/scripts/layers/OneWayStreetLayer';
-import { TramLineLayer } from '../../../src/scripts/layers/TramLineLayer';
+import * as L from 'leaflet';
+import { createMobilityLaneLayer } from '../../../src/composables/layers/useMobilityLaneLayer';
+import {
+  createCarFreeStreetLayer,
+  createSchoolStreetLayer,
+  createOneWayStreetLayer,
+  createTramLineLayer,
+} from '../../../src/composables/layers/useSimplePolylineLayers';
+
+function makeMockMap(): L.Map {
+  return new L.Map();
+}
 
 // -----------------------------------------------------------------------
 // Helper – build a GeoJSON FeatureCollection for a polyline
@@ -34,20 +37,17 @@ function polylineFeatureCollection(lines: [number, number][][]) {
 // Shared polyline-layer tests
 // -----------------------------------------------------------------------
 function sharedPolylineLayerTests(
-  LayerClass: any,
+  factoryFn: (map: L.Map) => any,
   expectedId: string,
   expectedTitle: string,
-  expectedPrefix: string,
+  expectedButtonId: string,
 ) {
-  describe(`${LayerClass.name}`, () => {
+  describe(`${expectedId}`, () => {
     let layer: any;
 
     beforeEach(() => {
-      layer = new LayerClass();
-    });
-
-    it('has correct static Id', () => {
-      expect(LayerClass.Id).toBe(expectedId);
+      setActivePinia(createPinia());
+      layer = factoryFn(makeMockMap());
     });
 
     it('has correct id', () => expect(layer.id).toBe(expectedId));
@@ -61,12 +61,11 @@ function sharedPolylineLayerTests(
 
     describe('getToolbarButton()', () => {
       it('returns correct id', () => {
-        expect(layer.getToolbarButton().id).toBe(expectedPrefix);
+        expect(layer.getToolbarButton().id).toBe(expectedButtonId);
       });
 
       it('has a non-empty tooltip', () => {
-        const btn = layer.getToolbarButton();
-        expect(btn.tooltip.length).toBeGreaterThan(0);
+        expect(layer.getToolbarButton().tooltip.length).toBeGreaterThan(0);
       });
 
       it('reflects selected state', () => {
@@ -134,7 +133,6 @@ function sharedPolylineLayerTests(
       });
 
       it('handles the legacy nested-coordinate format', () => {
-        // Coordinates wrapped in an extra array (historical bug)
         const legacy = {
           features: [
             {
@@ -158,13 +156,28 @@ function sharedPolylineLayerTests(
   });
 }
 
-sharedPolylineLayerTests(MobilityLaneLayer, 'MobilityLanes', 'Mobility Lanes', 'mobility-lane');
 sharedPolylineLayerTests(
-  CarFreeStreetLayer,
+  createMobilityLaneLayer,
+  'MobilityLanes',
+  'Mobility Lanes',
+  'mobility-lane',
+);
+sharedPolylineLayerTests(
+  createCarFreeStreetLayer,
   'CarFreeStreets',
   'Car-free Streets',
   'car-free-street',
 );
-sharedPolylineLayerTests(SchoolStreetLayer, 'SchoolStreet', 'School Streets', 'school-street');
-sharedPolylineLayerTests(OneWayStreetLayer, 'OneWayStreets', 'One-way Streets', 'one-way-street');
-sharedPolylineLayerTests(TramLineLayer, 'TramLines', 'Tram Lines', 'tram-line');
+sharedPolylineLayerTests(
+  createSchoolStreetLayer,
+  'SchoolStreet',
+  'School Streets',
+  'school-street',
+);
+sharedPolylineLayerTests(
+  createOneWayStreetLayer,
+  'OneWayStreets',
+  'One-way Streets',
+  'one-way-street',
+);
+sharedPolylineLayerTests(createTramLineLayer, 'TramLines', 'Tram Lines', 'tram-line');

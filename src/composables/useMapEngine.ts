@@ -1,18 +1,12 @@
 /**
  * useMapEngine.ts
  *
- * Replaces MapContainer's map-infrastructure responsibilities:
- *  - creates the Leaflet map, panes, and tile layer
- *  - wires Leaflet map events (click, keyup, draw:created, zoom, move)
- *  - subscribes to map-level PubSub events still emitted by the legacy layer engine
- *    (showPopup, closePopup) – removed in Phase 3
- *  - bridges Pinia store changes back to PubSub for the legacy layer classes
- *    (layerSelected/Deselected, showLayer/hideLayer) – bridge removed in Phase 3
+ * Creates the Leaflet map, panes, tile layer, and wires all Leaflet map events.
+ * PubSub has been fully removed — all coordination now goes through Pinia stores
+ * and direct Leaflet event handlers.
  */
 import * as L from 'leaflet';
-import PubSub from 'pubsub-js';
 import { watch } from 'vue';
-import { EventTopics } from '../scripts/EventTopics';
 import { useMapStore } from '../stores/mapStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { pinia } from '../stores/index';
@@ -42,33 +36,18 @@ export function setupMapEngine(): MapEngineResult {
     maxZoom: 20,
   }).addTo(map);
 
-  // ── Leaflet map events ────────────────────────────────────────────────────
-  // These still publish PubSub events so the legacy layer classes continue to work.
-  map.on('click', (e: L.LeafletMouseEvent) => {
-    PubSub.publish(EventTopics.mapClicked, e);
-  });
-
+  // ── Keyboard: Escape deselects active layer ───────────────────────────────
   map.on('keyup', (e: L.LeafletKeyboardEvent) => {
     if (e.originalEvent.key === 'Escape') {
       map.closePopup();
-      // Synchronously notify the layer engine that the active layer is deselected.
-      // mapStore.activeLayerId is updated via the PubSub subscriber below.
-      if (mapStore.activeLayerId !== null) {
-        PubSub.publish(EventTopics.layerDeselected, mapStore.activeLayerId);
-      }
       mapStore.setActiveLayer(null);
     }
   });
 
-  map.on('draw:created', (e: any) => {
-    const layer = e.layer;
-    PubSub.publish(EventTopics.drawCreated, { latLngs: layer.getLatLngs(), map });
-  });
-
+  // ── Zoom: update CSS class and settings store ─────────────────────────────
   map.on('zoomend', () => {
     const zoom = map.getZoom();
 
-    // Keep a zoom-N CSS class on #map for Playwright tests.
     const mapEl = document.getElementById('map');
     if (mapEl) {
       for (let i = mapEl.classList.length - 1; i >= 0; i--) {
@@ -78,7 +57,6 @@ export function setupMapEngine(): MapEngineResult {
       mapEl.classList.add(`zoom-${zoom}`);
     }
 
-    PubSub.publish(EventTopics.mapZoomChanged, zoom);
     settingsStore.zoom = zoom;
     settingsStore.centre = map.getCenter();
   });
@@ -88,36 +66,12 @@ export function setupMapEngine(): MapEngineResult {
     settingsStore.centre = map.getCenter();
   });
 
-  // ── PubSub subscriptions for map-level popup events ──────────────────────
-  // These are published by legacy layer classes and consumed here.
-  PubSub.subscribe(EventTopics.showPopup, (_msg: string, popup: L.Popup) => {
-    map.openPopup(popup);
-  });
-
-  PubSub.subscribe(EventTopics.closePopup, (_msg: string, popup: L.Popup) => {
-    map.closePopup(popup);
-  });
-
-  // ── Keep mapStore.activeLayerId in sync with layer engine events ──────────
-  // When a layer is deselected (e.g., Escape key, or by another layer being
-  // selected), reset the store to null so the toolbar deselects the button.
-  // We do NOT subscribe to layerSelected here because the toolbar already sets
-  // activeLayerId synchronously before btn.action() fires, and the PubSub
-  // layerSelected event carries the LAYER id (e.g. 'CarFreeStreets') which
-  // differs from the BUTTON id (e.g. 'car-free-street') — overwriting would
-  // break the toolbar selected state.
-  PubSub.subscribe(EventTopics.layerDeselected, () => {
-    mapStore.setActiveLayer(null);
-  });
-
-  // When visible layers change, add/remove from Leaflet map directly
-  // (no longer going via PubSub hideLayer/showLayer).
+  // ── Layer visibility watch ────────────────────────────────────────────────
+  // Add/remove layers from the map when visibleLayerIds changes in the store.
   watch(
     () => mapStore.visibleLayerIds,
     (newIds, oldIds) => {
-      const layers = mapStore.layers;
-
-      layers.forEach((layer) => {
+      mapStore.layers.forEach((layer) => {
         const wasVisible = oldIds?.has(layer.id) ?? true;
         const isVisible = newIds.has(layer.id);
 

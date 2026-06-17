@@ -2,26 +2,31 @@ import { createApp } from 'vue';
 import * as L from 'leaflet';
 import App from './App.vue';
 import { pinia } from './stores/index';
-import { FileManager } from './scripts/FileManager';
-import { ModalFilterLayer } from './scripts/layers/ModalFilterLayer';
-import { MobilityLaneLayer } from './scripts/layers/MobilityLaneLayer';
-import { TramLineLayer } from './scripts/layers/TramLineLayer';
-import { CarFreeStreetLayer } from './scripts/layers/CarFreeStreetLayer';
-import { SchoolStreetLayer } from './scripts/layers/SchoolStreetLayer';
-import { OneWayStreetLayer } from './scripts/layers/OneWayStreetLayer';
-import { LtnLayer } from './scripts/layers/LtnLayer';
-import { BusGateLayer } from './scripts/layers/BusGateLayer';
-import { TrafficLightsLayer } from './scripts/layers/TrafficLightsLayer';
-import { PedestrianLightsLayer } from './scripts/layers/PedestrianLightsLayer';
-import { ZebraCrossingLayer } from './scripts/layers/ZebraCrossingLayer';
+import { FileManager } from './services/FileManager';
 import { useMapStore } from './stores/mapStore';
 import { useSettingsStore } from './stores/settingsStore';
 import { setupMapEngine } from './composables/useMapEngine';
 import { setupMapManager } from './composables/useMapManager';
 import { makeLeafletVueControl } from './composables/useLeafletVueControl';
-import TheToolbar from './components/controls/TheToolbar.vue';
-import TheLegend from './components/controls/TheLegend.vue';
-import TheModalContainer from './components/controls/TheModalContainer.vue';
+import Toolbar from './components/controls/Toolbar.vue';
+import Legend from './components/controls/Legend.vue';
+import ModalContainer from './components/controls/ModalContainer.vue';
+// Layer composable factories
+import { createModalFilterLayer } from './composables/layers/useModalFilterLayer';
+import { createBusGateLayer } from './composables/layers/useBusGateLayer';
+import {
+  createTrafficLightsLayer,
+  createPedestrianLightsLayer,
+} from './composables/layers/useTrafficControlLayers';
+import { createZebraCrossingLayer } from './composables/layers/useZebraCrossingLayer';
+import { createMobilityLaneLayer } from './composables/layers/useMobilityLaneLayer';
+import {
+  createTramLineLayer,
+  createCarFreeStreetLayer,
+  createSchoolStreetLayer,
+  createOneWayStreetLayer,
+} from './composables/layers/useSimplePolylineLayers';
+import { createLtnLayer } from './composables/layers/useLtnLayer';
 
 // Mount the Vue overlay app (HelpModal, ErrorModal) immediately.
 createApp(App).use(pinia).mount('#app');
@@ -39,17 +44,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   const settingsStore = useSettingsStore(pinia);
 
   const allLayers = [
-    new ModalFilterLayer(),
-    new MobilityLaneLayer(),
-    new TramLineLayer(),
-    new CarFreeStreetLayer(),
-    new SchoolStreetLayer(),
-    new OneWayStreetLayer(),
-    new LtnLayer(),
-    new BusGateLayer(),
-    new TrafficLightsLayer(),
-    new PedestrianLightsLayer(),
-    new ZebraCrossingLayer(),
+    createModalFilterLayer(map),
+    createMobilityLaneLayer(map),
+    createTramLineLayer(map),
+    createCarFreeStreetLayer(map),
+    createSchoolStreetLayer(map),
+    createOneWayStreetLayer(map),
+    createLtnLayer(map),
+    createBusGateLayer(map),
+    createTrafficLightsLayer(map),
+    createPedestrianLightsLayer(map),
+    createZebraCrossingLayer(map),
   ];
   mapStore.setLayers(allLayers);
 
@@ -60,9 +65,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const { loadMap, setUserLocation, setDefaultView } = setupMapManager(fileManager);
 
   // ── Add Vue-backed Leaflet controls ──────────────────────────────────────
-  map.addControl(makeLeafletVueControl(TheToolbar, 'topleft'));
-  map.addControl(makeLeafletVueControl(TheLegend, 'topright'));
-  map.addControl(makeLeafletVueControl(TheModalContainer, 'bottomleft'));
+  map.addControl(makeLeafletVueControl(Toolbar, 'topleft'));
+  map.addControl(makeLeafletVueControl(Legend, 'topright'));
+  map.addControl(makeLeafletVueControl(ModalContainer, 'bottomleft'));
 
   // ── Parse URL params and load initial map ────────────────────────────────
   const params = new URLSearchParams(window.location.search);

@@ -1,14 +1,17 @@
 /**
- * Unit tests for LtnLayer (polygon layer).
+ * Unit tests for LtnLayer composable.
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { setActivePinia, createPinia } from 'pinia';
 
 vi.mock('leaflet', () => import('../__mocks__/leaflet'));
-vi.mock('pubsub-js', () => ({
-  default: { subscribe: vi.fn(), publish: vi.fn() },
-}));
 
-import { LtnLayer } from '../../../src/scripts/layers/LtnLayer';
+import * as L from 'leaflet';
+import { createLtnLayer } from '../../../src/composables/layers/useLtnLayer';
+
+function makeMockMap(): L.Map {
+  return new L.Map();
+}
 
 function polygonFeatureCollection(polygons: [number, number][][][]) {
   return {
@@ -19,15 +22,12 @@ function polygonFeatureCollection(polygons: [number, number][][][]) {
   };
 }
 
-describe('LtnLayer', () => {
-  let layer: LtnLayer;
+describe('LtnLayer (composable)', () => {
+  let layer: ReturnType<typeof createLtnLayer>;
 
   beforeEach(() => {
-    layer = new LtnLayer();
-  });
-
-  it('has correct static Id', () => {
-    expect(LtnLayer.Id).toBe('LtnCells');
+    setActivePinia(createPinia());
+    layer = createLtnLayer(makeMockMap());
   });
 
   it('has correct id', () => expect(layer.id).toBe('LtnCells'));
