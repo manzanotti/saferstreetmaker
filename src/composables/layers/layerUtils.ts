@@ -3,6 +3,12 @@
  *
  * Shared helpers for layer composables (cursor, toolbar button, legend entry).
  * Extracted from LayerHelpers.ts — PubSub removed entirely.
+ *
+ * Note on DOM usage: `buildLegendEntry` and `buildDeletePopup` use
+ * `document.createElement` to construct HTML for Leaflet popups and the legacy
+ * `getLegendEntry()` interface method. This is intentional — Leaflet manages
+ * those DOM subtrees directly and they live outside Vue's virtual DOM.
+ * Do not replace these with Vue components; keep the boundary here.
  */
 import * as L from 'leaflet';
 import { ToolbarButton } from '../../models/ToolbarButton';
@@ -38,15 +44,15 @@ export interface ToolbarButtonOpts {
 }
 
 export function buildToolbarButton(opts: ToolbarButtonOpts): ToolbarButton {
-  const button = new ToolbarButton();
-  button.id = opts.id;
-  button.tooltip = opts.tooltip;
-  button.groupName = opts.groupName;
-  button.action = opts.action;
-  button.selected = opts.selected;
-  if (opts.isFirst !== undefined) button.isFirst = opts.isFirst;
-  if (opts.text !== undefined) button.text = opts.text;
-  return button;
+  return {
+    id: opts.id,
+    tooltip: opts.tooltip,
+    groupName: opts.groupName,
+    action: opts.action,
+    selected: opts.selected,
+    ...(opts.isFirst !== undefined && { isFirst: opts.isFirst }),
+    ...(opts.text !== undefined && { text: opts.text }),
+  };
 }
 
 // ---------------------------------------------------------------------------

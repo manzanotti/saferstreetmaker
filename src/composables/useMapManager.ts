@@ -10,8 +10,8 @@
 import * as L from 'leaflet';
 import { watch } from 'vue';
 import { FileManager } from '../services/FileManager';
+import type { SerializedMap } from '../services/MapSerializer';
 import { Settings } from '../models/Settings';
-import type { IMapLayer } from './layers/IMapLayer';
 import { useMapStore } from '../stores/mapStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useUiStore } from '../stores/uiStore';
@@ -62,24 +62,6 @@ export function setupMapManager(fileManager: FileManager): MapManager {
     return m;
   };
 
-  const getLayers = (): Map<string, IMapLayer> => {
-    const map = new Map<string, IMapLayer>();
-    mapStore.layers.forEach((l) => map.set(l.id, l));
-    return map;
-  };
-
-  const getSettings = (): Settings => {
-    const s = new Settings();
-    s.title = settingsStore.title;
-    s.readOnly = settingsStore.readOnly;
-    s.hideToolbar = settingsStore.hideToolbar;
-    s.activeLayers = [...settingsStore.activeLayers];
-    s.centre = settingsStore.centre ?? new L.LatLng(0, 0);
-    s.zoom = settingsStore.zoom;
-    s.version = settingsStore.version;
-    return s;
-  };
-
   // ── View save debounce ────────────────────────────────────────────────────
   let saveViewTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -99,7 +81,7 @@ export function setupMapManager(fileManager: FileManager): MapManager {
 
   // ── saveMap ───────────────────────────────────────────────────────────────
   const saveMap = () => {
-    fileManager.saveMap(getSettings(), getLayers());
+    fileManager.saveMap(settingsStore.toSettings(), mapStore.toLayers());
   };
 
   // ── Layer helpers ─────────────────────────────────────────────────────────
@@ -131,18 +113,22 @@ export function setupMapManager(fileManager: FileManager): MapManager {
   };
 
   // ── loadMapData ───────────────────────────────────────────────────────────
-  const loadMapData = (geoJSON: any, zoom: string | null, centre: number[] | null): boolean => {
+  const loadMapData = (
+    geoJSON: SerializedMap | null,
+    zoom: string | null,
+    centre: number[] | null,
+  ): boolean => {
     if (geoJSON === null) return false;
 
     const map = getMap();
 
     // Apply settings from JSON
-    if (geoJSON['title'] !== undefined) {
-      settingsStore.title = geoJSON['title'];
+    if (geoJSON.title !== undefined) {
+      settingsStore.title = geoJSON.title;
     }
 
-    if (geoJSON['settings'] !== undefined) {
-      const s: Settings = Object.assign(new Settings(), geoJSON['settings']);
+    if (geoJSON.settings !== undefined) {
+      const s: Settings = Object.assign(new Settings(), geoJSON.settings);
       settingsStore.applyFromSettings({
         title: s.title,
         readOnly: s.readOnly,
@@ -155,8 +141,8 @@ export function setupMapManager(fileManager: FileManager): MapManager {
     }
 
     // Load layer data
-    if (geoJSON['layers'] !== undefined) {
-      const layersJSON = geoJSON['layers'];
+    if (geoJSON.layers !== undefined) {
+      const layersJSON = geoJSON.layers;
       mapStore.layers.forEach((layer) => {
         let layerName = layer.id;
 
@@ -168,7 +154,7 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         }
 
         const layerJSON = layersJSON[layerName];
-        if (layerJSON) layer.loadFromGeoJSON(layerJSON);
+        if (layerJSON) layer.loadFromGeoJSON(layerJSON as L.GeoJSON);
 
         if (settingsStore.activeLayers.includes(layer.id)) {
           layer.visible = true;
@@ -180,9 +166,9 @@ export function setupMapManager(fileManager: FileManager): MapManager {
     }
 
     // Apply stored centre/zoom from the JSON document itself
-    if (geoJSON['centre'] !== undefined && geoJSON['zoom'] !== undefined) {
-      settingsStore.centre = geoJSON['centre'];
-      settingsStore.zoom = geoJSON['zoom'];
+    if (geoJSON.centre !== undefined && geoJSON.zoom !== undefined) {
+      settingsStore.centre = geoJSON.centre as unknown as L.LatLng;
+      settingsStore.zoom = geoJSON.zoom;
     }
 
     settingsStore.version = APP_VERSION;
@@ -223,7 +209,7 @@ export function setupMapManager(fileManager: FileManager): MapManager {
       mapInitialised = true;
     }
 
-    let geoJSON: any = null;
+    let geoJSON: SerializedMap | null = null;
     let errorIntro = '';
     let loadingFromStorage = false;
     const errors: string[] = [];
@@ -390,7 +376,7 @@ export function setupMapManager(fileManager: FileManager): MapManager {
 
     const errors: string[] = [];
     try {
-      const ok = loadMapData(data, null, null);
+      const ok = loadMapData(data as SerializedMap | null, null, null);
       if (ok) saveMap();
     } catch (e: any) {
       errors.push('There was a problem loading the map from uploaded file:');

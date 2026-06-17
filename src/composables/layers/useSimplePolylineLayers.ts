@@ -41,7 +41,7 @@ function createSimplePolylineLayer(cfg: SimplePolylineConfig, map: L.Map): IMapL
       tooltip: cfg.tooltip,
       toggleTitle: cfg.toggleTitle,
       createDrawingTool(m) {
-        const tool = new (L as any)['Draw'].Polyline(m, {
+        const tool = new L.Draw.Polyline(m, {
           color: cfg.colour,
           weight: cfg.weight,
           opacity: 1,

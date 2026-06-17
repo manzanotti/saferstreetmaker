@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import * as L from 'leaflet';
 import LZString from 'lz-string';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useMapStore } from '../../stores/mapStore';
 import { useUiStore } from '../../stores/uiStore';
 import { getFileManager } from '../../composables/useMapManager';
-import { Settings } from '../../models/Settings';
 
 const settingsStore = useSettingsStore();
 const mapStore = useMapStore();
@@ -17,28 +15,10 @@ const height = ref<number | null>(null);
 const hideToolbar = ref(false);
 const showCopiedMessage = ref(false);
 
-function buildSettingsSnapshot(): Settings {
-  const s = new Settings();
-  s.title = settingsStore.title;
-  s.readOnly = settingsStore.readOnly;
-  s.hideToolbar = settingsStore.hideToolbar;
-  s.activeLayers = [...settingsStore.activeLayers];
-  s.zoom = settingsStore.zoom;
-  s.centre = settingsStore.centre ?? new L.LatLng(0, 0);
-  s.version = settingsStore.version;
-  return s;
-}
-
-function buildLayersMap() {
-  const map = new Map();
-  mapStore.layers.forEach((l) => map.set(l.id, l));
-  return map;
-}
-
 function onCreate() {
   if (!width.value || !height.value) return;
 
-  const mapHash = getFileManager().saveMapToHash(buildSettingsSnapshot(), buildLayersMap());
+  const mapHash = getFileManager().saveMapToHash(settingsStore.toSettings(), mapStore.toLayers());
   const origin = window.location.origin;
   const html = `<iframe src="${origin}?hide-toolbar=${hideToolbar.value}#${mapHash}" width="${width.value}" height="${height.value}" title="title"></iframe>`;
 

@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import * as L from 'leaflet';
+import { ref } from 'vue';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useMapStore } from '../../stores/mapStore';
 import { useUiStore } from '../../stores/uiStore';
 import { getMapManager, getFileManager } from '../../composables/useMapManager';
-import { Settings } from '../../models/Settings';
 
 const settingsStore = useSettingsStore();
 const mapStore = useMapStore();
@@ -22,24 +20,6 @@ function refreshMapList() {
   storedMaps.value = getFileManager().loadMapListFromStorage();
 }
 
-function buildSettingsSnapshot(): Settings {
-  const s = new Settings();
-  s.title = settingsStore.title;
-  s.readOnly = settingsStore.readOnly;
-  s.hideToolbar = settingsStore.hideToolbar;
-  s.activeLayers = [...settingsStore.activeLayers];
-  s.zoom = settingsStore.zoom;
-  s.centre = settingsStore.centre ?? new L.LatLng(0, 0);
-  s.version = settingsStore.version;
-  return s;
-}
-
-function buildLayersMap() {
-  const map = new Map();
-  mapStore.layers.forEach((l) => map.set(l.id, l));
-  return map;
-}
-
 function onNewMap() {
   showCreateForm.value = true;
   newMapTitle.value = '';
@@ -47,8 +27,7 @@ function onNewMap() {
 }
 
 function onCopyMap() {
-  const snap = buildSettingsSnapshot();
-  getFileManager().copyMap(snap, buildLayersMap());
+  getFileManager().copyMap(settingsStore.toSettings(), mapStore.toLayers());
   refreshMapList();
 }
 
@@ -72,12 +51,12 @@ function onLoadFile() {
 }
 
 function onSaveFile() {
-  getFileManager().saveMapToFile(buildSettingsSnapshot(), buildLayersMap());
+  getFileManager().saveMapToFile(settingsStore.toSettings(), mapStore.toLayers());
   uiStore.closeModal();
 }
 
 function onExportGeoJSON() {
-  getFileManager().saveMapToGeoJSONFile(buildSettingsSnapshot(), buildLayersMap());
+  getFileManager().saveMapToGeoJSONFile(settingsStore.toSettings(), mapStore.toLayers());
   uiStore.closeModal();
 }
 

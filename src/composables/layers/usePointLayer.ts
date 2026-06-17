@@ -92,6 +92,7 @@ export function createPointLayer(config: PointLayerConfig, map: L.Map): IMapLaye
       _visible = v;
     },
     groupName: config.groupName,
+    iconHtml: config.buildIconEl().outerHTML,
 
     getToolbarButton() {
       return buildToolbarButton({

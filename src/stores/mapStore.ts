@@ -13,7 +13,13 @@ export const useMapStore = defineStore('map', () => {
   /** ID of the currently active (drawing) layer, or null when none selected. */
   const activeLayerId = ref<string | null>(null);
 
-  /** IDs of layers currently shown on the map. */
+  /** IDs of layers currently shown on the map.
+   *
+   * Note: Vue cannot track mutations on a Set (e.g. `.add()` / `.delete()`).
+   * Always replace the entire ref value with a new Set to trigger reactivity:
+   *   mapStore.visibleLayerIds = new Set(...)   ✓
+   *   mapStore.visibleLayerIds.add(id)          ✗ — not reactive
+   */
   const visibleLayerIds = ref<Set<string>>(new Set());
 
   /**
@@ -50,6 +56,13 @@ export const useMapStore = defineStore('map', () => {
     layerUpdateCount.value++;
   }
 
+  /** Build a Map<id, layer> from the current layers array — used by FileManager. */
+  function toLayers(): Map<string, IMapLayer> {
+    const m = new Map<string, IMapLayer>();
+    layers.value.forEach((l) => m.set(l.id, l));
+    return m;
+  }
+
   return {
     map,
     layers,
@@ -61,5 +74,6 @@ export const useMapStore = defineStore('map', () => {
     setActiveLayer,
     toggleLayerVisibility,
     markLayerUpdated,
+    toLayers,
   };
 });

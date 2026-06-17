@@ -27,7 +27,7 @@ export function createMobilityLaneLayer(map: L.Map): IMapLayer {
   let _drawingTool: any = null;
 
   const reinit = (m: L.Map) => {
-    _drawingTool = new (L as any)['Draw'].Polyline(m, {
+    _drawingTool = new L.Draw.Polyline(m, {
       color: COLOUR,
       weight: WEIGHT,
       opacity: 1,
@@ -45,7 +45,7 @@ export function createMobilityLaneLayer(map: L.Map): IMapLayer {
       tooltip: 'Add mobility lanes to the map',
       toggleTitle: 'Toggle mobility lanes from the map',
       createDrawingTool(m) {
-        _drawingTool = new (L as any)['Draw'].Polyline(m, {
+        _drawingTool = new L.Draw.Polyline(m, {
           color: COLOUR,
           weight: WEIGHT,
           opacity: 1,

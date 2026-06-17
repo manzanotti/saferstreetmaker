@@ -19,7 +19,7 @@ export function createLtnLayer(map: L.Map): IMapLayer {
 
   // ── Add a single LTN polygon ─────────────────────────────────────────────
   const addLtnCell = (points: L.LatLng[], label: string, color: string) => {
-    const polygon = new (L as any).Polygon(points, {
+    const polygon = new L.Polygon(points, {
       color: color || COLOUR,
       fillOpacity: 0.2,
       weight: 5,
@@ -119,7 +119,7 @@ export function createLtnLayer(map: L.Map): IMapLayer {
       if (shouldBeSelected && !_selected) {
         _selected = true;
         setMapCursor(CURSOR_CSS);
-        _drawingTool = new (L as any)['Draw'].Polygon(map, { color: COLOUR });
+        _drawingTool = new L.Draw.Polygon(map, { color: COLOUR });
         _drawingTool.enable();
         map.on('draw:created', handleDrawCreated);
       } else if (!shouldBeSelected && _selected) {
@@ -161,6 +161,11 @@ export function createLtnLayer(map: L.Map): IMapLayer {
     set visible(v: boolean) {
       _visible = v;
     },
+    iconHtml: (() => {
+      const i = document.createElement('i');
+      i.style.backgroundColor = COLOUR;
+      return i.outerHTML;
+    })(),
 
     getToolbarButton() {
       return buildToolbarButton({

@@ -93,6 +93,7 @@ export function createPolylineLayer(config: PolylineLayerConfig, map: L.Map): IM
       _visible = v;
     },
     groupName: config.groupName,
+    iconHtml: config.buildIconEl().outerHTML,
 
     getToolbarButton() {
       return buildToolbarButton({

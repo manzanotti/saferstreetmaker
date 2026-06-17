@@ -1,9 +1,30 @@
-import LZString from 'lz-string';
-import { IMapLayer } from '../composables/layers/IMapLayer';
-import { Settings } from '../models/Settings';
+/**
+ * FileManager
+ *
+ * Orchestrates all map persistence and I/O for the application.
+ * Responsibilities are delegated to specialist classes:
+ *
+ *   MapSerializer — pure data transforms (JSON ↔ LZ-string hash)
+ *   MapStorage    — localStorage CRUD
+ *   FileManager   — OS file I/O (upload / download / remote fetch) + callback wiring
+ */
+import type { IMapLayer } from '../composables/layers/IMapLayer';
+import type { Settings } from '../models/Settings';
+import { MapSerializer, type SerializedMap } from './MapSerializer';
+import { MapStorage } from './MapStorage';
 
 export class FileManager {
+  readonly serializer: MapSerializer;
+  readonly storage: MapStorage;
+
   private _onFileLoaded: ((data: unknown) => void) | null = null;
+
+  constructor() {
+    this.serializer = new MapSerializer();
+    this.storage = new MapStorage(this.serializer);
+  }
+
+  // ── File-loaded callback ──────────────────────────────────────────────────
 
   /**
    * Register a callback that fires when a file is loaded via the OS file picker.
@@ -13,204 +34,105 @@ export class FileManager {
     this._onFileLoaded = callback;
   }
 
-  saveMapToFile = (settings: Settings, layersData: Map<string, IMapLayer>) => {
-    const mapData = this.mapToJSON(settings, layersData);
-    const mapString = JSON.stringify(mapData);
+  // ── Serialisation (delegate to MapSerializer) ─────────────────────────────
 
-    const blob = new Blob([mapString], { type: 'text/plain;charset=utf-8' });
-    const hyperlink = document.createElement('a');
-    hyperlink.href = URL.createObjectURL(blob);
-    hyperlink.download = `${settings.title}.json`;
-    hyperlink.click();
-  };
+  saveMapToHash(settings: Settings, layersData: Map<string, IMapLayer>): string {
+    return this.serializer.toEncodedHash(settings, layersData);
+  }
 
-  saveMapToGeoJSONFile = (settings: Settings, layersData: Map<string, IMapLayer>) => {
-    let layers = new Array<any>();
-    layersData.forEach((layer, layerName) => {
-      layers.push(layer.toGeoJSON());
+  loadMapFromHash(hash: string): SerializedMap | null {
+    return this.serializer.fromEncodedHash(hash);
+  }
+
+  // ── Storage (delegate to MapStorage) ─────────────────────────────────────
+
+  saveMap(settings: Settings, layersData: Map<string, IMapLayer>): void {
+    this.storage.saveMap(settings, layersData);
+  }
+
+  loadMapFromStorage(mapName: string): SerializedMap | null {
+    return this.storage.loadMap(mapName) as SerializedMap | null;
+  }
+
+  deleteMapFromStorage(mapName: string): void {
+    this.storage.deleteMap(mapName);
+  }
+
+  copyMap(settings: Settings, layersData: Map<string, IMapLayer>): void {
+    this.storage.copyMap(settings, layersData);
+  }
+
+  loadMapListFromStorage(): string[] {
+    return this.storage.listMaps();
+  }
+
+  saveLastMapSelected(mapName: string): void {
+    this.storage.saveLastMapSelected(mapName);
+  }
+
+  loadLastMapSelected(): string {
+    return this.storage.loadLastSelected();
+  }
+
+  /** Exposed for direct use in tests; saveMap() calls this automatically. */
+  saveMapList(mapTitle: string): void {
+    this.storage.saveMapList(mapTitle);
+  }
+
+  // ── File download ─────────────────────────────────────────────────────────
+
+  saveMapToFile(settings: Settings, layersData: Map<string, IMapLayer>): void {
+    const mapString = JSON.stringify(this.serializer.toJSON(settings, layersData));
+    this._downloadBlob(mapString, `${settings.title}.json`);
+  }
+
+  saveMapToGeoJSONFile(settings: Settings, layersData: Map<string, IMapLayer>): void {
+    const geoJSON: any = { type: 'FeatureCollection', features: [] };
+    layersData.forEach((layer) => {
+      const fc = layer.toGeoJSON() as any;
+      if (fc?.features) geoJSON.features.push(...fc.features);
     });
+    this._downloadBlob(JSON.stringify(geoJSON), `${settings.title}.json`);
+  }
 
-    const geoJSON = layers[0];
+  private _downloadBlob(content: string, filename: string): void {
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+  }
 
-    layers.slice(1).forEach((layer) => {
-      const features = layer.features;
-      geoJSON.features.push(...features);
-    });
+  // ── File upload ───────────────────────────────────────────────────────────
 
-    const mapString = JSON.stringify(geoJSON);
-
-    const blob = new Blob([mapString], { type: 'text/plain;charset=utf-8' });
-    const hyperlink = document.createElement('a');
-    hyperlink.href = URL.createObjectURL(blob);
-    hyperlink.download = `${settings.title}.json`;
-    hyperlink.click();
-  };
-
-  saveMapToHash = (settings: Settings, layersData: Map<string, IMapLayer>): string => {
-    const mapData = this.mapToJSON(settings, layersData);
-    const mapString = JSON.stringify(mapData);
-    const uriEncodedString = LZString.compressToEncodedURIComponent(mapString);
-
-    return uriEncodedString;
-  };
-
-  saveMap = (settings: Settings, layersData: Map<string, IMapLayer>) => {
-    const mapData = this.mapToJSON(settings, layersData);
-    const mapString = JSON.stringify(mapData);
-
-    localStorage.setItem(`Map_${settings.title}`, LZString.compress(mapString));
-    this.saveMapList(settings.title);
-
-    this.saveLastMapSelected(settings.title);
-  };
-
-  saveMapList = (mapTitle: string) => {
-    let mapList = this.loadMapListFromStorage();
-
-    if (mapList.includes(mapTitle)) {
-      mapList = mapList.filter((title) => title !== mapTitle);
-    }
-
-    mapList.splice(0, 0, mapTitle);
-    localStorage.setItem('MapList', LZString.compress(JSON.stringify(mapList)));
-  };
-
-  private mapToJSON = (settings: Settings, layersData: Map<string, IMapLayer>): any => {
-    let layers: Record<string, unknown> = {};
-    layersData.forEach((layer, layerName) => {
-      layers[layerName] = layer.toGeoJSON();
-    });
-
-    const mapData = {
-      settings: settings,
-      layers: layers,
-      lastSaved: new Date().toISOString(),
-    };
-
-    return mapData;
-  };
-
-  saveLastMapSelected = (mapName: string) => {
-    localStorage.setItem('LastMapSelected', LZString.compress(mapName));
-  };
-
-  copyMap = (settings: Settings, layersData: Map<string, IMapLayer>) => {
-    let newIndex = 1;
-    const mapList = this.loadMapListFromStorage();
-    while (mapList.includes(`${settings.title}_copy_${newIndex}`)) {
-      newIndex++;
-    }
-    settings.title = `${settings.title}_copy_${newIndex}`;
-    this.saveMap(settings, layersData);
-  };
-
-  loadMapFromHash = (hash: string) => {
-    let mapString: string | null = null;
-
-    if (hash.startsWith('%')) {
-      mapString = decodeURIComponent(hash);
-      return JSON.parse(mapString);
-    } else {
-      mapString = LZString.decompressFromEncodedURIComponent(hash);
-      if (mapString === null) {
-        return null;
-      }
-
-      return JSON.parse(mapString);
-    }
-  };
-
-  loadMapFromFile = () => {
+  loadMapFromFile(): void {
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
     fileInput.style.display = 'none';
     fileInput.accept = '.json';
-    fileInput.onchange = this.readFile;
+    fileInput.onchange = this._readFile;
     document.body.appendChild(fileInput);
-
     fileInput.click();
-  };
+  }
 
-  loadMapFromRemoteFile = async (url: string) => {
-    var response = await fetch(url);
-
-    return response.json();
-  };
-
-  private readFile = (e: Event) => {
-    let fileInput = e.target as HTMLInputElement;
+  private _readFile = (e: Event): void => {
+    const fileInput = e.target as HTMLInputElement;
     const file = fileInput.files?.[0];
-    if (!file) {
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = (e: ProgressEvent<FileReader>) => {
-      if (e.target === null) {
-        return;
-      }
+    if (!file) return;
 
-      const contents = e.target.result || '';
-      const map = JSON.parse(<string>contents);
-      if (this._onFileLoaded) {
-        this._onFileLoaded(map);
-      }
+    const reader = new FileReader();
+    reader.onload = (ev: ProgressEvent<FileReader>) => {
+      if (ev.target === null) return;
+      const map = JSON.parse(ev.target.result as string);
+      this._onFileLoaded?.(map);
       document.body.removeChild(fileInput);
     };
     reader.readAsText(file, 'text/plain;charset=utf-8');
   };
 
-  loadLastMapSelected = () => {
-    const mapData = localStorage.getItem('LastMapSelected');
+  // ── Remote fetch ──────────────────────────────────────────────────────────
 
-    if (mapData !== null && mapData !== 'undefined') {
-      const mapName = LZString.decompress(mapData) || '';
-      return mapName;
-    }
-    return '';
-  };
-
-  loadMapListFromStorage = (): Array<string> => {
-    const mapListData = localStorage.getItem('MapList');
-    if (mapListData !== null && mapListData !== 'undefined') {
-      const mapList = LZString.decompress(mapListData) || '';
-      return JSON.parse(mapList);
-    }
-    return [];
-  };
-
-  loadMapFromStorage = (mapName: string) => {
-    const mapData = localStorage.getItem(`Map_${mapName}`);
-    if (mapData !== null && mapData !== 'undefined') {
-      const map = LZString.decompress(mapData) || '';
-      return JSON.parse(map);
-    }
-    return null;
-  };
-
-  deleteMapFromStorage = (mapName: string) => {
-    localStorage.removeItem(`Map_${mapName}`);
-
-    const mapData = localStorage.getItem('MapList');
-    if (mapData !== null && mapData !== 'undefined') {
-      const data = LZString.decompress(mapData) || '';
-      const mapList = JSON.parse(data);
-
-      const index = mapList.indexOf(mapName);
-      if (index !== -1) {
-        mapList.splice(index, 1);
-        localStorage.setItem('MapList', LZString.compress(JSON.stringify(mapList)));
-      }
-    }
-
-    if (this.loadLastMapSelected() === mapName) {
-      const remainingMaps = this.loadMapListFromStorage();
-      if (remainingMaps.length > 0) {
-        this.saveLastMapSelected(remainingMaps[0]);
-      } else {
-        localStorage.removeItem('LastMapSelected');
-      }
-    }
-
-    return [];
-  };
+  loadMapFromRemoteFile(url: string): Promise<SerializedMap> {
+    return fetch(url).then((r) => r.json() as Promise<SerializedMap>);
+  }
 }

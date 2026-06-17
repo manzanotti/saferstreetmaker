@@ -15,12 +15,6 @@ const activeLayers = computed(() =>
 function toggleCollapse() {
   isCollapsed.value = !isCollapsed.value;
 }
-
-/** Extract the SVG/img icon HTML from a layer's legend entry. */
-function getIconHtml(layer: (typeof activeLayers.value)[number]): string {
-  const entry = layer.getLegendEntry();
-  return entry.querySelector('i')?.outerHTML ?? '';
-}
 </script>
 
 <template>
@@ -37,7 +31,7 @@ function getIconHtml(layer: (typeof activeLayers.value)[number]): string {
           @click="mapStore.toggleLayerVisibility(layer.id)"
         >
           <!-- eslint-disable-next-line vue/no-v-html -->
-          <span v-html="getIconHtml(layer)"></span>
+          <span v-html="layer.iconHtml"></span>
           <span>{{ layer.title }}</span>
         </li>
       </ul>

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import type * as L from 'leaflet';
+import * as L from 'leaflet';
+import { Settings } from '../models/Settings';
 
 export const useSettingsStore = defineStore('settings', () => {
   const title = ref('Hello Cleveland');
@@ -29,6 +30,19 @@ export const useSettingsStore = defineStore('settings', () => {
     version.value = s.version;
   }
 
+  /** Build a plain Settings DTO from the current store state. */
+  function toSettings(): Settings {
+    const s = new Settings();
+    s.title = title.value;
+    s.readOnly = readOnly.value;
+    s.hideToolbar = hideToolbar.value;
+    s.activeLayers = [...activeLayers.value];
+    s.centre = centre.value ?? new L.LatLng(0, 0);
+    s.zoom = zoom.value;
+    s.version = version.value;
+    return s;
+  }
+
   return {
     title,
     readOnly,
@@ -38,5 +52,6 @@ export const useSettingsStore = defineStore('settings', () => {
     zoom,
     version,
     applyFromSettings,
+    toSettings,
   };
 });

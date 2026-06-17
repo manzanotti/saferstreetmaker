@@ -1,6 +1,9 @@
 /**
  * Shared helper for polyline layers that need a rich addPolyline() implementation:
  * edit-on-click, popup with delete button, optional re-init of drawing tool.
+ *
+ * Note on DOM usage: popup content is built with `document.createElement` because
+ * Leaflet controls the popup DOM lifecycle and it lives outside Vue's virtual DOM.
  */
 import * as L from 'leaflet';
 import { buildDeletePopup } from './layerUtils';

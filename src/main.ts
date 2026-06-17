@@ -1,5 +1,4 @@
 import { createApp } from 'vue';
-import * as L from 'leaflet';
 import App from './App.vue';
 import { pinia } from './stores/index';
 import { FileManager } from './services/FileManager';
@@ -8,25 +7,10 @@ import { useSettingsStore } from './stores/settingsStore';
 import { setupMapEngine } from './composables/useMapEngine';
 import { setupMapManager } from './composables/useMapManager';
 import { makeLeafletVueControl } from './composables/useLeafletVueControl';
+import { createAllLayers } from './composables/layers/index';
 import Toolbar from './components/controls/Toolbar.vue';
 import Legend from './components/controls/Legend.vue';
 import ModalContainer from './components/controls/ModalContainer.vue';
-// Layer composable factories
-import { createModalFilterLayer } from './composables/layers/useModalFilterLayer';
-import { createBusGateLayer } from './composables/layers/useBusGateLayer';
-import {
-  createTrafficLightsLayer,
-  createPedestrianLightsLayer,
-} from './composables/layers/useTrafficControlLayers';
-import { createZebraCrossingLayer } from './composables/layers/useZebraCrossingLayer';
-import { createMobilityLaneLayer } from './composables/layers/useMobilityLaneLayer';
-import {
-  createTramLineLayer,
-  createCarFreeStreetLayer,
-  createSchoolStreetLayer,
-  createOneWayStreetLayer,
-} from './composables/layers/useSimplePolylineLayers';
-import { createLtnLayer } from './composables/layers/useLtnLayer';
 
 // Mount the Vue overlay app (HelpModal, ErrorModal) immediately.
 createApp(App).use(pinia).mount('#app');
@@ -43,19 +27,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const mapStore = useMapStore(pinia);
   const settingsStore = useSettingsStore(pinia);
 
-  const allLayers = [
-    createModalFilterLayer(map),
-    createMobilityLaneLayer(map),
-    createTramLineLayer(map),
-    createCarFreeStreetLayer(map),
-    createSchoolStreetLayer(map),
-    createOneWayStreetLayer(map),
-    createLtnLayer(map),
-    createBusGateLayer(map),
-    createTrafficLightsLayer(map),
-    createPedestrianLightsLayer(map),
-    createZebraCrossingLayer(map),
-  ];
+  const allLayers = createAllLayers(map);
   mapStore.setLayers(allLayers);
 
   // Pre-populate activeLayers so the toolbar and legend render before loadMap.

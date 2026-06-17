@@ -8,6 +8,9 @@ export interface IMapLayer {
   visible: boolean;
   groupName: string;
 
+  /** Outer HTML of the `<i>` icon element shown in the Legend for this layer. */
+  iconHtml: string;
+
   getToolbarButton: () => ToolbarButton;
   getLegendEntry: () => HTMLElement;
   loadFromGeoJSON: (geoJson: L.GeoJSON) => void;
