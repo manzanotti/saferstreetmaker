@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import HelpModal from './components/HelpModal.vue';
-import ErrorModal from './components/ErrorModal.vue';
+import HelpModal from './components/modals/HelpModal.vue';
+import ErrorModal from './components/modals/ErrorModal.vue';
 </script>
 
 <template>

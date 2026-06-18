@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { useUiStore } from '../stores/uiStore';
+import { useUiStore } from '../../stores/uiStore';
 
 const uiStore = useUiStore();
 const activeTab = ref('tabs-home');
