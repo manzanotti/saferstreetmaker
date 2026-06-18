@@ -10,6 +10,7 @@
 import * as L from 'leaflet';
 import { watch } from 'vue';
 import { FileManager } from '../services/FileManager';
+import { escapeHtml } from '../services/escapeHtml';
 import type { SerializedMap } from '../services/MapSerializer';
 import { Settings } from '../models/Settings';
 import { useMapStore } from '../stores/mapStore';
@@ -269,8 +270,8 @@ export function setupMapManager(fileManager: FileManager): MapManager {
                 );
             }
 
-            errors.push(e.message);
-            errors.push(e.stack);
+            errors.push(escapeHtml(e.message));
+            errors.push(escapeHtml(e.stack));
             uiStore.showErrors(errors);
 
             if (loadingFromStorage) {
@@ -372,8 +373,8 @@ export function setupMapManager(fileManager: FileManager): MapManager {
             }
         } catch (e: any) {
             errors.push('There was a problem loading the map:');
-            errors.push(e.message);
-            errors.push(e.stack);
+            errors.push(escapeHtml(e.message));
+            errors.push(escapeHtml(e.stack));
             uiStore.showErrors(errors);
         }
     };
@@ -417,8 +418,8 @@ export function setupMapManager(fileManager: FileManager): MapManager {
             }
         } catch (e: any) {
             errors.push('There was a problem loading the map from uploaded file:');
-            errors.push(e.message);
-            errors.push(e.stack);
+            errors.push(escapeHtml(e.message));
+            errors.push(escapeHtml(e.stack));
             uiStore.showErrors(errors);
         }
     });

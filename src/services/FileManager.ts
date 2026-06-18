@@ -98,7 +98,7 @@ export class FileManager {
     }
 
     private _downloadBlob(content: string, filename: string): void {
-        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+        const blob = new Blob([content], { type: 'application/json;charset=utf-8' });
         const a = document.createElement('a');
         const url = URL.createObjectURL(blob);
         a.href = url;
