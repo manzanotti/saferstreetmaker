@@ -8,7 +8,7 @@ test.describe('Help Modal', () => {
 
     test('help modal is hidden on load', async ({ page }) => {
         const helpModal = page.locator('#help');
-        await expect(helpModal).toHaveClass(/fadeOut/);
+        await expect(helpModal).not.toBeVisible();
     });
 
     test('clicking help button shows the help modal', async ({ page }) => {

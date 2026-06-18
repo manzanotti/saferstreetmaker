@@ -8,10 +8,10 @@ const activeTab = ref('tabs-home');
 const tabs = [
     { id: 'tabs-home', label: 'Welcome' },
     { id: 'tabs-features', label: 'Features' },
-    { id: 'tabs-management', label: 'Map Management' },
+    { id: 'tabs-management', label: 'Maps' },
     { id: 'tabs-settings', label: 'Settings' },
-    { id: 'tabs-sharing', label: 'Sharing Maps' },
-    { id: 'tabs-tech', label: 'The Tech' },
+    { id: 'tabs-sharing', label: 'Sharing' },
+    { id: 'tabs-tech', label: 'Tech' },
     { id: 'tabs-support', label: 'Support' },
 ];
 
@@ -32,9 +32,9 @@ function close() {
 <template>
     <div
         id="help"
-        class="modal modal-dialog modal-dialog-scrollable modal-lg z-0 overflow-hidden animated faster"
-        :class="uiStore.activeModal === 'help' ? 'fadeIn' : 'fadeOut'"
-        :style="uiStore.activeModal !== 'help' ? 'pointer-events: none' : undefined"
+        class="modal modal-dialog modal-dialog-scrollable modal-lg z-0 overflow-hidden"
+        :class="['animated', 'faster', uiStore.activeModal === 'help' ? 'fadeIn' : 'fadeOut']"
+        :style="uiStore.activeModal !== 'help' ? 'display: none; pointer-events: none' : undefined"
     >
         <div
             class="modal-header flex shrink-0 items-center justify-between p-4 border-b border-gray-200 rounded-t-md"
