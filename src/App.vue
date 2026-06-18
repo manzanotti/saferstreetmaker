@@ -4,7 +4,7 @@ import ErrorModal from './components/modals/ErrorModal.vue';
 </script>
 
 <template>
-    <!-- HelpModal is always in the DOM so #help CSS selectors always match. -->
+    <!-- Overlay modals are mounted on demand via Vue transitions. -->
     <HelpModal />
     <ErrorModal />
 </template>

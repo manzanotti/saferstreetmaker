@@ -8,18 +8,14 @@ const hasErrors = computed(() => uiStore.errorMessages.length > 0);
 </script>
 
 <template>
-    <!--
-    #errors is always in the DOM so CSS selectors always match.
-    Content only renders when errors exist so the element has no natural
-    height when hidden, preventing it from intercepting map clicks.
-  -->
-    <div
-        id="errors"
-        class="modal modal-dialog modal-dialog-scrollable modal-lg z-0 overflow-hidden animated faster"
-        :class="hasErrors ? 'fadeIn' : ['fadeOut', 'hidden']"
-        style="pointer-events: none"
-    >
-        <template v-if="hasErrors">
+    <!-- Render the error overlay only when errors exist. -->
+    <Transition name="overlay-fade">
+        <div
+            v-if="hasErrors"
+            id="errors"
+            class="modal modal-dialog modal-dialog-scrollable modal-lg z-0 overflow-hidden"
+            style="pointer-events: none"
+        >
             <div
                 style="pointer-events: auto"
                 class="modal-content border-none shadow-lg relative flex flex-col w-full pointer-events-auto bg-white bg-clip-padding rounded-md outline-hidden text-current"
@@ -32,6 +28,6 @@ const hasErrors = computed(() => uiStore.errorMessages.length > 0);
                     <div id="errorMessages" v-html="uiStore.errorMessages.join('<br />')"></div>
                 </div>
             </div>
-        </template>
-    </div>
+        </div>
+    </Transition>
 </template>

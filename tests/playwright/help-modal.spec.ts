@@ -14,8 +14,7 @@ test.describe('Help Modal', () => {
     test('clicking help button shows the help modal', async ({ page }) => {
         await page.locator('#help-button').click();
         const helpModal = page.locator('#help');
-        await expect(helpModal).toHaveClass(/fadeIn/);
-        await expect(helpModal).not.toHaveClass(/fadeOut/);
+        await expect(helpModal).toBeVisible();
     });
 
     test('clicking help button a second time hides the help modal', async ({ page }) => {
@@ -23,7 +22,7 @@ test.describe('Help Modal', () => {
         await helpButton.click(); // open
         await helpButton.click(); // close
         const helpModal = page.locator('#help');
-        await expect(helpModal).toHaveClass(/fadeOut/);
+        await expect(helpModal).not.toBeVisible();
     });
 
     test('help modal contains welcome text', async ({ page }) => {
@@ -48,16 +47,16 @@ test.describe('Help Modal', () => {
         await page.locator('#help-button').click();
         await page.locator('button[name="closeHelp"]').first().click();
 
-        await expect(page.locator('#help')).toHaveClass(/fadeOut/);
+        await expect(page.locator('#help')).not.toBeVisible();
     });
 
     test('opening another modal closes the help popup first', async ({ page }) => {
         await page.locator('#help-button').click();
-        await expect(page.locator('#help')).toHaveClass(/fadeIn/);
+        await expect(page.locator('#help')).toBeVisible();
 
         await page.locator('#settings-button').click();
 
-        await expect(page.locator('#help')).toHaveClass(/fadeOut/);
+        await expect(page.locator('#help')).not.toBeVisible();
         await expect(page.locator('#read-only')).toBeVisible();
     });
 
@@ -70,7 +69,7 @@ test.describe('Help Modal', () => {
 
         await page.locator('#help-button').click();
 
-        await expect(page.locator('#help')).toHaveClass(/fadeIn/);
+        await expect(page.locator('#help')).toBeVisible();
         await expect(page.locator('#read-only')).not.toBeVisible();
         await expect(page.locator('#settings-button')).not.toHaveClass(/selected/);
     });

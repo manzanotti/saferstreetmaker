@@ -670,6 +670,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/node@npm:^25.9.3":
+  version: 25.9.3
+  resolution: "@types/node@npm:25.9.3"
+  dependencies:
+    undici-types: ">=7.24.0 <7.24.7"
+  checksum: 78b30ba6812d330062ddff63e3f0b20ec4cadfc6f96380dc87988b5d67efc99a6ffbf117e638574bba5397527279c8f6b754784fae907a5b76bd69e315631f00
+  languageName: node
+  linkType: hard
+
 "@vitejs/plugin-vue@npm:^6.0.7":
   version: 6.0.7
   resolution: "@vitejs/plugin-vue@npm:6.0.7"
@@ -2351,6 +2360,7 @@ __metadata:
     "@tailwindcss/vite": ^4.3.0
     "@types/leaflet": ^1.9.21
     "@types/lz-string": ^1.5.0
+    "@types/node": ^25.9.3
     "@vitejs/plugin-vue": ^6.0.7
     "@vue/tsconfig": ^0.9.1
     jsdom: ^29.1.1
@@ -2667,6 +2677,13 @@ __metadata:
     tsc: bin/tsc
     tsserver: bin/tsserver
   checksum: 8ed159a81ab4901a620c19fda539632cee610f8ec34dde57a3acc6b6df72894ad0b50bdd1946b763313d9b73dedb019d2e81c03eff06c0f2c785cde30a537d15
+  languageName: node
+  linkType: hard
+
+"undici-types@npm:>=7.24.0 <7.24.7":
+  version: 7.24.6
+  resolution: "undici-types@npm:7.24.6"
+  checksum: e79802e37dc472c6324850d938b5df6b9e796f6a1bb5f8ccd24f3a6d17eae94a9cc125506c8b339a3293ffbad81daeba30b843e564c1d237b3c8deafd98b6267
   languageName: node
   linkType: hard
 
