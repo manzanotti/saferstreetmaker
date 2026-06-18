@@ -100,9 +100,11 @@ export class FileManager {
     private _downloadBlob(content: string, filename: string): void {
         const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
         const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
+        const url = URL.createObjectURL(blob);
+        a.href = url;
         a.download = filename;
         a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 0);
     }
 
     // ── File upload ───────────────────────────────────────────────────────────

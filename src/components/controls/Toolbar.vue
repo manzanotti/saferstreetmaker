@@ -114,18 +114,6 @@ function onModalButtonClick(modalId: ModalId) {
     }
 }
 
-function onGroupButtonClick(item: GroupItem) {
-    // Right-click is handled by contextmenu; primary click activates the layer.
-    onLayerButtonClick(item.parent);
-    // Hide submenu after selecting from it.
-    hideSubmenu(item.groupName);
-}
-
-function onSubButtonClick(groupName: string, btn: ToolbarButton) {
-    onLayerButtonClick(btn);
-    hideSubmenu(groupName);
-}
-
 // Long-press support for mobile (mirrors Toolbar.ts behaviour)
 const longPressTimers: Record<string, ReturnType<typeof setTimeout>> = {};
 

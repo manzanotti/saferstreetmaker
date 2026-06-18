@@ -44,8 +44,8 @@ export function createPointLayer(config: PointLayerConfig, map: L.Map): IMapLaye
         mapStore.markLayerUpdated();
     };
 
-    // Sync watch: fires immediately when activeLayerId changes,
-    // before TheToolbar.vue calls btn.action().
+    // Sync watch: fires immediately (flush: 'sync') when activeLayerId changes,
+    // so Leaflet event listeners attach/detach in the same tick as selection changes.
     watch(
         () => mapStore.activeLayerId,
         (newId) => {

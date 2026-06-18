@@ -183,8 +183,12 @@ export function setupMapManager(fileManager: FileManager): MapManager {
             });
         }
 
-        // Apply stored centre/zoom from the JSON document itself
-        if (geoJSON.centre !== undefined && geoJSON.zoom !== undefined) {
+        // Apply stored centre/zoom from legacy JSON documents (only when settings is absent)
+        if (
+            geoJSON.settings === undefined &&
+            geoJSON.centre !== undefined &&
+            geoJSON.zoom !== undefined
+        ) {
             settingsStore.centre = new L.LatLng(geoJSON.centre.lat, geoJSON.centre.lng);
             settingsStore.zoom = geoJSON.zoom;
         }
@@ -193,7 +197,10 @@ export function setupMapManager(fileManager: FileManager): MapManager {
 
         // URL param overrides
         if (zoom) {
-            settingsStore.zoom = Number(zoom);
+            const z = Number(zoom);
+            if (!Number.isNaN(z)) {
+                settingsStore.zoom = z;
+            }
         }
         if (centre && centre.length === 2) {
             settingsStore.centre = new L.LatLng(centre[0], centre[1]);
@@ -269,9 +276,9 @@ export function setupMapManager(fileManager: FileManager): MapManager {
             if (loadingFromStorage) {
                 // Wire up the download link after Vue renders the error modal.
                 setTimeout(() => {
-                    document.getElementById('downloadErrorFile')?.addEventListener('click', () => {
-                        downloadStorageMap();
-                    });
+                    document
+                        .getElementById('downloadErrorFile')
+                        ?.addEventListener('click', () => downloadStorageMap(), { once: true });
                 }, 50);
             }
         }
@@ -387,9 +394,11 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         const mapString = JSON.stringify(mapJSON);
         const blob = new Blob([mapString], { type: 'text/plain;charset=utf-8' });
         const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
+        const url = URL.createObjectURL(blob);
+        a.href = url;
         a.download = 'invalidMapData.json';
         a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 0);
     };
 
     // ── Wire event bridges (replaces PubSub subscriptions) ───────────────────

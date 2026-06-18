@@ -24,7 +24,7 @@ export const useSettingsStore = defineStore('settings', () => {
         title.value = s.title;
         readOnly.value = s.readOnly;
         hideToolbar.value = s.hideToolbar;
-        activeLayers.value = s.activeLayers;
+        activeLayers.value = [...s.activeLayers];
         centre.value = s.centre;
         zoom.value = s.zoom;
         version.value = s.version;

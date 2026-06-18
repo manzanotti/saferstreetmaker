@@ -80,7 +80,7 @@ export function buildLegendEntry(opts: LegendEntryOpts): HTMLElement {
 
     li.addEventListener('click', () => {
         opts.visibilityState.visible = !opts.visibilityState.visible;
-        // Actual map visibility is handled by TheLegend.vue → mapStore.toggleLayerVisibility()
+        // Actual map visibility is handled by Legend.vue → mapStore.toggleLayerVisibility()
     });
 
     return li;

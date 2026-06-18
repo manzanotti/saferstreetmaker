@@ -7,7 +7,7 @@
         "test": "playwright test --config=tests/playwright.config.ts",
         "test:unit": "vitest run --config=tests/vitest.config.ts",
         "test:unit:watch": "vitest --config=tests/vitest.config.ts",
-        "typecheck": "tsc --noEmit"
+        "typecheck": "vue-tsc --noEmit"
     },
     "devDependencies": {
         "@playwright/test": "^1.60.0",

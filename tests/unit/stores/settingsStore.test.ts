@@ -1,9 +1,8 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 
 vi.mock('leaflet', () => import('../__mocks__/leaflet'));
 
-import { vi } from 'vitest';
 import { useSettingsStore } from '../../../src/stores/settingsStore';
 import { Settings } from '../../../src/models/Settings';
 import * as L from 'leaflet';

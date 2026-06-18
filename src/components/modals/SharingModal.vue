@@ -15,7 +15,7 @@ const hideToolbar = ref(false);
 const showCopiedMessage = ref(false);
 
 function onCreate() {
-    if (!width.value || !height.value) {
+    if (width.value === null || height.value === null || width.value <= 0 || height.value <= 0) {
         return;
     }
 
