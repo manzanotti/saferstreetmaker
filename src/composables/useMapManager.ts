@@ -39,7 +39,6 @@ export interface MapManager {
 
 let _instance: MapManager | null = null;
 let _fileManager: FileManager | null = null;
-let _stopWatchers: (() => void) | null = null;
 
 export function getMapManager(): MapManager {
     if (!_instance) {
@@ -56,12 +55,6 @@ export function getFileManager(): FileManager {
 }
 
 export function setupMapManager(fileManager: FileManager): MapManager {
-    // Stop any watchers registered by a previous setupMapManager call (e.g. in tests).
-    if (_stopWatchers) {
-        _stopWatchers();
-        _stopWatchers = null;
-    }
-
     _fileManager = fileManager;
     const mapStore = useMapStore(pinia);
     const settingsStore = useSettingsStore(pinia);
@@ -91,7 +84,7 @@ export function setupMapManager(fileManager: FileManager): MapManager {
 
     // Watch settingsStore.zoom/centre changes (set by useMapEngine on zoom/move events)
     // to trigger a debounced save. Replaces the PubSub mapZoomChanged subscription.
-    const stopViewWatch = watch([() => settingsStore.zoom, () => settingsStore.centre], () => {
+    watch([() => settingsStore.zoom, () => settingsStore.centre], () => {
         saveViewDebounced();
     });
 
@@ -418,17 +411,12 @@ export function setupMapManager(fileManager: FileManager): MapManager {
 
     // layerUpdateCount: watch Pinia counter incremented by layer composables.
     // Replaces PubSub.subscribe(EventTopics.layerUpdated, saveMap).
-    const stopLayerWatch = watch(
+    watch(
         () => mapStore.layerUpdateCount,
         () => {
             saveMap();
         },
     );
-
-    _stopWatchers = () => {
-        stopViewWatch();
-        stopLayerWatch();
-    };
 
     _instance = {
         loadMap,
