@@ -45,7 +45,6 @@ function makeSerializedMap(overrides: Partial<SerializedMap> = {}): SerializedMa
 describe('useMapManager – URL param overrides in loadMapData', () => {
     let fm: FileManager;
     let mapManager: ReturnType<typeof setupMapManager>;
-    let initialised = false;
 
     beforeAll(() => {
         setActivePinia(pinia);
@@ -56,20 +55,11 @@ describe('useMapManager – URL param overrides in loadMapData', () => {
 
         // setupMapManager registers watchers, so initialise once per suite.
         mapManager = setupMapManager(fm);
-        initialised = true;
     });
 
     beforeEach(() => {
         setActivePinia(pinia);
         vi.useFakeTimers();
-
-        if (!initialised) {
-            fm = makeFileManager();
-            const mapStore = useMapStore(pinia);
-            mapStore.setMap(new L.Map() as unknown as L.Map);
-            mapManager = setupMapManager(fm);
-            initialised = true;
-        }
 
         vi.spyOn(fm, 'saveMap').mockImplementation(() => {});
     });
