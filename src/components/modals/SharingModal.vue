@@ -20,8 +20,8 @@ function onCreate() {
     }
 
     const mapHash = getFileManager().saveMapToHash(settingsStore.toSettings(), mapStore.toLayers());
-    const origin = window.location.origin;
-    const html = `<iframe src="${origin}?hide-toolbar=${hideToolbar.value}#${mapHash}" width="${width.value}" height="${height.value}" title="title"></iframe>`;
+    const baseUrl = window.location.origin + window.location.pathname;
+    const html = `<iframe src="${baseUrl}?hide-toolbar=${hideToolbar.value}#${mapHash}" width="${width.value}" height="${height.value}" title="Safer Street Maker map"></iframe>`;
 
     if (!navigator.clipboard) {
         showCopiedMessage.value = false;

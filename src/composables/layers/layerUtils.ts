@@ -50,8 +50,8 @@ export function buildToolbarButton(opts: ToolbarButtonOpts): ToolbarButton {
         groupName: opts.groupName,
         action: opts.action,
         selected: opts.selected,
-        ...(opts.isFirst !== undefined && { isFirst: opts.isFirst }),
-        ...(opts.text !== undefined && { text: opts.text }),
+        ...(opts.isFirst !== undefined ? { isFirst: opts.isFirst } : {}),
+        ...(opts.text !== undefined ? { text: opts.text } : {}),
     };
 }
 
