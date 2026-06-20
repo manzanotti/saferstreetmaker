@@ -12,6 +12,7 @@ describe('uiStore', () => {
         const store = useUiStore();
         expect(store.activeModal).toBeNull();
         expect(store.errorMessages).toEqual([]);
+        expect(store.showDownloadStorageLink).toBe(false);
     });
 
     describe('openModal() / closeModal()', () => {
@@ -50,6 +51,7 @@ describe('uiStore', () => {
             const store = useUiStore();
             store.showErrors(['Something went wrong', 'Details here']);
             expect(store.errorMessages).toEqual(['Something went wrong', 'Details here']);
+            expect(store.showDownloadStorageLink).toBe(false);
         });
 
         it('replaces existing errors on subsequent calls', () => {
@@ -64,6 +66,22 @@ describe('uiStore', () => {
             store.showErrors(['oops']);
             store.clearErrors();
             expect(store.errorMessages).toHaveLength(0);
+            expect(store.showDownloadStorageLink).toBe(false);
+        });
+
+        it('sets showDownloadStorageLink from options', () => {
+            const store = useUiStore();
+            store.showErrors(['storage error'], { showDownloadStorageLink: true });
+
+            expect(store.showDownloadStorageLink).toBe(true);
+        });
+
+        it('resets showDownloadStorageLink on subsequent showErrors without options', () => {
+            const store = useUiStore();
+            store.showErrors(['storage error'], { showDownloadStorageLink: true });
+            store.showErrors(['generic error']);
+
+            expect(store.showDownloadStorageLink).toBe(false);
         });
     });
 });

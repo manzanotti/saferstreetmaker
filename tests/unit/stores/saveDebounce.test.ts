@@ -33,17 +33,25 @@ function makeFileManager(): FileManager {
 // ---------------------------------------------------------------------------
 describe('useMapManager – save debounce', () => {
     let fm: FileManager;
+    let initialised = false;
 
     beforeEach(() => {
         // Use the same pinia singleton that useMapManager internals use.
         setActivePinia(pinia);
         vi.useFakeTimers();
-        fm = makeFileManager();
+
+        if (!fm) {
+            fm = new FileManager();
+        }
+        vi.spyOn(fm, 'saveMap').mockImplementation(() => {});
 
         const mapStore = useMapStore(pinia);
         mapStore.setMap(new L.Map() as unknown as L.Map);
 
-        setupMapManager(fm);
+        if (!initialised) {
+            setupMapManager(fm);
+            initialised = true;
+        }
     });
 
     afterEach(() => {

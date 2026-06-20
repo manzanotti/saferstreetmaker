@@ -264,24 +264,9 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         } catch (e: any) {
             errors.push(errorIntro);
 
-            if (loadingFromStorage) {
-                errors.push(
-                    '<a id="downloadErrorFile">Click to download the map from local storage</a>',
-                );
-            }
-
             errors.push(escapeHtml(e.message));
             errors.push(escapeHtml(e.stack));
-            uiStore.showErrors(errors);
-
-            if (loadingFromStorage) {
-                // Wire up the download link after Vue renders the error modal.
-                setTimeout(() => {
-                    document
-                        .getElementById('downloadErrorFile')
-                        ?.addEventListener('click', () => downloadStorageMap(), { once: true });
-                }, 50);
-            }
+            uiStore.showErrors(errors, { showDownloadStorageLink: loadingFromStorage });
         }
 
         settingsStore.hideToolbar = hideToolbar;

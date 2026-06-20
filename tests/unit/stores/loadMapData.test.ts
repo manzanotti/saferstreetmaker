@@ -3,7 +3,7 @@
  * URL-parameter centre/zoom overrides are applied correctly and are not broken
  * by the former `centre` variable shadowing inside the function.
  */
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, beforeAll, vi, afterEach } from 'vitest';
 import { setActivePinia } from 'pinia';
 
 vi.mock('leaflet', () => import('../__mocks__/leaflet'));
@@ -45,16 +45,33 @@ function makeSerializedMap(overrides: Partial<SerializedMap> = {}): SerializedMa
 describe('useMapManager – URL param overrides in loadMapData', () => {
     let fm: FileManager;
     let mapManager: ReturnType<typeof setupMapManager>;
+    let initialised = false;
 
-    beforeEach(() => {
+    beforeAll(() => {
         setActivePinia(pinia);
-        vi.useFakeTimers();
         fm = makeFileManager();
 
         const mapStore = useMapStore(pinia);
         mapStore.setMap(new L.Map() as unknown as L.Map);
 
+        // setupMapManager registers watchers, so initialise once per suite.
         mapManager = setupMapManager(fm);
+        initialised = true;
+    });
+
+    beforeEach(() => {
+        setActivePinia(pinia);
+        vi.useFakeTimers();
+
+        if (!initialised) {
+            fm = makeFileManager();
+            const mapStore = useMapStore(pinia);
+            mapStore.setMap(new L.Map() as unknown as L.Map);
+            mapManager = setupMapManager(fm);
+            initialised = true;
+        }
+
+        vi.spyOn(fm, 'saveMap').mockImplementation(() => {});
     });
 
     afterEach(() => {
