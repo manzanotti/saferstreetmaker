@@ -20,7 +20,6 @@ function makeFileManager(): FileManager {
 describe('useMapManager - loadMap error handling', () => {
     let fm: FileManager;
     let mapManager: ReturnType<typeof setupMapManager>;
-    let initialised = false;
 
     beforeAll(() => {
         setActivePinia(pinia);
@@ -31,19 +30,10 @@ describe('useMapManager - loadMap error handling', () => {
 
         // setupMapManager registers watchers, so initialise once per suite.
         mapManager = setupMapManager(fm);
-        initialised = true;
     });
 
     beforeEach(() => {
         setActivePinia(pinia);
-
-        if (!initialised) {
-            fm = makeFileManager();
-            const mapStore = useMapStore(pinia);
-            mapStore.setMap(new L.Map() as unknown as L.Map);
-            mapManager = setupMapManager(fm);
-            initialised = true;
-        }
 
         vi.spyOn(fm, 'saveMap').mockImplementation(() => {});
     });

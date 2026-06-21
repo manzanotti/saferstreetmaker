@@ -3,7 +3,7 @@
  * URL-parameter centre/zoom overrides are applied correctly and are not broken
  * by the former `centre` variable shadowing inside the function.
  */
-import { describe, it, expect, beforeEach, beforeAll, vi, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, vi, afterEach } from 'vitest';
 import { setActivePinia } from 'pinia';
 
 vi.mock('leaflet', () => import('../__mocks__/leaflet'));
