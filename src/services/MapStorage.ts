@@ -85,6 +85,15 @@ export class MapStorage {
         return decompressed ? JSON.parse(decompressed) : [];
     }
 
+    hasMap(mapName: string): boolean {
+        if (mapName === '') {
+            return false;
+        }
+
+        const raw = localStorage.getItem(`Map_${mapName}`);
+        return raw !== null && raw !== 'undefined';
+    }
+
     saveMapList(mapTitle: string): void {
         const list = this.listMaps().filter((t) => t !== mapTitle);
         list.unshift(mapTitle);

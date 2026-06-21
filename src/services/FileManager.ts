@@ -66,6 +66,10 @@ export class FileManager {
         return this.storage.listMaps();
     }
 
+    hasMapInStorage(mapName: string): boolean {
+        return this.storage.hasMap(mapName);
+    }
+
     saveLastMapSelected(mapName: string): void {
         this.storage.saveLastMapSelected(mapName);
     }

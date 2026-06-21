@@ -242,6 +242,7 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         let geoJSON: SerializedMap | null = null;
         let errorIntro = '';
         let loadingFromStorage = false;
+        let storageMapName = '';
         const errors: string[] = [];
         let mapLoaded = false;
 
@@ -255,8 +256,9 @@ export function setupMapManager(fileManager: FileManager): MapManager {
             } else {
                 loadingFromStorage = true;
                 const lastMapSelected = fileManager.loadLastMapSelected();
+                storageMapName = lastMapSelected || settingsStore.title;
                 errorIntro = 'There was a problem loading the map from local storage:';
-                geoJSON = fileManager.loadMapFromStorage(lastMapSelected || settingsStore.title);
+                geoJSON = fileManager.loadMapFromStorage(storageMapName);
             }
 
             errorIntro = 'There was a problem processing the map file:';
@@ -266,7 +268,12 @@ export function setupMapManager(fileManager: FileManager): MapManager {
 
             errors.push(escapeHtml(e.message));
             errors.push(escapeHtml(e.stack));
-            uiStore.showErrors(errors, { showDownloadStorageLink: loadingFromStorage });
+            const canDownloadStorageMap =
+                loadingFromStorage &&
+                storageMapName !== '' &&
+                fileManager.hasMapInStorage(storageMapName);
+
+            uiStore.showErrors(errors, { showDownloadStorageLink: canDownloadStorageMap });
         }
 
         settingsStore.hideToolbar = hideToolbar;
@@ -376,7 +383,8 @@ export function setupMapManager(fileManager: FileManager): MapManager {
     // ── downloadStorageMap ────────────────────────────────────────────────────
     const downloadStorageMap = () => {
         const lastMapSelected = fileManager.loadLastMapSelected();
-        const mapJSON = fileManager.loadMapFromStorage(lastMapSelected);
+        const mapName = lastMapSelected || settingsStore.title;
+        const mapJSON = fileManager.loadMapFromStorage(mapName);
         const mapString = JSON.stringify(mapJSON);
         const blob = new Blob([mapString], { type: 'text/plain;charset=utf-8' });
         const a = document.createElement('a');
