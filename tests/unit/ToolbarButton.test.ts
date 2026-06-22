@@ -1,52 +1,61 @@
 import { describe, it, expect } from 'vitest';
-import { ToolbarButton } from '../../src/scripts/Controls/ToolbarButton';
+import type { ToolbarButton } from '../../src/models/ToolbarButton';
 
 describe('ToolbarButton', () => {
-  it('can be instantiated with no arguments', () => {
-    const btn = new ToolbarButton();
-    expect(btn).toBeInstanceOf(ToolbarButton);
-  });
+    it('can be created as a plain object satisfying the interface', () => {
+        const handler = () => {};
+        const btn: ToolbarButton = {
+            id: 'modal-filter',
+            text: 'MF',
+            tooltip: 'Add modal filters',
+            selected: true,
+            groupName: 'filters',
+            action: handler,
+            isFirst: true,
+        };
 
-  it('allows setting all properties', () => {
-    const btn = new ToolbarButton();
-    const handler = () => {};
+        expect(btn.id).toBe('modal-filter');
+        expect(btn.text).toBe('MF');
+        expect(btn.tooltip).toBe('Add modal filters');
+        expect(btn.selected).toBe(true);
+        expect(btn.groupName).toBe('filters');
+        expect(btn.action).toBe(handler);
+        expect(btn.isFirst).toBe(true);
+    });
 
-    btn.id = 'modal-filter';
-    btn.text = 'MF';
-    btn.tooltip = 'Add modal filters';
-    btn.selected = true;
-    btn.groupName = 'filters';
-    btn.action = handler;
-    btn.isFirst = true;
+    it('can hold a nested buttons array', () => {
+        const noop = () => {};
+        const child: ToolbarButton = {
+            id: 'child',
+            tooltip: '',
+            selected: false,
+            groupName: '',
+            action: noop,
+        };
+        const parent: ToolbarButton = {
+            id: 'parent',
+            tooltip: '',
+            selected: false,
+            groupName: '',
+            action: noop,
+            buttons: [child],
+        };
 
-    expect(btn.id).toBe('modal-filter');
-    expect(btn.text).toBe('MF');
-    expect(btn.tooltip).toBe('Add modal filters');
-    expect(btn.selected).toBe(true);
-    expect(btn.groupName).toBe('filters');
-    expect(btn.action).toBe(handler);
-    expect(btn.isFirst).toBe(true);
-  });
+        expect(parent.buttons).toHaveLength(1);
+        expect(parent.buttons![0].id).toBe('child');
+    });
 
-  it('can hold a nested buttons array', () => {
-    const parent = new ToolbarButton();
-    const child = new ToolbarButton();
-    child.id = 'child';
-    parent.buttons = [child];
-
-    expect(parent.buttons).toHaveLength(1);
-    expect(parent.buttons[0].id).toBe('child');
-  });
-
-  it('defaults are all undefined', () => {
-    const btn = new ToolbarButton();
-    expect(btn.id).toBeUndefined();
-    expect(btn.text).toBeUndefined();
-    expect(btn.tooltip).toBeUndefined();
-    expect(btn.selected).toBeUndefined();
-    expect(btn.groupName).toBeUndefined();
-    expect(btn.isFirst).toBeUndefined();
-    expect(btn.buttons).toBeUndefined();
-    expect(btn.action).toBeUndefined();
-  });
+    it('optional properties are absent when not provided', () => {
+        const noop = () => {};
+        const btn: ToolbarButton = {
+            id: 'x',
+            tooltip: 'x',
+            selected: false,
+            groupName: '',
+            action: noop,
+        };
+        expect(btn.text).toBeUndefined();
+        expect(btn.isFirst).toBeUndefined();
+        expect(btn.buttons).toBeUndefined();
+    });
 });

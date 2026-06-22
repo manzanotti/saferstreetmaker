@@ -12,111 +12,111 @@
 @config '../../tailwind.config.js';
 
 body {
-  margin: 0;
+    margin: 0;
 }
 
 #map {
-  height: 100vh;
-  z-index: 1;
+    height: 100vh;
+    z-index: 1;
 }
 
 h1 {
-  @apply font-medium leading-tight text-3xl mt-0 mb-8;
+    @apply font-medium leading-tight text-3xl mt-0 mb-8;
 }
 
 h2 {
-  @apply font-medium leading-tight text-xl mt-0 mb-2;
+    @apply font-medium leading-tight text-xl mt-0 mb-2;
 }
 
 li {
-  list-style-type: none;
+    list-style-type: none;
 }
 
 .hidden {
-  display: none;
+    display: none;
 }
 
 .delete-button {
-  background-image: url(../img/outlined-trash-bin-svgrepo-com.svg);
-  background-repeat: no-repeat;
-  width: 2em;
-  height: 2em;
-  background-size: 2em 2em;
+    background-image: url(../img/outlined-trash-bin-svgrepo-com.svg);
+    background-repeat: no-repeat;
+    width: 2em;
+    height: 2em;
+    background-size: 2em 2em;
 }
 
 .delete-button:hover {
-  box-shadow: 0 2px 2px 0 black;
+    box-shadow: 0 2px 2px 0 black;
 }
 
 a {
-  color: blue;
+    color: blue;
 }
 
 .leaflet-popup a[role='button'],
 .leaflet-popup a > span {
-  cursor: default;
+    cursor: default;
 }
 
 .leaflet-tooltip {
-  font-size: 3em;
-  font-weight: 700;
-  background-color: rgba(255, 94, 0, 0);
-  border: 0;
-  box-shadow: none;
-  cursor: default;
+    font-size: 3em;
+    font-weight: 700;
+    background-color: rgba(255, 94, 0, 0);
+    border: 0;
+    box-shadow: none;
+    cursor: default;
 }
 
 ul.popup-buttons {
-  display: flex;
-  align-items: stretch; /* Default */
-  justify-content: space-between;
-  width: 100%;
-  margin: 0;
-  padding: 0;
+    display: flex;
+    align-items: stretch; /* Default */
+    justify-content: space-between;
+    width: 100%;
+    margin: 0;
+    padding: 0;
 }
 
 ul.popup-buttons li {
-  display: block;
-  flex: 0 1 auto; /* Default */
-  justify-content: center;
-  align-items: center;
+    display: block;
+    flex: 0 1 auto; /* Default */
+    justify-content: center;
+    align-items: center;
 }
 
 ul.popup-buttons li .label-editor {
-  box-sizing: border-box;
-  border: 2 solid #000000;
-  height: 2em;
-  width: 8em;
+    box-sizing: border-box;
+    border: 2px solid #000000;
+    height: 2em;
+    width: 8em;
 }
 
 .bus-gate-icon {
-  background-image: url(../img/double-decker-bus-svgrepo-com.svg);
-  background-size: 23px 23px;
-  background-repeat: no-repeat;
-  height: 23px !important;
-  width: 23px !important;
+    background-image: url(../img/double-decker-bus-svgrepo-com.svg);
+    background-size: 23px 23px;
+    background-repeat: no-repeat;
+    height: 23px !important;
+    width: 23px !important;
 }
 
 .traffic-lights-icon {
-  background-image: url(../img/trafficlights-black1.svg);
-  background-size: 30px 30px;
-  background-repeat: no-repeat;
-  height: 30px !important;
-  width: 30px !important;
+    background-image: url(../img/trafficlights-black1.svg);
+    background-size: 30px 30px;
+    background-repeat: no-repeat;
+    height: 30px !important;
+    width: 30px !important;
 }
 
 .pedestrian-lights-icon {
-  background-image: url(../img/UK-Traffic-Signal-Pedestrians-1975.svg);
-  background-size: 30px 30px;
-  background-repeat: no-repeat;
-  height: 30px !important;
-  width: 30px !important;
+    background-image: url(../img/UK-Traffic-Signal-Pedestrians-1975.svg);
+    background-size: 30px 30px;
+    background-repeat: no-repeat;
+    height: 30px !important;
+    width: 30px !important;
 }
 
 .zebra-crossing-icon {
-  background-image: url(../img/zebra-crossing.svg);
-  background-size: 21px 32px;
-  background-repeat: no-repeat;
-  height: 21px !important;
-  width: 32px !important;
+    background-image: url(../img/zebra-crossing.svg);
+    background-size: 21px 32px;
+    background-repeat: no-repeat;
+    height: 21px !important;
+    width: 32px !important;
 }
