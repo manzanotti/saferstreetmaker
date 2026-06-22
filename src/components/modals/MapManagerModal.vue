@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useMapStore } from '../../stores/mapStore';
 import { useUiStore } from '../../stores/uiStore';
@@ -13,12 +13,15 @@ const showCreateForm = ref(false);
 const newMapTitle = ref('');
 const duplicateTitleError = ref('');
 
-// Re-read from localStorage each time so deletions / copies are reflected.
-const storedMaps = ref<string[]>(getFileManager().loadMapListFromStorage());
+const storedMaps = ref<string[]>([]);
 
-function refreshMapList() {
-    storedMaps.value = getFileManager().loadMapListFromStorage();
+async function refreshMapList() {
+    storedMaps.value = await getFileManager().loadMapListFromStorage();
 }
+
+onMounted(() => {
+    void refreshMapList();
+});
 
 function onNewMap() {
     showCreateForm.value = true;
@@ -26,25 +29,25 @@ function onNewMap() {
     duplicateTitleError.value = '';
 }
 
-function onCopyMap() {
-    getFileManager().copyMap(settingsStore.toSettings(), mapStore.toLayers());
-    refreshMapList();
+async function onCopyMap() {
+    await getFileManager().copyMap(settingsStore.toSettings(), mapStore.toLayers());
+    await refreshMapList();
 }
 
-function onCreate() {
+async function onCreate() {
     const title = newMapTitle.value.trim();
     if (!title) {
         return;
     }
 
-    const ok = getMapManager().createNewMap(title);
+    const ok = await getMapManager().createNewMap(title);
     if (!ok) {
         duplicateTitleError.value = `You already have a map named ${title}`;
         return;
     }
 
     showCreateForm.value = false;
-    refreshMapList();
+    await refreshMapList();
     uiStore.closeModal();
 }
 
@@ -62,15 +65,15 @@ function onExportGeoJSON() {
     uiStore.closeModal();
 }
 
-function onLoadStoredMap(mapName: string) {
-    getMapManager().loadMapFromStorage(mapName);
-    refreshMapList();
+async function onLoadStoredMap(mapName: string) {
+    await getMapManager().loadMapFromStorage(mapName);
+    await refreshMapList();
     uiStore.closeModal();
 }
 
-function onDeleteStoredMap(mapName: string) {
-    getFileManager().deleteMapFromStorage(mapName);
-    refreshMapList();
+async function onDeleteStoredMap(mapName: string) {
+    await getFileManager().deleteMapFromStorage(mapName);
+    await refreshMapList();
 }
 
 function onClose() {

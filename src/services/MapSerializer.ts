@@ -44,6 +44,22 @@ export interface SerializedMap {
     lastSaved?: string;
 }
 
+interface CompactSettings {
+    t: string;
+    r: 0 | 1;
+    h: 0 | 1;
+    a: string[];
+    c: [number, number] | null;
+    z: number;
+    v: string;
+}
+
+export interface CompactStoredMap {
+    s: CompactSettings;
+    l: Record<string, unknown>;
+    d: string;
+}
+
 export class MapSerializer {
     /** Convert the current map state to a plain JSON-serialisable object. */
     toJSON(settings: Settings, layersData: Map<string, IMapLayer>): SerializedMap {
@@ -65,6 +81,77 @@ export class MapSerializer {
     toEncodedHash(settings: Settings, layersData: Map<string, IMapLayer>): string {
         const mapString = JSON.stringify(this.toJSON(settings, layersData));
         return LZString.compressToEncodedURIComponent(mapString);
+    }
+
+    toCompactStoredMap(settings: Settings, layersData: Map<string, IMapLayer>): CompactStoredMap {
+        const layers: Record<string, unknown> = {};
+        layersData.forEach((layer, layerName) => {
+            layers[layerName] = layer.toGeoJSON();
+        });
+
+        return {
+            s: {
+                t: settings.title,
+                r: settings.readOnly ? 1 : 0,
+                h: settings.hideToolbar ? 1 : 0,
+                a: [...settings.activeLayers],
+                c: settings.centre ? [settings.centre.lat, settings.centre.lng] : null,
+                z: settings.zoom,
+                v: settings.version
+            },
+            l: layers,
+            d: new Date().toISOString()
+        };
+    }
+
+    fromCompactStoredMap(data: CompactStoredMap): SerializedMap {
+        return {
+            settings: {
+                title: data.s.t,
+                readOnly: data.s.r === 1,
+                hideToolbar: data.s.h === 1,
+                activeLayers: [...data.s.a],
+                centre: data.s.c ? { lat: data.s.c[0], lng: data.s.c[1] } : null,
+                zoom: data.s.z,
+                version: data.s.v
+            },
+            layers: data.l,
+            lastSaved: data.d
+        };
+    }
+
+    toCompactStoredMapFromSerialized(data: SerializedMap, fallbackTitle = ''): CompactStoredMap {
+        const settings = data.settings;
+
+        if (!settings) {
+            return {
+                s: {
+                    t: data.title ?? fallbackTitle,
+                    r: 0,
+                    h: 0,
+                    a: Object.keys(data.layers ?? {}),
+                    c: data.centre ? [data.centre.lat, data.centre.lng] : null,
+                    z: data.zoom ?? 0,
+                    v: ''
+                },
+                l: data.layers ?? {},
+                d: data.lastSaved ?? new Date().toISOString()
+            };
+        }
+
+        return {
+            s: {
+                t: settings.title,
+                r: settings.readOnly ? 1 : 0,
+                h: settings.hideToolbar ? 1 : 0,
+                a: [...settings.activeLayers],
+                c: settings.centre ? [settings.centre.lat, settings.centre.lng] : null,
+                z: settings.zoom,
+                v: settings.version ?? ''
+            },
+            l: data.layers ?? {},
+            d: data.lastSaved ?? new Date().toISOString()
+        };
     }
 
     /**

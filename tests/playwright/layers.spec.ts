@@ -1,19 +1,12 @@
 import { test, expect, Page } from '@playwright/test';
+import { getLayerFeatureCount as getIndexedDbLayerFeatureCount } from './indexedDbHelpers';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Read the decompressed feature count for a layer from localStorage. */
 async function getLayerFeatureCount(page: Page, layerId: string): Promise<number> {
-    return page.evaluate((id) => {
-        const raw = window.localStorage.getItem('Map_Hello Cleveland');
-        if (!raw) return 0;
-        const decompressed = (window as any).LZString.decompress(raw);
-        if (!decompressed) return 0;
-        const mapData = JSON.parse(decompressed);
-        return mapData?.layers?.[id]?.features?.length ?? 0;
-    }, layerId);
+    return await getIndexedDbLayerFeatureCount(page, 'Hello Cleveland', layerId);
 }
 
 /** Click at a position relative to the centre of the Leaflet map. */
@@ -23,8 +16,8 @@ async function clickMap(page: Page, offsetX = 0, offsetY = 0) {
     if (!box) throw new Error('Map bounding box not found');
     await page.mouse.click(box.x + box.width / 2 + offsetX, box.y + box.height / 2 + offsetY);
     // Layer click handlers call mapStore.markLayerUpdated() synchronously, which
-    // triggers a debounced save via a Pinia watch. The 100 ms pause lets the
-    // microtask queue flush and the save to complete before we read localStorage.
+    // triggers a save via a Pinia watch. The short pause lets the persistence
+    // work settle before we read IndexedDB.
     await page.waitForTimeout(100);
 }
 
@@ -84,7 +77,6 @@ function setupFreshPage() {
         // Provide a fixed geolocation so the map view is set during page load.
         await context.grantPermissions(['geolocation']);
         await context.setGeolocation({ latitude: 52.5, longitude: -1.9 });
-        await page.addInitScript(() => window.localStorage.clear());
         await page.goto('/');
 
         // Inject CSS to permanently hide the #help modal.

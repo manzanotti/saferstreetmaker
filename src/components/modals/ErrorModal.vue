@@ -7,8 +7,8 @@ const uiStore = useUiStore();
 
 const hasErrors = computed(() => uiStore.errorMessages.length > 0);
 
-function downloadStorageMap() {
-    getMapManager().downloadStorageMap();
+async function downloadStorageMap() {
+    await getMapManager().downloadStorageMap();
 }
 </script>
 

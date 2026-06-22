@@ -13,7 +13,7 @@ import { FileManager } from '../../../src/services/FileManager';
 
 function makeFileManager(): FileManager {
     const fm = new FileManager();
-    vi.spyOn(fm, 'saveMap').mockImplementation(() => {});
+    vi.spyOn(fm, 'saveMap').mockResolvedValue();
     return fm;
 }
 
@@ -35,7 +35,7 @@ describe('useMapManager - loadMap error handling', () => {
     beforeEach(() => {
         setActivePinia(pinia);
 
-        vi.spyOn(fm, 'saveMap').mockImplementation(() => {});
+        vi.spyOn(fm, 'saveMap').mockResolvedValue();
     });
 
     afterEach(() => {
@@ -43,9 +43,9 @@ describe('useMapManager - loadMap error handling', () => {
     });
 
     it('shows download link flag when storage load fails', async () => {
-        vi.spyOn(fm, 'loadLastMapSelected').mockReturnValue('Broken map');
-        vi.spyOn(fm, 'hasMapInStorage').mockReturnValue(true);
-        vi.spyOn(fm, 'loadMapFromStorage').mockImplementation(() => {
+        vi.spyOn(fm, 'loadLastMapSelected').mockResolvedValue('Broken map');
+        vi.spyOn(fm, 'hasMapInStorage').mockResolvedValue(true);
+        vi.spyOn(fm, 'loadMapFromStorage').mockImplementation(async () => {
             throw {
                 message: '<b>broken</b>',
                 stack: '<script>bad()</script>'
@@ -67,9 +67,9 @@ describe('useMapManager - loadMap error handling', () => {
         const settingsStore = useSettingsStore(pinia);
         settingsStore.title = '';
 
-        vi.spyOn(fm, 'loadLastMapSelected').mockReturnValue('');
-        vi.spyOn(fm, 'hasMapInStorage').mockReturnValue(false);
-        vi.spyOn(fm, 'loadMapFromStorage').mockImplementation(() => {
+        vi.spyOn(fm, 'loadLastMapSelected').mockResolvedValue('');
+        vi.spyOn(fm, 'hasMapInStorage').mockResolvedValue(false);
+        vi.spyOn(fm, 'loadMapFromStorage').mockImplementation(async () => {
             throw {
                 message: 'broken',
                 stack: 'stack'
@@ -101,12 +101,12 @@ describe('useMapManager - loadMap error handling', () => {
         expect(uiStore.errorMessages[2]).toBe('&lt;script&gt;alert(2)&lt;/script&gt;');
     });
 
-    it('uses settings title fallback when downloading and LastMapSelected is empty', () => {
+    it('uses settings title fallback when downloading and LastMapSelected is empty', async () => {
         const settingsStore = useSettingsStore(pinia);
         settingsStore.title = 'Fallback Map';
 
-        vi.spyOn(fm, 'loadLastMapSelected').mockReturnValue('');
-        vi.spyOn(fm, 'loadMapFromStorage').mockReturnValue({} as any);
+        vi.spyOn(fm, 'loadLastMapSelected').mockResolvedValue('');
+        vi.spyOn(fm, 'loadMapFromStorage').mockResolvedValue({} as any);
 
         const originalCreateObjectURL = URL.createObjectURL;
         const originalRevokeObjectURL = URL.revokeObjectURL;
@@ -128,7 +128,7 @@ describe('useMapManager - loadMap error handling', () => {
             .mockImplementation(() => {});
 
         try {
-            mapManager.downloadStorageMap();
+            await mapManager.downloadStorageMap();
 
             expect(fm.loadMapFromStorage).toHaveBeenCalledWith('Fallback Map');
             expect(createObjectURLMock).toHaveBeenCalledTimes(1);

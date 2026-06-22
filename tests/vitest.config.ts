@@ -6,6 +6,7 @@ export default defineConfig({
     test: {
         environment: 'jsdom',
         include: ['tests/unit/**/*.test.ts'],
-        globals: true
+        globals: true,
+        setupFiles: ['tests/unit/setupIndexedDb.ts']
     }
 });

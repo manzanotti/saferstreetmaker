@@ -17,6 +17,7 @@
         "@types/node": "^25.9.3",
         "@vitejs/plugin-vue": "^6.0.7",
         "@vue/tsconfig": "^0.9.1",
+        "fake-indexeddb": "^6.2.4",
         "jsdom": "^29.1.1",
         "leaflet-arrowheads": "^1.4.0",
         "leaflet-geometryutil": "^0.10.3",
@@ -29,6 +30,7 @@
         "vue-tsc": "^3.3.5"
     },
     "dependencies": {
+        "dexie": "^4.2.0",
         "pinia": "^3.0.4",
         "tailwindcss": "^4.3.0",
         "vue": "^3.5.38"

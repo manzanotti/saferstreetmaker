@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { seedStoredMap } from './indexedDbHelpers';
 
 test.describe('Settings Panel', () => {
     test.beforeEach(async ({ page }) => {
@@ -93,19 +94,7 @@ test.describe('Map Manager Panel', () => {
     });
 
     test('clicking the copy map control creates another stored map entry', async ({ page }) => {
-        await page.goto('/');
-        await page.waitForSelector('.toolbar');
-
-        await page.evaluate(() => {
-            window.localStorage.clear();
-            const mapList = (window as any).LZString.compress(JSON.stringify(['Hello Cleveland']));
-            const lastMap = (window as any).LZString.compress('Hello Cleveland');
-            window.localStorage.setItem('MapList', mapList);
-            window.localStorage.setItem('LastMapSelected', lastMap);
-        });
-
-        await page.reload();
-        await page.waitForSelector('.toolbar');
+        await seedStoredMap(page, 'Hello Cleveland');
 
         await page.locator('#map-manager-button').click();
         await page.locator('#copy-map').click();
@@ -116,19 +105,7 @@ test.describe('Map Manager Panel', () => {
     test('clicking create in the new map form shows the duplicate-title error for existing names', async ({
         page
     }) => {
-        await page.goto('/');
-        await page.waitForSelector('.toolbar');
-
-        await page.evaluate(() => {
-            window.localStorage.clear();
-            const mapList = (window as any).LZString.compress(JSON.stringify(['Hello Cleveland']));
-            const lastMap = (window as any).LZString.compress('Hello Cleveland');
-            window.localStorage.setItem('MapList', mapList);
-            window.localStorage.setItem('LastMapSelected', lastMap);
-        });
-
-        await page.reload();
-        await page.waitForSelector('.toolbar');
+        await seedStoredMap(page, 'Hello Cleveland');
 
         await page.locator('#map-manager-button').click();
         await page.locator('#new-map').click();

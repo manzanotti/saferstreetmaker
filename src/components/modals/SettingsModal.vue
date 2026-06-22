@@ -17,7 +17,7 @@ const form = reactive({
     activeLayers: [...settingsStore.activeLayers]
 });
 
-function onSave() {
+async function onSave() {
     const s = new Settings();
     s.title = form.title;
     s.readOnly = form.readOnly;
@@ -27,7 +27,7 @@ function onSave() {
     s.version = settingsStore.version;
     s.activeLayers = form.activeLayers;
 
-    getMapManager().applySettings(s);
+    await getMapManager().applySettings(s);
     uiStore.closeModal();
 }
 

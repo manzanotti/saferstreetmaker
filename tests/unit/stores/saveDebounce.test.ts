@@ -17,6 +17,7 @@ import * as L from 'leaflet';
 import { pinia } from '../../../src/stores/index';
 import { useMapStore } from '../../../src/stores/mapStore';
 import { useSettingsStore } from '../../../src/stores/settingsStore';
+import { useUiStore } from '../../../src/stores/uiStore';
 import { setupMapManager } from '../../../src/composables/useMapManager';
 import { FileManager } from '../../../src/services/FileManager';
 
@@ -26,7 +27,7 @@ import { FileManager } from '../../../src/services/FileManager';
 
 function makeFileManager(): FileManager {
     const fm = new FileManager();
-    vi.spyOn(fm, 'saveMap').mockImplementation(() => {});
+    vi.spyOn(fm, 'saveMap').mockResolvedValue();
     return fm;
 }
 
@@ -43,7 +44,7 @@ describe('useMapManager – save debounce', () => {
         if (!fm) {
             fm = new FileManager();
         }
-        vi.spyOn(fm, 'saveMap').mockImplementation(() => {});
+        vi.spyOn(fm, 'saveMap').mockResolvedValue();
 
         const mapStore = useMapStore(pinia);
         mapStore.setMap(new L.Map() as unknown as L.Map);
@@ -153,5 +154,25 @@ describe('useMapManager – save debounce', () => {
         await nextTick();
 
         expect(fm.saveMap).toHaveBeenCalledTimes(2);
+    });
+
+    it('surfaces save errors when a fire-and-forget layer update save rejects', async () => {
+        vi.spyOn(fm, 'saveMap').mockRejectedValue({
+            message: '<b>save failed</b>',
+            stack: '<script>boom()</script>',
+        });
+
+        const mapStore = useMapStore(pinia);
+        const uiStore = useUiStore(pinia);
+
+        mapStore.markLayerUpdated();
+        await nextTick();
+        await Promise.resolve();
+
+        expect(uiStore.errorMessages).toEqual([
+            'There was a problem saving the map:',
+            '&lt;b&gt;save failed&lt;/b&gt;',
+            '&lt;script&gt;boom()&lt;/script&gt;',
+        ]);
     });
 });

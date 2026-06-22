@@ -1,116 +1,275 @@
 /**
  * MapStorage
  *
- * All localStorage operations for the Safer Street Maker map data.
- * Uses LZ-string compression for every value it persists.
- *
- * Storage keys:
- *   Map_<title>     — compressed map JSON for each saved map
- *   MapList         — compressed JSON array of map titles (most-recent first)
- *   LastMapSelected — compressed string of the most recently loaded map title
+ * IndexedDB-backed persistence for saved maps.
+ * A one-time import migrates existing localStorage map data on first use.
  */
 import LZString from 'lz-string';
 import type { IMapLayer } from '../composables/layers/IMapLayer';
 import type { Settings } from '../models/Settings';
+import { MapDatabase } from './MapDatabase';
 import { MapSerializer, type SerializedMap } from './MapSerializer';
+
+const LEGACY_MAP_LIST_KEY = 'MapList';
+const LEGACY_LAST_SELECTED_KEY = 'LastMapSelected';
+const LAST_SELECTED_METADATA_KEY = 'lastSelectedMap';
+const INDEXED_DB_MIGRATION_CUTOFF_VERSION = '0.9.0';
 
 export class MapStorage {
     private readonly serializer: MapSerializer;
+    private readonly db: MapDatabase;
+    private readonly ready: Promise<void>;
 
     constructor(serializer: MapSerializer) {
         this.serializer = serializer;
+        this.db = new MapDatabase();
+        this.ready = this.initialise();
     }
 
     // ── Persistence ───────────────────────────────────────────────────────────
 
     /** Serialise and compress the current map state, then persist it. */
-    saveMap(settings: Settings, layersData: Map<string, IMapLayer>): void {
-        const mapString = JSON.stringify(this.serializer.toJSON(settings, layersData));
-        localStorage.setItem(`Map_${settings.title}`, LZString.compress(mapString));
-        this.saveMapList(settings.title);
-        this.saveLastMapSelected(settings.title);
+    async saveMap(settings: Settings, layersData: Map<string, IMapLayer>): Promise<void> {
+        await this.ready;
+
+        const payload = this.serializer.toCompactStoredMap(settings, layersData);
+        const sortOrder = await this.getNextSortOrder();
+
+        await this.db.transaction('rw', this.db.maps, this.db.metadata, async () => {
+            await this.db.maps.put({
+                title: settings.title,
+                sortOrder,
+                updatedAt: payload.d,
+                payloadVersion: 1,
+                payload
+            });
+            await this.db.metadata.put({
+                key: LAST_SELECTED_METADATA_KEY,
+                value: settings.title
+            });
+        });
     }
 
     /**
      * Load and decompress a stored map by title.
      * Returns `null` if no data is found for the given title.
      */
-    loadMap(mapName: string): SerializedMap | null {
-        const raw = localStorage.getItem(`Map_${mapName}`);
-        if (raw === null || raw === 'undefined') {
+    async loadMap(mapName: string): Promise<SerializedMap | null> {
+        await this.ready;
+
+        const record = await this.db.maps.get(mapName);
+        if (!record) {
             return null;
         }
-        const decompressed = LZString.decompress(raw);
-        return decompressed ? (JSON.parse(decompressed) as SerializedMap) : null;
+
+        return this.serializer.fromCompactStoredMap(record.payload);
     }
 
-    deleteMap(mapName: string): void {
-        localStorage.removeItem(`Map_${mapName}`);
+    async deleteMap(mapName: string): Promise<void> {
+        await this.ready;
 
-        const remaining = this.listMaps().filter((t) => t !== mapName);
-        localStorage.setItem('MapList', LZString.compress(JSON.stringify(remaining)));
+        await this.db.transaction('rw', this.db.maps, this.db.metadata, async () => {
+            await this.db.maps.delete(mapName);
 
-        if (this.loadLastSelected() === mapName) {
-            if (remaining.length > 0) {
-                this.saveLastMapSelected(remaining[0]);
-            } else {
-                localStorage.removeItem('LastMapSelected');
+            const lastSelected = await this.loadLastSelected();
+            if (lastSelected === mapName) {
+                const replacement = await this.db.maps.orderBy('sortOrder').reverse().first();
+                if (replacement) {
+                    await this.db.metadata.put({
+                        key: LAST_SELECTED_METADATA_KEY,
+                        value: replacement.title
+                    });
+                } else {
+                    await this.db.metadata.delete(LAST_SELECTED_METADATA_KEY);
+                }
             }
-        }
+        });
     }
 
     /**
      * Copy the current map to a new title using the pattern `<title>_copy_N`
      * where N is the lowest integer not already taken.
      */
-    copyMap(settings: Settings, layersData: Map<string, IMapLayer>): void {
-        const existing = this.listMaps();
+    async copyMap(settings: Settings, layersData: Map<string, IMapLayer>): Promise<void> {
+        const existing = await this.listMaps();
         let index = 1;
         while (existing.includes(`${settings.title}_copy_${index}`)) {
             index++;
         }
         settings.title = `${settings.title}_copy_${index}`;
-        this.saveMap(settings, layersData);
+        await this.saveMap(settings, layersData);
     }
 
     // ── Map list ──────────────────────────────────────────────────────────────
 
     /** Returns stored map titles in most-recently-saved order. */
-    listMaps(): string[] {
-        const raw = localStorage.getItem('MapList');
-        if (raw === null || raw === 'undefined') {
-            return [];
-        }
-        const decompressed = LZString.decompress(raw);
-        return decompressed ? JSON.parse(decompressed) : [];
+    async listMaps(): Promise<string[]> {
+        await this.ready;
+
+        const maps = await this.db.maps.orderBy('sortOrder').reverse().toArray();
+        return maps.map((map) => map.title);
     }
 
-    hasMap(mapName: string): boolean {
+    async hasMap(mapName: string): Promise<boolean> {
         if (mapName === '') {
             return false;
         }
 
-        const raw = localStorage.getItem(`Map_${mapName}`);
-        return raw !== null && raw !== 'undefined';
+        await this.ready;
+        const count = await this.db.maps.where('title').equals(mapName).count();
+        return count > 0;
     }
 
-    saveMapList(mapTitle: string): void {
-        const list = this.listMaps().filter((t) => t !== mapTitle);
-        list.unshift(mapTitle);
-        localStorage.setItem('MapList', LZString.compress(JSON.stringify(list)));
+    async saveMapList(mapTitle: string): Promise<void> {
+        await this.ready;
+
+        const existing = await this.db.maps.get(mapTitle);
+        if (!existing) {
+            return;
+        }
+
+        existing.sortOrder = await this.getNextSortOrder();
+        await this.db.maps.put(existing);
     }
 
     // ── Last selected ─────────────────────────────────────────────────────────
 
-    saveLastMapSelected(mapName: string): void {
-        localStorage.setItem('LastMapSelected', LZString.compress(mapName));
+    async saveLastMapSelected(mapName: string): Promise<void> {
+        await this.ready;
+        await this.db.metadata.put({ key: LAST_SELECTED_METADATA_KEY, value: mapName });
     }
 
-    loadLastSelected(): string {
-        const raw = localStorage.getItem('LastMapSelected');
+    async loadLastSelected(): Promise<string> {
+        await this.ready;
+
+        const metadata = await this.db.metadata.get(LAST_SELECTED_METADATA_KEY);
+        if (!metadata) {
+            return '';
+        }
+
+        return metadata.value;
+    }
+
+    private async initialise(): Promise<void> {
+        await this.importLegacyLocalStorage();
+    }
+
+    private async importLegacyLocalStorage(): Promise<void> {
+        const mapCount = await this.db.maps.count();
+        if (mapCount > 0) {
+            return;
+        }
+
+        const legacyList = this.readLegacyMapList();
+        if (legacyList.length === 0) {
+            return;
+        }
+
+        const legacyLastSelected = this.readLegacyLastSelected();
+        const importedAt = Date.now();
+        const importedMapNames: string[] = [];
+
+        await this.db.transaction('rw', this.db.maps, this.db.metadata, async () => {
+            for (let index = 0; index < legacyList.length; index++) {
+                const mapName = legacyList[index];
+                const legacyMap = this.readLegacyMap(mapName);
+                if (!this.shouldImportLegacyMap(legacyMap)) {
+                    continue;
+                }
+
+                const payload = this.serializer.toCompactStoredMapFromSerialized(
+                    legacyMap,
+                    mapName
+                );
+                await this.db.maps.put({
+                    title: mapName,
+                    sortOrder: importedAt - index,
+                    updatedAt: payload.d,
+                    payloadVersion: 1,
+                    payload
+                });
+                importedMapNames.push(mapName);
+            }
+
+            if (legacyLastSelected !== '' && importedMapNames.includes(legacyLastSelected)) {
+                await this.db.metadata.put({
+                    key: LAST_SELECTED_METADATA_KEY,
+                    value: legacyLastSelected
+                });
+            }
+        });
+    }
+
+    private readLegacyMap(mapName: string): SerializedMap | null {
+        const raw = localStorage.getItem(`Map_${mapName}`);
+        if (raw === null || raw === 'undefined') {
+            return null;
+        }
+
+        const decompressed = LZString.decompress(raw);
+        return decompressed ? (JSON.parse(decompressed) as SerializedMap) : null;
+    }
+
+    private readLegacyMapList(): string[] {
+        const raw = localStorage.getItem(LEGACY_MAP_LIST_KEY);
+        if (raw === null || raw === 'undefined') {
+            return [];
+        }
+
+        const decompressed = LZString.decompress(raw);
+        return decompressed ? (JSON.parse(decompressed) as string[]) : [];
+    }
+
+    private readLegacyLastSelected(): string {
+        const raw = localStorage.getItem(LEGACY_LAST_SELECTED_KEY);
         if (raw === null || raw === 'undefined') {
             return '';
         }
+
         return LZString.decompress(raw) ?? '';
+    }
+
+    private shouldImportLegacyMap(legacyMap: SerializedMap | null): legacyMap is SerializedMap {
+        if (!legacyMap) {
+            return false;
+        }
+
+        if (!legacyMap.settings) {
+            return (
+                legacyMap.title !== undefined ||
+                legacyMap.layers !== undefined ||
+                legacyMap.centre !== undefined ||
+                legacyMap.zoom !== undefined
+            );
+        }
+
+        const storedVersion = legacyMap.settings.version;
+        if (storedVersion === undefined || storedVersion === '') {
+            return true;
+        }
+
+        return this.compareVersions(storedVersion, INDEXED_DB_MIGRATION_CUTOFF_VERSION) < 0;
+    }
+
+    private compareVersions(left: string, right: string): number {
+        const leftParts = left.split('.').map((part) => Number(part));
+        const rightParts = right.split('.').map((part) => Number(part));
+        const maxLength = Math.max(leftParts.length, rightParts.length);
+
+        for (let index = 0; index < maxLength; index++) {
+            const leftValue = leftParts[index] ?? 0;
+            const rightValue = rightParts[index] ?? 0;
+
+            if (leftValue !== rightValue) {
+                return leftValue - rightValue;
+            }
+        }
+
+        return 0;
+    }
+
+    private async getNextSortOrder(): Promise<number> {
+        const latest = await this.db.maps.orderBy('sortOrder').last();
+        return (latest?.sortOrder ?? 0) + 1;
     }
 }

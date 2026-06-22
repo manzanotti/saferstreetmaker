@@ -57,9 +57,6 @@ test.describe('Toolbar button groups', () => {
     })()`;
 
     test.beforeEach(async ({ page }) => {
-        // Start from a clean default state so all layers (and therefore the group
-        // members) are active and the submenus exist.
-        await page.addInitScript(() => window.localStorage.clear());
         await page.goto('/');
         await page.waitForSelector('.toolbar');
     });
