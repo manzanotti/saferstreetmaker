@@ -23,11 +23,13 @@ function polygonFeatureCollection(polygons: [number, number][][][]) {
 }
 
 describe('LtnLayer (composable)', () => {
+    let map: L.Map;
     let layer: ReturnType<typeof createLtnLayer>;
 
     beforeEach(() => {
         setActivePinia(createPinia());
-        layer = createLtnLayer(makeMockMap());
+        map = makeMockMap();
+        layer = createLtnLayer(map);
     });
 
     it('has correct id', () => expect(layer.id).toBe('LtnCells'));
@@ -141,6 +143,75 @@ describe('LtnLayer (composable)', () => {
                 ]) as any,
             );
             expect(addLayerSpy).toHaveBeenCalledTimes(2);
+        });
+
+        it('keeps labels hidden when loading at low zoom', () => {
+            vi.spyOn(map, 'getZoom').mockReturnValue(10);
+            const closeTooltipSpy = vi.spyOn(L.Polygon.prototype, 'closeTooltip');
+
+            layer.loadFromGeoJSON(
+                polygonFeatureCollection([
+                    [
+                        [
+                            [0, 0],
+                            [1, 0],
+                            [1, 1],
+                            [0, 1],
+                            [0, 0],
+                        ],
+                    ],
+                ]) as any,
+            );
+
+            expect(closeTooltipSpy).toHaveBeenCalled();
+        });
+
+        it('shows labels when loading at high zoom', () => {
+            vi.spyOn(map, 'getZoom').mockReturnValue(15);
+            const openTooltipSpy = vi.spyOn(L.Polygon.prototype, 'openTooltip');
+
+            layer.loadFromGeoJSON(
+                polygonFeatureCollection([
+                    [
+                        [
+                            [0, 0],
+                            [1, 0],
+                            [1, 1],
+                            [0, 1],
+                            [0, 0],
+                        ],
+                    ],
+                ]) as any,
+            );
+
+            expect(openTooltipSpy).toHaveBeenCalled();
+        });
+
+        it('keeps labels hidden when polygon is added to map at low zoom', () => {
+            vi.spyOn(map, 'getZoom').mockReturnValue(10);
+
+            layer.loadFromGeoJSON(
+                polygonFeatureCollection([
+                    [
+                        [
+                            [0, 0],
+                            [1, 0],
+                            [1, 1],
+                            [0, 1],
+                            [0, 0],
+                        ],
+                    ],
+                ]) as any,
+            );
+
+            const closeTooltipSpy = vi.spyOn(L.Polygon.prototype, 'closeTooltip');
+            const polygon = layer.getLayer().getLayers()[0] as any;
+            const addHandlers = (polygon._handlers?.add ?? []) as Array<() => void>;
+            addHandlers.forEach((handler) => {
+                handler();
+            });
+
+            expect(closeTooltipSpy).toHaveBeenCalled();
         });
     });
 

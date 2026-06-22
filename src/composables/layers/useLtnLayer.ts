@@ -19,6 +19,19 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
     let _ltnTitle = '1';
     let selectionMode: 'draw' | 'edit' = 'draw';
 
+    const shouldShowLabel = (label: string): boolean => {
+        return map.getZoom() >= 14 && label.length > 0;
+    };
+
+    const syncTooltipVisibility = (polygon: any): void => {
+        const label = polygon['properties']?.label ?? '';
+        if (shouldShowLabel(label)) {
+            polygon.openTooltip?.();
+        } else {
+            polygon.closeTooltip?.();
+        }
+    };
+
     // ── Add a single LTN polygon ─────────────────────────────────────────────
     const addLtnCell = (points: L.LatLng[], label: string, color: string) => {
         const polygon = new L.Polygon(points, {
@@ -35,9 +48,14 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
 
         (polygon as any)['properties'] = { label };
 
-        const tooltip = polygon
-            .bindTooltip(label, { permanent: true, direction: 'center' })
-            .openTooltip();
+        const tooltip = polygon.bindTooltip(label, { permanent: true, direction: 'center' });
+        syncTooltipVisibility(polygon);
+
+        // Leaflet can re-open permanent tooltips when the parent layer is attached to the map.
+        // Re-apply zoom/label gating at add-time so load-time visibility is always correct.
+        polygon.on('add', () => {
+            syncTooltipVisibility(polygon);
+        });
 
         const popup = createLtnPopup(polygon, tooltip, label);
 
@@ -75,11 +93,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             const text = labelEl.value;
             tooltip.setTooltipContent(text);
             polygon['properties'].label = text;
-            if (text.length === 0) {
-                polygon.closeTooltip();
-            } else {
-                polygon.openTooltip();
-            }
+            syncTooltipVisibility(polygon);
             mapStore.markLayerUpdated();
         });
         labelControl.appendChild(labelEl);
@@ -110,13 +124,8 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
 
     // ── Zoom-based tooltip visibility ────────────────────────────────────────
     map.on('zoomend', () => {
-        const zoom = map.getZoom();
         geoJsonLayer.eachLayer((l: any) => {
-            if (zoom < 14) {
-                l.closeTooltip?.();
-            } else {
-                l.openTooltip?.();
-            }
+            syncTooltipVisibility(l);
         });
     });
 
