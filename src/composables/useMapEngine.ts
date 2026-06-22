@@ -74,7 +74,7 @@ export function setupMapEngine(): MapEngineResult {
         () => mapStore.visibleLayerIds,
         (newIds, oldIds) => {
             mapStore.layers.forEach((layer) => {
-                const wasVisible = oldIds?.has(layer.id) ?? true;
+                const wasVisible = oldIds?.has(layer.id) ?? false;
                 const isVisible = newIds.has(layer.id);
 
                 if (wasVisible && !isVisible) {
