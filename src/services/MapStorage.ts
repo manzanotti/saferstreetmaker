@@ -13,6 +13,7 @@ import { MapSerializer, type SerializedMap } from './MapSerializer';
 const LEGACY_MAP_LIST_KEY = 'MapList';
 const LEGACY_LAST_SELECTED_KEY = 'LastMapSelected';
 const LAST_SELECTED_METADATA_KEY = 'lastSelectedMap';
+const LEGACY_IMPORT_COMPLETED_METADATA_KEY = 'legacyImportCompleted';
 const INDEXED_DB_MIGRATION_CUTOFF_VERSION = '0.9.0';
 
 export class MapStorage {
@@ -28,14 +29,15 @@ export class MapStorage {
 
     // ── Persistence ───────────────────────────────────────────────────────────
 
-    /** Serialise and compress the current map state, then persist it. */
+    /** Serialise the current map state into a compact payload, then persist it. */
     async saveMap(settings: Settings, layersData: Map<string, IMapLayer>): Promise<void> {
         await this.ready;
 
         const payload = this.serializer.toCompactStoredMap(settings, layersData);
-        const sortOrder = await this.getNextSortOrder();
 
         await this.db.transaction('rw', this.db.maps, this.db.metadata, async () => {
+            const sortOrder = await this.getNextSortOrder();
+
             await this.db.maps.put({
                 title: settings.title,
                 sortOrder,
@@ -51,7 +53,7 @@ export class MapStorage {
     }
 
     /**
-     * Load and decompress a stored map by title.
+     * Load a stored map by title.
      * Returns `null` if no data is found for the given title.
      */
     async loadMap(mapName: string): Promise<SerializedMap | null> {
@@ -71,8 +73,8 @@ export class MapStorage {
         await this.db.transaction('rw', this.db.maps, this.db.metadata, async () => {
             await this.db.maps.delete(mapName);
 
-            const lastSelected = await this.loadLastSelected();
-            if (lastSelected === mapName) {
+            const lastSelected = await this.db.metadata.get(LAST_SELECTED_METADATA_KEY);
+            if (lastSelected?.value === mapName) {
                 const replacement = await this.db.maps.orderBy('sortOrder').reverse().first();
                 if (replacement) {
                     await this.db.metadata.put({
@@ -116,20 +118,7 @@ export class MapStorage {
         }
 
         await this.ready;
-        const count = await this.db.maps.where('title').equals(mapName).count();
-        return count > 0;
-    }
-
-    async saveMapList(mapTitle: string): Promise<void> {
-        await this.ready;
-
-        const existing = await this.db.maps.get(mapTitle);
-        if (!existing) {
-            return;
-        }
-
-        existing.sortOrder = await this.getNextSortOrder();
-        await this.db.maps.put(existing);
+        return (await this.db.maps.get(mapName)) !== undefined;
     }
 
     // ── Last selected ─────────────────────────────────────────────────────────
@@ -155,13 +144,20 @@ export class MapStorage {
     }
 
     private async importLegacyLocalStorage(): Promise<void> {
+        const migrationCompleted = await this.db.metadata.get(LEGACY_IMPORT_COMPLETED_METADATA_KEY);
+        if (migrationCompleted?.value === '1') {
+            return;
+        }
+
         const mapCount = await this.db.maps.count();
         if (mapCount > 0) {
+            await this.markLegacyImportCompleted();
             return;
         }
 
         const legacyList = this.readLegacyMapList();
         if (legacyList.length === 0) {
+            await this.markLegacyImportCompleted();
             return;
         }
 
@@ -197,7 +193,16 @@ export class MapStorage {
                     value: legacyLastSelected
                 });
             }
+
+            await this.db.metadata.put({
+                key: LEGACY_IMPORT_COMPLETED_METADATA_KEY,
+                value: '1'
+            });
         });
+    }
+
+    private async markLegacyImportCompleted(): Promise<void> {
+        await this.db.metadata.put({ key: LEGACY_IMPORT_COMPLETED_METADATA_KEY, value: '1' });
     }
 
     private readLegacyMap(mapName: string): SerializedMap | null {
@@ -207,7 +212,14 @@ export class MapStorage {
         }
 
         const decompressed = LZString.decompress(raw);
-        return decompressed ? (JSON.parse(decompressed) as SerializedMap) : null;
+        if (!decompressed) {
+            return null;
+        }
+        try {
+            return JSON.parse(decompressed) as SerializedMap;
+        } catch {
+            return null;
+        }
     }
 
     private readLegacyMapList(): string[] {
@@ -217,7 +229,14 @@ export class MapStorage {
         }
 
         const decompressed = LZString.decompress(raw);
-        return decompressed ? (JSON.parse(decompressed) as string[]) : [];
+        if (!decompressed) {
+            return [];
+        }
+        try {
+            return JSON.parse(decompressed) as string[];
+        } catch {
+            return [];
+        }
     }
 
     private readLegacyLastSelected(): string {

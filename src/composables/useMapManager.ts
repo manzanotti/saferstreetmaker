@@ -10,7 +10,6 @@
 import * as L from 'leaflet';
 import { watch } from 'vue';
 import { FileManager } from '../services/FileManager';
-import { escapeHtml } from '../services/escapeHtml';
 import type { SerializedMap } from '../services/MapSerializer';
 import { Settings } from '../models/Settings';
 import { useMapStore } from '../stores/mapStore';
@@ -31,7 +30,7 @@ export interface MapManager {
     saveMap: () => Promise<void>;
     applySettings: (newSettings: Settings) => Promise<void>;
     createNewMap: (title: string) => Promise<boolean>;
-    loadMapFromStorage: (mapName: string) => Promise<void>;
+    loadMapFromStorage: (mapName: string) => Promise<boolean>;
     setUserLocation: (position: GeolocationPosition) => void;
     setDefaultView: () => void;
     downloadStorageMap: () => Promise<void>;
@@ -61,6 +60,15 @@ export function setupMapManager(fileManager: FileManager): MapManager {
     const uiStore = useUiStore(pinia);
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+    const getErrorMessage = (error: unknown): string => {
+        return String((error as { message?: unknown } | null | undefined)?.message ?? error);
+    };
+
+    const getErrorStack = (error: unknown): string | null => {
+        const stack = (error as { stack?: unknown } | null | undefined)?.stack;
+        return stack == null ? null : String(stack);
+    };
+
     const getMap = (): L.Map => {
         const m = mapStore.map;
         if (!m) {
@@ -93,9 +101,10 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         try {
             await fileManager.saveMap(settingsStore.toSettings(), mapStore.toLayers());
         } catch (e: any) {
-            const errors = ['There was a problem saving the map:', escapeHtml(e.message)];
-            if (e.stack) {
-                errors.push(escapeHtml(e.stack));
+            const errors = ['There was a problem saving the map:', getErrorMessage(e)];
+            const errorStack = getErrorStack(e);
+            if (errorStack) {
+                errors.push(errorStack);
             }
             uiStore.showErrors(errors);
         }
@@ -263,9 +272,9 @@ export function setupMapManager(fileManager: FileManager): MapManager {
                 geoJSON = fileManager.loadMapFromHash(hash.slice(1));
             } else {
                 loadingFromStorage = true;
+                errorIntro = 'There was a problem loading the map from browser storage:';
                 const lastMapSelected = await fileManager.loadLastMapSelected();
                 storageMapName = lastMapSelected || settingsStore.title;
-                errorIntro = 'There was a problem loading the map from local storage:';
                 geoJSON = await fileManager.loadMapFromStorage(storageMapName);
             }
 
@@ -274,12 +283,19 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         } catch (e: any) {
             errors.push(errorIntro);
 
-            errors.push(escapeHtml(e.message));
-            errors.push(escapeHtml(e.stack));
-            const canDownloadStorageMap =
-                loadingFromStorage &&
-                storageMapName !== '' &&
-                (await fileManager.hasMapInStorage(storageMapName));
+            errors.push(getErrorMessage(e));
+            const errorStack = getErrorStack(e);
+            if (errorStack) {
+                errors.push(errorStack);
+            }
+            let canDownloadStorageMap = false;
+            if (loadingFromStorage && storageMapName !== '') {
+                try {
+                    canDownloadStorageMap = await fileManager.hasMapInStorage(storageMapName);
+                } catch {
+                    canDownloadStorageMap = false;
+                }
+            }
 
             uiStore.showErrors(errors, { showDownloadStorageLink: canDownloadStorageMap });
         }
@@ -358,7 +374,7 @@ export function setupMapManager(fileManager: FileManager): MapManager {
     };
 
     // ── loadMapFromStorage ────────────────────────────────────────────────────
-    const loadMapFromStorage = async (mapName: string) => {
+    const loadMapFromStorage = async (mapName: string): Promise<boolean> => {
         clearAllLayers();
         resetSettings();
 
@@ -366,14 +382,38 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         try {
             const mapData = await fileManager.loadMapFromStorage(mapName);
             const ok = loadMapData(mapData, null, null);
-            if (ok) {
-                await saveMap();
+            if (!ok) {
+                const canDownloadStorageMap = await fileManager
+                    .hasMapInStorage(mapName)
+                    .catch(() => false);
+                errors.push('There was a problem loading the map:');
+                if (mapData === null) {
+                    errors.push(
+                        `Stored map "${mapName}" was not found. It may have been deleted in another tab.`
+                    );
+                } else {
+                    errors.push(
+                        `Stored map "${mapName}" could not be processed. It may be corrupted.`
+                    );
+                }
+
+                uiStore.showErrors(errors, {
+                    showDownloadStorageLink: canDownloadStorageMap
+                });
+                return false;
             }
+
+            await saveMap();
+            return true;
         } catch (e: any) {
             errors.push('There was a problem loading the map:');
-            errors.push(escapeHtml(e.message));
-            errors.push(escapeHtml(e.stack));
+            errors.push(getErrorMessage(e));
+            const errorStack = getErrorStack(e);
+            if (errorStack) {
+                errors.push(errorStack);
+            }
             uiStore.showErrors(errors);
+            return false;
         }
     };
 
@@ -388,17 +428,42 @@ export function setupMapManager(fileManager: FileManager): MapManager {
 
     // ── downloadStorageMap ────────────────────────────────────────────────────
     const downloadStorageMap = async () => {
-        const lastMapSelected = await fileManager.loadLastMapSelected();
-        const mapName = lastMapSelected || settingsStore.title;
-        const mapJSON = await fileManager.loadMapFromStorage(mapName);
-        const mapString = JSON.stringify(mapJSON);
-        const blob = new Blob([mapString], { type: 'text/plain;charset=utf-8' });
-        const a = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        a.href = url;
-        a.download = 'invalidMapData.json';
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 0);
+        let mapJSON: SerializedMap | null;
+
+        try {
+            const lastMapSelected = await fileManager.loadLastMapSelected();
+            const mapName = lastMapSelected || settingsStore.title;
+            mapJSON = await fileManager.loadMapFromStorage(mapName);
+        } catch (e: any) {
+            const errors = [
+                'There was a problem loading the map from browser storage:',
+                getErrorMessage(e)
+            ];
+            const errorStack = getErrorStack(e);
+            if (errorStack) {
+                errors.push(errorStack);
+            }
+            uiStore.showErrors(errors);
+            return;
+        }
+
+        try {
+            const mapString = JSON.stringify(mapJSON);
+            const blob = new Blob([mapString], { type: 'text/plain;charset=utf-8' });
+            const a = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            a.href = url;
+            a.download = 'invalidMapData.json';
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 0);
+        } catch (e: any) {
+            const errors = ['There was a problem preparing the map download:', getErrorMessage(e)];
+            const errorStack = getErrorStack(e);
+            if (errorStack) {
+                errors.push(errorStack);
+            }
+            uiStore.showErrors(errors);
+        }
     };
 
     // ── Wire event bridges (replaces PubSub subscriptions) ───────────────────
@@ -417,8 +482,11 @@ export function setupMapManager(fileManager: FileManager): MapManager {
             }
         } catch (e: any) {
             errors.push('There was a problem loading the map from uploaded file:');
-            errors.push(escapeHtml(e.message));
-            errors.push(escapeHtml(e.stack));
+            errors.push(getErrorMessage(e));
+            const errorStack = getErrorStack(e);
+            if (errorStack) {
+                errors.push(errorStack);
+            }
             uiStore.showErrors(errors);
         }
     });

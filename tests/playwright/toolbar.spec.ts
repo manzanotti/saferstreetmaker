@@ -1,7 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { addFreshStorageInitScript } from './indexedDbHelpers';
 
 test.describe('Toolbar', () => {
     test.beforeEach(async ({ page }) => {
+        await addFreshStorageInitScript(page);
         await page.goto('/');
         // Wait for the toolbar to be rendered by Leaflet
         await page.waitForSelector('.toolbar');
@@ -57,6 +59,7 @@ test.describe('Toolbar button groups', () => {
     })()`;
 
     test.beforeEach(async ({ page }) => {
+        await addFreshStorageInitScript(page);
         await page.goto('/');
         await page.waitForSelector('.toolbar');
     });
@@ -84,6 +87,18 @@ test.describe('Toolbar button groups', () => {
             );
             return li !== undefined;
         });
+
+        await expect(
+            page
+                .locator('.toolbar > li.group')
+                .filter({ has: page.locator(':scope > #bus-gate-button') })
+        ).toHaveCount(1);
+        await expect(
+            page
+                .locator('.toolbar > li.group')
+                .filter({ has: page.locator(':scope > #bus-gate-button') })
+                .locator('.subToolbar')
+        ).toHaveClass(/hidden/);
 
         const indexAfter = await page.evaluate(groupIndex(members));
         expect(indexAfter).toBe(indexBefore);

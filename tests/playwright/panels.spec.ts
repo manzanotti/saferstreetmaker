@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { seedStoredMap } from './indexedDbHelpers';
+import { addFreshStorageInitScript, seedStoredMap } from './indexedDbHelpers';
 
 test.describe('Settings Panel', () => {
     test.beforeEach(async ({ page }) => {
+        await addFreshStorageInitScript(page);
         await page.goto('/');
         await page.waitForSelector('.toolbar');
     });
@@ -66,6 +67,7 @@ test.describe('Settings Panel', () => {
 
 test.describe('Map Manager Panel', () => {
     test.beforeEach(async ({ page }) => {
+        await addFreshStorageInitScript(page);
         await page.goto('/');
         await page.waitForSelector('.toolbar');
     });
@@ -120,6 +122,7 @@ test.describe('Map Manager Panel', () => {
 
 test.describe('Sharing Panel', () => {
     test.beforeEach(async ({ page }) => {
+        await addFreshStorageInitScript(page);
         await page.goto('/');
         await page.waitForSelector('.toolbar');
     });

@@ -19,8 +19,21 @@ async function refreshMapList() {
     storedMaps.value = await getFileManager().loadMapListFromStorage();
 }
 
+function showMapListError(e: any) {
+    uiStore.showErrors([
+        'There was a problem loading the stored map list:',
+        String(e?.message ?? e)
+    ]);
+}
+
+function showStoredMapLoadError(e: any) {
+    uiStore.showErrors(['There was a problem loading the stored map:', String(e?.message ?? e)]);
+}
+
 onMounted(() => {
-    void refreshMapList();
+    void refreshMapList().catch((e) => {
+        showMapListError(e);
+    });
 });
 
 function onNewMap() {
@@ -30,8 +43,18 @@ function onNewMap() {
 }
 
 async function onCopyMap() {
-    await getFileManager().copyMap(settingsStore.toSettings(), mapStore.toLayers());
-    await refreshMapList();
+    try {
+        await getFileManager().copyMap(settingsStore.toSettings(), mapStore.toLayers());
+    } catch (e: any) {
+        uiStore.showErrors(['There was a problem copying the map:', String(e?.message ?? e)]);
+        return;
+    }
+
+    try {
+        await refreshMapList();
+    } catch (e: any) {
+        showMapListError(e);
+    }
 }
 
 async function onCreate() {
@@ -40,14 +63,26 @@ async function onCreate() {
         return;
     }
 
-    const ok = await getMapManager().createNewMap(title);
-    if (!ok) {
-        duplicateTitleError.value = `You already have a map named ${title}`;
+    try {
+        const ok = await getMapManager().createNewMap(title);
+        if (!ok) {
+            duplicateTitleError.value = `You already have a map named ${title}`;
+            return;
+        }
+    } catch (e: any) {
+        uiStore.showErrors(['There was a problem creating the map:', String(e?.message ?? e)]);
         return;
     }
 
     showCreateForm.value = false;
-    await refreshMapList();
+
+    try {
+        await refreshMapList();
+    } catch (e: any) {
+        showMapListError(e);
+        return;
+    }
+
     uiStore.closeModal();
 }
 
@@ -66,14 +101,42 @@ function onExportGeoJSON() {
 }
 
 async function onLoadStoredMap(mapName: string) {
-    await getMapManager().loadMapFromStorage(mapName);
-    await refreshMapList();
+    try {
+        const loaded = await getMapManager().loadMapFromStorage(mapName);
+        if (!loaded) {
+            return;
+        }
+    } catch (e: any) {
+        showStoredMapLoadError(e);
+        return;
+    }
+
+    try {
+        await refreshMapList();
+    } catch (e: any) {
+        showMapListError(e);
+        return;
+    }
+
     uiStore.closeModal();
 }
 
 async function onDeleteStoredMap(mapName: string) {
-    await getFileManager().deleteMapFromStorage(mapName);
-    await refreshMapList();
+    try {
+        await getFileManager().deleteMapFromStorage(mapName);
+    } catch (e: any) {
+        uiStore.showErrors([
+            'There was a problem deleting the stored map:',
+            String(e?.message ?? e)
+        ]);
+        return;
+    }
+
+    try {
+        await refreshMapList();
+    } catch (e: any) {
+        showMapListError(e);
+    }
 }
 
 function onClose() {

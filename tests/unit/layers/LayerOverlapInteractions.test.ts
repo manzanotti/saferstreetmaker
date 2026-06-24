@@ -146,4 +146,62 @@ describe('Layer overlap interactions', () => {
         expect(mobilityLayer.getLayer().getLayers()).toHaveLength(1);
         expect(markUpdatedSpy).toHaveBeenCalled();
     });
+
+    it('does not switch to LTN edit mode when a point layer is active', () => {
+        const mapStore = useMapStore(pinia);
+        const ltnLayer = createLtnLayer(map);
+
+        ltnLayer.loadFromGeoJSON({
+            features: [
+                {
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [
+                            [
+                                [0, 0],
+                                [2, 0],
+                                [2, 2],
+                                [0, 2],
+                                [0, 0]
+                            ]
+                        ]
+                    },
+                    properties: { label: 'LTN 1', color: '#cc00cc' }
+                }
+            ]
+        } as any);
+
+        mapStore.setActiveLayer('modal-filter');
+        const polygon = ltnLayer.getLayer().getLayers()[0] as any;
+
+        triggerLayerClick(polygon);
+
+        expect(mapStore.activeLayerId).toBe('modal-filter');
+    });
+
+    it('does not switch to polyline edit mode when a point layer is active', () => {
+        const mapStore = useMapStore(pinia);
+        const mobilityLayer = createMobilityLaneLayer(map);
+
+        mobilityLayer.loadFromGeoJSON({
+            features: [
+                {
+                    geometry: {
+                        type: 'LineString',
+                        coordinates: [
+                            [0, 0],
+                            [2, 2]
+                        ]
+                    }
+                }
+            ]
+        } as any);
+
+        mapStore.setActiveLayer('modal-filter');
+        const polyline = mobilityLayer.getLayer().getLayers()[0] as any;
+
+        triggerLayerClick(polyline);
+
+        expect(mapStore.activeLayerId).toBe('modal-filter');
+    });
 });

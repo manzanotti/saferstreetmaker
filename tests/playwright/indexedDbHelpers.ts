@@ -24,9 +24,18 @@ type StoredMapRecord = {
 
 async function withDatabase<T>(
     page: Page,
-    action: (databaseName: string) => Promise<T>,
+    action: (databaseName: string) => Promise<T>
 ): Promise<T> {
     return await action(DB_NAME);
+}
+
+export async function addFreshStorageInitScript(page: Page): Promise<void> {
+    await page.addInitScript((databaseName: string) => {
+        localStorage.clear();
+        sessionStorage.clear();
+        const deleteRequest = indexedDB.deleteDatabase(databaseName);
+        deleteRequest.onblocked = () => {};
+    }, DB_NAME);
 }
 
 export async function clearIndexedDb(page: Page): Promise<void> {
@@ -56,11 +65,11 @@ export async function seedStoredMap(page: Page, mapName: string): Promise<void> 
                 a: [],
                 c: [52.5, -1.9],
                 z: 12,
-                v: '0.8.1',
+                v: '0.8.1'
             },
             l: {},
-            d: new Date().toISOString(),
-        },
+            d: new Date().toISOString()
+        }
     };
 
     await withDatabase(page, async (databaseName) => {
@@ -71,7 +80,9 @@ export async function seedStoredMap(page: Page, mapName: string): Promise<void> 
                     openRequest.onupgradeneeded = () => {
                         const db = openRequest.result;
                         if (!db.objectStoreNames.contains('maps')) {
-                            db.createObjectStore('maps', { keyPath: 'title' });
+                            const mapsStore = db.createObjectStore('maps', { keyPath: 'title' });
+                            mapsStore.createIndex('sortOrder', 'sortOrder', { unique: false });
+                            mapsStore.createIndex('updatedAt', 'updatedAt', { unique: false });
                         }
                         if (!db.objectStoreNames.contains('metadata')) {
                             db.createObjectStore('metadata', { keyPath: 'key' });
@@ -81,10 +92,12 @@ export async function seedStoredMap(page: Page, mapName: string): Promise<void> 
                     openRequest.onsuccess = () => {
                         const db = openRequest.result;
                         const tx = db.transaction(['maps', 'metadata'], 'readwrite');
+                        tx.objectStore('maps').clear();
+                        tx.objectStore('metadata').clear();
                         tx.objectStore('maps').put(storedMap);
                         tx.objectStore('metadata').put({
                             key: 'lastSelectedMap',
-                            value: storedMap.title,
+                            value: storedMap.title
                         });
                         tx.oncomplete = () => {
                             db.close();
@@ -94,7 +107,7 @@ export async function seedStoredMap(page: Page, mapName: string): Promise<void> 
                     };
                 });
             },
-            { name: databaseName, storedMap: record },
+            { name: databaseName, storedMap: record }
         );
     });
 }
@@ -102,7 +115,7 @@ export async function seedStoredMap(page: Page, mapName: string): Promise<void> 
 export async function getLayerFeatureCount(
     page: Page,
     mapName: string,
-    layerId: string,
+    layerId: string
 ): Promise<number> {
     return await withDatabase(page, async (databaseName) => {
         return await page.evaluate(
@@ -126,7 +139,7 @@ export async function getLayerFeatureCount(
                     };
                 });
             },
-            { name: databaseName, title: mapName, id: layerId },
+            { name: databaseName, title: mapName, id: layerId }
         );
     });
 }

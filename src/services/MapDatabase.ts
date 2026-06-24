@@ -23,7 +23,7 @@ export class MapDatabase extends Dexie {
 
         this.version(1).stores({
             maps: 'title, sortOrder, updatedAt',
-            metadata: 'key',
+            metadata: 'key'
         });
     }
 }

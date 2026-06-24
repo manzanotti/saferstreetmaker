@@ -17,7 +17,13 @@ function addLine(
         points: latLngs,
         geoJsonLayer,
         map,
-        polylineOpts: { color: COLOUR, weight: WEIGHT, opacity: 1, smoothFactor: 1 },
+        polylineOpts: {
+            color: COLOUR,
+            weight: WEIGHT,
+            opacity: 1,
+            smoothFactor: 1,
+            className: 'mobility-lane'
+        },
         buttonId: 'mobility-lane',
         selectForEdit,
         popupKeepInView: false,

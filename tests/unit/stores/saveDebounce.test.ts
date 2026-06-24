@@ -159,7 +159,7 @@ describe('useMapManager – save debounce', () => {
     it('surfaces save errors when a fire-and-forget layer update save rejects', async () => {
         vi.spyOn(fm, 'saveMap').mockRejectedValue({
             message: '<b>save failed</b>',
-            stack: '<script>boom()</script>',
+            stack: '<script>boom()</script>'
         });
 
         const mapStore = useMapStore(pinia);
@@ -171,8 +171,24 @@ describe('useMapManager – save debounce', () => {
 
         expect(uiStore.errorMessages).toEqual([
             'There was a problem saving the map:',
-            '&lt;b&gt;save failed&lt;/b&gt;',
-            '&lt;script&gt;boom()&lt;/script&gt;',
+            '<b>save failed</b>',
+            '<script>boom()</script>'
+        ]);
+    });
+
+    it('surfaces the thrown value when save rejects with a string', async () => {
+        vi.spyOn(fm, 'saveMap').mockRejectedValue('save failed');
+
+        const mapStore = useMapStore(pinia);
+        const uiStore = useUiStore(pinia);
+
+        mapStore.markLayerUpdated();
+        await nextTick();
+        await Promise.resolve();
+
+        expect(uiStore.errorMessages).toEqual([
+            'There was a problem saving the map:',
+            'save failed'
         ]);
     });
 });

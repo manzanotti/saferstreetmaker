@@ -1,5 +1,8 @@
 import { test, expect, Page } from '@playwright/test';
-import { getLayerFeatureCount as getIndexedDbLayerFeatureCount } from './indexedDbHelpers';
+import {
+    addFreshStorageInitScript,
+    getLayerFeatureCount as getIndexedDbLayerFeatureCount
+} from './indexedDbHelpers';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -68,6 +71,149 @@ async function deleteFirstShape(page: Page) {
     await page.waitForTimeout(100);
 }
 
+async function hoverSvgPath(page: Page, locator: ReturnType<Page['locator']>): Promise<void> {
+    const point = await locator.first().evaluate((element) => {
+        const path = element as SVGPathElement;
+        const screenMatrix = path.getScreenCTM();
+
+        if (!screenMatrix) {
+            throw new Error('SVG path screen transform unavailable');
+        }
+
+        const toScreenPoint = (distance: number, offsetX: number, offsetY: number) => {
+            const pointAtDistance = path.getPointAtLength(distance);
+            return {
+                x:
+                    pointAtDistance.x * screenMatrix.a +
+                    pointAtDistance.y * screenMatrix.c +
+                    screenMatrix.e +
+                    offsetX,
+                y:
+                    pointAtDistance.x * screenMatrix.b +
+                    pointAtDistance.y * screenMatrix.d +
+                    screenMatrix.f +
+                    offsetY
+            };
+        };
+
+        const length = path.getTotalLength();
+        const distances = [0.25, 0.5, 0.75].map((fraction) => length * fraction);
+        const offsets = [
+            { x: 0, y: 0 },
+            { x: -2, y: 0 },
+            { x: 2, y: 0 },
+            { x: 0, y: -2 },
+            { x: 0, y: 2 }
+        ];
+
+        for (const distance of distances) {
+            for (const offset of offsets) {
+                const point = toScreenPoint(distance, offset.x, offset.y);
+                const stack = document.elementsFromPoint(point.x, point.y);
+                if (stack.includes(path)) {
+                    return point;
+                }
+            }
+        }
+
+        return toScreenPoint(length / 2, 0, 0);
+    });
+
+    await page.mouse.move(point.x, point.y);
+    await page.waitForTimeout(100);
+}
+
+async function hoverLocatorCenter(page: Page, locator: ReturnType<Page['locator']>): Promise<void> {
+    const box = await locator.first().boundingBox();
+    if (!box) {
+        throw new Error('Hovered element bounding box unavailable');
+    }
+
+    const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    await page.mouse.move(point.x, point.y);
+    await page.waitForTimeout(100);
+}
+
+async function getCursorAtPathPoint(locator: ReturnType<Page['locator']>): Promise<string> {
+    return await locator.first().evaluate((element) => {
+        const path = element as SVGPathElement;
+        const screenMatrix = path.getScreenCTM();
+
+        if (!screenMatrix) {
+            throw new Error('SVG path screen transform unavailable');
+        }
+
+        const toScreenPoint = (distance: number, offsetX: number, offsetY: number) => {
+            const pointAtDistance = path.getPointAtLength(distance);
+            return {
+                x:
+                    pointAtDistance.x * screenMatrix.a +
+                    pointAtDistance.y * screenMatrix.c +
+                    screenMatrix.e +
+                    offsetX,
+                y:
+                    pointAtDistance.x * screenMatrix.b +
+                    pointAtDistance.y * screenMatrix.d +
+                    screenMatrix.f +
+                    offsetY
+            };
+        };
+
+        const length = path.getTotalLength();
+        const distances = [0.25, 0.5, 0.75].map((fraction) => length * fraction);
+        const offsets = [
+            { x: 0, y: 0 },
+            { x: -2, y: 0 },
+            { x: 2, y: 0 },
+            { x: 0, y: -2 },
+            { x: 0, y: 2 }
+        ];
+
+        let hit: Element | null = null;
+
+        for (const distance of distances) {
+            for (const offset of offsets) {
+                const point = toScreenPoint(distance, offset.x, offset.y);
+                const stack = document.elementsFromPoint(point.x, point.y);
+                if (stack.includes(path)) {
+                    hit = document.elementFromPoint(point.x, point.y);
+                    break;
+                }
+            }
+
+            if (hit) {
+                break;
+            }
+        }
+
+        if (!hit) {
+            const fallbackPoint = toScreenPoint(length / 2, 0, 0);
+            hit = document.elementFromPoint(fallbackPoint.x, fallbackPoint.y);
+        }
+
+        if (!hit) {
+            throw new Error('No element found at SVG path point');
+        }
+
+        return getComputedStyle(hit).cursor;
+    });
+}
+
+async function getCursorAtLocatorCenter(locator: ReturnType<Page['locator']>): Promise<string> {
+    return await locator.first().evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        const hit = document.elementFromPoint(
+            rect.left + rect.width / 2,
+            rect.top + rect.height / 2
+        );
+        if (!hit) {
+            throw new Error('No element found at locator center point');
+        }
+
+        return getComputedStyle(hit).cursor;
+    });
+}
+
 // ---------------------------------------------------------------------------
 // Shared beforeEach – clear storage so each test starts from a blank map
 // ---------------------------------------------------------------------------
@@ -77,6 +223,7 @@ function setupFreshPage() {
         // Provide a fixed geolocation so the map view is set during page load.
         await context.grantPermissions(['geolocation']);
         await context.setGeolocation({ latitude: 52.5, longitude: -1.9 });
+        await addFreshStorageInitScript(page);
         await page.goto('/');
 
         // Inject CSS to permanently hide the #help modal.
@@ -296,6 +443,34 @@ test.describe('Layer: Mobility Lane (polyline)', () => {
         await btn.click();
         await expect(btn).not.toHaveClass(/selected/);
     });
+
+    test('active mobility tool shows a selectable cursor on existing mobility lines', async ({
+        page
+    }) => {
+        await page.locator('#mobility-lane-button').click();
+        await drawPolyline(page);
+
+        const path = page.locator('.leaflet-overlay-pane path.mobility-lane.leaflet-interactive');
+        await hoverSvgPath(page, path);
+
+        const cursor = await getCursorAtPathPoint(path);
+        expect(cursor).toBe('pointer');
+    });
+
+    test('active mobility tool keeps the tool cursor on different layer shapes', async ({
+        page
+    }) => {
+        await page.locator('#ltn-button').click();
+        await drawPolygon(page);
+
+        await page.locator('#mobility-lane-button').click();
+
+        const path = page.locator('.leaflet-ltns-pane path.ltn-cell.leaflet-interactive');
+        await hoverLocatorCenter(page, path);
+
+        const cursor = await getCursorAtLocatorCenter(path);
+        expect(cursor).toBe('crosshair');
+    });
 });
 
 test.describe('Layer: Car-Free Street (polyline)', () => {
@@ -508,7 +683,9 @@ test.describe('Layer exclusivity', () => {
         expect(await getLayerFeatureCount(page, 'TrafficLights')).toBe(1);
     });
 
-    test('clicking an existing polyline deselects an active point layer', async ({ page }) => {
+    test('clicking on an existing polyline keeps an active point layer selected and places the point', async ({
+        page
+    }) => {
         // Create one mobility lane to edit later.
         await page.locator('#mobility-lane-button').click();
         await drawPolyline(page);
@@ -518,20 +695,30 @@ test.describe('Layer exclusivity', () => {
         await page.locator('#modal-filter-button').click();
         await expect(page.locator('#modal-filter-button')).toHaveClass(/selected/);
 
-        // Click the existing mobility lane to enter edit mode.
-        await page
-            .locator(
-                '.leaflet-overlay-pane path, .leaflet-polygon-pane path, .leaflet-ltns-pane path'
-            )
-            .first()
-            .dispatchEvent('click');
+        await clickMap(page, 0, 0);
 
-        await expect(page.locator('#mobility-lane-button')).toHaveClass(/selected/);
-        await expect(page.locator('#modal-filter-button')).not.toHaveClass(/selected/);
+        await expect(page.locator('#modal-filter-button')).toHaveClass(/selected/);
+        await expect(page.locator('#mobility-lane-button')).not.toHaveClass(/selected/);
 
-        // A subsequent map click should not place a modal filter marker.
-        await clickMap(page, 100, 0);
-        expect(await getLayerFeatureCount(page, 'ModalFilters')).toBe(0);
+        expect(await getLayerFeatureCount(page, 'ModalFilters')).toBe(1);
         expect(await getLayerFeatureCount(page, 'MobilityLanes')).toBeGreaterThanOrEqual(1);
+    });
+
+    test('clicking inside an existing LTN cell keeps an active point layer selected and places the point', async ({
+        page
+    }) => {
+        await page.locator('#ltn-button').click();
+        await drawPolygon(page);
+        expect(await getLayerFeatureCount(page, 'LtnCells')).toBe(1);
+
+        await page.locator('#modal-filter-button').click();
+        await expect(page.locator('#modal-filter-button')).toHaveClass(/selected/);
+
+        await clickMap(page, 0, 0);
+
+        await expect(page.locator('#modal-filter-button')).toHaveClass(/selected/);
+        await expect(page.locator('#ltn-button')).not.toHaveClass(/selected/);
+        expect(await getLayerFeatureCount(page, 'ModalFilters')).toBe(1);
+        expect(await getLayerFeatureCount(page, 'LtnCells')).toBe(1);
     });
 });

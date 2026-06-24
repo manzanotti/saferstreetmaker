@@ -30,6 +30,7 @@ function makeLayer(id: string, features: any[] = []): IMapLayer {
         selected: false,
         visible: false,
         groupName: '',
+        iconHtml: '',
         getToolbarButton: vi.fn(),
         getLegendEntry: vi.fn(),
         loadFromGeoJSON: vi.fn(),
@@ -138,15 +139,10 @@ describe('FileManager', () => {
     });
 
     // -----------------------------------------------------------------------
-    // saveMapList / loadMapListFromStorage
+    // loadMapListFromStorage
     // -----------------------------------------------------------------------
-    describe('saveMapList / loadMapListFromStorage', () => {
+    describe('loadMapListFromStorage', () => {
         it('returns empty array when nothing stored', async () => {
-            await expect(fm.loadMapListFromStorage()).resolves.toEqual([]);
-        });
-
-        it('does not create a list entry when no map exists', async () => {
-            await fm.saveMapList('Alpha');
             await expect(fm.loadMapListFromStorage()).resolves.toEqual([]);
         });
 
@@ -277,6 +273,22 @@ describe('FileManager', () => {
             });
             await expect(fm.loadLastMapSelected()).resolves.toBe('OldShapeCity');
         });
+
+        it('does not re-import legacy localStorage maps after they were deleted from IndexedDB', async () => {
+            seedLegacyLocalStorageMap('LegacyCity', '0.8.1');
+
+            fm = new FileManager();
+            await expect(fm.loadMapFromStorage('LegacyCity')).resolves.toMatchObject({
+                settings: { title: 'LegacyCity', version: '0.8.1' }
+            });
+
+            await fm.deleteMapFromStorage('LegacyCity');
+
+            fm = new FileManager();
+
+            await expect(fm.loadMapFromStorage('LegacyCity')).resolves.toBeNull();
+            await expect(fm.loadMapListFromStorage()).resolves.toEqual([]);
+        });
     });
 
     // -----------------------------------------------------------------------
@@ -306,6 +318,17 @@ describe('FileManager', () => {
             await fm.saveMap(makeSettings('Delete'), new Map());
             await fm.deleteMapFromStorage('Delete');
             await expect(fm.loadMapFromStorage('Keep')).resolves.not.toBeNull();
+        });
+
+        it('updates last selected to the most recently saved remaining map', async () => {
+            await fm.saveMap(makeSettings('First'), new Map());
+            await fm.saveMap(makeSettings('Second'), new Map());
+
+            await expect(fm.loadLastMapSelected()).resolves.toBe('Second');
+
+            await fm.deleteMapFromStorage('Second');
+
+            await expect(fm.loadLastMapSelected()).resolves.toBe('First');
         });
     });
 
@@ -434,13 +457,21 @@ describe('FileManager', () => {
             const fileInput = document.body.querySelector('input[type="file"]') as HTMLInputElement;
             expect(fileInput).toBeTruthy();
 
-            (fm as any)._readFile({ target: fileInput } as Event);
+            fileInput.dispatchEvent(new Event('change'));
 
             expect(document.body.querySelector('input[type="file"]')).toBeNull();
         });
 
         it('removes the hidden input when JSON.parse fails for an invalid file', () => {
             const OriginalFileReader = globalThis.FileReader;
+            let capturedError: Error | null = null;
+
+            const onWindowError = (event: ErrorEvent) => {
+                capturedError = event.error;
+                event.preventDefault();
+            };
+
+            window.addEventListener('error', onWindowError);
 
             class MockFileReader {
                 onload: ((e: ProgressEvent<FileReader>) => void) | null = null;
@@ -467,12 +498,12 @@ describe('FileManager', () => {
                     configurable: true
                 });
 
-                expect(() => {
-                    (fm as any)._readFile({ target: fileInput } as Event);
-                }).toThrow();
+                fileInput.dispatchEvent(new Event('change'));
 
                 expect(document.body.querySelector('input[type="file"]')).toBeNull();
+                expect(capturedError).toBeInstanceOf(SyntaxError);
             } finally {
+                window.removeEventListener('error', onWindowError);
                 (globalThis as any).FileReader = OriginalFileReader;
             }
         });

@@ -32,6 +32,44 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         }
     };
 
+    const setMouseMarkerCursor = (cursor: string | null): void => {
+        const marker = document.querySelector('.leaflet-mouse-marker') as HTMLElement | null;
+        if (!marker) {
+            return;
+        }
+
+        if (cursor === null) {
+            marker.style.removeProperty('cursor');
+        } else {
+            marker.style.cursor = cursor;
+        }
+    };
+
+    const syncMouseMarkerCursor = (event: L.LeafletMouseEvent): void => {
+        const hoverStack = document.elementsFromPoint(
+            event.originalEvent.clientX,
+            event.originalEvent.clientY
+        );
+        const mouseMarker = document.querySelector('.leaflet-mouse-marker') as HTMLElement | null;
+        if (!mouseMarker) {
+            return;
+        }
+
+        const isHoveringLtnFeature = hoverStack.some((element) => {
+            return (
+                element !== mouseMarker &&
+                element.classList.contains('leaflet-interactive') &&
+                element.classList.contains(CURSOR_CSS)
+            );
+        });
+
+        if (isHoveringLtnFeature) {
+            mouseMarker.style.cursor = 'pointer';
+        } else {
+            mouseMarker.style.removeProperty('cursor');
+        }
+    };
+
     // ── Add a single LTN polygon ─────────────────────────────────────────────
     const addLtnCell = (points: L.LatLng[], label: string, color: string) => {
         const polygon = new L.Polygon(points, {
@@ -60,6 +98,12 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         const popup = createLtnPopup(polygon, tooltip, label);
 
         polygon.on('click', (e: any) => {
+            // Let the currently active tool own the click instead of forcing
+            // LTN edit mode underneath it.
+            if (mapStore.activeLayerId !== null && mapStore.activeLayerId !== BUTTON_ID) {
+                return;
+            }
+
             // Disable editing on all other polygons in this layer first.
             geoJsonLayer.eachLayer((l: any) => {
                 if (l !== e.target) {
@@ -137,6 +181,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             if (shouldBeSelected && !_selected) {
                 _selected = true;
                 setMapCursor(CURSOR_CSS);
+                map.on('mousemove', syncMouseMarkerCursor as L.LeafletEventHandlerFn);
                 if (selectionMode === 'draw') {
                     _drawingTool = new L.Draw.Polygon(map, { color: COLOUR });
                     _drawingTool.enable();
@@ -147,6 +192,8 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                 _drawingTool?.disable();
                 _drawingTool = null;
                 geoJsonLayer.eachLayer((l: any) => l.editing?.disable());
+                map.off('mousemove', syncMouseMarkerCursor as L.LeafletEventHandlerFn);
+                setMouseMarkerCursor(null);
                 removeMapCursor(CURSOR_CSS);
                 map.off('draw:created', handleDrawCreated);
                 selectionMode = 'draw';

@@ -14,8 +14,8 @@ import { MapSerializer, type SerializedMap } from './MapSerializer';
 import { MapStorage } from './MapStorage';
 
 export class FileManager {
-    readonly serializer: MapSerializer;
-    readonly storage: MapStorage;
+    private readonly serializer: MapSerializer;
+    private readonly storage: MapStorage;
 
     private _onFileLoaded: ((data: unknown) => void) | null = null;
 
@@ -76,11 +76,6 @@ export class FileManager {
 
     async loadLastMapSelected(): Promise<string> {
         return await this.storage.loadLastSelected();
-    }
-
-    /** Exposed for direct use in tests; saveMap() calls this automatically. */
-    async saveMapList(mapTitle: string): Promise<void> {
-        await this.storage.saveMapList(mapTitle);
     }
 
     // ── File download ─────────────────────────────────────────────────────────

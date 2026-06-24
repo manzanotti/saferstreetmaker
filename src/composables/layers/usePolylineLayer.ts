@@ -51,6 +51,31 @@ export function createPolylineLayer(
     let _drawingTool: { disable(): void } | null = null;
     let selectionMode: 'draw' | 'edit' = 'draw';
 
+    const syncMouseMarkerCursor = (event: L.LeafletMouseEvent) => {
+        const mouseMarker = document.querySelector('.leaflet-mouse-marker') as HTMLElement | null;
+        if (!mouseMarker) {
+            return;
+        }
+
+        const hoverStack = document.elementsFromPoint(
+            event.originalEvent.clientX,
+            event.originalEvent.clientY
+        );
+        const isHoveringSameLayerFeature = hoverStack.some((element) => {
+            return (
+                element !== mouseMarker &&
+                element.classList.contains('leaflet-interactive') &&
+                element.classList.contains(config.buttonId)
+            );
+        });
+
+        if (isHoveringSameLayerFeature) {
+            mouseMarker.style.cursor = 'pointer';
+        } else {
+            mouseMarker.style.removeProperty('cursor');
+        }
+    };
+
     const handleDrawCreated = (e: any) => {
         if (!_selected) {
             return;
@@ -66,6 +91,7 @@ export function createPolylineLayer(
             if (shouldBeSelected && !_selected) {
                 _selected = true;
                 setMapCursor(config.buttonId);
+                map.on('mousemove', syncMouseMarkerCursor as L.LeafletEventHandlerFn);
                 if (selectionMode === 'draw') {
                     _drawingTool = config.createDrawingTool(map);
                     map.on('draw:created', handleDrawCreated);
@@ -75,6 +101,11 @@ export function createPolylineLayer(
                 _drawingTool?.disable();
                 _drawingTool = null;
                 geoJsonLayer.eachLayer((l: any) => l.editing?.disable());
+                map.off('mousemove', syncMouseMarkerCursor as L.LeafletEventHandlerFn);
+                const mouseMarker = document.querySelector(
+                    '.leaflet-mouse-marker'
+                ) as HTMLElement | null;
+                mouseMarker?.style.removeProperty('cursor');
                 removeMapCursor(config.buttonId);
                 map.off('draw:created', handleDrawCreated);
                 selectionMode = 'draw';
