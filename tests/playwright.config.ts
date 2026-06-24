@@ -10,18 +10,18 @@ export default defineConfig({
     reporter: 'html',
     use: {
         baseURL: 'http://localhost:1234',
-        trace: 'on-first-retry',
+        trace: 'on-first-retry'
     },
     projects: [
         {
             name: 'chromium',
-            use: { ...devices['Desktop Chrome'] },
-        },
+            use: { ...devices['Desktop Chrome'] }
+        }
     ],
     webServer: {
         command: 'yarn start',
         url: 'http://localhost:1234',
         reuseExistingServer: !process.env.CI,
-        timeout: 30000,
-    },
+        timeout: 30000
+    }
 });

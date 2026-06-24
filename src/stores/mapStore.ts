@@ -74,6 +74,6 @@ export const useMapStore = defineStore('map', () => {
         setActiveLayer,
         toggleLayerVisibility,
         markLayerUpdated,
-        toLayers,
+        toLayers
     };
 });

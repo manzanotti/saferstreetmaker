@@ -39,7 +39,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             fillOpacity: 0.2,
             weight: 5,
             pane: 'ltns',
-            className: 'ltn-cell',
+            className: 'ltn-cell'
         });
 
         polygon.on('edit', () => {
@@ -152,7 +152,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                 selectionMode = 'draw';
             }
         },
-        { flush: 'sync' },
+        { flush: 'sync' }
     );
 
     const action = (_e: Event, _m: L.Map): void => {
@@ -171,7 +171,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         },
         set visible(v: boolean) {
             _visible = v;
-        },
+        }
     };
 
     return {
@@ -203,7 +203,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                 groupName: '',
                 action,
                 selected: _selected,
-                text: 'LTN',
+                text: 'LTN'
             });
         },
 
@@ -215,7 +215,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                 title: 'LTN Cells',
                 toggleTitle: 'Toggle LTNs from the map',
                 iconEl: icon,
-                visibilityState: visibilityProxy,
+                visibilityState: visibilityProxy
             });
         },
 
@@ -252,6 +252,6 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             _visible = false;
         },
 
-        selectForEdit,
+        selectForEdit
     };
 }

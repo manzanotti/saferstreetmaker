@@ -31,7 +31,7 @@ function createSimplePolylineLayer(cfg: SimplePolylineConfig, map: L.Map): IMapL
             polylineOpts: { color: cfg.colour, weight: cfg.weight, opacity: 1, smoothFactor: 1 },
             buttonId: cfg.buttonId,
             selectForEdit: () => layer.selectForEdit(),
-            arrowheads: cfg.arrowheads,
+            arrowheads: cfg.arrowheads
         });
     };
 
@@ -48,7 +48,7 @@ function createSimplePolylineLayer(cfg: SimplePolylineConfig, map: L.Map): IMapL
                     color: cfg.colour,
                     weight: cfg.weight,
                     opacity: 1,
-                    smoothFactor: 1,
+                    smoothFactor: 1
                 });
                 tool.enable();
                 return tool;
@@ -63,9 +63,9 @@ function createSimplePolylineLayer(cfg: SimplePolylineConfig, map: L.Map): IMapL
                     cfg.iconExtra(icon);
                 }
                 return icon;
-            },
+            }
         },
-        map,
+        map
     );
 
     layer.loadFromGeoJSON = (geoJson: any) => {
@@ -84,9 +84,9 @@ export function createTramLineLayer(map: L.Map): IMapLayer {
             tooltip: 'Add tram lines to the map',
             toggleTitle: 'Toggle tram lines from the map',
             colour: '#ff5e00',
-            weight: 5,
+            weight: 5
         },
-        map,
+        map
     );
 }
 
@@ -99,9 +99,9 @@ export function createCarFreeStreetLayer(map: L.Map): IMapLayer {
             tooltip: 'Add car-free streets to the map',
             toggleTitle: 'Toggle car-free streets from the map',
             colour: '#00bb00',
-            weight: 10,
+            weight: 10
         },
-        map,
+        map
     );
 }
 
@@ -114,9 +114,9 @@ export function createSchoolStreetLayer(map: L.Map): IMapLayer {
             tooltip: 'Add school streets to the map',
             toggleTitle: 'Toggle school streets from the map',
             colour: '#E6EA09',
-            weight: 5,
+            weight: 5
         },
-        map,
+        map
     );
 }
 
@@ -130,8 +130,8 @@ export function createOneWayStreetLayer(map: L.Map): IMapLayer {
             toggleTitle: 'Toggle one-way streets from the map',
             colour: '#000000',
             weight: 2,
-            arrowheads: { frequency: '50px', size: '15px', yawn: 40 },
+            arrowheads: { frequency: '50px', size: '15px', yawn: 40 }
         },
-        map,
+        map
     );
 }

@@ -11,7 +11,7 @@ describe('ToolbarButton', () => {
             selected: true,
             groupName: 'filters',
             action: handler,
-            isFirst: true,
+            isFirst: true
         };
 
         expect(btn.id).toBe('modal-filter');
@@ -30,7 +30,7 @@ describe('ToolbarButton', () => {
             tooltip: '',
             selected: false,
             groupName: '',
-            action: noop,
+            action: noop
         };
         const parent: ToolbarButton = {
             id: 'parent',
@@ -38,7 +38,7 @@ describe('ToolbarButton', () => {
             selected: false,
             groupName: '',
             action: noop,
-            buttons: [child],
+            buttons: [child]
         };
 
         expect(parent.buttons).toHaveLength(1);
@@ -52,7 +52,7 @@ describe('ToolbarButton', () => {
             tooltip: 'x',
             selected: false,
             groupName: '',
-            action: noop,
+            action: noop
         };
         expect(btn.text).toBeUndefined();
         expect(btn.isFirst).toBeUndefined();

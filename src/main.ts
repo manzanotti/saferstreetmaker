@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!mapLoaded && window.navigator.geolocation) {
         window.navigator.geolocation.getCurrentPosition(
             (pos) => setUserLocation(pos),
-            () => setDefaultView(),
+            () => setDefaultView()
         );
     }
 });

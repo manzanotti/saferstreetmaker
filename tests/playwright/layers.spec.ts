@@ -235,7 +235,7 @@ test.describe('Layer: Pedestrian Lights (point, submenu button)', () => {
     setupFreshPage();
 
     test('right-clicking traffic lights button reveals pedestrian lights button', async ({
-        page,
+        page
     }) => {
         await page.locator('#traffic-lights-button').dispatchEvent('contextmenu');
         await expect(page.locator('#pedestrian-lights-button')).toBeVisible();
@@ -407,7 +407,7 @@ test.describe('Layer: LTN Cell (polygon)', () => {
     });
 
     test('clicking an existing LTN polygon enters edit mode without enabling draw mode', async ({
-        page,
+        page
     }) => {
         // Draw one polygon
         await page.locator('#ltn-button').click();
@@ -421,7 +421,7 @@ test.describe('Layer: LTN Cell (polygon)', () => {
         // Click the existing polygon — should enter edit mode for the LTN layer
         await page
             .locator(
-                '.leaflet-overlay-pane path, .leaflet-polygon-pane path, .leaflet-ltns-pane path',
+                '.leaflet-overlay-pane path, .leaflet-polygon-pane path, .leaflet-ltns-pane path'
             )
             .first()
             .dispatchEvent('click');
@@ -468,7 +468,7 @@ test.describe('Layer: LTN Cell (polygon)', () => {
 
         // Click the first polygon to enter edit mode — a popup should open
         const polygons = page.locator(
-            '.leaflet-overlay-pane path, .leaflet-polygon-pane path, .leaflet-ltns-pane path',
+            '.leaflet-overlay-pane path, .leaflet-polygon-pane path, .leaflet-ltns-pane path'
         );
         await polygons.first().dispatchEvent('click');
         await page.waitForTimeout(200);
@@ -529,7 +529,7 @@ test.describe('Layer exclusivity', () => {
         // Click the existing mobility lane to enter edit mode.
         await page
             .locator(
-                '.leaflet-overlay-pane path, .leaflet-polygon-pane path, .leaflet-ltns-pane path',
+                '.leaflet-overlay-pane path, .leaflet-polygon-pane path, .leaflet-ltns-pane path'
             )
             .first()
             .dispatchEvent('click');

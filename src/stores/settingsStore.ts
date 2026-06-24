@@ -52,6 +52,6 @@ export const useSettingsStore = defineStore('settings', () => {
         zoom,
         version,
         applyFromSettings,
-        toSettings,
+        toSettings
     };
 });

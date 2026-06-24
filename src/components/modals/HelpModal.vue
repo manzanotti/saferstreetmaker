@@ -12,7 +12,7 @@ const tabs = [
     { id: 'tabs-settings', label: 'Settings' },
     { id: 'tabs-sharing', label: 'Sharing' },
     { id: 'tabs-tech', label: 'Tech' },
-    { id: 'tabs-support', label: 'Support' },
+    { id: 'tabs-support', label: 'Support' }
 ];
 
 const tabLinkClass =

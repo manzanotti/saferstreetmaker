@@ -65,7 +65,7 @@ test.describe('Toolbar button groups', () => {
     });
 
     test('selecting a different filters-group member keeps the group in place', async ({
-        page,
+        page
     }) => {
         const members = ['modal-filter-button', 'bus-gate-button'];
 
@@ -83,7 +83,7 @@ test.describe('Toolbar button groups', () => {
             const toolbar = document.querySelector('.toolbar');
             if (!toolbar) return false;
             const li = Array.from(toolbar.children).find((c) =>
-                c.querySelector(':scope > #bus-gate-button'),
+                c.querySelector(':scope > #bus-gate-button')
             );
             return li !== undefined;
         });
@@ -93,12 +93,12 @@ test.describe('Toolbar button groups', () => {
     });
 
     test('selecting a different traffic-controls-group member keeps the group in place', async ({
-        page,
+        page
     }) => {
         const members = [
             'traffic-lights-button',
             'pedestrian-lights-button',
-            'zebra-crossing-button',
+            'zebra-crossing-button'
         ];
 
         await expect(page.locator('#traffic-lights-button')).toBeVisible();
@@ -111,7 +111,7 @@ test.describe('Toolbar button groups', () => {
             const toolbar = document.querySelector('.toolbar');
             if (!toolbar) return false;
             const li = Array.from(toolbar.children).find((c) =>
-                c.querySelector(':scope > #zebra-crossing-button'),
+                c.querySelector(':scope > #zebra-crossing-button')
             );
             return li !== undefined;
         });

@@ -34,7 +34,7 @@ describe('settingsStore', () => {
                 activeLayers: ['MobilityLanes', 'LtnCells'],
                 centre,
                 zoom: 14,
-                version: '0.8.1',
+                version: '0.8.1'
             });
             expect(store.title).toBe('My City');
             expect(store.readOnly).toBe(true);
@@ -54,7 +54,7 @@ describe('settingsStore', () => {
                 activeLayers: [],
                 centre: null,
                 zoom: 10,
-                version: '',
+                version: ''
             });
             expect(store.centre).toBeNull();
         });

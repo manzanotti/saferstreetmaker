@@ -17,8 +17,8 @@ function polygonFeatureCollection(polygons: [number, number][][][]) {
     return {
         features: polygons.map((rings) => ({
             geometry: { type: 'Polygon', coordinates: rings },
-            properties: { label: 'LTN 1', color: '#cc00cc' },
-        })),
+            properties: { label: 'LTN 1', color: '#cc00cc' }
+        }))
     };
 }
 
@@ -110,10 +110,10 @@ describe('LtnLayer (composable)', () => {
                             [1, 0],
                             [1, 1],
                             [0, 1],
-                            [0, 0],
-                        ],
-                    ],
-                ]) as any,
+                            [0, 0]
+                        ]
+                    ]
+                ]) as any
             );
             expect(addLayerSpy).toHaveBeenCalledTimes(1);
         });
@@ -128,8 +128,8 @@ describe('LtnLayer (composable)', () => {
                             [1, 0],
                             [1, 1],
                             [0, 1],
-                            [0, 0],
-                        ],
+                            [0, 0]
+                        ]
                     ],
                     [
                         [
@@ -137,10 +137,10 @@ describe('LtnLayer (composable)', () => {
                             [3, 2],
                             [3, 3],
                             [2, 3],
-                            [2, 2],
-                        ],
-                    ],
-                ]) as any,
+                            [2, 2]
+                        ]
+                    ]
+                ]) as any
             );
             expect(addLayerSpy).toHaveBeenCalledTimes(2);
         });
@@ -157,10 +157,10 @@ describe('LtnLayer (composable)', () => {
                             [1, 0],
                             [1, 1],
                             [0, 1],
-                            [0, 0],
-                        ],
-                    ],
-                ]) as any,
+                            [0, 0]
+                        ]
+                    ]
+                ]) as any
             );
 
             expect(closeTooltipSpy).toHaveBeenCalled();
@@ -178,10 +178,10 @@ describe('LtnLayer (composable)', () => {
                             [1, 0],
                             [1, 1],
                             [0, 1],
-                            [0, 0],
-                        ],
-                    ],
-                ]) as any,
+                            [0, 0]
+                        ]
+                    ]
+                ]) as any
             );
 
             expect(openTooltipSpy).toHaveBeenCalled();
@@ -198,10 +198,10 @@ describe('LtnLayer (composable)', () => {
                             [1, 0],
                             [1, 1],
                             [0, 1],
-                            [0, 0],
-                        ],
-                    ],
-                ]) as any,
+                            [0, 0]
+                        ]
+                    ]
+                ]) as any
             );
 
             const closeTooltipSpy = vi.spyOn(L.Polygon.prototype, 'closeTooltip');

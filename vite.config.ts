@@ -13,19 +13,19 @@ export default defineConfig({
         // by mapping their bare imports to the global variables they expose.
         viteExternalsPlugin({
             leaflet: 'L',
-            'lz-string': 'LZString',
-        }),
+            'lz-string': 'LZString'
+        })
     ],
     build: {
         outDir: '../dist',
-        emptyOutDir: true,
+        emptyOutDir: true
     },
     server: {
         port: 1234,
-        strictPort: true,
+        strictPort: true
     },
     preview: {
         port: 1234,
-        strictPort: true,
-    },
+        strictPort: true
+    }
 });

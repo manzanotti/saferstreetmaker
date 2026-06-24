@@ -20,7 +20,7 @@ export function createBusGateLayer(map: L.Map): IMapLayer {
                 const marker = new L.Marker(latlng, {
                     icon: new L.DivIcon({ className: 'bus-gate-icon' }),
                     draggable: true,
-                    pane: 'filters',
+                    pane: 'filters'
                 } as any).on('click', (e: any) => {
                     L.DomEvent.stopPropagation(e);
                     geoJsonLayer.removeLayer(e.target);
@@ -34,8 +34,8 @@ export function createBusGateLayer(map: L.Map): IMapLayer {
                 const icon = document.createElement('i');
                 icon.classList.add('bus-gate-icon');
                 return icon;
-            },
+            }
         },
-        map,
+        map
     );
 }

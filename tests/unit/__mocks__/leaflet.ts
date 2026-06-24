@@ -10,7 +10,7 @@ import { vi } from 'vitest';
 class LatLng {
     constructor(
         public lat: number,
-        public lng: number,
+        public lng: number
     ) {}
 }
 
@@ -49,7 +49,7 @@ class CircleMarker {
 
     constructor(
         public latlng: LatLng,
-        options?: any,
+        options?: any
     ) {
         this.options = options ?? {};
     }
@@ -63,7 +63,7 @@ class CircleMarker {
         return {
             type: 'Feature',
             geometry: { type: 'Point', coordinates: [this.latlng.lng, this.latlng.lat] },
-            properties: this.properties,
+            properties: this.properties
         };
     }
 }
@@ -74,7 +74,7 @@ class Polyline {
 
     constructor(
         public latlngs: LatLng[],
-        public options: any = {},
+        public options: any = {}
     ) {}
 
     on(event: string, fn: Function) {
@@ -91,7 +91,7 @@ class Polyline {
         return {
             type: 'Feature',
             geometry: { type: 'LineString', coordinates: this.latlngs.map((p) => [p.lng, p.lat]) },
-            properties: this.properties,
+            properties: this.properties
         };
     }
 }
@@ -103,7 +103,7 @@ class Polygon {
 
     constructor(
         public latlngs: LatLng[],
-        options: any = {},
+        options: any = {}
     ) {
         this.options = options;
     }
@@ -133,7 +133,7 @@ class Polygon {
         return {
             type: 'Feature',
             geometry: { type: 'Polygon', coordinates: [this.latlngs.map((p) => [p.lng, p.lat])] },
-            properties: { ...this.properties },
+            properties: { ...this.properties }
         };
     }
 }
@@ -148,7 +148,7 @@ class Marker {
 
     constructor(
         public latlng: LatLng,
-        options?: any,
+        options?: any
     ) {
         this.options = options ?? {};
     }
@@ -162,13 +162,13 @@ class Marker {
         return {
             type: 'Feature',
             geometry: { type: 'Point', coordinates: [this.latlng.lng, this.latlng.lat] },
-            properties: {},
+            properties: {}
         };
     }
 }
 
 const DomEvent = {
-    stopPropagation: vi.fn(),
+    stopPropagation: vi.fn()
 };
 
 function geoJSON(data?: any, options?: any) {
@@ -178,7 +178,7 @@ function geoJSON(data?: any, options?: any) {
 class Point {
     constructor(
         public x: number,
-        public y: number,
+        public y: number
     ) {}
 }
 
@@ -187,7 +187,7 @@ function popup(options?: any) {
         options,
         _latlng: null as any,
         setContent: vi.fn().mockReturnThis(),
-        setLatLng: vi.fn().mockReturnThis(),
+        setLatLng: vi.fn().mockReturnThis()
     };
 }
 
@@ -202,7 +202,7 @@ const Draw = {
         constructor(_map: any, _opts?: any) {}
         enable() {}
         disable() {}
-    },
+    }
 };
 
 class Map {
@@ -267,5 +267,5 @@ export {
     Map,
     TileLayer,
     Point,
-    popup,
+    popup
 };

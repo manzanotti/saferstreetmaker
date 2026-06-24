@@ -13,7 +13,7 @@ import {
     createTramLineLayer,
     createCarFreeStreetLayer,
     createSchoolStreetLayer,
-    createOneWayStreetLayer,
+    createOneWayStreetLayer
 } from './useSimplePolylineLayers';
 import { createLtnLayer } from './useLtnLayer';
 
@@ -29,6 +29,6 @@ export function createAllLayers(map: L.Map): IMapLayer[] {
         createBusGateLayer(map),
         createTrafficLightsLayer(map),
         createPedestrianLightsLayer(map),
-        createZebraCrossingLayer(map),
+        createZebraCrossingLayer(map)
     ];
 }

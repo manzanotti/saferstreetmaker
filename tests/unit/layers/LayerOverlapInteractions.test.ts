@@ -46,13 +46,13 @@ describe('Layer overlap interactions', () => {
                                 [2, 0],
                                 [2, 2],
                                 [0, 2],
-                                [0, 0],
-                            ],
-                        ],
+                                [0, 0]
+                            ]
+                        ]
                     },
-                    properties: { label: 'LTN 1', color: '#cc00cc' },
-                },
-            ],
+                    properties: { label: 'LTN 1', color: '#cc00cc' }
+                }
+            ]
         } as any);
 
         expect(ltnLayer.getLayer().getLayers()).toHaveLength(1);
@@ -61,8 +61,8 @@ describe('Layer overlap interactions', () => {
         mapStore.setActiveLayer('mobility-lane');
         triggerMapEvent(map, 'draw:created', {
             layer: {
-                getLatLngs: () => [new L.LatLng(0.5, 0.5), new L.LatLng(1.5, 1.5)],
-            },
+                getLatLngs: () => [new L.LatLng(0.5, 0.5), new L.LatLng(1.5, 1.5)]
+            }
         });
 
         expect(ltnLayer.getLayer().getLayers()).toHaveLength(1);
@@ -87,17 +87,17 @@ describe('Layer overlap interactions', () => {
                                 [2, 0],
                                 [2, 2],
                                 [0, 2],
-                                [0, 0],
-                            ],
-                        ],
+                                [0, 0]
+                            ]
+                        ]
                     },
-                    properties: { label: 'LTN 1', color: '#cc00cc' },
-                },
-            ],
+                    properties: { label: 'LTN 1', color: '#cc00cc' }
+                }
+            ]
         } as any);
 
         modalFilterLayer.loadFromGeoJSON({
-            features: [{ geometry: { coordinates: [1, 1] } }],
+            features: [{ geometry: { coordinates: [1, 1] } }]
         } as any);
 
         const marker = modalFilterLayer.getLayer().getLayers()[0] as any;
@@ -125,15 +125,15 @@ describe('Layer overlap interactions', () => {
                         type: 'LineString',
                         coordinates: [
                             [0, 0],
-                            [2, 2],
-                        ],
-                    },
-                },
-            ],
+                            [2, 2]
+                        ]
+                    }
+                }
+            ]
         } as any);
 
         busGateLayer.loadFromGeoJSON({
-            features: [{ geometry: { coordinates: [1, 1] } }],
+            features: [{ geometry: { coordinates: [1, 1] } }]
         } as any);
 
         const marker = busGateLayer.getLayer().getLayers()[0] as any;

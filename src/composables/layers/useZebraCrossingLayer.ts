@@ -20,7 +20,7 @@ export function createZebraCrossingLayer(map: L.Map): IMapLayer {
                 const marker = new L.Marker(latlng, {
                     icon: new L.DivIcon({ className: 'zebra-crossing-icon' }),
                     draggable: true,
-                    pane: 'filters',
+                    pane: 'filters'
                 } as any).on('click', (e: any) => {
                     L.DomEvent.stopPropagation(e);
                     geoJsonLayer.removeLayer(e.target);
@@ -34,9 +34,9 @@ export function createZebraCrossingLayer(map: L.Map): IMapLayer {
                 const icon = document.createElement('i');
                 icon.classList.add('zebra-crossing-icon');
                 return icon;
-            },
+            }
         },
-        map,
+        map
     );
 
     // Show/hide tooltips based on zoom level (direct map event, no PubSub)

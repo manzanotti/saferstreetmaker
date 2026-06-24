@@ -14,7 +14,7 @@ vi.mock('leaflet', () => ({
             this.lat = lat;
             this.lng = lng;
         }
-    },
+    }
 }));
 
 // --------------------------------------------------------------------------
@@ -33,7 +33,7 @@ function makeLayer(id: string, features: any[] = []): IMapLayer {
         loadFromGeoJSON: vi.fn(),
         getLayer: vi.fn(),
         toGeoJSON: () => ({ type: 'FeatureCollection', features }),
-        clearLayer: vi.fn(),
+        clearLayer: vi.fn()
     };
 }
 
@@ -113,7 +113,7 @@ describe('FileManager', () => {
         it('persists a map and retrieves it', () => {
             const settings = makeSettings('Birmingham');
             const layers = new Map<string, IMapLayer>([
-                ['ModalFilters', makeLayer('ModalFilters')],
+                ['ModalFilters', makeLayer('ModalFilters')]
             ]);
 
             fm.saveMap(settings, layers);
@@ -131,11 +131,11 @@ describe('FileManager', () => {
             const feature = {
                 type: 'Feature',
                 geometry: { type: 'Point', coordinates: [0, 0] },
-                properties: {},
+                properties: {}
             };
             const settings = makeSettings('CityTest');
             const layers = new Map<string, IMapLayer>([
-                ['ModalFilters', makeLayer('ModalFilters', [feature])],
+                ['ModalFilters', makeLayer('ModalFilters', [feature])]
             ]);
 
             fm.saveMap(settings, layers);
@@ -202,7 +202,7 @@ describe('FileManager', () => {
         it('round-trips a map through a URI-encoded hash', () => {
             const settings = makeSettings('HashCity');
             const layers = new Map<string, IMapLayer>([
-                ['ModalFilters', makeLayer('ModalFilters')],
+                ['ModalFilters', makeLayer('ModalFilters')]
             ]);
 
             const hash = fm.saveMapToHash(settings, layers);
@@ -278,19 +278,19 @@ describe('FileManager', () => {
                     activeLayers: [],
                     centre: null,
                     zoom: 12,
-                    version: '1',
+                    version: '1'
                 },
-                layers: {},
+                layers: {}
             };
 
             const fetchMock = vi.fn().mockResolvedValue({
                 ok: true,
-                json: vi.fn().mockResolvedValue(payload),
+                json: vi.fn().mockResolvedValue(payload)
             });
             vi.stubGlobal('fetch', fetchMock);
 
             await expect(fm.loadMapFromRemoteFile('https://example.com/map.json')).resolves.toEqual(
-                payload,
+                payload
             );
             expect(fetchMock).toHaveBeenCalledWith('https://example.com/map.json');
         });
@@ -300,12 +300,12 @@ describe('FileManager', () => {
                 ok: false,
                 status: 404,
                 statusText: 'Not Found',
-                json: vi.fn(),
+                json: vi.fn()
             });
             vi.stubGlobal('fetch', fetchMock);
 
             await expect(
-                fm.loadMapFromRemoteFile('https://example.com/missing.json'),
+                fm.loadMapFromRemoteFile('https://example.com/missing.json')
             ).rejects.toThrow('Failed to load remote map: 404 Not Found');
         });
     });
@@ -334,7 +334,7 @@ describe('FileManager', () => {
 
                 readAsText() {
                     this.onload?.({
-                        target: { result: '{invalid json' },
+                        target: { result: '{invalid json' }
                     } as unknown as ProgressEvent<FileReader>);
                 }
             }
@@ -344,13 +344,13 @@ describe('FileManager', () => {
 
                 fm.loadMapFromFile();
                 const fileInput = document.body.querySelector(
-                    'input[type="file"]',
+                    'input[type="file"]'
                 ) as HTMLInputElement;
                 expect(fileInput).toBeTruthy();
 
                 Object.defineProperty(fileInput, 'files', {
                     value: [{ name: 'bad.json' }],
-                    configurable: true,
+                    configurable: true
                 });
 
                 expect(() => {

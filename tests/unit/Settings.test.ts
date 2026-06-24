@@ -10,7 +10,7 @@ vi.mock('leaflet', () => ({
             this.lat = lat;
             this.lng = lng;
         }
-    },
+    }
 }));
 
 describe('Settings', () => {

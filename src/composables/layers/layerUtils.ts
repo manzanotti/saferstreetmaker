@@ -51,7 +51,7 @@ export function buildToolbarButton(opts: ToolbarButtonOpts): ToolbarButton {
         action: opts.action,
         selected: opts.selected,
         ...(opts.isFirst !== undefined ? { isFirst: opts.isFirst } : {}),
-        ...(opts.text !== undefined ? { text: opts.text } : {}),
+        ...(opts.text !== undefined ? { text: opts.text } : {})
     };
 }
 
@@ -93,7 +93,7 @@ export function buildLegendEntry(opts: LegendEntryOpts): HTMLElement {
 export function buildDeletePopup(
     map: L.Map,
     popupOptions: L.PopupOptions,
-    onDelete: () => void,
+    onDelete: () => void
 ): L.Popup {
     const popup = L.popup(popupOptions);
 
