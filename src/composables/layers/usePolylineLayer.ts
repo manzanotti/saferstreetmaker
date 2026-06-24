@@ -42,7 +42,7 @@ export interface EditablePolylineLayer extends IMapLayer {
 
 export function createPolylineLayer(
     config: PolylineLayerConfig,
-    map: L.Map,
+    map: L.Map
 ): EditablePolylineLayer {
     const mapStore = useMapStore(pinia);
     const geoJsonLayer = new L.GeoJSON();
@@ -80,7 +80,7 @@ export function createPolylineLayer(
                 selectionMode = 'draw';
             }
         },
-        { flush: 'sync' },
+        { flush: 'sync' }
     );
 
     const action = (_event: Event, _map: L.Map): void => {
@@ -98,7 +98,7 @@ export function createPolylineLayer(
         },
         set visible(v: boolean) {
             _visible = v;
-        },
+        }
     };
 
     return {
@@ -125,7 +125,7 @@ export function createPolylineLayer(
                 tooltip: config.tooltip,
                 groupName: config.groupName,
                 action,
-                selected: _selected,
+                selected: _selected
             });
         },
 
@@ -135,7 +135,7 @@ export function createPolylineLayer(
                 title: config.title,
                 toggleTitle: config.toggleTitle,
                 iconEl: config.buildIconEl(),
-                visibilityState: visibilityProxy,
+                visibilityState: visibilityProxy
             });
         },
 
@@ -154,6 +154,6 @@ export function createPolylineLayer(
             _visible = false;
         },
 
-        selectForEdit,
+        selectForEdit
     };
 }

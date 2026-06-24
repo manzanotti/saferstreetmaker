@@ -54,7 +54,7 @@ export class MapSerializer {
         return {
             settings,
             layers,
-            lastSaved: new Date().toISOString(),
+            lastSaved: new Date().toISOString()
         };
     }
 

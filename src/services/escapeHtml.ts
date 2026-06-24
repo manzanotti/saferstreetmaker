@@ -8,7 +8,7 @@ export function escapeHtml(value: unknown): string {
             '<': '&lt;',
             '>': '&gt;',
             '"': '&quot;',
-            "'": '&#39;',
+            "'": '&#39;'
         };
         return escapedChars[char] ?? char;
     });

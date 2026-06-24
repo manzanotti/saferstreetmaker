@@ -9,7 +9,7 @@ const settingsStore = useSettingsStore();
 const isCollapsed = ref(false);
 
 const activeLayers = computed(() =>
-    mapStore.layers.filter((l) => settingsStore.activeLayers.includes(l.id)),
+    mapStore.layers.filter((l) => settingsStore.activeLayers.includes(l.id))
 );
 
 function toggleCollapse() {

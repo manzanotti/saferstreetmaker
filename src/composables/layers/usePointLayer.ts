@@ -60,7 +60,7 @@ export function createPointLayer(config: PointLayerConfig, map: L.Map): IMapLaye
                 map.off('click', handleMapClick as L.LeafletEventHandlerFn);
             }
         },
-        { flush: 'sync' },
+        { flush: 'sync' }
     );
 
     // No-op action: selection is handled by the sync watch above.
@@ -73,7 +73,7 @@ export function createPointLayer(config: PointLayerConfig, map: L.Map): IMapLaye
         },
         set visible(v: boolean) {
             _visible = v;
-        },
+        }
     };
 
     return {
@@ -102,7 +102,7 @@ export function createPointLayer(config: PointLayerConfig, map: L.Map): IMapLaye
                 action,
                 selected: _selected,
                 isFirst: config.isFirst,
-                text: config.text,
+                text: config.text
             });
         },
 
@@ -112,7 +112,7 @@ export function createPointLayer(config: PointLayerConfig, map: L.Map): IMapLaye
                 title: config.title,
                 toggleTitle: config.toggleTitle,
                 iconEl: config.buildIconEl(),
-                visibilityState: visibilityProxy,
+                visibilityState: visibilityProxy
             });
         },
 
@@ -135,6 +135,6 @@ export function createPointLayer(config: PointLayerConfig, map: L.Map): IMapLaye
         clearLayer(): void {
             geoJsonLayer.clearLayers();
             _visible = false;
-        },
+        }
     };
 }

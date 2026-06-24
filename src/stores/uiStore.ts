@@ -33,6 +33,6 @@ export const useUiStore = defineStore('ui', () => {
         openModal,
         closeModal,
         showErrors,
-        clearErrors,
+        clearErrors
     };
 });

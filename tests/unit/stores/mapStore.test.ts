@@ -17,13 +17,13 @@ function makeLayer(id: string): IMapLayer {
             tooltip: '',
             selected: false,
             groupName: '',
-            action: () => {},
+            action: () => {}
         }),
         getLegendEntry: () => document.createElement('li'),
         loadFromGeoJSON: () => {},
         getLayer: () => ({}) as any,
         toGeoJSON: () => ({}),
-        clearLayer: () => {},
+        clearLayer: () => {}
     };
 }
 

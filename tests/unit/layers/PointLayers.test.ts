@@ -12,7 +12,7 @@ import { createModalFilterLayer } from '../../../src/composables/layers/useModal
 import { createBusGateLayer } from '../../../src/composables/layers/useBusGateLayer';
 import {
     createTrafficLightsLayer,
-    createPedestrianLightsLayer,
+    createPedestrianLightsLayer
 } from '../../../src/composables/layers/useTrafficControlLayers';
 import { createZebraCrossingLayer } from '../../../src/composables/layers/useZebraCrossingLayer';
 
@@ -26,8 +26,8 @@ function makeMockMap(): L.Map {
 function pointFeatureCollection(points: [number, number][]) {
     return {
         features: points.map(([lng, lat]) => ({
-            geometry: { coordinates: [lng, lat] },
-        })),
+            geometry: { coordinates: [lng, lat] }
+        }))
     };
 }
 
@@ -39,7 +39,7 @@ function sharedPointLayerTests(
     expectedId: string,
     expectedTitle: string,
     expectedGroupName: string,
-    expectedButtonId: string,
+    expectedButtonId: string
 ) {
     describe(`${expectedId}`, () => {
         let layer: ReturnType<typeof factoryFn>;
@@ -126,8 +126,8 @@ function sharedPointLayerTests(
                 layer.loadFromGeoJSON(
                     pointFeatureCollection([
                         [0.1, 51.5],
-                        [-1.9, 52.5],
-                    ]),
+                        [-1.9, 52.5]
+                    ])
                 );
                 expect(addLayerSpy).toHaveBeenCalledTimes(2);
             });
@@ -140,7 +140,7 @@ sharedPointLayerTests(
     'ModalFilters',
     'Modal Filters',
     'filters',
-    'modal-filter',
+    'modal-filter'
 );
 sharedPointLayerTests(createBusGateLayer, 'BusGates', 'Bus Gates', 'filters', 'bus-gate');
 sharedPointLayerTests(
@@ -148,19 +148,19 @@ sharedPointLayerTests(
     'TrafficLights',
     'Traffic Lights',
     'traffic-controls',
-    'traffic-lights',
+    'traffic-lights'
 );
 sharedPointLayerTests(
     createPedestrianLightsLayer,
     'PedestrianLights',
     'Pedestrian Lights',
     'traffic-controls',
-    'pedestrian-lights',
+    'pedestrian-lights'
 );
 sharedPointLayerTests(
     createZebraCrossingLayer,
     'ZebraCrossing',
     'Zebra Crossing',
     'traffic-controls',
-    'zebra-crossing',
+    'zebra-crossing'
 );

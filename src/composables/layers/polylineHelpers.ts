@@ -57,7 +57,7 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
         () => {
             geoJsonLayer.removeLayer(polyline);
             mapStore.markLayerUpdated();
-        },
+        }
     );
 
     polyline.on('click', (e: any) => {

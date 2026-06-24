@@ -61,7 +61,7 @@ test.describe('Help Modal', () => {
     });
 
     test('opening help while another modal is open closes that modal and clears its selected button', async ({
-        page,
+        page
     }) => {
         await page.locator('#settings-button').click();
         await expect(page.locator('#read-only')).toBeVisible();

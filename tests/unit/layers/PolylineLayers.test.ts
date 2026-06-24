@@ -12,7 +12,7 @@ import {
     createCarFreeStreetLayer,
     createSchoolStreetLayer,
     createOneWayStreetLayer,
-    createTramLineLayer,
+    createTramLineLayer
 } from '../../../src/composables/layers/useSimplePolylineLayers';
 
 function makeMockMap(): L.Map {
@@ -27,9 +27,9 @@ function polylineFeatureCollection(lines: [number, number][][]) {
         features: lines.map((coords) => ({
             geometry: {
                 type: 'LineString',
-                coordinates: coords,
-            },
-        })),
+                coordinates: coords
+            }
+        }))
     };
 }
 
@@ -40,7 +40,7 @@ function sharedPolylineLayerTests(
     factoryFn: (map: L.Map) => any,
     expectedId: string,
     expectedTitle: string,
-    expectedButtonId: string,
+    expectedButtonId: string
 ) {
     describe(`${expectedId}`, () => {
         let layer: any;
@@ -125,9 +125,9 @@ function sharedPolylineLayerTests(
                     polylineFeatureCollection([
                         [
                             [-1.9, 52.5],
-                            [-1.8, 52.6],
-                        ],
-                    ]),
+                            [-1.8, 52.6]
+                        ]
+                    ])
                 );
                 expect(addLayerSpy).toHaveBeenCalledTimes(1);
             });
@@ -141,12 +141,12 @@ function sharedPolylineLayerTests(
                                 coordinates: [
                                     [
                                         [-1.9, 52.5],
-                                        [-1.8, 52.6],
-                                    ],
-                                ],
-                            },
-                        },
-                    ],
+                                        [-1.8, 52.6]
+                                    ]
+                                ]
+                            }
+                        }
+                    ]
                 };
                 const addLayerSpy = vi.spyOn(layer.getLayer(), 'addLayer');
                 expect(() => layer.loadFromGeoJSON(legacy)).not.toThrow();
@@ -160,24 +160,24 @@ sharedPolylineLayerTests(
     createMobilityLaneLayer,
     'MobilityLanes',
     'Mobility Lanes',
-    'mobility-lane',
+    'mobility-lane'
 );
 sharedPolylineLayerTests(
     createCarFreeStreetLayer,
     'CarFreeStreets',
     'Car-free Streets',
-    'car-free-street',
+    'car-free-street'
 );
 sharedPolylineLayerTests(
     createSchoolStreetLayer,
     'SchoolStreet',
     'School Streets',
-    'school-street',
+    'school-street'
 );
 sharedPolylineLayerTests(
     createOneWayStreetLayer,
     'OneWayStreets',
     'One-way Streets',
-    'one-way-street',
+    'one-way-street'
 );
 sharedPolylineLayerTests(createTramLineLayer, 'TramLines', 'Tram Lines', 'tram-line');

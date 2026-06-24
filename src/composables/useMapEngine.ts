@@ -33,7 +33,7 @@ export function setupMapEngine(): MapEngineResult {
     new L.TileLayer('https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
         attribution:
             '<a href="https://saferstreetmaker.org" target="_blank">saferstreetmaker.org</a> | &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
-        maxZoom: 20,
+        maxZoom: 20
     }).addTo(map);
 
     // ── Keyboard: Escape deselects active layer ───────────────────────────────
@@ -86,7 +86,7 @@ export function setupMapEngine(): MapEngineResult {
                 }
             });
         },
-        { deep: false },
+        { deep: false }
     );
 
     return { map };

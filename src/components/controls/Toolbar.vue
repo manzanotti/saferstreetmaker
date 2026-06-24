@@ -20,7 +20,7 @@ const modalButtons: ModalButtonDef[] = [
     { id: 'map-manager', modalId: 'mapManager', tooltip: 'Save, load, and export maps' },
     { id: 'settings', modalId: 'settings', tooltip: 'Change map settings' },
     { id: 'share', modalId: 'sharing', tooltip: 'Share this map' },
-    { id: 'help', modalId: 'help', tooltip: 'Instructions on how to use the map' },
+    { id: 'help', modalId: 'help', tooltip: 'Instructions on how to use the map' }
 ];
 
 // ── Layer button groups ────────────────────────────────────────────────────
@@ -145,7 +145,7 @@ function cancelLongPress(groupName: string) {
                     :class="[
                         'toolbar-button',
                         item.button.id,
-                        { selected: mapStore.activeLayerId === item.button.id },
+                        { selected: mapStore.activeLayerId === item.button.id }
                     ]"
                     :title="item.button.tooltip"
                     :value="item.button.text || undefined"
@@ -169,7 +169,7 @@ function cancelLongPress(groupName: string) {
                     :class="[
                         'toolbar-button',
                         item.parent.id,
-                        { selected: mapStore.activeLayerId === item.parent.id },
+                        { selected: mapStore.activeLayerId === item.parent.id }
                     ]"
                     :title="item.parent.tooltip"
                     :value="item.parent.text || undefined"
@@ -185,7 +185,7 @@ function cancelLongPress(groupName: string) {
                             :class="[
                                 'toolbar-button',
                                 subBtn.id,
-                                { selected: mapStore.activeLayerId === subBtn.id },
+                                { selected: mapStore.activeLayerId === subBtn.id }
                             ]"
                             :title="subBtn.tooltip"
                             :value="subBtn.text || undefined"

@@ -48,7 +48,7 @@ describe('useMapManager - loadMap error handling', () => {
         vi.spyOn(fm, 'loadMapFromStorage').mockImplementation(() => {
             throw {
                 message: '<b>broken</b>',
-                stack: '<script>bad()</script>',
+                stack: '<script>bad()</script>'
             };
         });
 
@@ -57,7 +57,7 @@ describe('useMapManager - loadMap error handling', () => {
         const uiStore = useUiStore(pinia);
         expect(uiStore.showDownloadStorageLink).toBe(true);
         expect(uiStore.errorMessages[0]).toBe(
-            'There was a problem loading the map from local storage:',
+            'There was a problem loading the map from local storage:'
         );
         expect(uiStore.errorMessages[1]).toBe('&lt;b&gt;broken&lt;/b&gt;');
         expect(uiStore.errorMessages[2]).toBe('&lt;script&gt;bad()&lt;/script&gt;');
@@ -72,7 +72,7 @@ describe('useMapManager - loadMap error handling', () => {
         vi.spyOn(fm, 'loadMapFromStorage').mockImplementation(() => {
             throw {
                 message: 'broken',
-                stack: 'stack',
+                stack: 'stack'
             };
         });
 
@@ -86,7 +86,7 @@ describe('useMapManager - loadMap error handling', () => {
         vi.spyOn(fm, 'loadMapFromRemoteFile').mockImplementation(async () => {
             throw {
                 message: '<img src=x onerror=alert(1)>',
-                stack: '<script>alert(2)</script>',
+                stack: '<script>alert(2)</script>'
             };
         });
 
@@ -95,7 +95,7 @@ describe('useMapManager - loadMap error handling', () => {
         const uiStore = useUiStore(pinia);
         expect(uiStore.showDownloadStorageLink).toBe(false);
         expect(uiStore.errorMessages[0]).toBe(
-            'There was a problem loading the map from the remote file location:',
+            'There was a problem loading the map from the remote file location:'
         );
         expect(uiStore.errorMessages[1]).toBe('&lt;img src=x onerror=alert(1)&gt;');
         expect(uiStore.errorMessages[2]).toBe('&lt;script&gt;alert(2)&lt;/script&gt;');
@@ -116,12 +116,12 @@ describe('useMapManager - loadMap error handling', () => {
         Object.defineProperty(URL, 'createObjectURL', {
             value: createObjectURLMock,
             writable: true,
-            configurable: true,
+            configurable: true
         });
         Object.defineProperty(URL, 'revokeObjectURL', {
             value: revokeObjectURLMock,
             writable: true,
-            configurable: true,
+            configurable: true
         });
         const clickSpy = vi
             .spyOn(HTMLAnchorElement.prototype, 'click')
@@ -137,12 +137,12 @@ describe('useMapManager - loadMap error handling', () => {
             Object.defineProperty(URL, 'createObjectURL', {
                 value: originalCreateObjectURL,
                 writable: true,
-                configurable: true,
+                configurable: true
             });
             Object.defineProperty(URL, 'revokeObjectURL', {
                 value: originalRevokeObjectURL,
                 writable: true,
-                configurable: true,
+                configurable: true
             });
         }
     });

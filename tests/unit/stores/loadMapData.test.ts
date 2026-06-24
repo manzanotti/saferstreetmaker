@@ -33,10 +33,10 @@ function makeSerializedMap(overrides: Partial<SerializedMap> = {}): SerializedMa
             activeLayers: [],
             centre: { lat: 51.5, lng: -0.1 }, // London
             zoom: 12,
-            version: '0.8.1',
+            version: '0.8.1'
         },
         layers: {},
-        ...overrides,
+        ...overrides
     };
 }
 

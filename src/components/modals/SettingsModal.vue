@@ -14,7 +14,7 @@ const mapStore = useMapStore();
 const form = reactive({
     title: settingsStore.title,
     readOnly: settingsStore.readOnly,
-    activeLayers: [...settingsStore.activeLayers],
+    activeLayers: [...settingsStore.activeLayers]
 });
 
 function onSave() {

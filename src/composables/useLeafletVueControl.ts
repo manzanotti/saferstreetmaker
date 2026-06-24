@@ -13,7 +13,7 @@ import { pinia } from '../stores/index';
  */
 export function makeLeafletVueControl(
     Component: Component,
-    position: L.ControlPosition = 'topleft',
+    position: L.ControlPosition = 'topleft'
 ): L.Control {
     const control = new L.Control({ position });
 

@@ -6,7 +6,7 @@ import {
     setMapCursor,
     removeMapCursor,
     buildToolbarButton,
-    buildLegendEntry,
+    buildLegendEntry
 } from '../../src/composables/layers/layerUtils';
 
 function makeMapEl() {
@@ -63,7 +63,7 @@ describe('buildToolbarButton', () => {
             tooltip: 'Add modal filters',
             groupName: 'filters',
             action: noop,
-            selected: false,
+            selected: false
         });
         expect(btn.id).toBe('modal-filter');
         expect(btn.tooltip).toBe('Add modal filters');
@@ -79,7 +79,7 @@ describe('buildToolbarButton', () => {
             groupName: '',
             action: noop,
             selected: false,
-            isFirst: true,
+            isFirst: true
         });
         expect(btn.isFirst).toBe(true);
     });
@@ -91,7 +91,7 @@ describe('buildToolbarButton', () => {
             groupName: '',
             action: noop,
             selected: false,
-            text: 'LTN',
+            text: 'LTN'
         });
         expect(btn.text).toBe('LTN');
     });
@@ -102,7 +102,7 @@ describe('buildToolbarButton', () => {
             tooltip: 'x',
             groupName: '',
             action: noop,
-            selected: false,
+            selected: false
         });
         expect(btn.isFirst).toBeUndefined();
     });
@@ -116,7 +116,7 @@ describe('buildLegendEntry', () => {
             title: 'Modal Filters',
             toggleTitle: 'Toggle',
             iconEl: icon,
-            visibilityState: { visible: false },
+            visibilityState: { visible: false }
         });
         expect(li.id).toBe('ModalFilters-legend');
     });
@@ -128,7 +128,7 @@ describe('buildLegendEntry', () => {
             title: 'Bus Gates',
             toggleTitle: 'Toggle',
             iconEl: icon,
-            visibilityState: { visible: false },
+            visibilityState: { visible: false }
         });
         expect(li.textContent).toContain('Bus Gates');
     });
@@ -141,7 +141,7 @@ describe('buildLegendEntry', () => {
             title: 'MF',
             toggleTitle: 'T',
             iconEl: icon,
-            visibilityState: state,
+            visibilityState: state
         });
         li.click();
         expect(state.visible).toBe(true);
@@ -155,7 +155,7 @@ describe('buildLegendEntry', () => {
             title: 'MF',
             toggleTitle: 'T',
             iconEl: icon,
-            visibilityState: state,
+            visibilityState: state
         });
         li.click();
         expect(state.visible).toBe(false);

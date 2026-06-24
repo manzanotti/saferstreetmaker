@@ -6,11 +6,11 @@ module.exports = {
             colors: {
                 primary: {
                     DEFAULT: '#3b71ca',
-                    400: '#8fabdf',
-                },
-            },
-        },
+                    400: '#8fabdf'
+                }
+            }
+        }
     },
     variants: {},
-    plugins: [],
+    plugins: []
 };

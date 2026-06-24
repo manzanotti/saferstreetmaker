@@ -46,7 +46,7 @@ test.describe('Settings Panel', () => {
         const initialZoom = await map.evaluate(
             (element) =>
                 Array.from(element.classList).find((className) => className.startsWith('zoom-')) ??
-                '',
+                ''
         );
 
         await page.locator('button:has-text("Cancel")').dblclick();
@@ -56,7 +56,7 @@ test.describe('Settings Panel', () => {
         const zoomAfter = await map.evaluate(
             (element) =>
                 Array.from(element.classList).find((className) => className.startsWith('zoom-')) ??
-                '',
+                ''
         );
 
         expect(zoomAfter).toBe(initialZoom);
@@ -114,7 +114,7 @@ test.describe('Map Manager Panel', () => {
     });
 
     test('clicking create in the new map form shows the duplicate-title error for existing names', async ({
-        page,
+        page
     }) => {
         await page.goto('/');
         await page.waitForSelector('.toolbar');
@@ -136,7 +136,7 @@ test.describe('Map Manager Panel', () => {
         await page.locator('#create-new-map button').click();
 
         await expect(page.locator('#duplicate-title-error')).toContainText(
-            'You already have a map named Hello Cleveland',
+            'You already have a map named Hello Cleveland'
         );
     });
 });
@@ -178,7 +178,7 @@ test.describe('Sharing Panel', () => {
             expect(toggleBox.x + toggleBox.width).toBeLessThanOrEqual(panelBox.x + panelBox.width);
             expect(toggleBox.y).toBeGreaterThanOrEqual(panelBox.y);
             expect(toggleBox.y + toggleBox.height).toBeLessThanOrEqual(
-                panelBox.y + panelBox.height,
+                panelBox.y + panelBox.height
             );
         }
     });
@@ -191,9 +191,9 @@ test.describe('Sharing Panel', () => {
                     writeText: (text: string) => (
                         ((window as any).__clipboardText = text),
                         Promise.resolve()
-                    ),
+                    )
                 },
-                configurable: true,
+                configurable: true
             });
         });
         await page.goto('/');
@@ -206,7 +206,7 @@ test.describe('Sharing Panel', () => {
 
         await expect(page.locator('#messageRow')).toBeVisible();
         await expect(page.evaluate(() => (window as any).__clipboardText)).resolves.toContain(
-            'iframe',
+            'iframe'
         );
     });
 

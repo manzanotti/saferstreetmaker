@@ -21,7 +21,7 @@ export function createModalFilterLayer(map: L.Map): IMapLayer {
                 const marker = new L.CircleMarker(latlng, {
                     color: 'green',
                     radius: 10,
-                    pane: 'filters',
+                    pane: 'filters'
                 }).on('click', (e) => {
                     L.DomEvent.stopPropagation(e);
                     geoJsonLayer.removeLayer(e.target);
@@ -35,8 +35,8 @@ export function createModalFilterLayer(map: L.Map): IMapLayer {
                 const icon = document.createElement('i');
                 icon.innerHTML = `<svg width="30" height="30"><circle cx="10" cy="10" r="7" stroke="green" stroke-width="3" fill="green" fill-opacity=".2" /></svg>`;
                 return icon;
-            },
+            }
         },
-        map,
+        map
     );
 }

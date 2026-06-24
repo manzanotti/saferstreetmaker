@@ -26,7 +26,7 @@ export interface MapManager {
         hash: string,
         hideToolbar: boolean,
         zoom: string | null,
-        centre: number[] | null,
+        centre: number[] | null
     ) => Promise<boolean>;
     saveMap: () => void;
     applySettings: (newSettings: Settings) => void;
@@ -125,7 +125,7 @@ export function setupMapManager(fileManager: FileManager): MapManager {
     const loadMapData = (
         geoJSON: SerializedMap | null,
         zoom: string | null,
-        centre: number[] | null,
+        centre: number[] | null
     ): boolean => {
         if (geoJSON === null) {
             return false;
@@ -150,7 +150,7 @@ export function setupMapManager(fileManager: FileManager): MapManager {
                 activeLayers: s.activeLayers,
                 centre: settingsCentre,
                 zoom: s.zoom,
-                version: s.version,
+                version: s.version
             });
         }
 
@@ -229,7 +229,7 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         hash: string,
         hideToolbar: boolean,
         zoom: string | null,
-        centre: number[] | null,
+        centre: number[] | null
     ): Promise<boolean> => {
         if (mapInitialised) {
             removeAllLayersFromMap();
@@ -300,7 +300,7 @@ export function setupMapManager(fileManager: FileManager): MapManager {
             activeLayers: newSettings.activeLayers,
             centre: newSettings.centre,
             zoom: newSettings.zoom,
-            version: newSettings.version,
+            version: newSettings.version
         });
 
         // Re-sync which layers are on the map
@@ -341,7 +341,7 @@ export function setupMapManager(fileManager: FileManager): MapManager {
             activeLayers: newSettings.activeLayers,
             centre: newSettings.centre,
             zoom: newSettings.zoom,
-            version: newSettings.version,
+            version: newSettings.version
         });
 
         addLayersToMap(allLayerIds);
@@ -423,7 +423,7 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         () => mapStore.layerUpdateCount,
         () => {
             saveMap();
-        },
+        }
     );
 
     _instance = {
@@ -434,7 +434,7 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         loadMapFromStorage,
         setUserLocation,
         setDefaultView,
-        downloadStorageMap,
+        downloadStorageMap
     };
 
     return _instance;

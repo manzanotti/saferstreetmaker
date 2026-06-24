@@ -13,7 +13,7 @@ function createIconMarkerLayer(
     toggleTitle: string,
     iconClass: string,
     isFirst: boolean,
-    map: L.Map,
+    map: L.Map
 ): IMapLayer {
     const mapStore = useMapStore(pinia);
 
@@ -31,7 +31,7 @@ function createIconMarkerLayer(
                 const marker = new L.Marker(latlng, {
                     icon: new L.DivIcon({ className: iconClass }),
                     draggable: true,
-                    pane: 'filters',
+                    pane: 'filters'
                 } as any).on('click', (e: any) => {
                     L.DomEvent.stopPropagation(e);
                     geoJsonLayer.removeLayer(e.target);
@@ -45,9 +45,9 @@ function createIconMarkerLayer(
                 const icon = document.createElement('i');
                 icon.classList.add(iconClass);
                 return icon;
-            },
+            }
         },
-        map,
+        map
     );
 }
 
@@ -61,7 +61,7 @@ export function createTrafficLightsLayer(map: L.Map): IMapLayer {
         'Toggle traffic lights from the map',
         'traffic-lights-icon',
         true,
-        map,
+        map
     );
 }
 
@@ -75,6 +75,6 @@ export function createPedestrianLightsLayer(map: L.Map): IMapLayer {
         'Toggle pedestrian lights from the map',
         'pedestrian-lights-icon',
         false,
-        map,
+        map
     );
 }
