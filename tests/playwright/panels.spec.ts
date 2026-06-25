@@ -63,6 +63,22 @@ test.describe('Settings Panel', () => {
 
         expect(zoomAfter).toBe(initialZoom);
     });
+
+    test('layer toggle switches are aligned to the right of their labels', async ({ page }) => {
+        await page.locator('#settings-button').click();
+
+        const label = page.locator('label[for="ModalFilters"]');
+        const toggle = page.locator('#ModalFilters');
+        const labelBox = await label.boundingBox();
+        const toggleBox = await toggle.boundingBox();
+
+        expect(labelBox).not.toBeNull();
+        expect(toggleBox).not.toBeNull();
+
+        if (labelBox && toggleBox) {
+            expect(toggleBox.x).toBeGreaterThan(labelBox.x + labelBox.width);
+        }
+    });
 });
 
 test.describe('Map Manager Panel', () => {
