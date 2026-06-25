@@ -13,7 +13,7 @@ import { FileManager } from '../../../src/services/FileManager';
 
 function makeFileManager(): FileManager {
     const fm = new FileManager();
-    vi.spyOn(fm, 'saveMap').mockImplementation(() => {});
+    vi.spyOn(fm, 'saveMap').mockResolvedValue();
     return fm;
 }
 
@@ -35,7 +35,10 @@ describe('useMapManager - loadMap error handling', () => {
     beforeEach(() => {
         setActivePinia(pinia);
 
-        vi.spyOn(fm, 'saveMap').mockImplementation(() => {});
+        vi.spyOn(fm, 'saveMap').mockResolvedValue();
+
+        const uiStore = useUiStore(pinia);
+        uiStore.clearErrors();
     });
 
     afterEach(() => {
@@ -43,9 +46,9 @@ describe('useMapManager - loadMap error handling', () => {
     });
 
     it('shows download link flag when storage load fails', async () => {
-        vi.spyOn(fm, 'loadLastMapSelected').mockReturnValue('Broken map');
-        vi.spyOn(fm, 'hasMapInStorage').mockReturnValue(true);
-        vi.spyOn(fm, 'loadMapFromStorage').mockImplementation(() => {
+        vi.spyOn(fm, 'loadLastMapSelected').mockResolvedValue('Broken map');
+        vi.spyOn(fm, 'hasMapInStorage').mockResolvedValue(true);
+        vi.spyOn(fm, 'loadMapFromStorage').mockImplementation(async () => {
             throw {
                 message: '<b>broken</b>',
                 stack: '<script>bad()</script>'
@@ -57,19 +60,19 @@ describe('useMapManager - loadMap error handling', () => {
         const uiStore = useUiStore(pinia);
         expect(uiStore.showDownloadStorageLink).toBe(true);
         expect(uiStore.errorMessages[0]).toBe(
-            'There was a problem loading the map from local storage:'
+            'There was a problem loading the map from browser storage:'
         );
-        expect(uiStore.errorMessages[1]).toBe('&lt;b&gt;broken&lt;/b&gt;');
-        expect(uiStore.errorMessages[2]).toBe('&lt;script&gt;bad()&lt;/script&gt;');
+        expect(uiStore.errorMessages[1]).toBe('<b>broken</b>');
+        expect(uiStore.errorMessages[2]).toBe('<script>bad()</script>');
     });
 
     it('does not show download link when storage name is unavailable', async () => {
         const settingsStore = useSettingsStore(pinia);
         settingsStore.title = '';
 
-        vi.spyOn(fm, 'loadLastMapSelected').mockReturnValue('');
-        vi.spyOn(fm, 'hasMapInStorage').mockReturnValue(false);
-        vi.spyOn(fm, 'loadMapFromStorage').mockImplementation(() => {
+        vi.spyOn(fm, 'loadLastMapSelected').mockResolvedValue('');
+        vi.spyOn(fm, 'hasMapInStorage').mockResolvedValue(false);
+        vi.spyOn(fm, 'loadMapFromStorage').mockImplementation(async () => {
             throw {
                 message: 'broken',
                 stack: 'stack'
@@ -79,6 +82,25 @@ describe('useMapManager - loadMap error handling', () => {
         await mapManager.loadMap(null, '', false, null, null);
 
         const uiStore = useUiStore(pinia);
+        expect(uiStore.showDownloadStorageLink).toBe(false);
+    });
+
+    it('does not let hasMapInStorage failure escape the original loadMap error path', async () => {
+        vi.spyOn(fm, 'loadLastMapSelected').mockResolvedValue('Broken map');
+        vi.spyOn(fm, 'loadMapFromStorage').mockImplementation(async () => {
+            throw {
+                message: 'broken',
+                stack: 'stack'
+            };
+        });
+        vi.spyOn(fm, 'hasMapInStorage').mockRejectedValue(new Error('metadata unavailable'));
+
+        await expect(mapManager.loadMap(null, '', false, null, null)).resolves.toBe(false);
+
+        const uiStore = useUiStore(pinia);
+        expect(uiStore.errorMessages[0]).toBe(
+            'There was a problem loading the map from browser storage:'
+        );
         expect(uiStore.showDownloadStorageLink).toBe(false);
     });
 
@@ -97,16 +119,16 @@ describe('useMapManager - loadMap error handling', () => {
         expect(uiStore.errorMessages[0]).toBe(
             'There was a problem loading the map from the remote file location:'
         );
-        expect(uiStore.errorMessages[1]).toBe('&lt;img src=x onerror=alert(1)&gt;');
-        expect(uiStore.errorMessages[2]).toBe('&lt;script&gt;alert(2)&lt;/script&gt;');
+        expect(uiStore.errorMessages[1]).toBe('<img src=x onerror=alert(1)>');
+        expect(uiStore.errorMessages[2]).toBe('<script>alert(2)</script>');
     });
 
-    it('uses settings title fallback when downloading and LastMapSelected is empty', () => {
+    it('uses settings title fallback when downloading and LastMapSelected is empty', async () => {
         const settingsStore = useSettingsStore(pinia);
         settingsStore.title = 'Fallback Map';
 
-        vi.spyOn(fm, 'loadLastMapSelected').mockReturnValue('');
-        vi.spyOn(fm, 'loadMapFromStorage').mockReturnValue({} as any);
+        vi.spyOn(fm, 'loadLastMapSelected').mockResolvedValue('');
+        vi.spyOn(fm, 'loadRawMapFromStorage').mockResolvedValue({ title: 'Fallback Map' } as any);
 
         const originalCreateObjectURL = URL.createObjectURL;
         const originalRevokeObjectURL = URL.revokeObjectURL;
@@ -128,9 +150,9 @@ describe('useMapManager - loadMap error handling', () => {
             .mockImplementation(() => {});
 
         try {
-            mapManager.downloadStorageMap();
+            await mapManager.downloadStorageMap();
 
-            expect(fm.loadMapFromStorage).toHaveBeenCalledWith('Fallback Map');
+            expect(fm.loadRawMapFromStorage).toHaveBeenCalledWith('Fallback Map');
             expect(createObjectURLMock).toHaveBeenCalledTimes(1);
             expect(clickSpy).toHaveBeenCalledTimes(1);
         } finally {
@@ -145,5 +167,116 @@ describe('useMapManager - loadMap error handling', () => {
                 configurable: true
             });
         }
+    });
+
+    it('shows a friendly error when loading the stored map for download fails', async () => {
+        vi.spyOn(fm, 'loadLastMapSelected').mockResolvedValue('Broken map');
+        vi.spyOn(fm, 'loadRawMapFromStorage').mockImplementation(async () => {
+            throw {
+                message: '<b>download broken</b>',
+                stack: '<script>download()</script>'
+            };
+        });
+
+        await mapManager.downloadStorageMap();
+
+        const uiStore = useUiStore(pinia);
+        expect(uiStore.errorMessages[0]).toBe(
+            'There was a problem loading the map from browser storage:'
+        );
+        expect(uiStore.errorMessages[1]).toBe('<b>download broken</b>');
+        expect(uiStore.errorMessages[2]).toBe('<script>download()</script>');
+    });
+
+    it('shows a distinct error when browser download creation fails', async () => {
+        vi.spyOn(fm, 'loadLastMapSelected').mockResolvedValue('Broken map');
+        vi.spyOn(fm, 'loadRawMapFromStorage').mockResolvedValue({ ok: true } as any);
+
+        const originalCreateObjectURL = URL.createObjectURL;
+        Object.defineProperty(URL, 'createObjectURL', {
+            value: vi.fn(() => {
+                throw {
+                    message: 'Blob unavailable',
+                    stack: 'stack'
+                };
+            }),
+            writable: true,
+            configurable: true
+        });
+
+        try {
+            await mapManager.downloadStorageMap();
+
+            const uiStore = useUiStore(pinia);
+            expect(uiStore.errorMessages).toEqual([
+                'There was a problem preparing the map download:',
+                'Blob unavailable',
+                'stack'
+            ]);
+        } finally {
+            Object.defineProperty(URL, 'createObjectURL', {
+                value: originalCreateObjectURL,
+                writable: true,
+                configurable: true
+            });
+        }
+    });
+
+    it('downloads the raw stored record when deserialised map loading would fail', async () => {
+        vi.spyOn(fm, 'loadLastMapSelected').mockResolvedValue('Broken map');
+        vi.spyOn(fm, 'loadMapFromStorage').mockRejectedValue(new Error('Corrupted payload'));
+        vi.spyOn(fm, 'loadRawMapFromStorage').mockResolvedValue({ title: 'Broken map' } as any);
+
+        const originalCreateObjectURL = URL.createObjectURL;
+        const originalRevokeObjectURL = URL.revokeObjectURL;
+        const createObjectURLMock = vi.fn(() => 'blob:test');
+        const revokeObjectURLMock = vi.fn();
+
+        Object.defineProperty(URL, 'createObjectURL', {
+            value: createObjectURLMock,
+            writable: true,
+            configurable: true
+        });
+        Object.defineProperty(URL, 'revokeObjectURL', {
+            value: revokeObjectURLMock,
+            writable: true,
+            configurable: true
+        });
+        const clickSpy = vi
+            .spyOn(HTMLAnchorElement.prototype, 'click')
+            .mockImplementation(() => {});
+
+        try {
+            await mapManager.downloadStorageMap();
+
+            expect(fm.loadRawMapFromStorage).toHaveBeenCalledWith('Broken map');
+            expect(createObjectURLMock).toHaveBeenCalledTimes(1);
+            expect(clickSpy).toHaveBeenCalledTimes(1);
+        } finally {
+            Object.defineProperty(URL, 'createObjectURL', {
+                value: originalCreateObjectURL,
+                writable: true,
+                configurable: true
+            });
+            Object.defineProperty(URL, 'revokeObjectURL', {
+                value: originalRevokeObjectURL,
+                writable: true,
+                configurable: true
+            });
+        }
+    });
+
+    it('surfaces a missing stored map during direct storage load', async () => {
+        vi.spyOn(fm, 'loadMapFromStorage').mockResolvedValue(null);
+        vi.spyOn(fm, 'hasMapInStorage').mockResolvedValue(false);
+
+        await expect(mapManager.loadMapFromStorage('Missing "Map"')).resolves.toBe(false);
+
+        const uiStore = useUiStore(pinia);
+        expect(uiStore.showDownloadStorageLink).toBe(false);
+        expect(uiStore.errorMessages).toEqual([
+            'There was a problem loading the map:',
+            'Stored map "Missing "Map"" was not found. It may have been deleted in another tab.'
+        ]);
     });
 });

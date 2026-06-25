@@ -11,11 +11,12 @@
 import type { IMapLayer } from '../composables/layers/IMapLayer';
 import type { Settings } from '../models/Settings';
 import { MapSerializer, type SerializedMap } from './MapSerializer';
+import type { StoredMapRecord } from './MapDatabase';
 import { MapStorage } from './MapStorage';
 
 export class FileManager {
-    readonly serializer: MapSerializer;
-    readonly storage: MapStorage;
+    private readonly serializer: MapSerializer;
+    private readonly storage: MapStorage;
 
     private _onFileLoaded: ((data: unknown) => void) | null = null;
 
@@ -46,41 +47,40 @@ export class FileManager {
 
     // ── Storage (delegate to MapStorage) ─────────────────────────────────────
 
-    saveMap(settings: Settings, layersData: Map<string, IMapLayer>): void {
-        this.storage.saveMap(settings, layersData);
+    async saveMap(settings: Settings, layersData: Map<string, IMapLayer>): Promise<void> {
+        await this.storage.saveMap(settings, layersData);
     }
 
-    loadMapFromStorage(mapName: string): SerializedMap | null {
-        return this.storage.loadMap(mapName) as SerializedMap | null;
+    async loadMapFromStorage(mapName: string): Promise<SerializedMap | null> {
+        return await this.storage.loadMap(mapName);
     }
 
-    deleteMapFromStorage(mapName: string): void {
-        this.storage.deleteMap(mapName);
+    async loadRawMapFromStorage(mapName: string): Promise<StoredMapRecord | null> {
+        return await this.storage.loadRawMapRecord(mapName);
     }
 
-    copyMap(settings: Settings, layersData: Map<string, IMapLayer>): void {
-        this.storage.copyMap(settings, layersData);
+    async deleteMapFromStorage(mapName: string): Promise<void> {
+        await this.storage.deleteMap(mapName);
     }
 
-    loadMapListFromStorage(): string[] {
-        return this.storage.listMaps();
+    async copyMap(settings: Settings, layersData: Map<string, IMapLayer>): Promise<void> {
+        await this.storage.copyMap(settings, layersData);
     }
 
-    hasMapInStorage(mapName: string): boolean {
-        return this.storage.hasMap(mapName);
+    async loadMapListFromStorage(): Promise<string[]> {
+        return await this.storage.listMaps();
     }
 
-    saveLastMapSelected(mapName: string): void {
-        this.storage.saveLastMapSelected(mapName);
+    async hasMapInStorage(mapName: string): Promise<boolean> {
+        return await this.storage.hasMap(mapName);
     }
 
-    loadLastMapSelected(): string {
-        return this.storage.loadLastSelected();
+    async saveLastMapSelected(mapName: string): Promise<void> {
+        await this.storage.saveLastMapSelected(mapName);
     }
 
-    /** Exposed for direct use in tests; saveMap() calls this automatically. */
-    saveMapList(mapTitle: string): void {
-        this.storage.saveMapList(mapTitle);
+    async loadLastMapSelected(): Promise<string> {
+        return await this.storage.loadLastSelected();
     }
 
     // ── File download ─────────────────────────────────────────────────────────

@@ -1,8 +1,11 @@
 import { test, expect } from '@playwright/test';
+import { addFreshStorageInitScript, seedStoredMap, waitForFreshStorage } from './indexedDbHelpers';
 
 test.describe('Settings Panel', () => {
     test.beforeEach(async ({ page }) => {
+        await addFreshStorageInitScript(page);
         await page.goto('/');
+        await waitForFreshStorage(page);
         await page.waitForSelector('.toolbar');
     });
 
@@ -61,11 +64,29 @@ test.describe('Settings Panel', () => {
 
         expect(zoomAfter).toBe(initialZoom);
     });
+
+    test('layer toggle switches are aligned to the right of their labels', async ({ page }) => {
+        await page.locator('#settings-button').click();
+
+        const label = page.locator('label[for="ModalFilters"]');
+        const toggle = page.locator('#ModalFilters');
+        const labelBox = await label.boundingBox();
+        const toggleBox = await toggle.boundingBox();
+
+        expect(labelBox).not.toBeNull();
+        expect(toggleBox).not.toBeNull();
+
+        if (labelBox && toggleBox) {
+            expect(toggleBox.x).toBeGreaterThan(labelBox.x + labelBox.width);
+        }
+    });
 });
 
 test.describe('Map Manager Panel', () => {
     test.beforeEach(async ({ page }) => {
+        await addFreshStorageInitScript(page);
         await page.goto('/');
+        await waitForFreshStorage(page);
         await page.waitForSelector('.toolbar');
     });
 
@@ -93,19 +114,7 @@ test.describe('Map Manager Panel', () => {
     });
 
     test('clicking the copy map control creates another stored map entry', async ({ page }) => {
-        await page.goto('/');
-        await page.waitForSelector('.toolbar');
-
-        await page.evaluate(() => {
-            window.localStorage.clear();
-            const mapList = (window as any).LZString.compress(JSON.stringify(['Hello Cleveland']));
-            const lastMap = (window as any).LZString.compress('Hello Cleveland');
-            window.localStorage.setItem('MapList', mapList);
-            window.localStorage.setItem('LastMapSelected', lastMap);
-        });
-
-        await page.reload();
-        await page.waitForSelector('.toolbar');
+        await seedStoredMap(page, 'Hello Cleveland');
 
         await page.locator('#map-manager-button').click();
         await page.locator('#copy-map').click();
@@ -116,19 +125,7 @@ test.describe('Map Manager Panel', () => {
     test('clicking create in the new map form shows the duplicate-title error for existing names', async ({
         page
     }) => {
-        await page.goto('/');
-        await page.waitForSelector('.toolbar');
-
-        await page.evaluate(() => {
-            window.localStorage.clear();
-            const mapList = (window as any).LZString.compress(JSON.stringify(['Hello Cleveland']));
-            const lastMap = (window as any).LZString.compress('Hello Cleveland');
-            window.localStorage.setItem('MapList', mapList);
-            window.localStorage.setItem('LastMapSelected', lastMap);
-        });
-
-        await page.reload();
-        await page.waitForSelector('.toolbar');
+        await seedStoredMap(page, 'Hello Cleveland');
 
         await page.locator('#map-manager-button').click();
         await page.locator('#new-map').click();
@@ -143,7 +140,9 @@ test.describe('Map Manager Panel', () => {
 
 test.describe('Sharing Panel', () => {
     test.beforeEach(async ({ page }) => {
+        await addFreshStorageInitScript(page);
         await page.goto('/');
+        await waitForFreshStorage(page);
         await page.waitForSelector('.toolbar');
     });
 
@@ -197,6 +196,7 @@ test.describe('Sharing Panel', () => {
             });
         });
         await page.goto('/');
+        await waitForFreshStorage(page);
         await page.waitForSelector('.toolbar');
 
         await page.locator('#share-button').click();

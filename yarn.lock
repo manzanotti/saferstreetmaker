@@ -1242,6 +1242,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"dexie@npm:^4.2.0":
+  version: 4.4.4
+  resolution: "dexie@npm:4.4.4"
+  checksum: 2d1c989b920628f738619dcea9a82929fb3aa33b54351b9b719fd214b0978857ee431e7976a0a0736deced0a888f3d5d7950eb362412b107282efd631f1c93e8
+  languageName: node
+  linkType: hard
+
 "emoji-regex@npm:^8.0.0":
   version: 8.0.0
   resolution: "emoji-regex@npm:8.0.0"
@@ -1330,6 +1337,13 @@ __metadata:
   version: 1.3.0
   resolution: "expect-type@npm:1.3.0"
   checksum: 60476b4f4c0c88bf24db0735faa7d1d0c9120c21e5b78781c0fea0d4a95838f2db0c919a055aa4bb185ccbf38e37fa3000d3bb05500ceafcc7c469955c5a4f84
+  languageName: node
+  linkType: hard
+
+"fake-indexeddb@npm:^6.2.4":
+  version: 6.2.5
+  resolution: "fake-indexeddb@npm:6.2.5"
+  checksum: c53da95aa71b7c49b38a1d821fecb0f5a342c08ad505702bc4e830d855684e6c923a06cca55977a8ea2daf55218a8076bb6ef3476452076072cb0679494b9972
   languageName: node
   linkType: hard
 
@@ -2363,6 +2377,8 @@ __metadata:
     "@types/node": ^25.9.3
     "@vitejs/plugin-vue": ^6.0.7
     "@vue/tsconfig": ^0.9.1
+    dexie: ^4.2.0
+    fake-indexeddb: ^6.2.4
     jsdom: ^29.1.1
     leaflet-arrowheads: ^1.4.0
     leaflet-geometryutil: ^0.10.3

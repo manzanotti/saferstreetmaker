@@ -7,8 +7,8 @@ const uiStore = useUiStore();
 
 const hasErrors = computed(() => uiStore.errorMessages.length > 0);
 
-function downloadStorageMap() {
-    getMapManager().downloadStorageMap();
+async function downloadStorageMap() {
+    await getMapManager().downloadStorageMap();
 }
 </script>
 
@@ -42,7 +42,7 @@ function downloadStorageMap() {
                             class="mt-2 text-blue-700 underline"
                             @click="downloadStorageMap"
                         >
-                            Click to download the map from local storage
+                            Click to download the map
                         </button>
                         <button
                             type="button"

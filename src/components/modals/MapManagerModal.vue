@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useMapStore } from '../../stores/mapStore';
 import { useUiStore } from '../../stores/uiStore';
 import { getMapManager, getFileManager } from '../../composables/useMapManager';
+import { isSaveErrorAlreadyShown } from '../../composables/saveErrorMarker';
 
 const settingsStore = useSettingsStore();
 const mapStore = useMapStore();
@@ -13,12 +14,28 @@ const showCreateForm = ref(false);
 const newMapTitle = ref('');
 const duplicateTitleError = ref('');
 
-// Re-read from localStorage each time so deletions / copies are reflected.
-const storedMaps = ref<string[]>(getFileManager().loadMapListFromStorage());
+const storedMaps = ref<string[]>([]);
 
-function refreshMapList() {
-    storedMaps.value = getFileManager().loadMapListFromStorage();
+async function refreshMapList() {
+    storedMaps.value = await getFileManager().loadMapListFromStorage();
 }
+
+function showMapListError(e: any) {
+    uiStore.showErrors([
+        'There was a problem loading the stored map list:',
+        String(e?.message ?? e)
+    ]);
+}
+
+function showStoredMapLoadError(e: any) {
+    uiStore.showErrors(['There was a problem loading the stored map:', String(e?.message ?? e)]);
+}
+
+onMounted(() => {
+    void refreshMapList().catch((e) => {
+        showMapListError(e);
+    });
+});
 
 function onNewMap() {
     showCreateForm.value = true;
@@ -26,25 +43,50 @@ function onNewMap() {
     duplicateTitleError.value = '';
 }
 
-function onCopyMap() {
-    getFileManager().copyMap(settingsStore.toSettings(), mapStore.toLayers());
-    refreshMapList();
+async function onCopyMap() {
+    try {
+        await getFileManager().copyMap(settingsStore.toSettings(), mapStore.toLayers());
+    } catch (e: any) {
+        uiStore.showErrors(['There was a problem copying the map:', String(e?.message ?? e)]);
+        return;
+    }
+
+    try {
+        await refreshMapList();
+    } catch (e: any) {
+        showMapListError(e);
+    }
 }
 
-function onCreate() {
+async function onCreate() {
     const title = newMapTitle.value.trim();
     if (!title) {
         return;
     }
 
-    const ok = getMapManager().createNewMap(title);
-    if (!ok) {
-        duplicateTitleError.value = `You already have a map named ${title}`;
+    try {
+        const ok = await getMapManager().createNewMap(title);
+        if (!ok) {
+            duplicateTitleError.value = `You already have a map named ${title}`;
+            return;
+        }
+    } catch (e: any) {
+        if (isSaveErrorAlreadyShown(e)) {
+            return;
+        }
+        uiStore.showErrors(['There was a problem creating the map:', String(e?.message ?? e)]);
         return;
     }
 
     showCreateForm.value = false;
-    refreshMapList();
+
+    try {
+        await refreshMapList();
+    } catch (e: any) {
+        showMapListError(e);
+        return;
+    }
+
     uiStore.closeModal();
 }
 
@@ -62,15 +104,43 @@ function onExportGeoJSON() {
     uiStore.closeModal();
 }
 
-function onLoadStoredMap(mapName: string) {
-    getMapManager().loadMapFromStorage(mapName);
-    refreshMapList();
+async function onLoadStoredMap(mapName: string) {
+    try {
+        const loaded = await getMapManager().loadMapFromStorage(mapName);
+        if (!loaded) {
+            return;
+        }
+    } catch (e: any) {
+        showStoredMapLoadError(e);
+        return;
+    }
+
+    try {
+        await refreshMapList();
+    } catch (e: any) {
+        showMapListError(e);
+        return;
+    }
+
     uiStore.closeModal();
 }
 
-function onDeleteStoredMap(mapName: string) {
-    getFileManager().deleteMapFromStorage(mapName);
-    refreshMapList();
+async function onDeleteStoredMap(mapName: string) {
+    try {
+        await getFileManager().deleteMapFromStorage(mapName);
+    } catch (e: any) {
+        uiStore.showErrors([
+            'There was a problem deleting the stored map:',
+            String(e?.message ?? e)
+        ]);
+        return;
+    }
+
+    try {
+        await refreshMapList();
+    } catch (e: any) {
+        showMapListError(e);
+    }
 }
 
 function onClose() {

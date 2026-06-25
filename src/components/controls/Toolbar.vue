@@ -104,6 +104,10 @@ function onLayerButtonClick(btn: ToolbarButton) {
     // Update Vue store immediately for the toolbar's visual selected state.
     const newId = mapStore.activeLayerId === btn.id ? null : btn.id;
     mapStore.setActiveLayer(newId);
+
+    if (btn.groupName) {
+        hideSubmenu(btn.groupName);
+    }
 }
 
 function onModalButtonClick(modalId: ModalId) {

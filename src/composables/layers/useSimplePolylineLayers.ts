@@ -28,7 +28,13 @@ function createSimplePolylineLayer(cfg: SimplePolylineConfig, map: L.Map): IMapL
             points: latLngs,
             geoJsonLayer,
             map,
-            polylineOpts: { color: cfg.colour, weight: cfg.weight, opacity: 1, smoothFactor: 1 },
+            polylineOpts: {
+                color: cfg.colour,
+                weight: cfg.weight,
+                opacity: 1,
+                smoothFactor: 1,
+                className: cfg.buttonId
+            },
             buttonId: cfg.buttonId,
             selectForEdit: () => layer.selectForEdit(),
             arrowheads: cfg.arrowheads

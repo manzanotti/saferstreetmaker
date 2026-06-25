@@ -6,8 +6,7 @@
  * Leaflet controls the popup DOM lifecycle and it lives outside Vue's virtual DOM.
  */
 import * as L from 'leaflet';
-import { buildDeletePopup } from './layerUtils';
-import { setMapCursor } from './layerUtils';
+import { buildDeletePopup, removeMapCursor } from './layerUtils';
 import { useMapStore } from '../../stores/mapStore';
 import { pinia } from '../../stores/index';
 
@@ -16,6 +15,7 @@ export interface PolylineOptions {
     weight: number;
     opacity: number;
     smoothFactor: number;
+    className?: string;
 }
 
 export interface AddPolylineOpts {
@@ -41,6 +41,19 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
     const mapStore = useMapStore(pinia);
     const { points, geoJsonLayer, map, polylineOpts, buttonId } = opts;
 
+    const setMouseMarkerCursor = (cursor: string | null) => {
+        const marker = document.querySelector('.leaflet-mouse-marker') as HTMLElement | null;
+        if (!marker) {
+            return;
+        }
+
+        if (cursor === null) {
+            marker.style.removeProperty('cursor');
+        } else {
+            marker.style.cursor = cursor;
+        }
+    };
+
     let polyline = new L.Polyline(points, polylineOpts) as any;
 
     if (opts.arrowheads) {
@@ -49,6 +62,18 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
 
     polyline.on('edit', () => {
         mapStore.markLayerUpdated();
+    });
+
+    polyline.on('mouseover', () => {
+        if (mapStore.activeLayerId === buttonId) {
+            setMouseMarkerCursor('pointer');
+        }
+    });
+
+    polyline.on('mouseout', () => {
+        if (mapStore.activeLayerId === buttonId) {
+            setMouseMarkerCursor(null);
+        }
     });
 
     const popup = buildDeletePopup(
@@ -61,8 +86,14 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
     );
 
     polyline.on('click', (e: any) => {
+        // Let the currently active tool own the click instead of forcing
+        // polyline edit mode underneath it.
+        if (mapStore.activeLayerId !== null && mapStore.activeLayerId !== buttonId) {
+            return;
+        }
+
         opts.selectForEdit();
-        setMapCursor(buttonId);
+        removeMapCursor(buttonId);
         e.target.editing.enable();
         popup.setLatLng(e.latlng);
         map.openPopup(popup);
