@@ -42,7 +42,7 @@ async function downloadStorageMap() {
                             class="mt-2 text-blue-700 underline"
                             @click="downloadStorageMap"
                         >
-                            Click to download the map from local storage
+                            Click to download the map
                         </button>
                         <button
                             type="button"

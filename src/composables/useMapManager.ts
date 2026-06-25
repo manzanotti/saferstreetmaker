@@ -10,6 +10,7 @@
 import * as L from 'leaflet';
 import { watch } from 'vue';
 import { FileManager } from '../services/FileManager';
+import { SAVE_ERROR_ALREADY_SHOWN } from './saveErrorMarker';
 import type { SerializedMap } from '../services/MapSerializer';
 import { Settings } from '../models/Settings';
 import { useMapStore } from '../stores/mapStore';
@@ -77,6 +78,21 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         return m;
     };
 
+    const showSaveError = (error: unknown): void => {
+        const errors = ['There was a problem saving the map:', getErrorMessage(error)];
+        const errorStack = getErrorStack(error);
+        if (errorStack) {
+            errors.push(errorStack);
+        }
+        uiStore.showErrors(errors);
+    };
+
+    const markSaveErrorAsShown = (error: unknown): Error => {
+        const err = error instanceof Error ? error : new Error(getErrorMessage(error));
+        (err as Error & { [SAVE_ERROR_ALREADY_SHOWN]?: boolean })[SAVE_ERROR_ALREADY_SHOWN] = true;
+        return err;
+    };
+
     // ── View save debounce ────────────────────────────────────────────────────
     let saveViewTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -86,7 +102,7 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         }
         saveViewTimer = setTimeout(() => {
             saveViewTimer = undefined;
-            saveMap();
+            void saveMap();
         }, 500);
     };
 
@@ -101,12 +117,16 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         try {
             await fileManager.saveMap(settingsStore.toSettings(), mapStore.toLayers());
         } catch (e: any) {
-            const errors = ['There was a problem saving the map:', getErrorMessage(e)];
-            const errorStack = getErrorStack(e);
-            if (errorStack) {
-                errors.push(errorStack);
-            }
-            uiStore.showErrors(errors);
+            showSaveError(e);
+        }
+    };
+
+    const saveMapOrThrow = async () => {
+        try {
+            await fileManager.saveMap(settingsStore.toSettings(), mapStore.toLayers());
+        } catch (e: any) {
+            showSaveError(e);
+            throw markSaveErrorAsShown(e);
         }
     };
 
@@ -332,7 +352,7 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         // Update visible ids to match newly active layers
         mapStore.visibleLayerIds = new Set(newSettings.activeLayers);
 
-        await saveMap();
+        await saveMapOrThrow();
     };
 
     // ── createNewMap ──────────────────────────────────────────────────────────
@@ -369,7 +389,7 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         addLayersToMap(allLayerIds);
         mapStore.visibleLayerIds = new Set(allLayerIds);
 
-        await saveMap();
+        await saveMapOrThrow();
         return true;
     };
 
@@ -403,7 +423,11 @@ export function setupMapManager(fileManager: FileManager): MapManager {
                 return false;
             }
 
-            await saveMap();
+            try {
+                await saveMapOrThrow();
+            } catch {
+                return false;
+            }
             return true;
         } catch (e: any) {
             errors.push('There was a problem loading the map:');

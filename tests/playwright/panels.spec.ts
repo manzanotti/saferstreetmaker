@@ -1,10 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { addFreshStorageInitScript, seedStoredMap } from './indexedDbHelpers';
+import { addFreshStorageInitScript, seedStoredMap, waitForFreshStorage } from './indexedDbHelpers';
 
 test.describe('Settings Panel', () => {
     test.beforeEach(async ({ page }) => {
         await addFreshStorageInitScript(page);
         await page.goto('/');
+        await waitForFreshStorage(page);
         await page.waitForSelector('.toolbar');
     });
 
@@ -85,6 +86,7 @@ test.describe('Map Manager Panel', () => {
     test.beforeEach(async ({ page }) => {
         await addFreshStorageInitScript(page);
         await page.goto('/');
+        await waitForFreshStorage(page);
         await page.waitForSelector('.toolbar');
     });
 
@@ -140,6 +142,7 @@ test.describe('Sharing Panel', () => {
     test.beforeEach(async ({ page }) => {
         await addFreshStorageInitScript(page);
         await page.goto('/');
+        await waitForFreshStorage(page);
         await page.waitForSelector('.toolbar');
     });
 
@@ -193,6 +196,7 @@ test.describe('Sharing Panel', () => {
             });
         });
         await page.goto('/');
+        await waitForFreshStorage(page);
         await page.waitForSelector('.toolbar');
 
         await page.locator('#share-button').click();

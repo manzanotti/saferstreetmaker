@@ -4,6 +4,7 @@ import { useSettingsStore } from '../../stores/settingsStore';
 import { useMapStore } from '../../stores/mapStore';
 import { useUiStore } from '../../stores/uiStore';
 import { getMapManager, getFileManager } from '../../composables/useMapManager';
+import { isSaveErrorAlreadyShown } from '../../composables/saveErrorMarker';
 
 const settingsStore = useSettingsStore();
 const mapStore = useMapStore();
@@ -70,6 +71,9 @@ async function onCreate() {
             return;
         }
     } catch (e: any) {
+        if (isSaveErrorAlreadyShown(e)) {
+            return;
+        }
         uiStore.showErrors(['There was a problem creating the map:', String(e?.message ?? e)]);
         return;
     }

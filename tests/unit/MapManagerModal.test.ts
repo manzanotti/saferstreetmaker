@@ -1,6 +1,7 @@
 import { createApp, nextTick } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { SAVE_ERROR_ALREADY_SHOWN } from '../../src/composables/saveErrorMarker';
 
 vi.mock('leaflet', () => import('./__mocks__/leaflet'));
 
@@ -115,6 +116,40 @@ describe('MapManagerModal', () => {
             'Storage unavailable'
         ]);
         expect(createForm?.classList.contains('hidden')).toBe(false);
+    });
+
+    it('does not show a second create error when save failure was already shown', async () => {
+        createNewMapMock.mockRejectedValue(
+            Object.assign(new Error('Save unavailable'), { [SAVE_ERROR_ALREADY_SHOWN]: true })
+        );
+        await flushUi();
+
+        const uiStore = useUiStore();
+        uiStore.showErrors(['There was a problem saving the map:', 'Save unavailable']);
+
+        const newMapButton = container?.querySelector('#new-map') as HTMLInputElement | null;
+        const titleInput = container?.querySelector('#new-map-title') as HTMLInputElement | null;
+        const createButton = container?.querySelector(
+            '#create-new-map button'
+        ) as HTMLButtonElement | null;
+
+        newMapButton?.click();
+        await nextTick();
+
+        if (!titleInput) {
+            throw new Error('new-map-title input not found');
+        }
+        titleInput.value = 'New Failing Map';
+        titleInput.dispatchEvent(new Event('input', { bubbles: true }));
+        await nextTick();
+
+        createButton?.click();
+        await flushUi();
+
+        expect(uiStore.errorMessages).toEqual([
+            'There was a problem saving the map:',
+            'Save unavailable'
+        ]);
     });
 
     it('shows a friendly error when refreshing the stored map list fails on mount', async () => {

@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 
 const DB_NAME = 'SaferStreetMakerDB';
+const STORAGE_RESET_STATE_KEY = '__saferStreetMakerStorageResetState';
 
 type StoredMapRecord = {
     title: string;
@@ -31,11 +32,35 @@ async function withDatabase<T>(
 
 export async function addFreshStorageInitScript(page: Page): Promise<void> {
     await page.addInitScript((databaseName: string) => {
+        (window as any).__saferStreetMakerStorageResetState = 'pending';
         localStorage.clear();
         sessionStorage.clear();
         const deleteRequest = indexedDB.deleteDatabase(databaseName);
-        deleteRequest.onblocked = () => {};
+        deleteRequest.onsuccess = () => {
+            (window as any).__saferStreetMakerStorageResetState = 'done';
+        };
+        deleteRequest.onerror = () => {
+            (window as any).__saferStreetMakerStorageResetState =
+                `error:${String(deleteRequest.error)}`;
+        };
+        deleteRequest.onblocked = () => {
+            (window as any).__saferStreetMakerStorageResetState = 'blocked';
+        };
     }, DB_NAME);
+}
+
+export async function waitForFreshStorage(page: Page): Promise<void> {
+    await page.waitForFunction((stateKey: string) => {
+        return (window as any)[stateKey] !== 'pending';
+    }, STORAGE_RESET_STATE_KEY);
+
+    const storageResetState = await page.evaluate((stateKey: string) => {
+        return (window as any)[stateKey] as string | undefined;
+    }, STORAGE_RESET_STATE_KEY);
+
+    if (storageResetState !== 'done') {
+        throw new Error(`Fresh storage reset failed before test start: ${storageResetState}`);
+    }
 }
 
 export async function clearIndexedDb(page: Page): Promise<void> {
@@ -122,6 +147,17 @@ export async function getLayerFeatureCount(
             async ({ name, title, id }) => {
                 return await new Promise<number>((resolve, reject) => {
                     const openRequest = indexedDB.open(name);
+                    openRequest.onupgradeneeded = () => {
+                        const db = openRequest.result;
+                        if (!db.objectStoreNames.contains('maps')) {
+                            const mapsStore = db.createObjectStore('maps', { keyPath: 'title' });
+                            mapsStore.createIndex('sortOrder', 'sortOrder', { unique: false });
+                            mapsStore.createIndex('updatedAt', 'updatedAt', { unique: false });
+                        }
+                        if (!db.objectStoreNames.contains('metadata')) {
+                            db.createObjectStore('metadata', { keyPath: 'key' });
+                        }
+                    };
                     openRequest.onerror = () => reject(openRequest.error);
                     openRequest.onsuccess = () => {
                         const db = openRequest.result;

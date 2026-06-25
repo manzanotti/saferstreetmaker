@@ -1,7 +1,8 @@
 import { test, expect, Page } from '@playwright/test';
 import {
     addFreshStorageInitScript,
-    getLayerFeatureCount as getIndexedDbLayerFeatureCount
+    getLayerFeatureCount as getIndexedDbLayerFeatureCount,
+    waitForFreshStorage
 } from './indexedDbHelpers';
 
 // ---------------------------------------------------------------------------
@@ -377,6 +378,7 @@ function setupFreshPage() {
         await context.setGeolocation({ latitude: 52.5, longitude: -1.9 });
         await addFreshStorageInitScript(page);
         await page.goto('/');
+        await waitForFreshStorage(page);
 
         // Inject CSS to permanently hide the #help modal.
         // The modal (tw-elements/Bootstrap z-index ~1055) covers the viewport center

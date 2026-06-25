@@ -274,24 +274,21 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             mapStore.markLayerUpdated();
         });
 
-        polygon.on('add', () => {
-            const path = (polygon as any)._path as SVGElement | null;
-            if (!path) {
+        polygon.on('mousemove', (e: any) => {
+            syncPolygonEditCursor(
+                (e.target as any)?._path ?? null,
+                e.originalEvent.clientX,
+                e.originalEvent.clientY
+            );
+        });
+
+        polygon.on('mouseout', (e: any) => {
+            if (selectionMode !== 'edit' || mapStore.activeLayerId !== BUTTON_ID) {
                 return;
             }
 
-            path.addEventListener('mousemove', (domEvent: MouseEvent) => {
-                syncPolygonEditCursor(path, domEvent.clientX, domEvent.clientY);
-            });
-
-            path.addEventListener('mouseout', () => {
-                if (selectionMode !== 'edit' || mapStore.activeLayerId !== BUTTON_ID) {
-                    return;
-                }
-
-                setFeatureCursor(path, null);
-                setMouseMarkerCursor('grab');
-            });
+            setFeatureCursor((e.target as any)?._path ?? null, null);
+            setMouseMarkerCursor('grab');
         });
 
         (polygon as any)['properties'] = { label };

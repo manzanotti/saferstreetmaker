@@ -4,6 +4,7 @@ import { useSettingsStore } from '../../stores/settingsStore';
 import { useUiStore } from '../../stores/uiStore';
 import { useMapStore } from '../../stores/mapStore';
 import { getMapManager } from '../../composables/useMapManager';
+import { isSaveErrorAlreadyShown } from '../../composables/saveErrorMarker';
 import { Settings } from '../../models/Settings';
 
 const settingsStore = useSettingsStore();
@@ -27,7 +28,17 @@ async function onSave() {
     s.version = settingsStore.version;
     s.activeLayers = form.activeLayers;
 
-    await getMapManager().applySettings(s);
+    try {
+        await getMapManager().applySettings(s);
+    } catch (e: any) {
+        if (isSaveErrorAlreadyShown(e)) {
+            return;
+        }
+
+        uiStore.showErrors(['There was a problem saving the settings:', String(e?.message ?? e)]);
+        return;
+    }
+
     uiStore.closeModal();
 }
 

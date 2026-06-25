@@ -1,10 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { addFreshStorageInitScript } from './indexedDbHelpers';
+import { addFreshStorageInitScript, waitForFreshStorage } from './indexedDbHelpers';
 
 test.describe('Toolbar', () => {
     test.beforeEach(async ({ page }) => {
         await addFreshStorageInitScript(page);
         await page.goto('/');
+        await waitForFreshStorage(page);
         // Wait for the toolbar to be rendered by Leaflet
         await page.waitForSelector('.toolbar');
     });
@@ -61,6 +62,7 @@ test.describe('Toolbar button groups', () => {
     test.beforeEach(async ({ page }) => {
         await addFreshStorageInitScript(page);
         await page.goto('/');
+        await waitForFreshStorage(page);
         await page.waitForSelector('.toolbar');
     });
 
