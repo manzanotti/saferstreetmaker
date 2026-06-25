@@ -1,3 +1,10 @@
+#map {
+    --point-select-cursor:
+        url("data:image/svg+xml,%3C?xml version='1.0' ?%3E%3Csvg width='32px' height='32px' viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='2' y='2' width='28' height='28' rx='3' fill='white'/%3E%3Cg fill='black'%3E%3Crect height='12' width='2' x='15' y='12'/%3E%3Crect height='12' width='2' x='19' y='12'/%3E%3Crect height='12' width='2' x='11' y='12'/%3E%3Cpath d='M20,6V5a3,3,0,0,0-3-3H15a3,3,0,0,0-3,3V6H4V8H6V27a3,3,0,0,0,3,3H23a3,3,0,0,0,3-3V8h2V6ZM14,5a1,1,0,0,1,1-1h2a1,1,0,0,1,1,1V6H14ZM24,27a1,1,0,0,1-1,1H9a1,1,0,0,1-1-1V8H24Z'/%3E%3C/g%3E%3C/svg%3E")
+            8 8,
+        auto;
+}
+
 #map.modal-filter,
 #map.modal-filter .leaflet-interactive,
 #map.modal-filter .leaflet-marker-icon,
@@ -104,4 +111,12 @@
     cursor:
         url('../img/zebra-crossing-cursor.svg') 5.5 0,
         auto !important;
+}
+
+#map .leaflet-marker-icon.bus-gate-icon,
+#map .leaflet-marker-icon.traffic-lights-icon,
+#map .leaflet-marker-icon.pedestrian-lights-icon,
+#map .leaflet-marker-icon.zebra-crossing-icon,
+#map .leaflet-interactive.modal-filter-marker {
+    cursor: var(--point-select-cursor) !important;
 }

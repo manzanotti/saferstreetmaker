@@ -21,6 +21,7 @@ export function createModalFilterLayer(map: L.Map): IMapLayer {
                 const marker = new L.CircleMarker(latlng, {
                     color: 'green',
                     radius: 10,
+                    className: 'modal-filter-marker',
                     pane: 'filters'
                 }).on('click', (e) => {
                     L.DomEvent.stopPropagation(e);

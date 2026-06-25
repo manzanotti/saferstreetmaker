@@ -11,6 +11,7 @@
 import type { IMapLayer } from '../composables/layers/IMapLayer';
 import type { Settings } from '../models/Settings';
 import { MapSerializer, type SerializedMap } from './MapSerializer';
+import type { StoredMapRecord } from './MapDatabase';
 import { MapStorage } from './MapStorage';
 
 export class FileManager {
@@ -52,6 +53,10 @@ export class FileManager {
 
     async loadMapFromStorage(mapName: string): Promise<SerializedMap | null> {
         return await this.storage.loadMap(mapName);
+    }
+
+    async loadRawMapFromStorage(mapName: string): Promise<StoredMapRecord | null> {
+        return await this.storage.loadRawMapRecord(mapName);
     }
 
     async deleteMapFromStorage(mapName: string): Promise<void> {

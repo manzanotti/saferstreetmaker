@@ -202,6 +202,18 @@ describe('FileManager', () => {
             expect((loaded?.layers as any).ModalFilters.features).toHaveLength(1);
         });
 
+        it('loads the raw stored record without deserialising it', async () => {
+            const settings = makeSettings('RawCity');
+            await fm.saveMap(settings, new Map());
+
+            const rawRecord = await fm.loadRawMapFromStorage('RawCity');
+            expect(rawRecord).toMatchObject({
+                title: 'RawCity',
+                payloadVersion: 1,
+                payload: { s: { t: 'RawCity' } }
+            });
+        });
+
         it('includes a lastSaved timestamp', async () => {
             const settings = makeSettings('TimestampCity');
             await fm.saveMap(settings, new Map());

@@ -128,7 +128,7 @@ describe('useMapManager - loadMap error handling', () => {
         settingsStore.title = 'Fallback Map';
 
         vi.spyOn(fm, 'loadLastMapSelected').mockResolvedValue('');
-        vi.spyOn(fm, 'loadMapFromStorage').mockResolvedValue({} as any);
+        vi.spyOn(fm, 'loadRawMapFromStorage').mockResolvedValue({ title: 'Fallback Map' } as any);
 
         const originalCreateObjectURL = URL.createObjectURL;
         const originalRevokeObjectURL = URL.revokeObjectURL;
@@ -152,7 +152,7 @@ describe('useMapManager - loadMap error handling', () => {
         try {
             await mapManager.downloadStorageMap();
 
-            expect(fm.loadMapFromStorage).toHaveBeenCalledWith('Fallback Map');
+            expect(fm.loadRawMapFromStorage).toHaveBeenCalledWith('Fallback Map');
             expect(createObjectURLMock).toHaveBeenCalledTimes(1);
             expect(clickSpy).toHaveBeenCalledTimes(1);
         } finally {
@@ -171,7 +171,7 @@ describe('useMapManager - loadMap error handling', () => {
 
     it('shows a friendly error when loading the stored map for download fails', async () => {
         vi.spyOn(fm, 'loadLastMapSelected').mockResolvedValue('Broken map');
-        vi.spyOn(fm, 'loadMapFromStorage').mockImplementation(async () => {
+        vi.spyOn(fm, 'loadRawMapFromStorage').mockImplementation(async () => {
             throw {
                 message: '<b>download broken</b>',
                 stack: '<script>download()</script>'
@@ -190,7 +190,7 @@ describe('useMapManager - loadMap error handling', () => {
 
     it('shows a distinct error when browser download creation fails', async () => {
         vi.spyOn(fm, 'loadLastMapSelected').mockResolvedValue('Broken map');
-        vi.spyOn(fm, 'loadMapFromStorage').mockResolvedValue({ ok: true } as any);
+        vi.spyOn(fm, 'loadRawMapFromStorage').mockResolvedValue({ ok: true } as any);
 
         const originalCreateObjectURL = URL.createObjectURL;
         Object.defineProperty(URL, 'createObjectURL', {
@@ -216,6 +216,50 @@ describe('useMapManager - loadMap error handling', () => {
         } finally {
             Object.defineProperty(URL, 'createObjectURL', {
                 value: originalCreateObjectURL,
+                writable: true,
+                configurable: true
+            });
+        }
+    });
+
+    it('downloads the raw stored record when deserialised map loading would fail', async () => {
+        vi.spyOn(fm, 'loadLastMapSelected').mockResolvedValue('Broken map');
+        vi.spyOn(fm, 'loadMapFromStorage').mockRejectedValue(new Error('Corrupted payload'));
+        vi.spyOn(fm, 'loadRawMapFromStorage').mockResolvedValue({ title: 'Broken map' } as any);
+
+        const originalCreateObjectURL = URL.createObjectURL;
+        const originalRevokeObjectURL = URL.revokeObjectURL;
+        const createObjectURLMock = vi.fn(() => 'blob:test');
+        const revokeObjectURLMock = vi.fn();
+
+        Object.defineProperty(URL, 'createObjectURL', {
+            value: createObjectURLMock,
+            writable: true,
+            configurable: true
+        });
+        Object.defineProperty(URL, 'revokeObjectURL', {
+            value: revokeObjectURLMock,
+            writable: true,
+            configurable: true
+        });
+        const clickSpy = vi
+            .spyOn(HTMLAnchorElement.prototype, 'click')
+            .mockImplementation(() => {});
+
+        try {
+            await mapManager.downloadStorageMap();
+
+            expect(fm.loadRawMapFromStorage).toHaveBeenCalledWith('Broken map');
+            expect(createObjectURLMock).toHaveBeenCalledTimes(1);
+            expect(clickSpy).toHaveBeenCalledTimes(1);
+        } finally {
+            Object.defineProperty(URL, 'createObjectURL', {
+                value: originalCreateObjectURL,
+                writable: true,
+                configurable: true
+            });
+            Object.defineProperty(URL, 'revokeObjectURL', {
+                value: originalRevokeObjectURL,
                 writable: true,
                 configurable: true
             });

@@ -50,8 +50,38 @@ export function createPolylineLayer(
     let _visible = false;
     let _drawingTool: { disable(): void } | null = null;
     let selectionMode: 'draw' | 'edit' = 'draw';
+    let pendingCursorEvent: L.LeafletMouseEvent | null = null;
+    let cursorSyncFrameId: number | null = null;
 
-    const syncMouseMarkerCursor = (event: L.LeafletMouseEvent) => {
+    const pointFeatureClasses = [
+        'modal-filter-marker',
+        'bus-gate-icon',
+        'traffic-lights-icon',
+        'pedestrian-lights-icon',
+        'zebra-crossing-icon'
+    ];
+
+    const getPointSelectCursor = (): string => {
+        const mapElement = document.getElementById('map');
+        const cursor = mapElement
+            ? getComputedStyle(mapElement).getPropertyValue('--point-select-cursor').trim()
+            : '';
+
+        return cursor === '' ? 'pointer' : cursor;
+    };
+
+    const isPointFeatureElement = (element: Element): boolean => {
+        return pointFeatureClasses.some((className) => element.classList.contains(className));
+    };
+
+    const isInteractiveShapeElement = (element: Element): boolean => {
+        return (
+            element.classList.contains('leaflet-interactive') ||
+            element.classList.contains('leaflet-marker-icon')
+        );
+    };
+
+    const applyMouseMarkerCursor = (event: L.LeafletMouseEvent) => {
         const mouseMarker = document.querySelector('.leaflet-mouse-marker') as HTMLElement | null;
         if (!mouseMarker) {
             return;
@@ -61,6 +91,15 @@ export function createPolylineLayer(
             event.originalEvent.clientX,
             event.originalEvent.clientY
         );
+        const isHoveringPointFeature = hoverStack.some((element) => {
+            return element !== mouseMarker && isPointFeatureElement(element);
+        });
+
+        if (isHoveringPointFeature) {
+            mouseMarker.style.cursor = getPointSelectCursor();
+            return;
+        }
+
         const isHoveringSameLayerFeature = hoverStack.some((element) => {
             return (
                 element !== mouseMarker &&
@@ -69,11 +108,41 @@ export function createPolylineLayer(
             );
         });
 
+        const isHoveringAnyInteractiveShape = hoverStack.some((element) => {
+            return element !== mouseMarker && isInteractiveShapeElement(element);
+        });
+
+        if (selectionMode === 'edit') {
+            if (isHoveringAnyInteractiveShape) {
+                mouseMarker.style.cursor = 'pointer';
+            } else {
+                mouseMarker.style.cursor = 'grab';
+            }
+            return;
+        }
+
         if (isHoveringSameLayerFeature) {
             mouseMarker.style.cursor = 'pointer';
         } else {
             mouseMarker.style.removeProperty('cursor');
         }
+    };
+
+    const syncMouseMarkerCursor = (event: L.LeafletMouseEvent) => {
+        pendingCursorEvent = event;
+        if (cursorSyncFrameId !== null) {
+            return;
+        }
+
+        cursorSyncFrameId = requestAnimationFrame(() => {
+            cursorSyncFrameId = null;
+            const latestEvent = pendingCursorEvent;
+            pendingCursorEvent = null;
+
+            if (latestEvent) {
+                applyMouseMarkerCursor(latestEvent);
+            }
+        });
     };
 
     const handleDrawCreated = (e: any) => {
@@ -102,6 +171,11 @@ export function createPolylineLayer(
                 _drawingTool = null;
                 geoJsonLayer.eachLayer((l: any) => l.editing?.disable());
                 map.off('mousemove', syncMouseMarkerCursor as L.LeafletEventHandlerFn);
+                if (cursorSyncFrameId !== null) {
+                    cancelAnimationFrame(cursorSyncFrameId);
+                    cursorSyncFrameId = null;
+                }
+                pendingCursorEvent = null;
                 const mouseMarker = document.querySelector(
                     '.leaflet-mouse-marker'
                 ) as HTMLElement | null;

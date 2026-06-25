@@ -123,6 +123,61 @@ async function hoverSvgPath(page: Page, locator: ReturnType<Page['locator']>): P
     await page.waitForTimeout(100);
 }
 
+async function hoverSvgPathStroke(page: Page, locator: ReturnType<Page['locator']>): Promise<void> {
+    const point = await locator.first().evaluate((element) => {
+        const path = element as SVGPathElement;
+        const screenMatrix = path.getScreenCTM();
+
+        if (!screenMatrix) {
+            throw new Error('SVG path screen transform unavailable');
+        }
+
+        const toScreenPoint = (distance: number, offsetX: number, offsetY: number) => {
+            const pointAtDistance = path.getPointAtLength(distance);
+            return {
+                x:
+                    pointAtDistance.x * screenMatrix.a +
+                    pointAtDistance.y * screenMatrix.c +
+                    screenMatrix.e +
+                    offsetX,
+                y:
+                    pointAtDistance.x * screenMatrix.b +
+                    pointAtDistance.y * screenMatrix.d +
+                    screenMatrix.f +
+                    offsetY
+            };
+        };
+
+        const length = path.getTotalLength();
+        const distances = [0.25, 0.5, 0.75].map((fraction) => length * fraction);
+        const offsets = [
+            { x: -2, y: 0 },
+            { x: 2, y: 0 },
+            { x: 0, y: -2 },
+            { x: 0, y: 2 },
+            { x: -3, y: 0 },
+            { x: 3, y: 0 },
+            { x: 0, y: -3 },
+            { x: 0, y: 3 }
+        ];
+
+        for (const distance of distances) {
+            for (const offset of offsets) {
+                const point = toScreenPoint(distance, offset.x, offset.y);
+                const hit = document.elementFromPoint(point.x, point.y);
+                if (hit === path) {
+                    return point;
+                }
+            }
+        }
+
+        throw new Error('No path stroke point found for hover probe');
+    });
+
+    await page.mouse.move(point.x, point.y);
+    await page.waitForTimeout(100);
+}
+
 async function hoverLocatorCenter(page: Page, locator: ReturnType<Page['locator']>): Promise<void> {
     const box = await locator.first().boundingBox();
     if (!box) {
@@ -199,6 +254,68 @@ async function getCursorAtPathPoint(locator: ReturnType<Page['locator']>): Promi
     });
 }
 
+async function getCursorAtPathStroke(locator: ReturnType<Page['locator']>): Promise<string> {
+    return await locator.first().evaluate((element) => {
+        const path = element as SVGPathElement;
+        const screenMatrix = path.getScreenCTM();
+
+        if (!screenMatrix) {
+            throw new Error('SVG path screen transform unavailable');
+        }
+
+        const toScreenPoint = (distance: number, offsetX: number, offsetY: number) => {
+            const pointAtDistance = path.getPointAtLength(distance);
+            return {
+                x:
+                    pointAtDistance.x * screenMatrix.a +
+                    pointAtDistance.y * screenMatrix.c +
+                    screenMatrix.e +
+                    offsetX,
+                y:
+                    pointAtDistance.x * screenMatrix.b +
+                    pointAtDistance.y * screenMatrix.d +
+                    screenMatrix.f +
+                    offsetY
+            };
+        };
+
+        const length = path.getTotalLength();
+        const distances = [0.25, 0.5, 0.75].map((fraction) => length * fraction);
+        const offsets = [
+            { x: -2, y: 0 },
+            { x: 2, y: 0 },
+            { x: 0, y: -2 },
+            { x: 0, y: 2 },
+            { x: -3, y: 0 },
+            { x: 3, y: 0 },
+            { x: 0, y: -3 },
+            { x: 0, y: 3 }
+        ];
+
+        for (const distance of distances) {
+            for (const offset of offsets) {
+                const point = toScreenPoint(distance, offset.x, offset.y);
+                const hit = document.elementFromPoint(point.x, point.y);
+                if (hit === path) {
+                    return getComputedStyle(hit).cursor;
+                }
+            }
+        }
+
+        throw new Error('No path stroke point found for cursor probe');
+    });
+}
+
+async function getInlineCursor(locator: ReturnType<Page['locator']>): Promise<string> {
+    return await locator.first().evaluate((element) => {
+        if (!(element instanceof HTMLElement || element instanceof SVGElement)) {
+            throw new Error('Element does not support inline cursor styles');
+        }
+
+        return element.style.cursor;
+    });
+}
+
 async function getCursorAtLocatorCenter(locator: ReturnType<Page['locator']>): Promise<string> {
     return await locator.first().evaluate((element) => {
         const rect = element.getBoundingClientRect();
@@ -212,6 +329,41 @@ async function getCursorAtLocatorCenter(locator: ReturnType<Page['locator']>): P
 
         return getComputedStyle(hit).cursor;
     });
+}
+
+async function getCursorAtPagePoint(page: Page, x: number, y: number): Promise<string> {
+    return await page.evaluate(
+        ({ pointX, pointY }) => {
+            const hit = document.elementFromPoint(pointX, pointY);
+            if (!hit) {
+                throw new Error('No element found at page point');
+            }
+
+            return getComputedStyle(hit).cursor;
+        },
+        { pointX: x, pointY: y }
+    );
+}
+
+async function moveToMapOffset(
+    page: Page,
+    offsetX: number,
+    offsetY: number
+): Promise<{ x: number; y: number }> {
+    const map = page.locator('.leaflet-container');
+    const box = await map.boundingBox();
+    if (!box) {
+        throw new Error('Map bounding box not found');
+    }
+
+    const point = {
+        x: box.x + box.width / 2 + offsetX,
+        y: box.y + box.height / 2 + offsetY
+    };
+    await page.mouse.move(point.x, point.y);
+    await page.waitForTimeout(100);
+
+    return point;
 }
 
 // ---------------------------------------------------------------------------
@@ -457,6 +609,22 @@ test.describe('Layer: Mobility Lane (polyline)', () => {
         expect(cursor).toBe('pointer');
     });
 
+    test('editing a mobility line falls back to a grab cursor away from features', async ({
+        page
+    }) => {
+        await page.locator('#mobility-lane-button').click();
+        await drawPolyline(page);
+        await page.locator('#mobility-lane-button').click();
+
+        const path = page.locator('.leaflet-overlay-pane path.mobility-lane.leaflet-interactive');
+        await path.first().dispatchEvent('click');
+        await page.waitForTimeout(200);
+
+        const point = await moveToMapOffset(page, 0, -140);
+        const cursor = await getCursorAtPagePoint(page, point.x, point.y);
+        expect(cursor).toBe('grab');
+    });
+
     test('active mobility tool keeps the tool cursor on different layer shapes', async ({
         page
     }) => {
@@ -651,6 +819,44 @@ test.describe('Layer: LTN Cell (polygon)', () => {
 
         // Only one popup open at a time
         await expect(page.locator('.popup-buttons')).toHaveCount(1);
+    });
+
+    test('editing an LTN polygon uses pointer inside, crosshair on edges, and grab elsewhere', async ({
+        page
+    }) => {
+        await page.locator('#ltn-button').click();
+        await drawPolygon(page);
+        await page.locator('#ltn-button').click();
+
+        const polygon = page.locator('.leaflet-ltns-pane path.ltn-cell.leaflet-interactive');
+        await polygon.first().dispatchEvent('click');
+        await page.waitForTimeout(200);
+
+        await hoverLocatorCenter(page, polygon);
+        expect(await getCursorAtLocatorCenter(polygon)).toBe('pointer');
+
+        await hoverSvgPathStroke(page, polygon);
+        expect(await getInlineCursor(polygon)).toBe('crosshair');
+
+        const point = await moveToMapOffset(page, 0, -140);
+        expect(await getCursorAtPagePoint(page, point.x, point.y)).toBe('grab');
+    });
+
+    test('hovering an existing point feature shows the select cursor even while another tool is active', async ({
+        page
+    }) => {
+        await page.locator('#modal-filter-button').click({ button: 'right' });
+        await page.locator('#bus-gate-button').click();
+        await clickMap(page);
+
+        await page.locator('#mobility-lane-button').click();
+
+        const marker = page.locator('.leaflet-marker-icon.bus-gate-icon');
+        await hoverLocatorCenter(page, marker);
+
+        const cursor = await getCursorAtLocatorCenter(marker);
+        expect(cursor).toContain('data:image/svg+xml');
+        expect(cursor).toContain('M20,6V5a3,3,0,0,0-3-3H15a3,3,0,0,0-3,3V6H4V8H6V27');
     });
 });
 

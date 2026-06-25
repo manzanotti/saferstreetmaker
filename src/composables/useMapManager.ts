@@ -428,12 +428,15 @@ export function setupMapManager(fileManager: FileManager): MapManager {
 
     // ── downloadStorageMap ────────────────────────────────────────────────────
     const downloadStorageMap = async () => {
-        let mapJSON: SerializedMap | null;
+        let storedMapRecord: unknown;
 
         try {
             const lastMapSelected = await fileManager.loadLastMapSelected();
             const mapName = lastMapSelected || settingsStore.title;
-            mapJSON = await fileManager.loadMapFromStorage(mapName);
+            storedMapRecord = await fileManager.loadRawMapFromStorage(mapName);
+            if (storedMapRecord === null) {
+                throw new Error(`Stored map "${mapName}" was not found.`);
+            }
         } catch (e: any) {
             const errors = [
                 'There was a problem loading the map from browser storage:',
@@ -448,7 +451,7 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         }
 
         try {
-            const mapString = JSON.stringify(mapJSON);
+            const mapString = JSON.stringify(storedMapRecord);
             const blob = new Blob([mapString], { type: 'text/plain;charset=utf-8' });
             const a = document.createElement('a');
             const url = URL.createObjectURL(blob);

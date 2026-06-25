@@ -7,7 +7,7 @@
 import LZString from 'lz-string';
 import type { IMapLayer } from '../composables/layers/IMapLayer';
 import type { Settings } from '../models/Settings';
-import { MapDatabase } from './MapDatabase';
+import { MapDatabase, type StoredMapRecord } from './MapDatabase';
 import { MapSerializer, type SerializedMap } from './MapSerializer';
 
 const LEGACY_MAP_LIST_KEY = 'MapList';
@@ -65,6 +65,12 @@ export class MapStorage {
         }
 
         return this.serializer.fromCompactStoredMap(record.payload);
+    }
+
+    async loadRawMapRecord(mapName: string): Promise<StoredMapRecord | null> {
+        await this.ready;
+
+        return (await this.db.maps.get(mapName)) ?? null;
     }
 
     async deleteMap(mapName: string): Promise<void> {

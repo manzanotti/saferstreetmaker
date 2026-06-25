@@ -6,8 +6,7 @@
  * Leaflet controls the popup DOM lifecycle and it lives outside Vue's virtual DOM.
  */
 import * as L from 'leaflet';
-import { buildDeletePopup } from './layerUtils';
-import { setMapCursor } from './layerUtils';
+import { buildDeletePopup, removeMapCursor } from './layerUtils';
 import { useMapStore } from '../../stores/mapStore';
 import { pinia } from '../../stores/index';
 
@@ -94,7 +93,7 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
         }
 
         opts.selectForEdit();
-        setMapCursor(buttonId);
+        removeMapCursor(buttonId);
         e.target.editing.enable();
         popup.setLatLng(e.latlng);
         map.openPopup(popup);
