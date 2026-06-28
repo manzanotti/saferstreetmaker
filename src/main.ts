@@ -8,6 +8,7 @@ import { setupMapEngine } from './composables/useMapEngine';
 import { setupMapManager } from './composables/useMapManager';
 import { makeLeafletVueControl } from './composables/useLeafletVueControl';
 import { createAllLayers } from './composables/layers/index';
+import UndoRedoToolbar from './components/controls/UndoRedoToolbar.vue';
 import Toolbar from './components/controls/Toolbar.vue';
 import Legend from './components/controls/Legend.vue';
 import ModalContainer from './components/controls/ModalContainer.vue';
@@ -37,6 +38,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const { loadMap, setUserLocation, setDefaultView } = setupMapManager(fileManager);
 
     // ── Add Vue-backed Leaflet controls ──────────────────────────────────────
+    map.addControl(makeLeafletVueControl(UndoRedoToolbar, 'topleft'));
     map.addControl(makeLeafletVueControl(Toolbar, 'topleft'));
     map.addControl(makeLeafletVueControl(Legend, 'topright'));
     map.addControl(makeLeafletVueControl(ModalContainer, 'bottomleft'));

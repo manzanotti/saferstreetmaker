@@ -3,6 +3,8 @@
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
+import { useMapStore } from '../../../src/stores/mapStore';
+import { pinia } from '../../../src/stores/index';
 
 vi.mock('leaflet', () => import('../__mocks__/leaflet'));
 
@@ -181,3 +183,74 @@ sharedPolylineLayerTests(
     'one-way-street'
 );
 sharedPolylineLayerTests(createTramLineLayer, 'TramLines', 'Tram Lines', 'tram-line');
+
+describe('MobilityLanes history payloads', () => {
+    beforeEach(() => {
+        setActivePinia(pinia);
+    });
+
+    it('emits compact coordinates for polyline edits', () => {
+        const mapStore = useMapStore(pinia);
+        const layer = createMobilityLaneLayer(makeMockMap());
+
+        layer.loadFromGeoJSON(
+            polylineFeatureCollection([
+                [
+                    [-1.9, 52.5],
+                    [-1.8, 52.6]
+                ]
+            ])
+        );
+
+        const line = layer.getLayer().getLayers()[0] as any;
+        line.latlngs = [new L.LatLng(52.5, -1.9), new L.LatLng(52.7, -1.7)];
+        line.fire('edit');
+
+        expect(mapStore.lastLayerMutation?.kind).toBe('polyline-edit');
+        expect(mapStore.lastLayerMutation?.layerId).toBe('MobilityLanes');
+        expect(mapStore.lastLayerMutation?.payload).toMatchObject({
+            historyId: expect.any(String),
+            pointChanges: [
+                {
+                    type: 'update',
+                    index: 1,
+                    before: [-1.8, 52.6],
+                    after: [-1.7, 52.7]
+                }
+            ]
+        });
+    });
+
+    it('emits insert operations when a polyline gains a vertex', () => {
+        const mapStore = useMapStore(pinia);
+        const layer = createMobilityLaneLayer(makeMockMap());
+
+        layer.loadFromGeoJSON(
+            polylineFeatureCollection([
+                [
+                    [-1.9, 52.5],
+                    [-1.7, 52.7]
+                ]
+            ])
+        );
+
+        const line = layer.getLayer().getLayers()[0] as any;
+        line.latlngs = [
+            new L.LatLng(52.5, -1.9),
+            new L.LatLng(52.6, -1.8),
+            new L.LatLng(52.7, -1.7)
+        ];
+        line.fire('edit');
+
+        expect(mapStore.lastLayerMutation?.payload).toMatchObject({
+            historyId: expect.any(String),
+            pointChanges: [
+                {
+                    type: 'insert',
+                    index: 1,
+                    after: [-1.8, 52.6]
+                }
+            ]
+        });
+    });
+});

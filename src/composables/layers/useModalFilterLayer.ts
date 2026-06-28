@@ -1,5 +1,5 @@
 import * as L from 'leaflet';
-import { createPointLayer } from './usePointLayer';
+import { createPointLayer, getPointEventLatLng } from './usePointLayer';
 import type { IMapLayer } from './IMapLayer';
 import { useMapStore } from '../../stores/mapStore';
 import { pinia } from '../../stores/index';
@@ -17,7 +17,7 @@ export function createModalFilterLayer(map: L.Map): IMapLayer {
             toggleTitle: 'Toggle modal filters from the map',
             isFirst: true,
 
-            buildMarker(latlng, geoJsonLayer) {
+            buildMarker(latlng, geoJsonLayer, _historyId) {
                 const marker = new L.CircleMarker(latlng, {
                     color: 'green',
                     radius: 10,
@@ -25,8 +25,18 @@ export function createModalFilterLayer(map: L.Map): IMapLayer {
                     pane: 'filters'
                 }).on('click', (e) => {
                     L.DomEvent.stopPropagation(e);
+                    const latLng = getPointEventLatLng(e);
+                    const historyId = (e.target as any).feature?.properties?.historyId ?? null;
                     geoJsonLayer.removeLayer(e.target);
-                    mapStore.markLayerUpdated();
+                    mapStore.markLayerUpdated({
+                        kind: 'point-delete',
+                        layerId: 'ModalFilters',
+                        payload: {
+                            lat: latLng?.lat ?? null,
+                            lng: latLng?.lng ?? null,
+                            historyId
+                        }
+                    });
                 });
                 geoJsonLayer.addLayer(marker);
                 return marker;

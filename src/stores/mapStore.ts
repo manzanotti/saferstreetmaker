@@ -3,6 +3,20 @@ import { shallowRef, ref } from 'vue';
 import type * as L from 'leaflet';
 import type { IMapLayer } from '../composables/layers/IMapLayer';
 
+export interface LayerMutationEvent {
+    kind:
+        | 'point-add'
+        | 'point-delete'
+        | 'polyline-add'
+        | 'polyline-delete'
+        | 'polyline-edit'
+        | 'polygon-add'
+        | 'polygon-delete'
+        | 'polygon-edit';
+    layerId: string;
+    payload?: unknown;
+}
+
 export const useMapStore = defineStore('map', () => {
     /** The Leaflet map instance. shallowRef prevents Vue wrapping Leaflet internals. */
     const map = shallowRef<L.Map | null>(null);
@@ -27,6 +41,7 @@ export const useMapStore = defineStore('map', () => {
      * useMapManager watches this to trigger debounced saves.
      */
     const layerUpdateCount = ref(0);
+    const lastLayerMutation = shallowRef<LayerMutationEvent | null>(null);
 
     function setMap(instance: L.Map) {
         map.value = instance;
@@ -52,8 +67,13 @@ export const useMapStore = defineStore('map', () => {
     }
 
     /** Called by layer composables whenever map data changes (replaces PubSub layerUpdated). */
-    function markLayerUpdated() {
+    function markLayerUpdated(mutation?: LayerMutationEvent) {
+        lastLayerMutation.value = mutation ?? null;
         layerUpdateCount.value++;
+    }
+
+    function clearLastLayerMutation() {
+        lastLayerMutation.value = null;
     }
 
     /** Build a Map<id, layer> from the current layers array — used by FileManager. */
@@ -69,11 +89,13 @@ export const useMapStore = defineStore('map', () => {
         activeLayerId,
         visibleLayerIds,
         layerUpdateCount,
+        lastLayerMutation,
         setMap,
         setLayers,
         setActiveLayer,
         toggleLayerVisibility,
         markLayerUpdated,
+        clearLastLayerMutation,
         toLayers
     };
 });

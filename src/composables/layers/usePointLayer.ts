@@ -23,9 +23,24 @@ export interface PointLayerConfig {
     isFirst?: boolean;
     text?: string;
     /** Creates and returns the Leaflet marker for a given latlng. Must also add click-to-delete. */
-    buildMarker: (latlng: L.LatLng, geoJsonLayer: L.GeoJSON) => L.Layer;
+    buildMarker: (latlng: L.LatLng, geoJsonLayer: L.GeoJSON, historyId?: string) => L.Layer;
     /** Returns the icon element used in the legend entry. */
     buildIconEl: () => HTMLElement;
+}
+
+export function getPointEventLatLng(event: {
+    target?: { getLatLng?: () => L.LatLng };
+    latlng?: L.LatLng;
+}) {
+    return event.target?.getLatLng?.() ?? event.latlng ?? null;
+}
+
+function createPointHistoryId(): string {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID();
+    }
+
+    return `point-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 export function createPointLayer(config: PointLayerConfig, map: L.Map): IMapLayer {
@@ -34,14 +49,32 @@ export function createPointLayer(config: PointLayerConfig, map: L.Map): IMapLaye
     let _selected = false;
     let _visible = false;
 
-    const addMarker = (latlng: L.LatLng) => {
-        config.buildMarker(latlng, geoJsonLayer);
+    const addMarker = (latlng: L.LatLng, historyId?: string) => {
+        const marker = config.buildMarker(latlng, geoJsonLayer, historyId);
+        const nextHistoryId = historyId ?? createPointHistoryId();
+        const feature = (marker as any).toGeoJSON?.() as any;
+
+        if (feature) {
+            feature.properties = feature.properties ?? {};
+            feature.properties.historyId = nextHistoryId;
+            (marker as any).feature = feature;
+        }
+
+        return { marker, historyId: nextHistoryId };
     };
 
     const handleMapClick = (e: L.LeafletMouseEvent) => {
         L.DomEvent.stopPropagation(e);
-        addMarker(e.latlng);
-        mapStore.markLayerUpdated();
+        const { historyId } = addMarker(e.latlng);
+        mapStore.markLayerUpdated({
+            kind: 'point-add',
+            layerId: config.id,
+            payload: {
+                lat: e.latlng.lat,
+                lng: e.latlng.lng,
+                historyId
+            }
+        });
     };
 
     // Sync watch: fires immediately (flush: 'sync') when activeLayerId changes,
@@ -122,7 +155,7 @@ export function createPointLayer(config: PointLayerConfig, map: L.Map): IMapLaye
             }
             geoJson.features.forEach((feature: any) => {
                 const [lng, lat] = feature.geometry.coordinates;
-                addMarker(new L.LatLng(lat, lng));
+                addMarker(new L.LatLng(lat, lng), feature.properties?.historyId);
             });
         },
 

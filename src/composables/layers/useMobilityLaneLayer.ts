@@ -11,12 +11,14 @@ function addLine(
     geoJsonLayer: L.GeoJSON,
     map: L.Map,
     selectForEdit: () => void,
-    reinit?: (m: L.Map) => void
+    reinit?: (m: L.Map) => void,
+    historyId?: string
 ) {
     addPolylineToLayer({
         points: latLngs,
         geoJsonLayer,
         map,
+        layerId: 'MobilityLanes',
         polylineOpts: {
             color: COLOUR,
             weight: WEIGHT,
@@ -27,7 +29,8 @@ function addLine(
         buttonId: 'mobility-lane',
         selectForEdit,
         popupKeepInView: false,
-        reinitDrawing: reinit
+        reinitDrawing: reinit,
+        historyId
     });
 }
 
@@ -76,8 +79,8 @@ export function createMobilityLaneLayer(map: L.Map): IMapLayer {
     );
 
     layer.loadFromGeoJSON = (geoJson: any) => {
-        loadPolylineGeoJSON(geoJson, (pts) =>
-            addLine(pts, layer.getLayer(), map, () => layer.selectForEdit())
+        loadPolylineGeoJSON(geoJson, (pts, historyId) =>
+            addLine(pts, layer.getLayer(), map, () => layer.selectForEdit(), undefined, historyId)
         );
     };
 

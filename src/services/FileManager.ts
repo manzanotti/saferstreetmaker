@@ -45,6 +45,10 @@ export class FileManager {
         return this.serializer.fromEncodedHash(hash);
     }
 
+    buildSerializedMap(settings: Settings, layersData: Map<string, IMapLayer>): SerializedMap {
+        return this.serializer.toJSON(settings, layersData);
+    }
+
     // ── Storage (delegate to MapStorage) ─────────────────────────────────────
 
     async saveMap(settings: Settings, layersData: Map<string, IMapLayer>): Promise<void> {

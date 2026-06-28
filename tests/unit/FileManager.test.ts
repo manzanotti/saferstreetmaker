@@ -214,6 +214,14 @@ describe('FileManager', () => {
             });
         });
 
+        it('builds a clone-safe serialized snapshot', () => {
+            const settings = makeSettings('CloneSafeCity');
+            const snapshot = fm.buildSerializedMap(settings, new Map());
+
+            expect(() => structuredClone(snapshot)).not.toThrow();
+            expect(snapshot.settings?.centre).toEqual({ lat: 0, lng: 0 });
+        });
+
         it('includes a lastSaved timestamp', async () => {
             const settings = makeSettings('TimestampCity');
             await fm.saveMap(settings, new Map());
