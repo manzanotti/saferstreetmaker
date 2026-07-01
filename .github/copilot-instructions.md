@@ -49,6 +49,10 @@
 - **Do not mark a task complete until all four checks above have been run successfully.**
 - **Tests**: `yarn test` (Playwright, config in `tests/playwright.config.ts`, test files in `tests/playwright/`), plus `yarn test:unit` for Vitest (config in `tests/vitest.config.ts`, tests in `tests/unit/`)
 
+## Testing Policy
+
+- **Never modify production source code solely to support tests.** If a test needs access to internal state, use existing public APIs, DOM structure, or framework hooks (e.g. accessing Pinia stores via the mounted Vue app's `$pinia` on `document.getElementById('app').__vue_app__.config.globalProperties.$pinia`). Test helpers belong in test files, not in `src/`.
+
 ## Coding Style
 
 - **Always use braces for control-flow statements.** `if`, `else`, `for`, `while`, and `do` bodies must always be wrapped in `{ }`, even when the body is a single statement. Never write inline/braceless forms such as `if (x) return;`.

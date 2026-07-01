@@ -53,6 +53,19 @@ export function createPolylineLayer(
     let pendingCursorEvent: L.LeafletMouseEvent | null = null;
     let cursorSyncFrameId: number | null = null;
 
+    const buildLayerFeatureCollection = () => {
+        const json: any = { type: 'FeatureCollection', features: [] };
+        geoJsonLayer.eachLayer((layer: any) => {
+            const feature = layer.toGeoJSON() as any;
+            feature.properties = {
+                ...(feature.properties ?? {}),
+                ...(layer.feature?.properties ?? {})
+            };
+            json.features.push(feature);
+        });
+        return json;
+    };
+
     const pointFeatureClasses = [
         'modal-filter-marker',
         'bus-gate-icon',
@@ -81,9 +94,23 @@ export function createPolylineLayer(
         );
     };
 
+    const isActivelyDrawing = (): boolean => {
+        if (selectionMode !== 'draw' || !_selected || _drawingTool == null) {
+            return false;
+        }
+
+        const markers = (_drawingTool as { _markers?: unknown[] })._markers;
+        return Array.isArray(markers) && markers.length > 0;
+    };
+
     const applyMouseMarkerCursor = (event: L.LeafletMouseEvent) => {
         const mouseMarker = document.querySelector('.leaflet-mouse-marker') as HTMLElement | null;
         if (!mouseMarker) {
+            return;
+        }
+
+        if (isActivelyDrawing()) {
+            mouseMarker.style.cursor = 'crosshair';
             return;
         }
 
@@ -150,7 +177,20 @@ export function createPolylineLayer(
             return;
         }
         config.onDrawCreated(e.layer.getLatLngs(), geoJsonLayer, map);
-        mapStore.markLayerUpdated();
+        const createdLayers = geoJsonLayer.getLayers() as any[];
+        const createdLayer = createdLayers[createdLayers.length - 1];
+        const createdFeature = createdLayer?.feature ?? createdLayer?.toGeoJSON?.() ?? null;
+        mapStore.markLayerUpdated({
+            kind: 'polyline-add',
+            layerId: config.id,
+            payload: createdFeature ?? e.layer.toGeoJSON?.() ?? null
+        });
+    };
+
+    const disableDrawMode = () => {
+        _drawingTool?.disable();
+        _drawingTool = null;
+        map.off('draw:created', handleDrawCreated);
     };
 
     watch(
@@ -167,8 +207,7 @@ export function createPolylineLayer(
                 }
             } else if (!shouldBeSelected && _selected) {
                 _selected = false;
-                _drawingTool?.disable();
-                _drawingTool = null;
+                disableDrawMode();
                 geoJsonLayer.eachLayer((l: any) => l.editing?.disable());
                 map.off('mousemove', syncMouseMarkerCursor as L.LeafletEventHandlerFn);
                 if (cursorSyncFrameId !== null) {
@@ -181,7 +220,6 @@ export function createPolylineLayer(
                 ) as HTMLElement | null;
                 mouseMarker?.style.removeProperty('cursor');
                 removeMapCursor(config.buttonId);
-                map.off('draw:created', handleDrawCreated);
                 selectionMode = 'draw';
             }
         },
@@ -194,6 +232,9 @@ export function createPolylineLayer(
 
     const selectForEdit = (): void => {
         selectionMode = 'edit';
+        if (_selected) {
+            disableDrawMode();
+        }
         mapStore.setActiveLayer(config.buttonId);
     };
 
@@ -252,7 +293,7 @@ export function createPolylineLayer(
             return geoJsonLayer;
         },
         toGeoJSON(): object {
-            return geoJsonLayer.toGeoJSON();
+            return buildLayerFeatureCollection();
         },
         clearLayer(): void {
             geoJsonLayer.clearLayers();

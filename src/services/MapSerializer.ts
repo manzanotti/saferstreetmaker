@@ -68,7 +68,17 @@ export class MapSerializer {
             layers[layerName] = layer.toGeoJSON();
         });
         return {
-            settings,
+            settings: {
+                title: settings.title,
+                readOnly: settings.readOnly,
+                hideToolbar: settings.hideToolbar,
+                activeLayers: [...settings.activeLayers],
+                centre: settings.centre
+                    ? { lat: settings.centre.lat, lng: settings.centre.lng }
+                    : null,
+                zoom: settings.zoom,
+                version: settings.version
+            },
             layers,
             lastSaved: new Date().toISOString()
         };

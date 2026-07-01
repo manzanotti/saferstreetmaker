@@ -30,6 +30,170 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         'zebra-crossing-icon'
     ];
 
+    const createHistoryId = (): string => {
+        if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+            return crypto.randomUUID();
+        }
+
+        return `ltn-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    };
+
+    const getPolygonHistoryFeature = (polygon: any) => {
+        const feature = polygon.toGeoJSON() as any;
+        feature.properties = feature.properties ?? {};
+        feature.properties.label = polygon['properties']?.label ?? '';
+        feature.properties.color = polygon.options?.color ?? COLOUR;
+        feature.properties.historyId = polygon['properties']?.historyId ?? '';
+        return feature;
+    };
+
+    type PolygonPointChange =
+        | {
+              type: 'update';
+              ringIndex: number;
+              pointIndex: number;
+              before: number[];
+              after: number[];
+          }
+        | {
+              type: 'insert';
+              ringIndex: number;
+              pointIndex: number;
+              after: number[];
+          }
+        | {
+              type: 'delete';
+              ringIndex: number;
+              pointIndex: number;
+              before: number[];
+          };
+
+    const buildPolygonPointChanges = (
+        beforeCoordinates: number[][][],
+        afterCoordinates: number[][][]
+    ) => {
+        if (beforeCoordinates.length !== afterCoordinates.length) {
+            return null;
+        }
+
+        const pointChanges = beforeCoordinates.flatMap((beforeRing, ringIndex) => {
+            const afterRing = afterCoordinates[ringIndex];
+            if (!Array.isArray(afterRing)) {
+                return [];
+            }
+
+            let prefix = 0;
+            while (
+                prefix < beforeRing.length &&
+                prefix < afterRing.length &&
+                beforeRing[prefix][0] === afterRing[prefix][0] &&
+                beforeRing[prefix][1] === afterRing[prefix][1]
+            ) {
+                prefix++;
+            }
+
+            let suffix = 0;
+            while (
+                suffix < beforeRing.length - prefix &&
+                suffix < afterRing.length - prefix &&
+                beforeRing[beforeRing.length - 1 - suffix][0] ===
+                    afterRing[afterRing.length - 1 - suffix][0] &&
+                beforeRing[beforeRing.length - 1 - suffix][1] ===
+                    afterRing[afterRing.length - 1 - suffix][1]
+            ) {
+                suffix++;
+            }
+
+            const beforeMiddle = beforeRing.slice(prefix, beforeRing.length - suffix);
+            const afterMiddle = afterRing.slice(prefix, afterRing.length - suffix);
+            const ringChanges: PolygonPointChange[] = [];
+            const sharedLength = Math.min(beforeMiddle.length, afterMiddle.length);
+
+            for (let pointIndex = 0; pointIndex < sharedLength; pointIndex++) {
+                const beforePoint = beforeMiddle[pointIndex];
+                const afterPoint = afterMiddle[pointIndex];
+                if (
+                    !Array.isArray(afterPoint) ||
+                    beforePoint.length !== 2 ||
+                    afterPoint.length !== 2
+                ) {
+                    return [];
+                }
+
+                if (beforePoint[0] === afterPoint[0] && beforePoint[1] === afterPoint[1]) {
+                    continue;
+                }
+
+                ringChanges.push({
+                    type: 'update',
+                    ringIndex,
+                    pointIndex: prefix + pointIndex,
+                    before: [beforePoint[0], beforePoint[1]],
+                    after: [afterPoint[0], afterPoint[1]]
+                });
+            }
+
+            if (beforeMiddle.length > afterMiddle.length) {
+                for (
+                    let pointIndex = sharedLength;
+                    pointIndex < beforeMiddle.length;
+                    pointIndex++
+                ) {
+                    const beforePoint = beforeMiddle[pointIndex];
+                    if (beforePoint.length !== 2) {
+                        return [];
+                    }
+
+                    ringChanges.push({
+                        type: 'delete',
+                        ringIndex,
+                        pointIndex: prefix + sharedLength,
+                        before: [beforePoint[0], beforePoint[1]]
+                    });
+                }
+            } else if (afterMiddle.length > beforeMiddle.length) {
+                for (let pointIndex = sharedLength; pointIndex < afterMiddle.length; pointIndex++) {
+                    const afterPoint = afterMiddle[pointIndex];
+                    if (!Array.isArray(afterPoint) || afterPoint.length !== 2) {
+                        return [];
+                    }
+
+                    ringChanges.push({
+                        type: 'insert',
+                        ringIndex,
+                        pointIndex: prefix + pointIndex,
+                        after: [afterPoint[0], afterPoint[1]]
+                    });
+                }
+            }
+
+            return ringChanges;
+        });
+
+        return pointChanges.length > 0 ? pointChanges : null;
+    };
+
+    const getPolygonMutationPayload = (beforeFeature: any, afterFeature: any) => {
+        const beforeCoordinates = beforeFeature?.geometry?.coordinates ?? [];
+        const afterCoordinates = afterFeature?.geometry?.coordinates ?? [];
+        const pointChanges = buildPolygonPointChanges(beforeCoordinates, afterCoordinates);
+
+        return {
+            historyId:
+                afterFeature?.properties?.historyId ?? beforeFeature?.properties?.historyId ?? '',
+            ...(pointChanges
+                ? { pointChanges }
+                : {
+                      beforeCoordinates,
+                      afterCoordinates
+                  }),
+            beforeLabel: beforeFeature?.properties?.label ?? '',
+            afterLabel: afterFeature?.properties?.label ?? '',
+            beforeColor: beforeFeature?.properties?.color ?? COLOUR,
+            afterColor: afterFeature?.properties?.color ?? COLOUR
+        };
+    };
+
     const shouldShowLabel = (label: string): boolean => {
         return map.getZoom() >= 14 && label.length > 0;
     };
@@ -261,7 +425,12 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
     };
 
     // ── Add a single LTN polygon ─────────────────────────────────────────────
-    const addLtnCell = (points: L.LatLng[], label: string, color: string) => {
+    const addLtnCell = (
+        points: L.LatLng[],
+        label: string,
+        color: string,
+        historyId = createHistoryId()
+    ) => {
         const polygon = new L.Polygon(points, {
             color: color || COLOUR,
             fillOpacity: 0.2,
@@ -271,7 +440,15 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         });
 
         polygon.on('edit', () => {
-            mapStore.markLayerUpdated();
+            const previousFeature =
+                (polygon as any)['historyFeature'] ?? getPolygonHistoryFeature(polygon);
+            const nextFeature = getPolygonHistoryFeature(polygon);
+            mapStore.markLayerUpdated({
+                kind: 'polygon-edit',
+                layerId: 'LtnCells',
+                payload: getPolygonMutationPayload(previousFeature, nextFeature)
+            });
+            (polygon as any)['historyFeature'] = nextFeature;
         });
 
         polygon.on('mousemove', (e: any) => {
@@ -291,7 +468,8 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             setMouseMarkerCursor('grab');
         });
 
-        (polygon as any)['properties'] = { label };
+        (polygon as any)['properties'] = { label, historyId };
+        (polygon as any)['historyFeature'] = getPolygonHistoryFeature(polygon);
 
         const tooltip = polygon.bindTooltip(label, { permanent: true, direction: 'center' });
         syncTooltipVisibility(polygon);
@@ -310,6 +488,8 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             if (mapStore.activeLayerId !== null && mapStore.activeLayerId !== BUTTON_ID) {
                 return;
             }
+
+            L.DomEvent.stopPropagation(e.originalEvent ?? e);
 
             // Disable editing on all other polygons in this layer first.
             geoJsonLayer.eachLayer((l: any) => {
@@ -332,6 +512,8 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         });
 
         geoJsonLayer.addLayer(polygon);
+
+        return polygon;
     };
 
     // ── Popup with label editor + delete button ──────────────────────────────
@@ -350,7 +532,15 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             tooltip.setTooltipContent(text);
             polygon['properties'].label = text;
             syncTooltipVisibility(polygon);
-            mapStore.markLayerUpdated();
+            const previousFeature =
+                (polygon as any)['historyFeature'] ?? getPolygonHistoryFeature(polygon);
+            const nextFeature = getPolygonHistoryFeature(polygon);
+            mapStore.markLayerUpdated({
+                kind: 'polygon-edit',
+                layerId: 'LtnCells',
+                payload: getPolygonMutationPayload(previousFeature, nextFeature)
+            });
+            (polygon as any)['historyFeature'] = nextFeature;
         });
         labelControl.appendChild(labelEl);
         controlList.appendChild(labelControl);
@@ -359,7 +549,13 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         deleteControl.classList.add('delete-button');
         deleteControl.addEventListener('click', () => {
             geoJsonLayer.removeLayer(polygon);
-            mapStore.markLayerUpdated();
+            mapStore.markLayerUpdated({
+                kind: 'polygon-delete',
+                layerId: 'LtnCells',
+                payload: {
+                    before: (polygon as any)['historyFeature'] ?? getPolygonHistoryFeature(polygon)
+                }
+            });
             map.closePopup(popup);
         });
         controlList.appendChild(deleteControl);
@@ -374,8 +570,18 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             return;
         }
         const latLngs = e.layer.getLatLngs()[0]; // polygon outer ring
-        addLtnCell(latLngs, _ltnTitle, COLOUR);
-        mapStore.markLayerUpdated();
+        const polygon = addLtnCell(latLngs, _ltnTitle, COLOUR) as any;
+        mapStore.markLayerUpdated({
+            kind: 'polygon-add',
+            layerId: 'LtnCells',
+            payload: polygon?.historyFeature ?? e.layer.toGeoJSON?.() ?? null
+        });
+    };
+
+    const disableDrawMode = () => {
+        _drawingTool?.disable();
+        _drawingTool = null;
+        map.off('draw:created', handleDrawCreated);
     };
 
     // ── Zoom-based tooltip visibility ────────────────────────────────────────
@@ -401,8 +607,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                 }
             } else if (!shouldBeSelected && _selected) {
                 _selected = false;
-                _drawingTool?.disable();
-                _drawingTool = null;
+                disableDrawMode();
                 geoJsonLayer.eachLayer((l: any) => l.editing?.disable());
                 map.off('mousemove', syncMouseMarkerCursor as L.LeafletEventHandlerFn);
                 if (cursorSyncFrameId !== null) {
@@ -413,7 +618,6 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                 setFeatureCursor(null, null);
                 setMouseMarkerCursor(null);
                 removeMapCursor(CURSOR_CSS);
-                map.off('draw:created', handleDrawCreated);
                 selectionMode = 'draw';
             }
         },
@@ -427,6 +631,9 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
     /** Switch to this layer for editing an existing polygon without enabling draw mode. */
     const selectForEdit = (): void => {
         selectionMode = 'edit';
+        if (_selected) {
+            disableDrawMode();
+        }
         mapStore.setActiveLayer(BUTTON_ID);
     };
 
@@ -492,8 +699,8 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                 const points: L.LatLng[] = [];
                 const polygonCoords = feature.geometry.coordinates[0];
                 polygonCoords.forEach((c: number[]) => points.push(new L.LatLng(c[1], c[0])));
-                const { label, color } = feature.properties ?? {};
-                addLtnCell(points, label ?? '1', color ?? COLOUR);
+                const { label, color, historyId } = feature.properties ?? {};
+                addLtnCell(points, label ?? '1', color ?? COLOUR, historyId ?? createHistoryId());
             });
         },
 
@@ -504,9 +711,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         toGeoJSON(): object {
             const json: any = { type: 'FeatureCollection', features: [] };
             geoJsonLayer.eachLayer((l: any) => {
-                const feature = (l as L.Polygon).toGeoJSON() as any;
-                feature.properties.label = l['properties']?.label ?? '';
-                feature.properties.color = l.options?.color ?? COLOUR;
+                const feature = getPolygonHistoryFeature(l as any);
                 json.features.push(feature);
             });
             return json;

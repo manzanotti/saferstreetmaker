@@ -26,6 +26,11 @@ test.describe('Toolbar', () => {
         await expect(page.locator('#map-manager-button')).toBeVisible();
     });
 
+    test('undo and redo buttons are present', async ({ page }) => {
+        await expect(page.locator('#undo-button')).toBeVisible();
+        await expect(page.locator('#redo-button')).toBeVisible();
+    });
+
     test('share button is present', async ({ page }) => {
         await expect(page.locator('#share-button')).toBeVisible();
     });

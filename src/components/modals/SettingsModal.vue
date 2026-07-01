@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive } from 'vue';
+import { reactive, watch } from 'vue';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useUiStore } from '../../stores/uiStore';
 import { useMapStore } from '../../stores/mapStore';
@@ -18,13 +18,29 @@ const form = reactive({
     activeLayers: [...settingsStore.activeLayers]
 });
 
+watch(
+    () => uiStore.activeModal,
+    (activeModal) => {
+        if (activeModal !== 'settings') {
+            return;
+        }
+
+        form.title = settingsStore.title;
+        form.readOnly = settingsStore.readOnly;
+        form.activeLayers = [...settingsStore.activeLayers];
+    },
+    { immediate: true }
+);
+
 async function onSave() {
+    const currentSettings = settingsStore.toSettings();
+
     const s = new Settings();
     s.title = form.title;
     s.readOnly = form.readOnly;
     s.hideToolbar = settingsStore.hideToolbar;
-    s.zoom = settingsStore.zoom;
-    s.centre = settingsStore.centre ?? settingsStore.toSettings().centre;
+    s.zoom = currentSettings.zoom;
+    s.centre = settingsStore.centre ?? currentSettings.centre;
     s.version = settingsStore.version;
     s.activeLayers = form.activeLayers;
 

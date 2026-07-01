@@ -82,6 +82,13 @@ class Polyline {
         return this;
     }
 
+    fire(event: string, payload?: Record<string, unknown>) {
+        for (const handler of this._handlers[event] ?? []) {
+            handler({ target: this, ...payload });
+        }
+        return this;
+    }
+
     /** leaflet-arrowheads extension used by OneWayStreetLayer */
     arrowheads(_opts?: any) {
         return this;
@@ -110,6 +117,13 @@ class Polygon {
 
     on(event: string, fn: Function) {
         (this._handlers[event] ??= []).push(fn);
+        return this;
+    }
+
+    fire(event: string, payload?: Record<string, unknown>) {
+        for (const handler of this._handlers[event] ?? []) {
+            handler({ target: this, ...payload });
+        }
         return this;
     }
 

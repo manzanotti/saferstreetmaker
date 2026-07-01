@@ -23,11 +23,12 @@ interface SimplePolylineConfig {
 function createSimplePolylineLayer(cfg: SimplePolylineConfig, map: L.Map): IMapLayer {
     let layer: EditablePolylineLayer;
 
-    const addLine = (latLngs: L.LatLng[], geoJsonLayer: L.GeoJSON) => {
+    const addLine = (latLngs: L.LatLng[], geoJsonLayer: L.GeoJSON, historyId?: string) => {
         addPolylineToLayer({
             points: latLngs,
             geoJsonLayer,
             map,
+            layerId: cfg.id,
             polylineOpts: {
                 color: cfg.colour,
                 weight: cfg.weight,
@@ -37,6 +38,7 @@ function createSimplePolylineLayer(cfg: SimplePolylineConfig, map: L.Map): IMapL
             },
             buttonId: cfg.buttonId,
             selectForEdit: () => layer.selectForEdit(),
+            historyId,
             arrowheads: cfg.arrowheads
         });
     };
@@ -75,7 +77,7 @@ function createSimplePolylineLayer(cfg: SimplePolylineConfig, map: L.Map): IMapL
     );
 
     layer.loadFromGeoJSON = (geoJson: any) => {
-        loadPolylineGeoJSON(geoJson, (pts) => addLine(pts, layer.getLayer()));
+        loadPolylineGeoJSON(geoJson, (pts, historyId) => addLine(pts, layer.getLayer(), historyId));
     };
 
     return layer;

@@ -5,6 +5,20 @@
     background-color: #ffffff;
 }
 
+.history-toolbar {
+    display: flex;
+    flex-direction: row;
+}
+
+.history-toolbar li {
+    height: 60px;
+    width: 60px;
+    display: inline-block;
+    cursor: pointer;
+    position: relative;
+    background-color: #ffffff;
+}
+
 .toolbar li.group span {
     background: linear-gradient(-135deg, #444 10px, rgba(0, 0, 0, 0) 0);
     width: 60px;
@@ -22,6 +36,25 @@
     background-position: center;
     background-repeat: no-repeat;
     padding: 0;
+}
+
+.history-toolbar input.toolbar-button {
+    width: 60px;
+    height: 60px;
+    padding: 0;
+    font-size: 2rem;
+    line-height: 56px;
+    text-align: center;
+    background-color: #ffffff;
+}
+
+.history-toolbar input.toolbar-button:not(:disabled):hover {
+    background-color: #eeeeee;
+}
+
+.history-toolbar input.toolbar-button:disabled {
+    color: #999999;
+    cursor: not-allowed;
 }
 
 .toolbar li input.toolbar-button.selected {
