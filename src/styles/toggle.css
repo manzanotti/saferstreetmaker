@@ -1,6 +1,6 @@
 @reference 'tailwindcss';
 
-/* Toggle switch — used in Settings and Sharing modals */
+/* Toggle switch — used in Settings and Sharing panels */
 div.toggle input {
     float: none;
     display: inline-block;
@@ -19,10 +19,6 @@ div.toggle input {
 div.toggle label {
     padding-left: 10px;
     cursor: pointer;
-}
-
-.modal button {
-    @apply inline-block m-2 px-6 py-2.5 bg-blue-600 text-white font-medium text-xs leading-tight uppercase rounded-sm shadow-md hover:bg-blue-700 hover:shadow-lg hover:text-white focus:bg-blue-700 focus:shadow-lg focus:outline-hidden focus:ring-0 active:bg-blue-800 active:shadow-lg transition duration-150 ease-in-out;
 }
 
 .leaflet-popup a[role='button'],

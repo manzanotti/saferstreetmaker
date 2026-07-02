@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Help Modal', () => {
+test.describe('Help Panel', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto('/');
         await page.waitForSelector('.toolbar');

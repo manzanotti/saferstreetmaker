@@ -25,6 +25,7 @@ function toggleCollapse() {
         <div
             role="button"
             tabindex="0"
+            :aria-expanded="!isCollapsed"
             class="flex items-center justify-between px-4 py-2 cursor-pointer select-none hover:bg-green-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-green-600"
             @click="toggleCollapse"
             @keydown.enter.prevent="toggleCollapse"
@@ -46,6 +47,7 @@ function toggleCollapse() {
                     :title="`Toggle ${layer.title.toLowerCase()} from the map`"
                     role="button"
                     tabindex="0"
+                    :aria-pressed="mapStore.visibleLayerIds.has(layer.id)"
                     class="flex items-center gap-2 px-2 py-1 rounded-lg cursor-pointer hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-green-600"
                     :class="{
                         disabled: !mapStore.visibleLayerIds.has(layer.id),

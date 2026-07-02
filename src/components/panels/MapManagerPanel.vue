@@ -87,7 +87,7 @@ async function onCreate() {
         return;
     }
 
-    uiStore.closeModal();
+    uiStore.closePanel();
 }
 
 function onLoadFile() {
@@ -96,12 +96,12 @@ function onLoadFile() {
 
 function onSaveFile() {
     getFileManager().saveMapToFile(settingsStore.toSettings(), mapStore.toLayers());
-    uiStore.closeModal();
+    uiStore.closePanel();
 }
 
 function onExportGeoJSON() {
     getFileManager().saveMapToGeoJSONFile(settingsStore.toSettings(), mapStore.toLayers());
-    uiStore.closeModal();
+    uiStore.closePanel();
 }
 
 async function onLoadStoredMap(mapName: string) {
@@ -122,7 +122,7 @@ async function onLoadStoredMap(mapName: string) {
         return;
     }
 
-    uiStore.closeModal();
+    uiStore.closePanel();
 }
 
 async function onDeleteStoredMap(mapName: string) {
@@ -144,21 +144,26 @@ async function onDeleteStoredMap(mapName: string) {
 }
 
 function onClose() {
-    uiStore.closeModal();
+    uiStore.closePanel();
 }
 </script>
 
 <template>
     <div
         class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] flex items-start justify-center"
+        @dblclick.stop
     >
         <div
             id="map-manager"
+            role="dialog"
+            aria-labelledby="map-manager-panel-title"
             class="relative rounded-2xl bg-white shadow-xl border border-gray-100 w-80 flex flex-col overflow-hidden max-h-[85vh]"
         >
             <!-- Header -->
             <div class="flex items-center px-5 py-4 border-b border-gray-100 shrink-0">
-                <h2 class="text-base font-semibold text-gray-800">Manage maps</h2>
+                <h2 id="map-manager-panel-title" class="text-base font-semibold text-gray-800">
+                    Manage maps
+                </h2>
             </div>
 
             <!-- Body -->
@@ -168,6 +173,7 @@ function onClose() {
                     <button
                         id="new-map"
                         type="button"
+                        aria-label="Create a new map"
                         title="Create a new map"
                         class="w-12 h-12 rounded-xl flex items-center justify-center bg-slate-50 hover:bg-green-100 border border-gray-100 focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:outline-none [touch-action:manipulation] cursor-pointer select-none"
                         @click.stop="onNewMap"
@@ -184,6 +190,7 @@ function onClose() {
                     <button
                         id="copy-map"
                         type="button"
+                        aria-label="Make a copy of this map"
                         title="Make a copy of this map"
                         class="w-12 h-12 rounded-xl flex items-center justify-center bg-slate-50 hover:bg-green-100 border border-gray-100 focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:outline-none [touch-action:manipulation] cursor-pointer select-none"
                         @click.stop="onCopyMap"
@@ -200,6 +207,7 @@ function onClose() {
                     <button
                         id="load-file"
                         type="button"
+                        aria-label="Load a map from a JSON file"
                         title="Load a map from a JSON file"
                         class="w-12 h-12 rounded-xl flex items-center justify-center bg-slate-50 hover:bg-green-100 border border-gray-100 focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:outline-none [touch-action:manipulation] cursor-pointer select-none"
                         @click.stop="onLoadFile"
@@ -216,6 +224,7 @@ function onClose() {
                     <button
                         id="save-file"
                         type="button"
+                        aria-label="Save map to a JSON file"
                         title="Save map to a JSON file"
                         class="w-12 h-12 rounded-xl flex items-center justify-center bg-slate-50 hover:bg-green-100 border border-gray-100 focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:outline-none [touch-action:manipulation] cursor-pointer select-none"
                         @click.stop="onSaveFile"
@@ -232,6 +241,7 @@ function onClose() {
                     <button
                         id="save-geojson-file"
                         type="button"
+                        aria-label="Export map to GeoJSON"
                         title="Export map to GeoJSON"
                         class="w-12 h-12 rounded-xl flex items-center justify-center bg-slate-50 hover:bg-green-100 border border-gray-100 focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:outline-none [touch-action:manipulation] cursor-pointer select-none"
                         @click.stop="onExportGeoJSON"
@@ -298,13 +308,18 @@ function onClose() {
                             </template>
                             <template v-else>
                                 <span
+                                    role="button"
+                                    tabindex="0"
                                     class="text-sm text-gray-700 cursor-pointer truncate"
                                     @click.stop="onLoadStoredMap(mapName)"
+                                    @keydown.enter.prevent="onLoadStoredMap(mapName)"
+                                    @keydown.space.prevent="onLoadStoredMap(mapName)"
                                     >{{ mapName }}</span
                                 >
                                 <button
                                     type="button"
-                                    class="delete-button shrink-0 w-8 h-8 rounded-lg flex items-center justify-center bg-slate-50 hover:bg-red-50 border border-gray-100 focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:outline-none [touch-action:manipulation] cursor-pointer"
+                                    class="delete-button shrink-0 w-8 h-8 rounded-lg flex items-center justify-center bg-slate-50 hover:bg-red-50 border border-gray-100 focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:outline-none [touch-action:manipulation] cursor-pointer [background-image:none] [background-size:0_0] hover:shadow-none"
+                                    :aria-label="`Delete ${mapName}`"
                                     :title="`Delete ${mapName}`"
                                     @click.stop="onDeleteStoredMap(mapName)"
                                 >

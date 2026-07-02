@@ -13,7 +13,18 @@ async function downloadStorageMap() {
 </script>
 
 <template>
-    <!-- Render the error overlay only when errors exist. -->
+    <!--
+        Always-present live region: must be in the DOM before errors arrive
+        so assistive technologies register it and announce content changes.
+        role="alert" implies aria-live="assertive" + aria-atomic="true".
+    -->
+    <div role="alert" aria-atomic="true" class="sr-only">
+        <p v-for="(message, idx) in uiStore.errorMessages" :key="`${idx}-${message}`">
+            {{ message }}
+        </p>
+    </div>
+
+    <!-- Visual error dialog, conditionally rendered. -->
     <Transition name="overlay-fade">
         <div
             v-if="hasErrors"
@@ -21,11 +32,16 @@ async function downloadStorageMap() {
             class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999]"
         >
             <div
+                role="dialog"
+                aria-labelledby="error-dialog-title"
                 class="rounded-2xl bg-white shadow-2xl border border-gray-100 w-[min(90vw,480px)] flex flex-col overflow-hidden"
             >
                 <div class="flex items-start gap-3 px-5 py-5">
                     <div class="flex-1">
-                        <h2 class="text-base font-semibold text-gray-800 mb-3">
+                        <h2
+                            id="error-dialog-title"
+                            class="text-base font-semibold text-gray-800 mb-3"
+                        >
                             An error has occurred
                         </h2>
                         <div id="errorMessages" class="space-y-1">

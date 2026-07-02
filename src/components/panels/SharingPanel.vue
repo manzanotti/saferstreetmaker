@@ -40,19 +40,26 @@ function onCreate() {
 }
 
 function onClose() {
-    uiStore.closeModal();
+    uiStore.closePanel();
 }
 </script>
 
 <template>
-    <div class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999]">
+    <div
+        role="dialog"
+        aria-labelledby="sharing-panel-title"
+        class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999]"
+        @dblclick.stop
+    >
         <form
             id="sharing"
             class="relative rounded-2xl bg-white shadow-xl border border-gray-100 w-72 flex flex-col overflow-hidden"
             @submit.prevent="onCreate"
         >
             <div class="flex items-center px-5 py-4 border-b border-gray-100 shrink-0">
-                <h2 class="text-base font-semibold text-gray-800">Share map</h2>
+                <h2 id="sharing-panel-title" class="text-base font-semibold text-gray-800">
+                    Share map
+                </h2>
             </div>
 
             <div class="px-5 py-4 space-y-4">

@@ -25,28 +25,30 @@ function selectTab(tabId: string) {
 }
 
 function close() {
-    uiStore.closeModal();
+    uiStore.closePanel();
 }
 </script>
 
 <template>
     <Transition name="overlay-fade">
         <div
-            v-if="uiStore.activeModal === 'help'"
+            v-if="uiStore.activePanel === 'help'"
             id="help"
             class="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none"
             @keydown.escape.window="close"
+            @dblclick.stop
         >
             <div
                 role="dialog"
-                aria-modal="true"
-                aria-labelledby="help-modal-title"
+                aria-labelledby="help-panel-title"
                 class="pointer-events-auto relative rounded-2xl bg-white shadow-xl border border-gray-100 w-[min(90vw,720px)] max-h-[90vh] flex flex-col overflow-hidden"
             >
                 <div
                     class="flex shrink-0 items-center justify-between px-5 py-4 border-b border-gray-100"
                 >
-                    <h2 id="help-modal-title" class="text-base font-semibold text-gray-800">Using Safer Street Maker</h2>
+                    <h2 id="help-panel-title" class="text-base font-semibold text-gray-800">
+                        Using Safer Street Maker
+                    </h2>
                 </div>
 
                 <div class="flex-1 overflow-y-auto px-5 py-4">
@@ -58,6 +60,7 @@ function close() {
                     >
                         <li v-for="tab in tabs" :key="tab.id" role="presentation">
                             <a
+                                :id="`${tab.id}-tab`"
                                 :href="`#${tab.id}`"
                                 :class="tabLinkClass"
                                 :data-tab-nav-active="activeTab === tab.id ? '' : undefined"
@@ -166,8 +169,8 @@ function close() {
                             </p>
                             <p class="mb-8">
                                 To add a mobility lane , click on the Cycle button in the toolbar.
-                                You draw the lane by placing a serious of points. When done, click
-                                on the last point added, and you will leave lane creation mode.
+                                You draw the lane by placing a series of points. When done, click on
+                                the last point added, and you will leave lane creation mode.
                             </p>
                             <p class="mb-8">
                                 To edit a lane, click anywhere on it to enter edit mode. You can
@@ -194,7 +197,7 @@ function close() {
                             <p class="mb-8">
                                 These work in exactly the same way as mobility lanes. To add one,
                                 click on the Tram button in the toolbar. You draw the lane by
-                                placing a serious of points. When done, click on the last point
+                                placing a series of points. When done, click on the last point
                                 added, and you will leave line creation mode.
                             </p>
                             <h2>
@@ -248,7 +251,7 @@ function close() {
                             </p>
                             <p class="mb-8">
                                 Cars can still get to everywhere they could previously, but may have
-                                to take a slightly longer route. That hasn't stopped
+                                to take a slightly longer route.
                             </p>
                             <p class="mb-8">
                                 You draw a polygon in much the same way as you draw a line, this

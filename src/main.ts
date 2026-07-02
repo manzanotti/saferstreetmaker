@@ -11,9 +11,9 @@ import { createAllLayers } from './composables/layers/index';
 import UndoRedoToolbar from './components/controls/UndoRedoToolbar.vue';
 import Toolbar from './components/controls/Toolbar.vue';
 import Legend from './components/controls/Legend.vue';
-import ModalContainer from './components/controls/ModalContainer.vue';
+import PanelContainer from './components/controls/PanelContainer.vue';
 
-// Mount the Vue overlay app (HelpModal, ErrorModal) immediately.
+// Mount the Vue overlay app (HelpPanel, ErrorPanel) immediately.
 createApp(App).use(pinia).mount('#app');
 
 // Bootstrap the Leaflet map in DOMContentLoaded — identical timing to the
@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     map.addControl(makeLeafletVueControl(UndoRedoToolbar, 'topleft'));
     map.addControl(makeLeafletVueControl(Toolbar, 'topleft'));
     map.addControl(makeLeafletVueControl(Legend, 'topright'));
-    map.addControl(makeLeafletVueControl(ModalContainer, 'bottomleft'));
+    map.addControl(makeLeafletVueControl(PanelContainer, 'bottomleft'));
 
     // ── Parse URL params and load initial map ────────────────────────────────
     const params = new URLSearchParams(window.location.search);

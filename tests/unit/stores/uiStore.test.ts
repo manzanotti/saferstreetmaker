@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useUiStore } from '../../../src/stores/uiStore';
-import type { ModalId } from '../../../src/stores/uiStore';
+import type { PanelId } from '../../../src/stores/uiStore';
 
 describe('uiStore', () => {
     beforeEach(() => {
@@ -10,38 +10,38 @@ describe('uiStore', () => {
 
     it('initialises with no active modal and no errors', () => {
         const store = useUiStore();
-        expect(store.activeModal).toBeNull();
+        expect(store.activePanel).toBeNull();
         expect(store.errorMessages).toEqual([]);
         expect(store.showDownloadStorageLink).toBe(false);
     });
 
-    describe('openModal() / closeModal()', () => {
-        it('sets activeModal', () => {
+    describe('openPanel() / closePanel()', () => {
+        it('sets activePanel', () => {
             const store = useUiStore();
-            store.openModal('settings');
-            expect(store.activeModal).toBe('settings');
+            store.openPanel('settings');
+            expect(store.activePanel).toBe('settings');
         });
 
         it('switches to a different modal', () => {
             const store = useUiStore();
-            store.openModal('settings');
-            store.openModal('help');
-            expect(store.activeModal).toBe('help');
+            store.openPanel('settings');
+            store.openPanel('help');
+            expect(store.activePanel).toBe('help');
         });
 
-        it('closeModal() resets to null', () => {
+        it('closePanel() resets to null', () => {
             const store = useUiStore();
-            store.openModal('mapManager');
-            store.closeModal();
-            expect(store.activeModal).toBeNull();
+            store.openPanel('mapManager');
+            store.closePanel();
+            expect(store.activePanel).toBeNull();
         });
 
-        const modals: ModalId[] = ['settings', 'mapManager', 'sharing', 'help'];
-        modals.forEach((id) => {
-            it(`accepts modal id '${id}'`, () => {
+        const panels: PanelId[] = ['settings', 'mapManager', 'sharing', 'help'];
+        panels.forEach((id) => {
+            it(`accepts panel id '${id}'`, () => {
                 const store = useUiStore();
-                store.openModal(id);
-                expect(store.activeModal).toBe(id);
+                store.openPanel(id);
+                expect(store.activePanel).toBe(id);
             });
         });
     });

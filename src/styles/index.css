@@ -3,7 +3,7 @@
 @reference 'tailwindcss';
 @import './cursors.css';
 @import './legend.css';
-@import './modal.css';
+@import './toggle.css';
 @import './toolbar.css';
 @import './mapmanager.css';
 @import './help.css';

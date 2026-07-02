@@ -2,7 +2,7 @@
 import { computed, ref, reactive, onMounted, onUnmounted } from 'vue';
 import { useMapStore } from '../../stores/mapStore';
 import { useSettingsStore } from '../../stores/settingsStore';
-import { useUiStore, type ModalId } from '../../stores/uiStore';
+import { useUiStore, type PanelId } from '../../stores/uiStore';
 import type { ToolbarButton } from '../../models/ToolbarButton';
 
 const mapStore = useMapStore();
@@ -10,35 +10,35 @@ const settingsStore = useSettingsStore();
 const uiStore = useUiStore();
 
 // ── Modal button definitions ───────────────────────────────────────────────
-interface ModalButtonDef {
+interface PanelButtonDef {
     id: string;
-    modalId: ModalId;
+    panelId: PanelId;
     tooltip: string;
     iconSrc: string;
 }
 
-const modalButtons: ModalButtonDef[] = [
+const panelButtons: PanelButtonDef[] = [
     {
         id: 'map-manager',
-        modalId: 'mapManager',
+        panelId: 'mapManager',
         tooltip: 'Manage maps',
         iconSrc: new URL('../../img/folder-svgrepo-com.svg', import.meta.url).href
     },
     {
         id: 'settings',
-        modalId: 'settings',
+        panelId: 'settings',
         tooltip: 'Open settings',
         iconSrc: new URL('../../img/settings-svgrepo-com.svg', import.meta.url).href
     },
     {
         id: 'share',
-        modalId: 'sharing',
+        panelId: 'sharing',
         tooltip: 'Share map',
         iconSrc: new URL('../../img/share-svgrepo-com.svg', import.meta.url).href
     },
     {
         id: 'help',
-        modalId: 'help',
+        panelId: 'help',
         tooltip: 'Open help',
         iconSrc: new URL('../../img/help-svgrepo-com.svg', import.meta.url).href
     }
@@ -135,11 +135,11 @@ function onLayerButtonClick(btn: ToolbarButton) {
     }
 }
 
-function onModalButtonClick(modalId: ModalId) {
-    if (uiStore.activeModal === modalId) {
-        uiStore.closeModal();
+function onPanelButtonClick(panelId: PanelId) {
+    if (uiStore.activePanel === panelId) {
+        uiStore.closePanel();
     } else {
-        uiStore.openModal(modalId);
+        uiStore.openPanel(panelId);
     }
 }
 
@@ -237,6 +237,7 @@ onUnmounted(() => {
         ref="toolbarRef"
         role="toolbar"
         aria-label="Map tools"
+        aria-orientation="vertical"
         class="toolbar flex flex-col gap-1.5 p-[3px] rounded-2xl bg-white/[0.94] shadow-xl border border-white/60 w-fit overflow-visible"
         @mousemove="onDockMouseMove"
         @mouseleave="onDockMouseLeave"
@@ -311,7 +312,6 @@ onUnmounted(() => {
                     :aria-label="item.parent.tooltip"
                     :aria-pressed="mapStore.activeLayerId === item.parent.id"
                     :aria-expanded="openSubmenus[item.groupName] ?? false"
-                    :aria-haspopup="'menu'"
                     :style="{ transform: `scale(${buttonScales[item.parent.id] ?? 1})` }"
                     :class="[
                         'relative w-12 h-12 rounded-xl flex items-center justify-center',
@@ -371,15 +371,15 @@ onUnmounted(() => {
                 >
                     <ul
                         v-show="openSubmenus[item.groupName]"
-                        role="menu"
+                        role="group"
                         :aria-label="`${item.groupName} options`"
+                        aria-orientation="horizontal"
                         class="subToolbar absolute left-full -top-[3px] ml-1.5 flex flex-row gap-1.5 p-[3px] rounded-xl bg-white/[0.94] shadow-xl border border-white/60"
                     >
-                        <li v-for="subBtn in item.sub" :key="subBtn.id" role="none">
+                        <li v-for="subBtn in item.sub" :key="subBtn.id">
                             <button
                                 :id="`${subBtn.id}-button`"
                                 type="button"
-                                role="menuitem"
                                 :aria-label="subBtn.tooltip"
                                 :aria-pressed="mapStore.activeLayerId === subBtn.id"
                                 :class="[
@@ -422,24 +422,24 @@ onUnmounted(() => {
         </template>
 
         <!-- Modal buttons -->
-        <li v-for="mb in modalButtons" :key="mb.id">
+        <li v-for="mb in panelButtons" :key="mb.id">
             <button
                 :id="`${mb.id}-button`"
                 :ref="(el) => registerDockButton(mb.id, el as HTMLButtonElement | null)"
                 type="button"
                 :aria-label="mb.tooltip"
-                :aria-pressed="uiStore.activeModal === mb.modalId"
+                :aria-pressed="uiStore.activePanel === mb.panelId"
                 :style="{ transform: `scale(${buttonScales[mb.id] ?? 1})` }"
                 :class="[
                     'w-12 h-12 rounded-xl flex items-center justify-center',
                     'transition-transform duration-150 ease-out origin-left',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-1',
                     '[touch-action:manipulation] cursor-pointer select-none',
-                    uiStore.activeModal === mb.modalId
+                    uiStore.activePanel === mb.panelId
                         ? 'bg-green-700 shadow-inner'
                         : 'bg-slate-50 hover:bg-green-100'
                 ]"
-                @click.stop="onModalButtonClick(mb.modalId)"
+                @click.stop="onPanelButtonClick(mb.panelId)"
             >
                 <img
                     :src="mb.iconSrc"
@@ -448,7 +448,7 @@ onUnmounted(() => {
                     alt=""
                     aria-hidden="true"
                     class="w-7 h-7 object-contain pointer-events-none"
-                    :class="{ invert: uiStore.activeModal === mb.modalId }"
+                    :class="{ invert: uiStore.activePanel === mb.panelId }"
                 />
             </button>
         </li>
