@@ -149,92 +149,190 @@ function onClose() {
 </script>
 
 <template>
-    <div id="map-manager" class="modal">
-        <h4>Manage maps</h4>
-
-        <!-- File action buttons -->
-        <div class="mb-2">
-            <input
-                id="new-map"
-                type="button"
-                class="new-map"
-                title="Create a new map"
-                @click.stop="onNewMap"
-            />
-            <input
-                id="copy-map"
-                type="button"
-                class="copy-map"
-                title="Make a copy of this map"
-                @click.stop="onCopyMap"
-            />
-            <input
-                id="load-file"
-                type="button"
-                class="load-file"
-                title="Load a map from a JSON file"
-                @click.stop="onLoadFile"
-            />
-            <input
-                id="save-file"
-                type="button"
-                class="save-file"
-                title="Save a map to a JSON file"
-                @click.stop="onSaveFile"
-            />
-            <input
-                id="save-geojson-file"
-                type="button"
-                class="save-geojson-file"
-                title="Export a map to GeoJSON"
-                @click.stop="onExportGeoJSON"
-            />
-        </div>
-
-        <!-- Create new map section -->
-        <div id="create-new-map" :class="{ hidden: !showCreateForm }">
-            <div class="mb-2">
-                <label for="new-map-title">Title</label>
-                <input id="new-map-title" v-model="newMapTitle" type="text" class="border-solid" />
+    <div
+        class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] flex items-start justify-center"
+    >
+        <div
+            id="map-manager"
+            class="relative rounded-2xl bg-white shadow-xl border border-gray-100 w-80 flex flex-col overflow-hidden max-h-[85vh]"
+        >
+            <!-- Header -->
+            <div class="flex items-center px-5 py-4 border-b border-gray-100 shrink-0">
+                <h2 class="text-base font-semibold text-gray-800">Manage maps</h2>
             </div>
-            <div>
-                <span
-                    id="duplicate-title-error"
-                    class="text-red-700"
-                    :class="{ hidden: !duplicateTitleError }"
-                    >{{ duplicateTitleError }}</span
-                >
-            </div>
-            <div class="flex justify-center mb-2">
-                <button type="button" @click="onCreate">Create</button>
-            </div>
-        </div>
 
-        <!-- Stored maps list -->
-        <div v-if="storedMaps.length > 0" id="map-list" class="mb-2">
-            <h4>Maps stored in your browser</h4>
-            <div class="italic text-center mb-2">Click map name to load that map</div>
-            <ul>
-                <li v-for="mapName in storedMaps" :key="mapName" class="local-map">
-                    <template v-if="mapName === settingsStore.title">
-                        <span class="font-bold">{{ mapName }} (current map)</span>
-                    </template>
-                    <template v-else>
-                        <input
-                            type="button"
-                            class="delete-button float-right"
-                            @click.stop="onDeleteStoredMap(mapName)"
+            <!-- Body -->
+            <div class="px-5 py-4 overflow-y-auto flex-1 space-y-4">
+                <!-- Icon action buttons -->
+                <div class="flex gap-1.5">
+                    <button
+                        id="new-map"
+                        type="button"
+                        title="Create a new map"
+                        class="w-12 h-12 rounded-xl flex items-center justify-center bg-slate-50 hover:bg-green-100 border border-gray-100 focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:outline-none [touch-action:manipulation] cursor-pointer select-none"
+                        @click.stop="onNewMap"
+                    >
+                        <img
+                            src="../../img/add-document-svgrepo-com.svg"
+                            width="28"
+                            height="28"
+                            alt=""
+                            aria-hidden="true"
+                            class="w-7 h-7 object-contain pointer-events-none"
                         />
-                        <span class="cursor-pointer" @click.stop="onLoadStoredMap(mapName)">{{
-                            mapName
-                        }}</span>
-                    </template>
-                </li>
-            </ul>
-        </div>
+                    </button>
+                    <button
+                        id="copy-map"
+                        type="button"
+                        title="Make a copy of this map"
+                        class="w-12 h-12 rounded-xl flex items-center justify-center bg-slate-50 hover:bg-green-100 border border-gray-100 focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:outline-none [touch-action:manipulation] cursor-pointer select-none"
+                        @click.stop="onCopyMap"
+                    >
+                        <img
+                            src="../../img/copy-file-svgrepo-com.svg"
+                            width="28"
+                            height="28"
+                            alt=""
+                            aria-hidden="true"
+                            class="w-7 h-7 object-contain pointer-events-none"
+                        />
+                    </button>
+                    <button
+                        id="load-file"
+                        type="button"
+                        title="Load a map from a JSON file"
+                        class="w-12 h-12 rounded-xl flex items-center justify-center bg-slate-50 hover:bg-green-100 border border-gray-100 focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:outline-none [touch-action:manipulation] cursor-pointer select-none"
+                        @click.stop="onLoadFile"
+                    >
+                        <img
+                            src="../../img/folder-svgrepo-com.svg"
+                            width="28"
+                            height="28"
+                            alt=""
+                            aria-hidden="true"
+                            class="w-7 h-7 object-contain pointer-events-none"
+                        />
+                    </button>
+                    <button
+                        id="save-file"
+                        type="button"
+                        title="Save map to a JSON file"
+                        class="w-12 h-12 rounded-xl flex items-center justify-center bg-slate-50 hover:bg-green-100 border border-gray-100 focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:outline-none [touch-action:manipulation] cursor-pointer select-none"
+                        @click.stop="onSaveFile"
+                    >
+                        <img
+                            src="../../img/save-svgrepo-com.svg"
+                            width="28"
+                            height="28"
+                            alt=""
+                            aria-hidden="true"
+                            class="w-7 h-7 object-contain pointer-events-none"
+                        />
+                    </button>
+                    <button
+                        id="save-geojson-file"
+                        type="button"
+                        title="Export map to GeoJSON"
+                        class="w-12 h-12 rounded-xl flex items-center justify-center bg-slate-50 hover:bg-green-100 border border-gray-100 focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:outline-none [touch-action:manipulation] cursor-pointer select-none"
+                        @click.stop="onExportGeoJSON"
+                    >
+                        <img
+                            src="../../img/geojson-file-svgrepo-com.svg"
+                            width="28"
+                            height="28"
+                            alt=""
+                            aria-hidden="true"
+                            class="w-7 h-7 object-contain pointer-events-none"
+                        />
+                    </button>
+                </div>
 
-        <div class="flex justify-center mb-2">
-            <button type="button" @click="onClose">Close</button>
+                <!-- Create new map form -->
+                <div id="create-new-map" :class="{ hidden: !showCreateForm }">
+                    <div class="mb-2">
+                        <label
+                            for="new-map-title"
+                            class="block text-sm font-medium text-gray-700 mb-1"
+                            >Title</label
+                        >
+                        <input
+                            id="new-map-title"
+                            v-model="newMapTitle"
+                            type="text"
+                            class="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-800 focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                        />
+                    </div>
+                    <span
+                        id="duplicate-title-error"
+                        class="text-sm text-red-600"
+                        :class="{ hidden: !duplicateTitleError }"
+                        >{{ duplicateTitleError }}</span
+                    >
+                    <div class="flex justify-end mt-2">
+                        <button
+                            type="button"
+                            class="rounded-lg bg-green-700 hover:bg-green-800 text-white px-4 py-2 text-sm font-medium focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-1 focus-visible:outline-none [touch-action:manipulation]"
+                            @click="onCreate"
+                        >
+                            Create
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Stored maps list -->
+                <div v-if="storedMaps.length > 0" id="map-list">
+                    <p class="text-sm font-medium text-gray-700 mb-1">
+                        Maps stored in your browser
+                    </p>
+                    <p class="text-xs text-gray-400 italic mb-2">Click a name to load that map</p>
+                    <ul class="space-y-1">
+                        <li
+                            v-for="mapName in storedMaps"
+                            :key="mapName"
+                            class="local-map flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50"
+                        >
+                            <template v-if="mapName === settingsStore.title">
+                                <span class="text-sm font-semibold text-gray-800"
+                                    >{{ mapName }} (current)</span
+                                >
+                            </template>
+                            <template v-else>
+                                <span
+                                    class="text-sm text-gray-700 cursor-pointer truncate"
+                                    @click.stop="onLoadStoredMap(mapName)"
+                                    >{{ mapName }}</span
+                                >
+                                <button
+                                    type="button"
+                                    class="delete-button shrink-0 w-8 h-8 rounded-lg flex items-center justify-center bg-slate-50 hover:bg-red-50 border border-gray-100 focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:outline-none [touch-action:manipulation] cursor-pointer"
+                                    :title="`Delete ${mapName}`"
+                                    @click.stop="onDeleteStoredMap(mapName)"
+                                >
+                                    <img
+                                        src="../../img/outlined-trash-bin-svgrepo-com.svg"
+                                        width="18"
+                                        height="18"
+                                        alt=""
+                                        aria-hidden="true"
+                                        class="w-[18px] h-[18px] object-contain pointer-events-none"
+                                    />
+                                </button>
+                            </template>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="flex items-center justify-end px-5 py-4 border-t border-gray-100 shrink-0">
+                <button
+                    type="button"
+                    class="rounded-lg bg-slate-50 hover:bg-slate-100 border border-gray-200 text-gray-700 px-4 py-2 text-sm font-medium focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-1 focus-visible:outline-none [touch-action:manipulation]"
+                    @click="onClose"
+                >
+                    Close
+                </button>
+            </div>
         </div>
     </div>
 </template>

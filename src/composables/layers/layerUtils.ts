@@ -41,6 +41,7 @@ export interface ToolbarButtonOpts {
     selected: boolean;
     isFirst?: boolean;
     text?: string;
+    iconSrc?: string;
 }
 
 export function buildToolbarButton(opts: ToolbarButtonOpts): ToolbarButton {
@@ -51,7 +52,8 @@ export function buildToolbarButton(opts: ToolbarButtonOpts): ToolbarButton {
         action: opts.action,
         selected: opts.selected,
         ...(opts.isFirst !== undefined ? { isFirst: opts.isFirst } : {}),
-        ...(opts.text !== undefined ? { text: opts.text } : {})
+        ...(opts.text !== undefined ? { text: opts.text } : {}),
+        ...(opts.iconSrc !== undefined ? { iconSrc: opts.iconSrc } : {})
     };
 }
 

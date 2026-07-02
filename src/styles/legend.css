@@ -1,52 +1,5 @@
-.legend {
-    padding: 6px 8px;
-    font:
-        14px Arial,
-        Helvetica,
-        sans-serif;
-    background: white;
-    background: rgba(255, 255, 255, 0.8);
-    line-height: 24px;
-    color: #555;
-    min-width: 220px;
-    width: 220px;
-    box-sizing: border-box;
-}
-
-.legend.collapsed {
-    width: 220px;
-}
-
-.legend .legend-content {
-    width: 100%;
-}
-
-.legend.collapsed .legend-content {
-    display: none;
-}
-
-.legend li {
-    list-style: none;
-    cursor: pointer;
-}
-
-.legend li.disabled {
-    background-color: #ddd;
-}
-
-.legend h4 {
-    text-align: center;
-    font-size: 16px;
-    font-weight: 700;
-    margin: 2px 12px 8px;
-    color: #777;
-    cursor: pointer;
-}
-
-.legend span {
-    position: relative;
-    bottom: 3px;
-}
+/* Panel structure is now in Legend.vue (Tailwind). */
+/* Icon-specific rules remain here as they are applied to Leaflet-generated DOM. */
 
 .legend i {
     width: 18px;

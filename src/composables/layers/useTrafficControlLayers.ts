@@ -13,6 +13,7 @@ function createIconMarkerLayer(
     toggleTitle: string,
     iconClass: string,
     isFirst: boolean,
+    iconSrc: string,
     map: L.Map
 ): IMapLayer {
     const mapStore = useMapStore(pinia);
@@ -26,6 +27,7 @@ function createIconMarkerLayer(
             tooltip,
             toggleTitle,
             isFirst,
+            iconSrc,
 
             buildMarker(latlng, geoJsonLayer, _historyId) {
                 const marker = new L.Marker(latlng, {
@@ -71,6 +73,7 @@ export function createTrafficLightsLayer(map: L.Map): IMapLayer {
         'Toggle traffic lights from the map',
         'traffic-lights-icon',
         true,
+        new URL('../../img/trafficlights-black1.svg', import.meta.url).href,
         map
     );
 }
@@ -85,6 +88,7 @@ export function createPedestrianLightsLayer(map: L.Map): IMapLayer {
         'Toggle pedestrian lights from the map',
         'pedestrian-lights-icon',
         false,
+        new URL('../../img/UK-Traffic-Signal-Pedestrians-1975.svg', import.meta.url).href,
         map
     );
 }

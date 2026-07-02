@@ -15,6 +15,7 @@ export function createBusGateLayer(map: L.Map): IMapLayer {
             buttonId: 'bus-gate',
             tooltip: 'Add bus gates to the map',
             toggleTitle: 'Toggle bus gates from the map',
+            iconSrc: new URL('../../img/double-decker-bus-svgrepo-com.svg', import.meta.url).href,
 
             buildMarker(latlng, geoJsonLayer, _historyId) {
                 const marker = new L.Marker(latlng, {

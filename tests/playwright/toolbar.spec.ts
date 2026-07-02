@@ -105,7 +105,7 @@ test.describe('Toolbar button groups', () => {
                 .locator('.toolbar > li.group')
                 .filter({ has: page.locator(':scope > #bus-gate-button') })
                 .locator('.subToolbar')
-        ).toHaveClass(/hidden/);
+        ).toBeHidden();
 
         const indexAfter = await page.evaluate(groupIndex(members));
         expect(indexAfter).toBe(indexBefore);

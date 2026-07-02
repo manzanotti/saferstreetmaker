@@ -15,6 +15,7 @@ export function createZebraCrossingLayer(map: L.Map): IMapLayer {
             buttonId: 'zebra-crossing',
             tooltip: 'Add zebra crossings to the map',
             toggleTitle: 'Toggle zebra crossings from the map',
+            iconSrc: new URL('../../img/zebra-crossing-svgrepo-com.svg', import.meta.url).href,
 
             buildMarker(latlng, geoJsonLayer, _historyId) {
                 const marker = new L.Marker(latlng, {

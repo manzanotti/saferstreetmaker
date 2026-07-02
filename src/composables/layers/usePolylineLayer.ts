@@ -30,6 +30,7 @@ export interface PolylineLayerConfig {
      */
     onDrawCreated: (latLngs: L.LatLng[], geoJsonLayer: L.GeoJSON, map: L.Map) => void;
     buildIconEl: () => HTMLElement;
+    iconSrc?: string;
 }
 
 export interface EditablePolylineLayer extends IMapLayer {
@@ -271,7 +272,8 @@ export function createPolylineLayer(
                 tooltip: config.tooltip,
                 groupName: config.groupName,
                 action,
-                selected: _selected
+                selected: _selected,
+                iconSrc: config.iconSrc
             });
         },
 

@@ -16,6 +16,7 @@ export function createModalFilterLayer(map: L.Map): IMapLayer {
             tooltip: 'Add modal filters to the map',
             toggleTitle: 'Toggle modal filters from the map',
             isFirst: true,
+            iconSrc: new URL('../../img/modal-filter.svg', import.meta.url).href,
 
             buildMarker(latlng, geoJsonLayer, _historyId) {
                 const marker = new L.CircleMarker(latlng, {

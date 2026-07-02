@@ -45,50 +45,17 @@
     }
 }
 
-#help {
-    left: 50%;
-    top: 10%;
-    transform: translate(-50%, -10%);
-    z-index: 50;
-}
-
-#errors {
-    background: rgba(0, 0, 0, 0.7);
-    left: 50%;
-    top: 10%;
-    transform: translate(-50%, -10%);
-    z-index: 50;
-}
-
-#help input[type='button'] {
-    width: 60px;
-    height: 60px;
-    background-position: center;
-    background-repeat: no-repeat;
-    padding: 0;
-    border: 1px solid #000;
-}
-
-#help input[type='button'].ltn {
-    font-size: 1em;
-    line-height: 60px;
-}
-
 .overlay-fade-enter-active,
 .overlay-fade-leave-active {
-    transition:
-        opacity 180ms ease,
-        transform 180ms ease;
+    transition: opacity 180ms ease;
 }
 
 .overlay-fade-enter-from,
 .overlay-fade-leave-to {
     opacity: 0;
-    transform: translate(-50%, -8%);
 }
 
 .overlay-fade-enter-to,
 .overlay-fade-leave-from {
     opacity: 1;
-    transform: translate(-50%, -10%);
 }
