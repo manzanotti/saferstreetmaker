@@ -35,14 +35,18 @@ function close() {
             v-if="uiStore.activeModal === 'help'"
             id="help"
             class="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none"
+            @keydown.escape.window="close"
         >
             <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="help-modal-title"
                 class="pointer-events-auto relative rounded-2xl bg-white shadow-xl border border-gray-100 w-[min(90vw,720px)] max-h-[90vh] flex flex-col overflow-hidden"
             >
                 <div
                     class="flex shrink-0 items-center justify-between px-5 py-4 border-b border-gray-100"
                 >
-                    <h2 class="text-base font-semibold text-gray-800">Using Safer Street Maker</h2>
+                    <h2 id="help-modal-title" class="text-base font-semibold text-gray-800">Using Safer Street Maker</h2>
                 </div>
 
                 <div class="flex-1 overflow-y-auto px-5 py-4">
