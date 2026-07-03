@@ -693,7 +693,10 @@ test.describe('Layer: Traffic Lights (point, primary button)', () => {
 
     test('toolbar button activates the layer', async ({ page }) => {
         await page.locator('#traffic-lights-button').click();
-        await expect(page.locator('#traffic-lights-button')).toHaveAttribute('aria-pressed', 'true');
+        await expect(page.locator('#traffic-lights-button')).toHaveAttribute(
+            'aria-pressed',
+            'true'
+        );
     });
 
     test('clicking the map places a traffic light and persists it', async ({ page }) => {
@@ -1081,7 +1084,10 @@ test.describe('Layer: Car-Free Street (polyline)', () => {
 
     test('toolbar button activates the layer', async ({ page }) => {
         await page.locator('#car-free-street-button').click();
-        await expect(page.locator('#car-free-street-button')).toHaveAttribute('aria-pressed', 'true');
+        await expect(page.locator('#car-free-street-button')).toHaveAttribute(
+            'aria-pressed',
+            'true'
+        );
     });
 
     test('drawing a polyline creates a car-free street and persists it', async ({ page }) => {
@@ -1187,7 +1193,10 @@ test.describe('Layer: One-Way Street (polyline)', () => {
 
     test('toolbar button activates the layer', async ({ page }) => {
         await page.locator('#one-way-street-button').click();
-        await expect(page.locator('#one-way-street-button')).toHaveAttribute('aria-pressed', 'true');
+        await expect(page.locator('#one-way-street-button')).toHaveAttribute(
+            'aria-pressed',
+            'true'
+        );
     });
 
     test('drawing a polyline creates a one-way street and persists it', async ({ page }) => {
@@ -1796,7 +1805,10 @@ test.describe('Layer exclusivity', () => {
         await expect(page.locator('#modal-filter-button')).toHaveAttribute('aria-pressed', 'true');
 
         await page.locator('#traffic-lights-button').click();
-        await expect(page.locator('#traffic-lights-button')).toHaveAttribute('aria-pressed', 'true');
+        await expect(page.locator('#traffic-lights-button')).toHaveAttribute(
+            'aria-pressed',
+            'true'
+        );
         await expect(page.locator('#modal-filter-button')).toHaveAttribute('aria-pressed', 'false');
     });
 
@@ -1828,7 +1840,10 @@ test.describe('Layer exclusivity', () => {
         await clickMap(page, 0, 0);
 
         await expect(page.locator('#modal-filter-button')).toHaveAttribute('aria-pressed', 'true');
-        await expect(page.locator('#mobility-lane-button')).toHaveAttribute('aria-pressed', 'false');
+        await expect(page.locator('#mobility-lane-button')).toHaveAttribute(
+            'aria-pressed',
+            'false'
+        );
 
         expect(await getLayerFeatureCount(page, 'ModalFilters')).toBe(1);
         expect(await getLayerFeatureCount(page, 'MobilityLanes')).toBeGreaterThanOrEqual(1);
