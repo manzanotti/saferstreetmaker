@@ -1,19 +1,19 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
-export type ModalId = 'settings' | 'mapManager' | 'sharing' | 'help';
+export type PanelId = 'settings' | 'mapManager' | 'sharing' | 'help';
 
 export const useUiStore = defineStore('ui', () => {
-    const activeModal = ref<ModalId | null>(null);
+    const activePanel = ref<PanelId | null>(null);
     const errorMessages = ref<string[]>([]);
     const showDownloadStorageLink = ref(false);
 
-    function openModal(id: ModalId) {
-        activeModal.value = id;
+    function openPanel(id: PanelId) {
+        activePanel.value = id;
     }
 
-    function closeModal() {
-        activeModal.value = null;
+    function closePanel() {
+        activePanel.value = null;
     }
 
     function showErrors(messages: string[], options?: { showDownloadStorageLink?: boolean }) {
@@ -27,11 +27,11 @@ export const useUiStore = defineStore('ui', () => {
     }
 
     return {
-        activeModal,
+        activePanel,
         errorMessages,
         showDownloadStorageLink,
-        openModal,
-        closeModal,
+        openPanel,
+        closePanel,
         showErrors,
         clearErrors
     };

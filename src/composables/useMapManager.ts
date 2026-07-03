@@ -1496,7 +1496,7 @@ export function setupMapManager(fileManager: FileManager): MapManager {
 
     // fileLoaded: FileManager calls this callback when a file is loaded via OS picker.
     fileManager.setOnFileLoaded((data: unknown) => {
-        uiStore.closeModal();
+        uiStore.closePanel();
         clearAllLayers();
         resetSettings();
 

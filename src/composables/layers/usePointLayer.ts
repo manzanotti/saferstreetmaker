@@ -22,6 +22,7 @@ export interface PointLayerConfig {
     toggleTitle: string;
     isFirst?: boolean;
     text?: string;
+    iconSrc?: string;
     /** Creates and returns the Leaflet marker for a given latlng. Must also add click-to-delete. */
     buildMarker: (latlng: L.LatLng, geoJsonLayer: L.GeoJSON, historyId?: string) => L.Layer;
     /** Returns the icon element used in the legend entry. */
@@ -135,7 +136,8 @@ export function createPointLayer(config: PointLayerConfig, map: L.Map): IMapLaye
                 action,
                 selected: _selected,
                 isFirst: config.isFirst,
-                text: config.text
+                text: config.text,
+                iconSrc: config.iconSrc
             });
         },
 

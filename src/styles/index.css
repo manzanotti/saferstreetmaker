@@ -3,7 +3,7 @@
 @reference 'tailwindcss';
 @import './cursors.css';
 @import './legend.css';
-@import './modal.css';
+@import './toggle.css';
 @import './toolbar.css';
 @import './mapmanager.css';
 @import './help.css';
@@ -50,6 +50,48 @@ li {
 
 a {
     color: blue;
+}
+
+/* ── Leaflet control edge positioning ───────────────────────────────────── */
+.leaflet-left .leaflet-control {
+    margin-left: 0 !important;
+}
+.leaflet-right .leaflet-control {
+    margin-right: 0 !important;
+}
+.leaflet-top .leaflet-control:first-child {
+    margin-top: 0 !important;
+}
+
+/* ── Leaflet zoom control ────────────────────────────────────────────────── */
+.leaflet-control-zoom {
+    border: 1px solid rgba(255, 255, 255, 0.6) !important;
+    border-radius: 1rem !important;
+    box-shadow:
+        0 20px 25px -5px rgb(0 0 0 / 0.1),
+        0 8px 10px -6px rgb(0 0 0 / 0.1) !important;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.94) !important;
+}
+
+.leaflet-control-zoom a {
+    border-bottom: 1px solid #f3f4f6 !important;
+    background: transparent !important;
+    color: #374151 !important;
+    font-size: 1.125rem !important;
+    font-weight: 400 !important;
+    width: 48px !important;
+    height: 48px !important;
+    line-height: 48px !important;
+}
+
+.leaflet-control-zoom a:hover {
+    background: #dcfce7 !important;
+    color: #15803d !important;
+}
+
+.leaflet-control-zoom-out {
+    border-bottom: none !important;
 }
 
 .leaflet-popup a[role='button'],

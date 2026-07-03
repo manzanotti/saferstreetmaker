@@ -56,6 +56,7 @@ export function createMobilityLaneLayer(map: L.Map): IMapLayer {
             buttonId: 'mobility-lane',
             tooltip: 'Add mobility lanes to the map',
             toggleTitle: 'Toggle mobility lanes from the map',
+            iconSrc: new URL('../../img/bicycle-svgrepo-com.svg', import.meta.url).href,
             createDrawingTool(m) {
                 _drawingTool = new L.Draw.Polyline(m, {
                     color: COLOUR,

@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, reactive, onMounted, onUnmounted } from 'vue';
 import { useMapStore } from '../../stores/mapStore';
 import { useSettingsStore } from '../../stores/settingsStore';
-import { useUiStore, type ModalId } from '../../stores/uiStore';
+import { useUiStore, type PanelId } from '../../stores/uiStore';
 import type { ToolbarButton } from '../../models/ToolbarButton';
 
 const mapStore = useMapStore();
@@ -10,27 +10,45 @@ const settingsStore = useSettingsStore();
 const uiStore = useUiStore();
 
 // ── Modal button definitions ───────────────────────────────────────────────
-interface ModalButtonDef {
+interface PanelButtonDef {
     id: string;
-    modalId: ModalId;
+    panelId: PanelId;
     tooltip: string;
+    iconSrc: string;
 }
 
-const modalButtons: ModalButtonDef[] = [
-    { id: 'map-manager', modalId: 'mapManager', tooltip: 'Save, load, and export maps' },
-    { id: 'settings', modalId: 'settings', tooltip: 'Change map settings' },
-    { id: 'share', modalId: 'sharing', tooltip: 'Share this map' },
-    { id: 'help', modalId: 'help', tooltip: 'Instructions on how to use the map' }
+const panelButtons: PanelButtonDef[] = [
+    {
+        id: 'map-manager',
+        panelId: 'mapManager',
+        tooltip: 'Manage maps',
+        iconSrc: new URL('../../img/folder-svgrepo-com.svg', import.meta.url).href
+    },
+    {
+        id: 'settings',
+        panelId: 'settings',
+        tooltip: 'Open settings',
+        iconSrc: new URL('../../img/settings-svgrepo-com.svg', import.meta.url).href
+    },
+    {
+        id: 'share',
+        panelId: 'sharing',
+        tooltip: 'Share map',
+        iconSrc: new URL('../../img/share-svgrepo-com.svg', import.meta.url).href
+    },
+    {
+        id: 'help',
+        panelId: 'help',
+        tooltip: 'Open help',
+        iconSrc: new URL('../../img/help-svgrepo-com.svg', import.meta.url).href
+    }
 ];
 
 // ── Layer button groups ────────────────────────────────────────────────────
 interface GroupItem {
     type: 'group';
-    /** Button currently shown as the top-level item (selected or anchor). */
     parent: ToolbarButton;
-    /** Buttons shown in the submenu. */
     sub: ToolbarButton[];
-    /** Position of this group, used to keep position stable on selection change. */
     groupName: string;
 }
 
@@ -41,7 +59,6 @@ interface SingleItem {
 
 type ToolbarItem = GroupItem | SingleItem;
 
-/** Build the ordered list of toolbar items from active layers. */
 const layerItems = computed<ToolbarItem[]>(() => {
     if (settingsStore.readOnly) {
         return [];
@@ -68,9 +85,11 @@ const layerItems = computed<ToolbarItem[]>(() => {
         const groupBtns = allButtons.filter((b) => b.groupName === btn.groupName);
         const anchor = groupBtns.find((b) => b.isFirst) ?? groupBtns[0];
 
-        // The currently active layer (if any) in this group becomes the parent
-        // so it's always visible. Falls back to the anchor when nothing is active.
-        const active = groupBtns.find((b) => b.id === mapStore.activeLayerId) ?? anchor;
+        const lastId = lastSelectedByGroup.value[btn.groupName];
+        const active =
+            groupBtns.find((b) => b.id === mapStore.activeLayerId) ??
+            groupBtns.find((b) => b.id === lastId) ??
+            anchor;
         const sub = groupBtns.filter((b) => b.id !== active.id);
 
         items.push({ type: 'group', parent: active, sub, groupName: btn.groupName });
@@ -79,7 +98,12 @@ const layerItems = computed<ToolbarItem[]>(() => {
     return items;
 });
 
-// ── Submenu visibility (per-group) ─────────────────────────────────────────
+// ── Last-selected button per group ───────────────────────────────────────
+// Keeps the most recently activated button as the visible parent even after
+// it is deselected, so the group doesn't snap back to the anchor button.
+const lastSelectedByGroup = ref<Record<string, string>>({});
+
+// ── Submenu visibility ─────────────────────────────────────────────────────
 const openSubmenus = ref<Record<string, boolean>>({});
 
 function showSubmenu(groupName: string) {
@@ -97,28 +121,29 @@ function onLayerButtonClick(btn: ToolbarButton) {
         return;
     }
 
-    // Let the layer set up any selection intent first (e.g. draw vs edit mode),
-    // then flip the store state so the sync watcher sees the correct mode.
     btn.action(new Event('click'), map);
 
-    // Update Vue store immediately for the toolbar's visual selected state.
     const newId = mapStore.activeLayerId === btn.id ? null : btn.id;
     mapStore.setActiveLayer(newId);
 
     if (btn.groupName) {
+        // Record which group button was last activated (not when toggling off).
+        if (newId !== null) {
+            lastSelectedByGroup.value = { ...lastSelectedByGroup.value, [btn.groupName]: btn.id };
+        }
         hideSubmenu(btn.groupName);
     }
 }
 
-function onModalButtonClick(modalId: ModalId) {
-    if (uiStore.activeModal === modalId) {
-        uiStore.closeModal();
+function onPanelButtonClick(panelId: PanelId) {
+    if (uiStore.activePanel === panelId) {
+        uiStore.closePanel();
     } else {
-        uiStore.openModal(modalId);
+        uiStore.openPanel(panelId);
     }
 }
 
-// Long-press support for mobile (mirrors Toolbar.ts behaviour)
+// ── Long-press support (mobile) ────────────────────────────────────────────
 const longPressTimers: Record<string, ReturnType<typeof setTimeout>> = {};
 
 function onTouchStart(groupName: string) {
@@ -132,10 +157,91 @@ function cancelLongPress(groupName: string) {
     clearTimeout(longPressTimers[groupName]);
     delete longPressTimers[groupName];
 }
+
+// ── Dock animation ─────────────────────────────────────────────────────────
+const toolbarRef = ref<HTMLUListElement | null>(null);
+const buttonMap = new Map<string, HTMLButtonElement>();
+const buttonRects = new Map<string, DOMRect>();
+const buttonScales = reactive<Record<string, number>>({});
+const reducedMotion =
+    typeof window !== 'undefined'
+        ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        : false;
+
+function registerDockButton(id: string, el: HTMLButtonElement | null) {
+    if (el) {
+        buttonMap.set(id, el);
+        buttonRects.set(id, el.getBoundingClientRect());
+        if (!(id in buttonScales)) {
+            buttonScales[id] = 1;
+        }
+    } else {
+        buttonMap.delete(id);
+        buttonRects.delete(id);
+        delete buttonScales[id];
+    }
+}
+
+function cacheRects() {
+    buttonMap.forEach((el, id) => {
+        buttonRects.set(id, el.getBoundingClientRect());
+    });
+}
+
+const SIGMA = 52;
+const MAX_GROW = 0.45;
+
+function dockScale(dist: number): number {
+    return 1 + MAX_GROW * Math.exp(-(dist ** 2) / (2 * SIGMA ** 2));
+}
+
+function onDockMouseMove(e: MouseEvent) {
+    if (reducedMotion) {
+        return;
+    }
+    const y = e.clientY;
+    buttonMap.forEach((_, id) => {
+        const rect = buttonRects.get(id);
+        if (!rect) {
+            return;
+        }
+        const center = rect.top + rect.height / 2;
+        buttonScales[id] = dockScale(Math.abs(y - center));
+    });
+}
+
+function onDockMouseLeave() {
+    Object.keys(buttonScales).forEach((id) => {
+        buttonScales[id] = 1;
+    });
+}
+
+let resizeObserver: ResizeObserver | null = null;
+
+onMounted(() => {
+    cacheRects();
+    if (toolbarRef.value) {
+        resizeObserver = new ResizeObserver(cacheRects);
+        resizeObserver.observe(toolbarRef.value);
+    }
+});
+
+onUnmounted(() => {
+    resizeObserver?.disconnect();
+});
 </script>
 
 <template>
-    <ul v-if="!settingsStore.hideToolbar" class="toolbar">
+    <ul
+        v-if="!settingsStore.hideToolbar"
+        ref="toolbarRef"
+        role="toolbar"
+        aria-label="Map tools"
+        aria-orientation="vertical"
+        class="toolbar flex flex-col gap-1.5 p-[3px] rounded-2xl bg-white/[0.94] shadow-xl border border-white/60 w-fit overflow-visible"
+        @mousemove="onDockMouseMove"
+        @mouseleave="onDockMouseLeave"
+    >
         <!-- Layer buttons (single + grouped) -->
         <template
             v-for="item in layerItems"
@@ -143,75 +249,208 @@ function cancelLongPress(groupName: string) {
         >
             <!-- Single layer button -->
             <li v-if="item.type === 'single'">
-                <input
+                <button
                     :id="`${item.button.id}-button`"
+                    :ref="
+                        (el) => registerDockButton(item.button.id, el as HTMLButtonElement | null)
+                    "
                     type="button"
+                    :aria-label="item.button.tooltip"
+                    :aria-pressed="mapStore.activeLayerId === item.button.id"
+                    :style="{ transform: `scale(${buttonScales[item.button.id] ?? 1})` }"
                     :class="[
-                        'toolbar-button',
-                        item.button.id,
-                        { selected: mapStore.activeLayerId === item.button.id }
+                        'w-12 h-12 rounded-xl flex items-center justify-center',
+                        'transition-transform duration-150 ease-out origin-left',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-1',
+                        '[touch-action:manipulation] cursor-pointer select-none',
+                        mapStore.activeLayerId === item.button.id
+                            ? 'bg-green-700 shadow-inner'
+                            : 'bg-slate-50 hover:bg-green-100'
                     ]"
-                    :title="item.button.tooltip"
-                    :value="item.button.text || undefined"
                     @click.stop="onLayerButtonClick(item.button)"
-                />
+                >
+                    <img
+                        v-if="item.button.iconSrc"
+                        :src="item.button.iconSrc"
+                        width="28"
+                        height="28"
+                        alt=""
+                        aria-hidden="true"
+                        class="w-7 h-7 object-contain pointer-events-none"
+                        :class="{ invert: mapStore.activeLayerId === item.button.id }"
+                    />
+                    <span
+                        v-else-if="item.button.text"
+                        aria-hidden="true"
+                        class="text-xl font-bold pointer-events-none leading-none"
+                        :class="
+                            mapStore.activeLayerId === item.button.id
+                                ? 'text-white'
+                                : 'text-gray-700'
+                        "
+                        >{{ item.button.text }}</span
+                    >
+                </button>
             </li>
 
             <!-- Grouped layer button with submenu -->
             <li
                 v-else-if="item.type === 'group'"
-                class="group"
+                class="group relative"
                 @contextmenu.prevent="showSubmenu(item.groupName)"
                 @touchstart="onTouchStart(item.groupName)"
                 @touchend="cancelLongPress(item.groupName)"
                 @touchmove="cancelLongPress(item.groupName)"
             >
-                <!-- Parent button (selected member OR anchor) -->
-                <input
+                <!-- Parent button -->
+                <button
                     :id="`${item.parent.id}-button`"
+                    :ref="
+                        (el) => registerDockButton(item.parent.id, el as HTMLButtonElement | null)
+                    "
                     type="button"
+                    :aria-label="item.parent.tooltip"
+                    :aria-pressed="mapStore.activeLayerId === item.parent.id"
+                    :aria-expanded="openSubmenus[item.groupName] ?? false"
+                    :style="{ transform: `scale(${buttonScales[item.parent.id] ?? 1})` }"
                     :class="[
-                        'toolbar-button',
-                        item.parent.id,
-                        { selected: mapStore.activeLayerId === item.parent.id }
+                        'relative w-12 h-12 rounded-xl flex items-center justify-center',
+                        'transition-transform duration-150 ease-out origin-left',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-1',
+                        '[touch-action:manipulation] cursor-pointer select-none',
+                        mapStore.activeLayerId === item.parent.id
+                            ? 'bg-green-700 shadow-inner'
+                            : 'bg-slate-50 hover:bg-green-100'
                     ]"
-                    :title="item.parent.tooltip"
-                    :value="item.parent.text || undefined"
                     @click.stop="onLayerButtonClick(item.parent)"
-                />
+                    @keydown.down.prevent="showSubmenu(item.groupName)"
+                    @keydown.escape="hideSubmenu(item.groupName)"
+                >
+                    <img
+                        v-if="item.parent.iconSrc"
+                        :src="item.parent.iconSrc"
+                        width="28"
+                        height="28"
+                        alt=""
+                        aria-hidden="true"
+                        class="w-7 h-7 object-contain pointer-events-none"
+                        :class="{ invert: mapStore.activeLayerId === item.parent.id }"
+                    />
+                    <span
+                        v-else-if="item.parent.text"
+                        aria-hidden="true"
+                        class="text-xl font-bold pointer-events-none leading-none"
+                        :class="
+                            mapStore.activeLayerId === item.parent.id
+                                ? 'text-white'
+                                : 'text-gray-700'
+                        "
+                        >{{ item.parent.text }}</span
+                    >
+                    <!-- Submenu indicator -->
+                    <span
+                        class="absolute top-0.5 right-0.5 text-base leading-none pointer-events-none font-bold"
+                        :class="
+                            mapStore.activeLayerId === item.parent.id
+                                ? 'text-white/80'
+                                : 'text-gray-500'
+                        "
+                        aria-hidden="true"
+                        >&#9656;</span
+                    >
+                </button>
 
                 <!-- Submenu -->
-                <ul class="subToolbar" :class="{ hidden: !openSubmenus[item.groupName] }">
-                    <li v-for="subBtn in item.sub" :key="subBtn.id">
-                        <input
-                            :id="`${subBtn.id}-button`"
-                            type="button"
-                            :class="[
-                                'toolbar-button',
-                                subBtn.id,
-                                { selected: mapStore.activeLayerId === subBtn.id }
-                            ]"
-                            :title="subBtn.tooltip"
-                            :value="subBtn.text || undefined"
-                            @click.stop="onLayerButtonClick(subBtn)"
-                        />
-                    </li>
-                </ul>
-
-                <!-- Corner indicator for grouped buttons -->
-                <span></span>
+                <Transition
+                    enter-active-class="transition-[opacity,transform] duration-200 ease-out"
+                    enter-from-class="opacity-0 -translate-x-1"
+                    enter-to-class="opacity-100 translate-x-0"
+                    leave-active-class="transition-[opacity,transform] duration-150 ease-in"
+                    leave-from-class="opacity-100 translate-x-0"
+                    leave-to-class="opacity-0 -translate-x-1"
+                >
+                    <ul
+                        v-show="openSubmenus[item.groupName]"
+                        role="group"
+                        :aria-label="`${item.groupName} options`"
+                        aria-orientation="horizontal"
+                        class="subToolbar absolute left-full -top-[3px] ml-1.5 flex flex-row gap-1.5 p-[3px] rounded-xl bg-white/[0.94] shadow-xl border border-white/60"
+                    >
+                        <li v-for="subBtn in item.sub" :key="subBtn.id">
+                            <button
+                                :id="`${subBtn.id}-button`"
+                                type="button"
+                                :aria-label="subBtn.tooltip"
+                                :aria-pressed="mapStore.activeLayerId === subBtn.id"
+                                :class="[
+                                    'w-12 h-12 rounded-xl flex items-center justify-center',
+                                    'transition-transform duration-150 ease-out',
+                                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-1',
+                                    '[touch-action:manipulation] cursor-pointer select-none',
+                                    mapStore.activeLayerId === subBtn.id
+                                        ? 'bg-green-700 shadow-inner'
+                                        : 'bg-slate-50 hover:bg-green-100'
+                                ]"
+                                @click.stop="onLayerButtonClick(subBtn)"
+                            >
+                                <img
+                                    v-if="subBtn.iconSrc"
+                                    :src="subBtn.iconSrc"
+                                    width="28"
+                                    height="28"
+                                    alt=""
+                                    aria-hidden="true"
+                                    class="w-7 h-7 object-contain pointer-events-none"
+                                    :class="{ invert: mapStore.activeLayerId === subBtn.id }"
+                                />
+                                <span
+                                    v-else-if="subBtn.text"
+                                    aria-hidden="true"
+                                    class="text-xl font-bold pointer-events-none leading-none"
+                                    :class="
+                                        mapStore.activeLayerId === subBtn.id
+                                            ? 'text-white'
+                                            : 'text-gray-700'
+                                    "
+                                    >{{ subBtn.text }}</span
+                                >
+                            </button>
+                        </li>
+                    </ul>
+                </Transition>
             </li>
         </template>
 
-        <!-- Modal buttons (settings, map manager, sharing, help) -->
-        <li v-for="mb in modalButtons" :key="mb.id">
-            <input
+        <!-- Modal buttons -->
+        <li v-for="mb in panelButtons" :key="mb.id">
+            <button
                 :id="`${mb.id}-button`"
+                :ref="(el) => registerDockButton(mb.id, el as HTMLButtonElement | null)"
                 type="button"
-                :class="['toolbar-button', mb.id, { selected: uiStore.activeModal === mb.modalId }]"
-                :title="mb.tooltip"
-                @click.stop="onModalButtonClick(mb.modalId)"
-            />
+                :aria-label="mb.tooltip"
+                :aria-pressed="uiStore.activePanel === mb.panelId"
+                :style="{ transform: `scale(${buttonScales[mb.id] ?? 1})` }"
+                :class="[
+                    'w-12 h-12 rounded-xl flex items-center justify-center',
+                    'transition-transform duration-150 ease-out origin-left',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-1',
+                    '[touch-action:manipulation] cursor-pointer select-none',
+                    uiStore.activePanel === mb.panelId
+                        ? 'bg-green-700 shadow-inner'
+                        : 'bg-slate-50 hover:bg-green-100'
+                ]"
+                @click.stop="onPanelButtonClick(mb.panelId)"
+            >
+                <img
+                    :src="mb.iconSrc"
+                    width="28"
+                    height="28"
+                    alt=""
+                    aria-hidden="true"
+                    class="w-7 h-7 object-contain pointer-events-none"
+                    :class="{ invert: uiStore.activePanel === mb.panelId }"
+                />
+            </button>
         </li>
     </ul>
 </template>

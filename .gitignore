@@ -2,5 +2,5 @@ node_modules/
 .vscode/
 .yarn/
 dist/
-test-results/.last-run.json
+test-results/
 playwright-report/

@@ -505,7 +505,7 @@ test.describe('Layer: Modal Filter (point, primary button)', () => {
 
     test('toolbar button activates the layer', async ({ page }) => {
         await page.locator('#modal-filter-button').click();
-        await expect(page.locator('#modal-filter-button')).toHaveClass(/selected/);
+        await expect(page.locator('#modal-filter-button')).toHaveAttribute('aria-pressed', 'true');
     });
 
     test('clicking the map places a marker and persists it', async ({ page }) => {
@@ -544,7 +544,7 @@ test.describe('Layer: Modal Filter (point, primary button)', () => {
         const btn = page.locator('#modal-filter-button');
         await btn.click(); // activate
         await btn.click(); // deactivate
-        await expect(btn).not.toHaveClass(/selected/);
+        await expect(btn).toHaveAttribute('aria-pressed', 'false');
     });
 
     test('undo removes a newly placed modal filter and redo restores it', async ({ page }) => {
@@ -693,7 +693,7 @@ test.describe('Layer: Traffic Lights (point, primary button)', () => {
 
     test('toolbar button activates the layer', async ({ page }) => {
         await page.locator('#traffic-lights-button').click();
-        await expect(page.locator('#traffic-lights-button')).toHaveClass(/selected/);
+        await expect(page.locator('#traffic-lights-button')).toHaveAttribute('aria-pressed', 'true');
     });
 
     test('clicking the map places a traffic light and persists it', async ({ page }) => {
@@ -722,7 +722,7 @@ test.describe('Layer: Traffic Lights (point, primary button)', () => {
         const btn = page.locator('#traffic-lights-button');
         await btn.click();
         await btn.click();
-        await expect(btn).not.toHaveClass(/selected/);
+        await expect(btn).toHaveAttribute('aria-pressed', 'false');
     });
 
     test('undo removes a newly placed traffic light and redo restores it', async ({ page }) => {
@@ -906,7 +906,7 @@ test.describe('Layer: Mobility Lane (polyline)', () => {
 
     test('toolbar button activates the layer', async ({ page }) => {
         await page.locator('#mobility-lane-button').click();
-        await expect(page.locator('#mobility-lane-button')).toHaveClass(/selected/);
+        await expect(page.locator('#mobility-lane-button')).toHaveAttribute('aria-pressed', 'true');
     });
 
     test('drawing a polyline creates a mobility lane and persists it', async ({ page }) => {
@@ -930,7 +930,7 @@ test.describe('Layer: Mobility Lane (polyline)', () => {
         const btn = page.locator('#mobility-lane-button');
         await btn.click();
         await btn.click();
-        await expect(btn).not.toHaveClass(/selected/);
+        await expect(btn).toHaveAttribute('aria-pressed', 'false');
     });
 
     test('active mobility tool shows a selectable cursor on existing mobility lines', async ({
@@ -1081,7 +1081,7 @@ test.describe('Layer: Car-Free Street (polyline)', () => {
 
     test('toolbar button activates the layer', async ({ page }) => {
         await page.locator('#car-free-street-button').click();
-        await expect(page.locator('#car-free-street-button')).toHaveClass(/selected/);
+        await expect(page.locator('#car-free-street-button')).toHaveAttribute('aria-pressed', 'true');
     });
 
     test('drawing a polyline creates a car-free street and persists it', async ({ page }) => {
@@ -1134,7 +1134,7 @@ test.describe('Layer: School Street (polyline)', () => {
 
     test('toolbar button activates the layer', async ({ page }) => {
         await page.locator('#school-street-button').click();
-        await expect(page.locator('#school-street-button')).toHaveClass(/selected/);
+        await expect(page.locator('#school-street-button')).toHaveAttribute('aria-pressed', 'true');
     });
 
     test('drawing a polyline creates a school street and persists it', async ({ page }) => {
@@ -1187,7 +1187,7 @@ test.describe('Layer: One-Way Street (polyline)', () => {
 
     test('toolbar button activates the layer', async ({ page }) => {
         await page.locator('#one-way-street-button').click();
-        await expect(page.locator('#one-way-street-button')).toHaveClass(/selected/);
+        await expect(page.locator('#one-way-street-button')).toHaveAttribute('aria-pressed', 'true');
     });
 
     test('drawing a polyline creates a one-way street and persists it', async ({ page }) => {
@@ -1246,7 +1246,7 @@ test.describe('Layer: Tram Line (polyline)', () => {
 
     test('toolbar button activates the layer', async ({ page }) => {
         await page.locator('#tram-line-button').click();
-        await expect(page.locator('#tram-line-button')).toHaveClass(/selected/);
+        await expect(page.locator('#tram-line-button')).toHaveAttribute('aria-pressed', 'true');
     });
 
     test('drawing a polyline creates a tram line and persists it', async ({ page }) => {
@@ -1303,7 +1303,7 @@ test.describe('Layer: LTN Cell (polygon)', () => {
 
     test('toolbar button activates the layer', async ({ page }) => {
         await page.locator('#ltn-button').click();
-        await expect(page.locator('#ltn-button')).toHaveClass(/selected/);
+        await expect(page.locator('#ltn-button')).toHaveAttribute('aria-pressed', 'true');
     });
 
     test('drawing a polygon creates an LTN cell and persists it', async ({ page }) => {
@@ -1327,7 +1327,7 @@ test.describe('Layer: LTN Cell (polygon)', () => {
         const btn = page.locator('#ltn-button');
         await btn.click();
         await btn.click();
-        await expect(btn).not.toHaveClass(/selected/);
+        await expect(btn).toHaveAttribute('aria-pressed', 'false');
     });
 
     test('clicking an existing LTN polygon enters edit mode without enabling draw mode', async ({
@@ -1340,7 +1340,7 @@ test.describe('Layer: LTN Cell (polygon)', () => {
 
         // Deselect the layer so the polygon click starts from a neutral state
         await page.locator('#ltn-button').click();
-        await expect(page.locator('#ltn-button')).not.toHaveClass(/selected/);
+        await expect(page.locator('#ltn-button')).toHaveAttribute('aria-pressed', 'false');
 
         // Click the existing polygon — should enter edit mode for the LTN layer
         await page
@@ -1352,7 +1352,7 @@ test.describe('Layer: LTN Cell (polygon)', () => {
         await page.waitForTimeout(200);
 
         // LTN button should now be selected
-        await expect(page.locator('#ltn-button')).toHaveClass(/selected/);
+        await expect(page.locator('#ltn-button')).toHaveAttribute('aria-pressed', 'true');
 
         // A map click should NOT create a new LTN cell (edit mode, not draw mode)
         await clickMap(page, 0, -150);
@@ -1396,7 +1396,7 @@ test.describe('Layer: LTN Cell (polygon)', () => {
         );
         await polygons.first().dispatchEvent('click');
         await page.waitForTimeout(200);
-        await expect(page.locator('#ltn-button')).toHaveClass(/selected/);
+        await expect(page.locator('#ltn-button')).toHaveAttribute('aria-pressed', 'true');
         await expect(page.locator('.popup-buttons')).toBeVisible();
 
         // Click the second polygon — popup should switch to the second polygon
@@ -1404,7 +1404,7 @@ test.describe('Layer: LTN Cell (polygon)', () => {
         await page.waitForTimeout(200);
 
         // LTN button still selected (edit mode)
-        await expect(page.locator('#ltn-button')).toHaveClass(/selected/);
+        await expect(page.locator('#ltn-button')).toHaveAttribute('aria-pressed', 'true');
 
         // Only one popup open at a time
         await expect(page.locator('.popup-buttons')).toHaveCount(1);
@@ -1793,11 +1793,11 @@ test.describe('Layer exclusivity', () => {
 
     test('activating a second layer deactivates the first', async ({ page }) => {
         await page.locator('#modal-filter-button').click();
-        await expect(page.locator('#modal-filter-button')).toHaveClass(/selected/);
+        await expect(page.locator('#modal-filter-button')).toHaveAttribute('aria-pressed', 'true');
 
         await page.locator('#traffic-lights-button').click();
-        await expect(page.locator('#traffic-lights-button')).toHaveClass(/selected/);
-        await expect(page.locator('#modal-filter-button')).not.toHaveClass(/selected/);
+        await expect(page.locator('#traffic-lights-button')).toHaveAttribute('aria-pressed', 'true');
+        await expect(page.locator('#modal-filter-button')).toHaveAttribute('aria-pressed', 'false');
     });
 
     test('features from different layers are stored independently', async ({ page }) => {
@@ -1823,12 +1823,12 @@ test.describe('Layer exclusivity', () => {
 
         // Switch to a point layer.
         await page.locator('#modal-filter-button').click();
-        await expect(page.locator('#modal-filter-button')).toHaveClass(/selected/);
+        await expect(page.locator('#modal-filter-button')).toHaveAttribute('aria-pressed', 'true');
 
         await clickMap(page, 0, 0);
 
-        await expect(page.locator('#modal-filter-button')).toHaveClass(/selected/);
-        await expect(page.locator('#mobility-lane-button')).not.toHaveClass(/selected/);
+        await expect(page.locator('#modal-filter-button')).toHaveAttribute('aria-pressed', 'true');
+        await expect(page.locator('#mobility-lane-button')).toHaveAttribute('aria-pressed', 'false');
 
         expect(await getLayerFeatureCount(page, 'ModalFilters')).toBe(1);
         expect(await getLayerFeatureCount(page, 'MobilityLanes')).toBeGreaterThanOrEqual(1);
@@ -1842,12 +1842,12 @@ test.describe('Layer exclusivity', () => {
         expect(await getLayerFeatureCount(page, 'LtnCells')).toBe(1);
 
         await page.locator('#modal-filter-button').click();
-        await expect(page.locator('#modal-filter-button')).toHaveClass(/selected/);
+        await expect(page.locator('#modal-filter-button')).toHaveAttribute('aria-pressed', 'true');
 
         await clickMap(page, 0, 0);
 
-        await expect(page.locator('#modal-filter-button')).toHaveClass(/selected/);
-        await expect(page.locator('#ltn-button')).not.toHaveClass(/selected/);
+        await expect(page.locator('#modal-filter-button')).toHaveAttribute('aria-pressed', 'true');
+        await expect(page.locator('#ltn-button')).toHaveAttribute('aria-pressed', 'false');
         expect(await getLayerFeatureCount(page, 'ModalFilters')).toBe(1);
         expect(await getLayerFeatureCount(page, 'LtnCells')).toBe(1);
     });

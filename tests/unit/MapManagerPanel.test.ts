@@ -38,7 +38,7 @@ vi.mock('../../src/composables/useMapManager', () => {
     };
 });
 
-import MapManagerModal from '../../src/components/modals/MapManagerModal.vue';
+import MapManagerPanel from '../../src/components/panels/MapManagerPanel.vue';
 import { useUiStore } from '../../src/stores/uiStore';
 
 async function flushUi(): Promise<void> {
@@ -48,7 +48,7 @@ async function flushUi(): Promise<void> {
     await nextTick();
 }
 
-describe('MapManagerModal', () => {
+describe('MapManagerPanel', () => {
     let app: ReturnType<typeof createApp> | null = null;
     let container: HTMLDivElement | null = null;
 
@@ -69,7 +69,7 @@ describe('MapManagerModal', () => {
         container = document.createElement('div');
         document.body.appendChild(container);
 
-        app = createApp(MapManagerModal);
+        app = createApp(MapManagerPanel);
         app.use(pinia);
         app.mount(container);
     });
@@ -164,7 +164,7 @@ describe('MapManagerModal', () => {
         container = document.createElement('div');
         document.body.appendChild(container);
 
-        app = createApp(MapManagerModal);
+        app = createApp(MapManagerPanel);
         app.use(pinia);
         app.mount(container);
 
@@ -190,7 +190,7 @@ describe('MapManagerModal', () => {
         container = document.createElement('div');
         document.body.appendChild(container);
 
-        app = createApp(MapManagerModal);
+        app = createApp(MapManagerPanel);
         app.use(pinia);
         app.mount(container);
 
@@ -223,7 +223,7 @@ describe('MapManagerModal', () => {
         container = document.createElement('div');
         document.body.appendChild(container);
 
-        app = createApp(MapManagerModal);
+        app = createApp(MapManagerPanel);
         app.use(pinia);
         app.mount(container);
 
@@ -255,12 +255,12 @@ describe('MapManagerModal', () => {
         container = document.createElement('div');
         document.body.appendChild(container);
 
-        app = createApp(MapManagerModal);
+        app = createApp(MapManagerPanel);
         app.use(pinia);
         app.mount(container);
 
         const uiStore = useUiStore();
-        uiStore.openModal('mapManager');
+        uiStore.openPanel('mapManager');
 
         await flushUi();
 
@@ -273,7 +273,7 @@ describe('MapManagerModal', () => {
 
         expect(loadMapFromStorageMock).toHaveBeenCalledWith('Alpha');
         expect(loadMapListFromStorageMock).toHaveBeenCalledTimes(refreshCallCountBeforeClick);
-        expect(uiStore.activeModal).toBe('mapManager');
+        expect(uiStore.activePanel).toBe('mapManager');
     });
 
     it('shows a list-refresh error when refreshing after copy fails', async () => {
@@ -288,7 +288,7 @@ describe('MapManagerModal', () => {
         container = document.createElement('div');
         document.body.appendChild(container);
 
-        app = createApp(MapManagerModal);
+        app = createApp(MapManagerPanel);
         app.use(pinia);
         app.mount(container);
 
@@ -322,7 +322,7 @@ describe('MapManagerModal', () => {
         container = document.createElement('div');
         document.body.appendChild(container);
 
-        app = createApp(MapManagerModal);
+        app = createApp(MapManagerPanel);
         app.use(pinia);
         app.mount(container);
 
@@ -330,7 +330,7 @@ describe('MapManagerModal', () => {
 
         const uiStore = useUiStore();
         uiStore.clearErrors();
-        uiStore.openModal('mapManager');
+        uiStore.openPanel('mapManager');
         const newMapButton = container?.querySelector('#new-map') as HTMLInputElement | null;
         const titleInput = container?.querySelector('#new-map-title') as HTMLInputElement | null;
         const createButton = container?.querySelector(
@@ -356,7 +356,7 @@ describe('MapManagerModal', () => {
             'There was a problem loading the stored map list:',
             'List unavailable'
         ]);
-        expect(uiStore.activeModal).toBe('mapManager');
+        expect(uiStore.activePanel).toBe('mapManager');
     });
 
     it('shows a list-refresh error when refreshing after deleting a map fails', async () => {
@@ -373,7 +373,7 @@ describe('MapManagerModal', () => {
         container = document.createElement('div');
         document.body.appendChild(container);
 
-        app = createApp(MapManagerModal);
+        app = createApp(MapManagerPanel);
         app.use(pinia);
         app.mount(container);
 

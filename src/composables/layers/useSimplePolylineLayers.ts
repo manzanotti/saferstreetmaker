@@ -16,6 +16,7 @@ interface SimplePolylineConfig {
     toggleTitle: string;
     colour: string;
     weight: number;
+    iconSrc?: string;
     iconExtra?: (icon: HTMLElement) => void;
     arrowheads?: object;
 }
@@ -51,6 +52,7 @@ function createSimplePolylineLayer(cfg: SimplePolylineConfig, map: L.Map): IMapL
             buttonId: cfg.buttonId,
             tooltip: cfg.tooltip,
             toggleTitle: cfg.toggleTitle,
+            iconSrc: cfg.iconSrc,
             createDrawingTool(m) {
                 const tool = new L.Draw.Polyline(m, {
                     color: cfg.colour,
@@ -92,7 +94,8 @@ export function createTramLineLayer(map: L.Map): IMapLayer {
             tooltip: 'Add tram lines to the map',
             toggleTitle: 'Toggle tram lines from the map',
             colour: '#ff5e00',
-            weight: 5
+            weight: 5,
+            iconSrc: new URL('../../img/tram-svgrepo-com.svg', import.meta.url).href
         },
         map
     );
@@ -107,7 +110,8 @@ export function createCarFreeStreetLayer(map: L.Map): IMapLayer {
             tooltip: 'Add car-free streets to the map',
             toggleTitle: 'Toggle car-free streets from the map',
             colour: '#00bb00',
-            weight: 10
+            weight: 10,
+            iconSrc: new URL('../../img/ban-on-driving-147248.svg', import.meta.url).href
         },
         map
     );
@@ -122,7 +126,8 @@ export function createSchoolStreetLayer(map: L.Map): IMapLayer {
             tooltip: 'Add school streets to the map',
             toggleTitle: 'Toggle school streets from the map',
             colour: '#E6EA09',
-            weight: 5
+            weight: 5,
+            iconSrc: new URL('../../img/school-street.svg', import.meta.url).href
         },
         map
     );
@@ -138,6 +143,7 @@ export function createOneWayStreetLayer(map: L.Map): IMapLayer {
             toggleTitle: 'Toggle one-way streets from the map',
             colour: '#000000',
             weight: 2,
+            iconSrc: new URL('../../img/one-way-street.svg', import.meta.url).href,
             arrowheads: { frequency: '50px', size: '15px', yawn: 40 }
         },
         map

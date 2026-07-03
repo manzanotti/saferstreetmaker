@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import HelpModal from './components/modals/HelpModal.vue';
-import ErrorModal from './components/modals/ErrorModal.vue';
+import HelpPanel from './components/panels/HelpPanel.vue';
+import ErrorPanel from './components/panels/ErrorPanel.vue';
 </script>
 
 <template>
-    <!-- Overlay modals are mounted on demand via Vue transitions. -->
-    <HelpModal />
-    <ErrorModal />
+    <!-- Overlay panels are mounted on demand via Vue transitions. -->
+    <HelpPanel />
+    <ErrorPanel />
 </template>

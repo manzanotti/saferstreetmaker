@@ -7,6 +7,7 @@ export interface ToolbarButton {
     selected: boolean;
     groupName: string;
     buttons?: ToolbarButton[];
+    iconSrc?: string;
     action: (e: Event, map: L.Map) => void;
     isFirst?: boolean;
 }

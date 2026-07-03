@@ -41,7 +41,7 @@ test.describe('Settings Panel', () => {
         await expect(page.locator('#read-only')).not.toBeAttached();
     });
 
-    test('double-clicking a modal control does not zoom the map', async ({ page }) => {
+    test('double-clicking a panel control does not zoom the map', async ({ page }) => {
         await page.locator('#settings-button').click();
         await expect(page.getByText('Visible Layers')).toBeVisible();
 

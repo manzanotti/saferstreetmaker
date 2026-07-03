@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Help Modal', () => {
+test.describe('Help Panel', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto('/');
         await page.waitForSelector('.toolbar');
@@ -65,12 +65,12 @@ test.describe('Help Modal', () => {
     }) => {
         await page.locator('#settings-button').click();
         await expect(page.locator('#read-only')).toBeVisible();
-        await expect(page.locator('#settings-button')).toHaveClass(/selected/);
+        await expect(page.locator('#settings-button')).toHaveAttribute('aria-pressed', 'true');
 
         await page.locator('#help-button').click();
 
         await expect(page.locator('#help')).toBeVisible();
         await expect(page.locator('#read-only')).not.toBeVisible();
-        await expect(page.locator('#settings-button')).not.toHaveClass(/selected/);
+        await expect(page.locator('#settings-button')).toHaveAttribute('aria-pressed', 'false');
     });
 });
