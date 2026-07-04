@@ -650,6 +650,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         id: 'LtnCells',
         title: 'LTN Cells',
         groupName: '',
+        kind: 'polygon' as const,
         get selected() {
             return _selected;
         },

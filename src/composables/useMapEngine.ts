@@ -20,8 +20,11 @@ export function setupMapEngine(): MapEngineResult {
     const settingsStore = useSettingsStore(pinia);
 
     // ── Create the Leaflet map ────────────────────────────────────────────────
-    const map = new L.Map('map');
+    const map = new L.Map('map', { zoomControl: false });
     mapStore.setMap(map);
+
+    // Zoom control at bottom-right, away from the left-side toolbars.
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
 
     // ── Custom panes ─────────────────────────────────────────────────────────
     const ltnsPane = map.createPane('ltns');

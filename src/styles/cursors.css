@@ -5,6 +5,12 @@
         auto;
 }
 
+#map.area-select,
+#map.area-select .leaflet-interactive,
+#map.area-select .leaflet-marker-icon {
+    cursor: crosshair !important;
+}
+
 #map.modal-filter,
 #map.modal-filter .leaflet-interactive,
 #map.modal-filter .leaflet-marker-icon,

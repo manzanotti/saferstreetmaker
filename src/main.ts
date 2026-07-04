@@ -5,13 +5,16 @@ import { FileManager } from './services/FileManager';
 import { useMapStore } from './stores/mapStore';
 import { useSettingsStore } from './stores/settingsStore';
 import { setupMapEngine } from './composables/useMapEngine';
-import { setupMapManager } from './composables/useMapManager';
+import { setupMapManager, getMapManager } from './composables/useMapManager';
 import { makeLeafletVueControl } from './composables/useLeafletVueControl';
 import { createAllLayers } from './composables/layers/index';
-import UndoRedoToolbar from './components/controls/UndoRedoToolbar.vue';
-import Toolbar from './components/controls/Toolbar.vue';
+import CommandsToolbar from './components/controls/CommandsToolbar.vue';
+import LayersToolbar from './components/controls/LayersToolbar.vue';
 import Legend from './components/controls/Legend.vue';
 import PanelContainer from './components/controls/PanelContainer.vue';
+import AreaSelectionPanel from './components/panels/AreaSelectionPanel.vue';
+import { setupAreaSelection, executeAreaDelete } from './composables/useAreaSelection';
+import { useSelectionStore } from './stores/selectionStore';
 
 // Mount the Vue overlay app (HelpPanel, ErrorPanel) immediately.
 createApp(App).use(pinia).mount('#app');
@@ -38,10 +41,90 @@ document.addEventListener('DOMContentLoaded', async () => {
     const { loadMap, setUserLocation, setDefaultView } = setupMapManager(fileManager);
 
     // ── Add Vue-backed Leaflet controls ──────────────────────────────────────
-    map.addControl(makeLeafletVueControl(UndoRedoToolbar, 'topleft'));
-    map.addControl(makeLeafletVueControl(Toolbar, 'topleft'));
+    map.addControl(makeLeafletVueControl(CommandsToolbar, 'topleft'));
+    map.addControl(makeLeafletVueControl(LayersToolbar, 'topleft'));
+    map.addControl(makeLeafletVueControl(AreaSelectionPanel, 'topleft'));
     map.addControl(makeLeafletVueControl(Legend, 'topright'));
     map.addControl(makeLeafletVueControl(PanelContainer, 'bottomleft'));
+
+    // ── Wire area-selection composable ───────────────────────────────────────
+    setupAreaSelection(map);
+
+    // ── Global keyboard shortcuts ────────────────────────────────────────────
+    // Guard: never intercept shortcuts while the user is typing in an input.
+    function isTyping(e: KeyboardEvent): boolean {
+        const tag = (e.target as HTMLElement | null)?.tagName ?? '';
+        return (
+            tag === 'INPUT' ||
+            tag === 'TEXTAREA' ||
+            (e.target as HTMLElement | null)?.isContentEditable === true
+        );
+    }
+
+    function isMapContext(e: KeyboardEvent): boolean {
+        const target = e.target as HTMLElement | null;
+        if (!target) {
+            return false;
+        }
+
+        return target === document.body || target.id === 'map';
+    }
+
+    document.addEventListener('keydown', async (e: KeyboardEvent) => {
+        const selectionStore = useSelectionStore(pinia);
+
+        // s — toggle area-selection mode
+        if (
+            e.key === 's' &&
+            !e.ctrlKey &&
+            !e.metaKey &&
+            !e.altKey &&
+            !isTyping(e) &&
+            isMapContext(e)
+        ) {
+            e.preventDefault();
+            if (selectionStore.isActive) {
+                selectionStore.deactivate();
+            } else {
+                selectionStore.activate();
+            }
+            return;
+        }
+
+        // Delete / Backspace — delete the current area selection
+        if (
+            (e.key === 'Delete' || e.key === 'Backspace') &&
+            !e.ctrlKey &&
+            !e.metaKey &&
+            !e.altKey &&
+            !isTyping(e) &&
+            isMapContext(e) &&
+            selectionStore.isActive &&
+            selectionStore.selected.length > 0
+        ) {
+            e.preventDefault();
+            executeAreaDelete();
+            return;
+        }
+
+        // Ctrl+Z / Cmd+Z — undo
+        if (e.key === 'z' && (e.ctrlKey || e.metaKey) && !e.shiftKey && !isTyping(e)) {
+            e.preventDefault();
+            await getMapManager().undo();
+            return;
+        }
+
+        // Ctrl+Y / Ctrl+Shift+Z / Cmd+Shift+Z — redo
+        if (
+            ((e.key === 'y' && (e.ctrlKey || e.metaKey)) ||
+                (e.key === 'z' && (e.ctrlKey || e.metaKey) && e.shiftKey)) &&
+            !isTyping(e)
+        ) {
+            e.preventDefault();
+            await getMapManager().redo();
+            return;
+        }
+    });
 
     // ── Parse URL params and load initial map ────────────────────────────────
     const params = new URLSearchParams(window.location.search);

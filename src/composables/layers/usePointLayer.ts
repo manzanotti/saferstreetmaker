@@ -170,6 +170,7 @@ export function createPointLayer(config: PointLayerConfig, map: L.Map): IMapLaye
         clearLayer(): void {
             geoJsonLayer.clearLayers();
             _visible = false;
-        }
+        },
+        kind: 'point' as const
     };
 }

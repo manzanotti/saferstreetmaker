@@ -48,6 +48,13 @@ li {
     box-shadow: 0 2px 2px 0 black;
 }
 
+/* Visual ring applied to point markers when selected by the area-select tool */
+.area-selected {
+    outline: 3px solid #3b82f6;
+    outline-offset: 2px;
+    border-radius: 50%;
+}
+
 a {
     color: blue;
 }
@@ -61,6 +68,9 @@ a {
 }
 .leaflet-top .leaflet-control:first-child {
     margin-top: 0 !important;
+}
+.leaflet-bottom .leaflet-control:first-child {
+    margin-bottom: 0 !important;
 }
 
 /* ── Leaflet zoom control ────────────────────────────────────────────────── */

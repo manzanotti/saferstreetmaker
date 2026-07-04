@@ -7,6 +7,9 @@ export interface LayerMutationEvent {
     kind:
         | 'point-add'
         | 'point-delete'
+        | 'point-batch-delete'
+        | 'polyline-vertices-delete'
+        | 'polygon-batch-delete'
         | 'polyline-add'
         | 'polyline-delete'
         | 'polyline-edit'
