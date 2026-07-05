@@ -2,47 +2,10 @@
 import { computed, ref, reactive, onMounted, onUnmounted } from 'vue';
 import { useMapStore } from '../../stores/mapStore';
 import { useSettingsStore } from '../../stores/settingsStore';
-import { useUiStore, type PanelId } from '../../stores/uiStore';
 import type { ToolbarButton } from '../../models/ToolbarButton';
 
 const mapStore = useMapStore();
 const settingsStore = useSettingsStore();
-const uiStore = useUiStore();
-
-// ── Modal button definitions ───────────────────────────────────────────────
-interface PanelButtonDef {
-    id: string;
-    panelId: PanelId;
-    tooltip: string;
-    iconSrc: string;
-}
-
-const panelButtons: PanelButtonDef[] = [
-    {
-        id: 'map-manager',
-        panelId: 'mapManager',
-        tooltip: 'Manage maps',
-        iconSrc: new URL('../../img/folder-svgrepo-com.svg', import.meta.url).href
-    },
-    {
-        id: 'settings',
-        panelId: 'settings',
-        tooltip: 'Open settings',
-        iconSrc: new URL('../../img/settings-svgrepo-com.svg', import.meta.url).href
-    },
-    {
-        id: 'share',
-        panelId: 'sharing',
-        tooltip: 'Share map',
-        iconSrc: new URL('../../img/share-svgrepo-com.svg', import.meta.url).href
-    },
-    {
-        id: 'help',
-        panelId: 'help',
-        tooltip: 'Open help',
-        iconSrc: new URL('../../img/help-svgrepo-com.svg', import.meta.url).href
-    }
-];
 
 // ── Layer button groups ────────────────────────────────────────────────────
 interface GroupItem {
@@ -126,20 +89,19 @@ function onLayerButtonClick(btn: ToolbarButton) {
     const newId = mapStore.activeLayerId === btn.id ? null : btn.id;
     mapStore.setActiveLayer(newId);
 
+    // When a layer tool is toggled off, return focus to the document body so
+    // keyboard shortcuts (e.g. 's') remain immediately usable without the
+    // user having to click elsewhere first.
+    if (newId === null) {
+        (document.activeElement as HTMLElement | null)?.blur();
+    }
+
     if (btn.groupName) {
         // Record which group button was last activated (not when toggling off).
         if (newId !== null) {
             lastSelectedByGroup.value = { ...lastSelectedByGroup.value, [btn.groupName]: btn.id };
         }
         hideSubmenu(btn.groupName);
-    }
-}
-
-function onPanelButtonClick(panelId: PanelId) {
-    if (uiStore.activePanel === panelId) {
-        uiStore.closePanel();
-    } else {
-        uiStore.openPanel(panelId);
     }
 }
 
@@ -420,37 +382,5 @@ onUnmounted(() => {
                 </Transition>
             </li>
         </template>
-
-        <!-- Modal buttons -->
-        <li v-for="mb in panelButtons" :key="mb.id">
-            <button
-                :id="`${mb.id}-button`"
-                :ref="(el) => registerDockButton(mb.id, el as HTMLButtonElement | null)"
-                type="button"
-                :aria-label="mb.tooltip"
-                :aria-pressed="uiStore.activePanel === mb.panelId"
-                :style="{ transform: `scale(${buttonScales[mb.id] ?? 1})` }"
-                :class="[
-                    'w-12 h-12 rounded-xl flex items-center justify-center',
-                    'transition-transform duration-150 ease-out origin-left',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-1',
-                    '[touch-action:manipulation] cursor-pointer select-none',
-                    uiStore.activePanel === mb.panelId
-                        ? 'bg-green-700 shadow-inner'
-                        : 'bg-slate-50 hover:bg-green-100'
-                ]"
-                @click.stop="onPanelButtonClick(mb.panelId)"
-            >
-                <img
-                    :src="mb.iconSrc"
-                    width="28"
-                    height="28"
-                    alt=""
-                    aria-hidden="true"
-                    class="w-7 h-7 object-contain pointer-events-none"
-                    :class="{ invert: uiStore.activePanel === mb.panelId }"
-                />
-            </button>
-        </li>
     </ul>
 </template>

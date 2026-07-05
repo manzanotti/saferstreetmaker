@@ -48,7 +48,7 @@ function toggleCollapse() {
                     role="button"
                     tabindex="0"
                     :aria-pressed="mapStore.visibleLayerIds.has(layer.id)"
-                    class="flex items-center gap-2 px-2 py-1 rounded-lg cursor-pointer hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-green-600"
+                    class="flex items-center gap-2 px-2 py-1 rounded-lg cursor-pointer hover:bg-green-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-green-600"
                     :class="{
                         disabled: !mapStore.visibleLayerIds.has(layer.id),
                         'opacity-40 bg-gray-50': !mapStore.visibleLayerIds.has(layer.id)

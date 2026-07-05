@@ -259,6 +259,19 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         );
     };
 
+    const isPointBatchDeletePayload = (
+        payload: unknown
+    ): payload is {
+        points: unknown[];
+    } => {
+        return (
+            payload != null &&
+            typeof payload === 'object' &&
+            !Array.isArray(payload) &&
+            Array.isArray((payload as { points?: unknown }).points)
+        );
+    };
+
     const isPolylinePointChangePayload = (
         payload: unknown
     ): payload is {
@@ -556,38 +569,89 @@ export function setupMapManager(fileManager: FileManager): MapManager {
             return await applyLayerMutationReplay(replay.snapshot, mutation);
         };
 
-        if (mutation.kind === 'point-add' || mutation.kind === 'point-delete') {
-            const pointFeature = buildPointFeatureFromMutation(mutation);
-            const pointHistoryId = getFeatureHistoryId(pointFeature);
-            const pointKey = pointFeature ? serialiseFeature(pointFeature) : null;
-
-            if (mutation.kind === 'point-add') {
-                if (replay.direction === 'undo') {
-                    featureCollection.features = featureCollection.features.filter((feature) => {
-                        const currentHistoryId = getFeatureHistoryId(feature);
-                        if (pointHistoryId !== null && currentHistoryId !== null) {
-                            return currentHistoryId !== pointHistoryId;
-                        }
-
-                        return serialiseFeature(feature) !== pointKey;
-                    });
-                } else if (pointFeature && !hasFeature(pointHistoryId, pointKey)) {
-                    featureCollection.features.push(pointFeature);
+        if (
+            mutation.kind === 'point-add' ||
+            mutation.kind === 'point-delete' ||
+            mutation.kind === 'point-batch-delete'
+        ) {
+            if (mutation.kind === 'point-batch-delete') {
+                if (!isPointBatchDeletePayload(mutation.payload)) {
+                    return await restoreLayerFromSnapshot();
                 }
-            } else if (mutation.kind === 'point-delete') {
+
+                const batchFeatures = mutation.payload.points;
                 if (replay.direction === 'undo') {
-                    if (pointFeature && !hasFeature(pointHistoryId, pointKey)) {
-                        featureCollection.features.push(pointFeature);
+                    for (const pointFeature of batchFeatures) {
+                        if (!pointFeature) {
+                            continue;
+                        }
+                        const pointHistoryId = getFeatureHistoryId(pointFeature);
+                        const pointKey = pointFeature ? serialiseFeature(pointFeature) : null;
+                        if (!hasFeature(pointHistoryId, pointKey)) {
+                            featureCollection.features.push(pointFeature);
+                        }
                     }
                 } else {
+                    // Precompute Sets of batch historyIds and serialised keys so
+                    // the filter below is O(n+m) instead of O(n*m).
+                    const batchHistoryIdSet = new Set<string>();
+                    const batchKeySet = new Set<string | null>();
+                    for (const batchFeature of batchFeatures) {
+                        if (!batchFeature) {
+                            continue;
+                        }
+                        const batchHistoryId = getFeatureHistoryId(batchFeature);
+                        if (batchHistoryId !== null) {
+                            batchHistoryIdSet.add(batchHistoryId);
+                        } else {
+                            batchKeySet.add(serialiseFeature(batchFeature));
+                        }
+                    }
                     featureCollection.features = featureCollection.features.filter((feature) => {
                         const currentHistoryId = getFeatureHistoryId(feature);
-                        if (pointHistoryId !== null && currentHistoryId !== null) {
-                            return currentHistoryId !== pointHistoryId;
+                        if (currentHistoryId !== null && batchHistoryIdSet.has(currentHistoryId)) {
+                            return false;
                         }
-
-                        return serialiseFeature(feature) !== pointKey;
+                        return !batchKeySet.has(serialiseFeature(feature));
                     });
+                }
+            } else {
+                const pointFeature = buildPointFeatureFromMutation(mutation);
+                const pointHistoryId = getFeatureHistoryId(pointFeature);
+                const pointKey = pointFeature ? serialiseFeature(pointFeature) : null;
+
+                if (mutation.kind === 'point-add') {
+                    if (replay.direction === 'undo') {
+                        featureCollection.features = featureCollection.features.filter(
+                            (feature) => {
+                                const currentHistoryId = getFeatureHistoryId(feature);
+                                if (pointHistoryId !== null && currentHistoryId !== null) {
+                                    return currentHistoryId !== pointHistoryId;
+                                }
+
+                                return serialiseFeature(feature) !== pointKey;
+                            }
+                        );
+                    } else if (pointFeature && !hasFeature(pointHistoryId, pointKey)) {
+                        featureCollection.features.push(pointFeature);
+                    }
+                } else if (mutation.kind === 'point-delete') {
+                    if (replay.direction === 'undo') {
+                        if (pointFeature && !hasFeature(pointHistoryId, pointKey)) {
+                            featureCollection.features.push(pointFeature);
+                        }
+                    } else {
+                        featureCollection.features = featureCollection.features.filter(
+                            (feature) => {
+                                const currentHistoryId = getFeatureHistoryId(feature);
+                                if (pointHistoryId !== null && currentHistoryId !== null) {
+                                    return currentHistoryId !== pointHistoryId;
+                                }
+
+                                return serialiseFeature(feature) !== pointKey;
+                            }
+                        );
+                    }
                 }
             }
         } else if (mutation.kind === 'polyline-add' || mutation.kind === 'polygon-add') {
@@ -607,7 +671,11 @@ export function setupMapManager(fileManager: FileManager): MapManager {
             } else {
                 return await restoreLayerFromSnapshot();
             }
-        } else if (mutation.kind === 'polyline-delete' || mutation.kind === 'polygon-delete') {
+        } else if (
+            mutation.kind === 'polyline-delete' ||
+            mutation.kind === 'polygon-delete' ||
+            mutation.kind === 'polygon-batch-delete'
+        ) {
             if (replay.direction === 'undo') {
                 if (beforeFeature && !hasFeature(beforeHistoryId, beforeKey)) {
                     featureCollection.features.push(beforeFeature);
@@ -622,7 +690,10 @@ export function setupMapManager(fileManager: FileManager): MapManager {
                     return serialiseFeature(feature) !== beforeKey;
                 });
             }
-        } else if (mutation.kind === 'polyline-edit') {
+        } else if (
+            mutation.kind === 'polyline-edit' ||
+            mutation.kind === 'polyline-vertices-delete'
+        ) {
             if (isPolylinePointChangePayload(mutation.payload)) {
                 if (
                     !applyPolylinePointChanges(
@@ -917,7 +988,9 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         if (
             mutationKind &&
             mutationLayerId &&
-            (mutationKind === 'point-add' || mutationKind === 'point-delete')
+            (mutationKind === 'point-add' ||
+                mutationKind === 'point-delete' ||
+                mutationKind === 'point-batch-delete')
         ) {
             return await applyFeatureMutationReplay(replay, {
                 kind: mutationKind,
@@ -932,8 +1005,10 @@ export function setupMapManager(fileManager: FileManager): MapManager {
             (mutationKind === 'polyline-add' ||
                 mutationKind === 'polyline-delete' ||
                 mutationKind === 'polyline-edit' ||
+                mutationKind === 'polyline-vertices-delete' ||
                 mutationKind === 'polygon-add' ||
                 mutationKind === 'polygon-delete' ||
+                mutationKind === 'polygon-batch-delete' ||
                 mutationKind === 'polygon-edit')
         ) {
             return await applyFeatureMutationReplay(replay, {

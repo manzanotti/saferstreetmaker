@@ -89,6 +89,10 @@ class Polyline {
         return this;
     }
 
+    getLatLngs() {
+        return this.latlngs;
+    }
+
     /** leaflet-arrowheads extension used by OneWayStreetLayer */
     arrowheads(_opts?: any) {
         return this;
@@ -141,6 +145,10 @@ class Polygon {
     }
     getBounds() {
         return { getCenter: () => new LatLng(0, 0) };
+    }
+
+    getLatLngs() {
+        return [this.latlngs];
     }
 
     toGeoJSON() {

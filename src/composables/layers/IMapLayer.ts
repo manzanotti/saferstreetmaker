@@ -7,6 +7,7 @@ export interface IMapLayer {
     selected: boolean;
     visible: boolean;
     groupName: string;
+    kind: 'point' | 'polyline' | 'polygon';
 
     /** Outer HTML of the `<i>` icon element shown in the Legend for this layer. */
     iconHtml: string;

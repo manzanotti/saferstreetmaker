@@ -264,6 +264,7 @@ export function createPolylineLayer(
             _visible = v;
         },
         groupName: config.groupName,
+        kind: 'polyline' as const,
         iconHtml: config.buildIconEl().outerHTML,
 
         getToolbarButton() {
