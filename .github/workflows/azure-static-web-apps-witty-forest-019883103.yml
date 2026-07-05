@@ -24,7 +24,7 @@ jobs:
               run: corepack enable
             - run: yarn install
             - name: Check formatting
-              run: yarn format --check
+              run: yarn format:check
             - name: Type check
               run: yarn typecheck
             - name: Run unit tests
