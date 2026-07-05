@@ -7,7 +7,12 @@ import * as L from 'leaflet';
 import { pinia } from '../../src/stores/index';
 import { useSelectionStore, type SelectedMarker } from '../../src/stores/selectionStore';
 import { useMapStore } from '../../src/stores/mapStore';
-import { executeAreaDelete, polygonIntersectsBounds } from '../../src/composables/useAreaSelection';
+import {
+    executeAreaDelete,
+    executeCopy,
+    executePaste,
+    polygonIntersectsBounds
+} from '../../src/composables/useAreaSelection';
 import type { IMapLayer } from '../../src/composables/layers/IMapLayer';
 
 /** Minimal IMapLayer stub with a real GeoJSON layer for testing. */
@@ -462,5 +467,361 @@ describe('executeAreaDelete', () => {
         // Line is gone; setLatLngs should not have been called
         expect(layer.getLayer().getLayers()).toHaveLength(0);
         expect((polyline as any).setLatLngs).not.toHaveBeenCalled();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// executeCopy
+// ---------------------------------------------------------------------------
+describe('executeCopy', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        setActivePinia(pinia);
+        useMapStore(pinia).setLayers([]);
+        useSelectionStore(pinia).deactivate();
+        useSelectionStore(pinia).copyToClipboard([]);
+    });
+
+    it('does nothing when no features are selected', () => {
+        const layer = makePointLayer('ModalFilters');
+        const mapStore = useMapStore();
+        mapStore.setLayers([layer]);
+
+        const selectionStore = useSelectionStore();
+        selectionStore.activate();
+        // No setSelected — selection is empty
+
+        executeCopy();
+
+        expect(selectionStore.clipboard).toHaveLength(0);
+    });
+
+    it('stores each unique selected marker as a clipboard entry', () => {
+        const layer = makePointLayer('ModalFilters');
+        const marker = {
+            _isMock: true,
+            getLatLng: () => ({ lat: 1, lng: 2 }),
+            toGeoJSON: () => ({
+                type: 'Feature',
+                geometry: { type: 'Point', coordinates: [2, 1] },
+                properties: { historyId: 'h-1' }
+            })
+        } as unknown as L.Layer;
+        layer.getLayer().addLayer(marker as unknown as L.Layer);
+
+        const mapStore = useMapStore();
+        mapStore.setLayers([layer]);
+
+        const selectionStore = useSelectionStore();
+        selectionStore.activate();
+        selectionStore.setSelected([makeSelected('ModalFilters', marker)]);
+
+        executeCopy();
+
+        expect(selectionStore.clipboard).toHaveLength(1);
+        expect(selectionStore.clipboard[0].layerId).toBe('ModalFilters');
+        expect(selectionStore.clipboard[0].feature.type).toBe('Feature');
+    });
+
+    it('deduplicates shared-marker entries (polygon/polyline with multiple vertex rows)', () => {
+        const layer = {
+            ...makePointLayer('LtnCells'),
+            kind: 'polygon' as const
+        } as unknown as IMapLayer;
+        // Polygon marker with a real toGeoJSON so executeCopy can capture it.
+        const polygon = {
+            _isMock: true,
+            toGeoJSON: () => ({
+                type: 'Feature',
+                geometry: {
+                    type: 'Polygon',
+                    coordinates: [
+                        [
+                            [0, 0],
+                            [1, 0],
+                            [0, 1],
+                            [0, 0]
+                        ]
+                    ]
+                },
+                properties: { historyId: 'poly-1' }
+            }),
+            getLatLngs: () => [
+                [
+                    { lat: 0, lng: 0 },
+                    { lat: 1, lng: 0 },
+                    { lat: 0, lng: 1 }
+                ]
+            ]
+        } as unknown as L.Layer;
+        layer.getLayer().addLayer(polygon as unknown as L.Layer);
+
+        const mapStore = useMapStore();
+        mapStore.setLayers([layer]);
+
+        const selectionStore = useSelectionStore();
+        selectionStore.activate();
+        // Same marker, three vertex entries
+        selectionStore.setSelected([
+            makeSelected('LtnCells', polygon),
+            makeSelected('LtnCells', polygon),
+            makeSelected('LtnCells', polygon)
+        ]);
+
+        executeCopy();
+
+        // Should only appear once in the clipboard
+        expect(selectionStore.clipboard).toHaveLength(1);
+    });
+
+    it('skips markers whose toGeoJSON returns null', () => {
+        const layer = makePointLayer('ModalFilters');
+        const marker = makeMockMarker(); // toGeoJSON returns null
+        layer.getLayer().addLayer(marker as unknown as L.Layer);
+
+        const mapStore = useMapStore();
+        mapStore.setLayers([layer]);
+
+        const selectionStore = useSelectionStore();
+        selectionStore.activate();
+        selectionStore.setSelected([makeSelected('ModalFilters', marker)]);
+
+        executeCopy();
+
+        expect(selectionStore.clipboard).toHaveLength(0);
+    });
+
+    it('sets hasClipboard to true after a successful copy', () => {
+        const layer = makePointLayer('ModalFilters');
+        const marker = {
+            _isMock: true,
+            getLatLng: () => ({ lat: 1, lng: 2 }),
+            toGeoJSON: () => ({
+                type: 'Feature',
+                geometry: { type: 'Point', coordinates: [2, 1] },
+                properties: {}
+            })
+        } as unknown as L.Layer;
+        layer.getLayer().addLayer(marker as unknown as L.Layer);
+
+        const mapStore = useMapStore();
+        mapStore.setLayers([layer]);
+
+        const selectionStore = useSelectionStore();
+        selectionStore.activate();
+        selectionStore.setSelected([makeSelected('ModalFilters', marker)]);
+
+        expect(selectionStore.hasClipboard).toBe(false);
+        executeCopy();
+        expect(selectionStore.hasClipboard).toBe(true);
+    });
+
+    it('copies only the selected polyline vertices rather than the whole line', () => {
+        const layer = makePolylineLayer('MobilityLanes');
+        const v1 = { lat: 1, lng: 1 } as unknown as L.LatLng;
+        const v2 = { lat: 2, lng: 2 } as unknown as L.LatLng;
+        const v3 = { lat: 3, lng: 3 } as unknown as L.LatLng;
+        const polyline = {
+            getLatLngs: () => [v1, v2, v3],
+            toGeoJSON: () => ({
+                type: 'Feature',
+                geometry: {
+                    type: 'LineString',
+                    coordinates: [
+                        [1, 1],
+                        [2, 2],
+                        [3, 3]
+                    ]
+                },
+                properties: { historyId: 'line-1' }
+            })
+        } as unknown as L.Layer;
+        layer.getLayer().addLayer(polyline as unknown as L.Layer);
+
+        const mapStore = useMapStore();
+        mapStore.setLayers([layer]);
+
+        const selectionStore = useSelectionStore();
+        selectionStore.activate();
+        selectionStore.setSelected([
+            { layerId: 'MobilityLanes', historyId: 'line-1', latLng: v2, marker: polyline },
+            { layerId: 'MobilityLanes', historyId: 'line-1', latLng: v3, marker: polyline }
+        ]);
+
+        executeCopy();
+
+        expect(selectionStore.clipboard).toHaveLength(1);
+        expect(selectionStore.clipboard[0].feature.geometry).toEqual({
+            type: 'LineString',
+            coordinates: [
+                [2, 2],
+                [3, 3]
+            ]
+        });
+    });
+});
+
+// ---------------------------------------------------------------------------
+// executePaste
+// ---------------------------------------------------------------------------
+describe('executePaste', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        setActivePinia(pinia);
+        useMapStore(pinia).setLayers([]);
+        useSelectionStore(pinia).deactivate();
+        useSelectionStore(pinia).copyToClipboard([]);
+    });
+
+    it('does nothing when clipboard is empty', () => {
+        const layer = makePointLayer('ModalFilters');
+        const mapStore = useMapStore();
+        mapStore.setLayers([layer]);
+        const spy = vi.spyOn(mapStore, 'markLayerUpdated');
+
+        executePaste();
+
+        expect(layer.loadFromGeoJSON).not.toHaveBeenCalled();
+        expect(spy).not.toHaveBeenCalled();
+    });
+
+    it('calls loadFromGeoJSON on the target layer with the clipboard features', () => {
+        const layer = makePointLayer('ModalFilters');
+        const mapStore = useMapStore();
+        mapStore.setLayers([layer]);
+
+        const feature: GeoJSON.Feature = {
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [2, 1] },
+            properties: { historyId: 'original-id' }
+        };
+
+        const selectionStore = useSelectionStore();
+        selectionStore.copyToClipboard([{ layerId: 'ModalFilters', feature }]);
+
+        executePaste();
+
+        expect(layer.loadFromGeoJSON).toHaveBeenCalledOnce();
+        const call = (layer.loadFromGeoJSON as ReturnType<typeof vi.fn>).mock.calls[0][0] as any;
+        expect(call.type).toBe('FeatureCollection');
+        expect(call.features).toHaveLength(1);
+    });
+
+    it('assigns a new historyId to each pasted feature', () => {
+        const layer = makePointLayer('ModalFilters');
+        const mapStore = useMapStore();
+        mapStore.setLayers([layer]);
+
+        const feature: GeoJSON.Feature = {
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [2, 1] },
+            properties: { historyId: 'original-id' }
+        };
+
+        const selectionStore = useSelectionStore();
+        selectionStore.copyToClipboard([{ layerId: 'ModalFilters', feature }]);
+
+        executePaste();
+
+        const call = (layer.loadFromGeoJSON as ReturnType<typeof vi.fn>).mock.calls[0][0] as any;
+        const pastedHistoryId = call.features[0].properties?.historyId;
+        expect(pastedHistoryId).toBeDefined();
+        expect(pastedHistoryId).not.toBe('original-id');
+    });
+
+    it('calls markLayerUpdated once after pasting', () => {
+        const layer = makePointLayer('ModalFilters');
+        const mapStore = useMapStore();
+        mapStore.setLayers([layer]);
+        const spy = vi.spyOn(mapStore, 'markLayerUpdated');
+
+        const feature: GeoJSON.Feature = {
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [2, 1] },
+            properties: { historyId: 'h-1' }
+        };
+
+        useSelectionStore().copyToClipboard([{ layerId: 'ModalFilters', feature }]);
+
+        executePaste();
+
+        expect(spy).toHaveBeenCalledOnce();
+    });
+
+    it('skips clipboard entries whose layer is not in the store', () => {
+        const mapStore = useMapStore();
+        mapStore.setLayers([]);
+        const spy = vi.spyOn(mapStore, 'markLayerUpdated');
+
+        const feature: GeoJSON.Feature = {
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [2, 1] },
+            properties: {}
+        };
+
+        useSelectionStore().copyToClipboard([{ layerId: 'ModalFilters', feature }]);
+
+        // Should not throw, and markLayerUpdated is still called
+        expect(() => executePaste()).not.toThrow();
+        expect(spy).toHaveBeenCalledOnce();
+    });
+
+    it('groups multiple clipboard entries for the same layer into one loadFromGeoJSON call', () => {
+        const layer = makePointLayer('ModalFilters');
+        const mapStore = useMapStore();
+        mapStore.setLayers([layer]);
+
+        const mkFeature = (id: string): GeoJSON.Feature => ({
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [2, 1] },
+            properties: { historyId: id }
+        });
+
+        useSelectionStore().copyToClipboard([
+            { layerId: 'ModalFilters', feature: mkFeature('a') },
+            { layerId: 'ModalFilters', feature: mkFeature('b') }
+        ]);
+
+        executePaste();
+
+        expect(layer.loadFromGeoJSON).toHaveBeenCalledOnce();
+        const call = (layer.loadFromGeoJSON as ReturnType<typeof vi.fn>).mock.calls[0][0] as any;
+        expect(call.features).toHaveLength(2);
+    });
+
+    it('does not mutate the original clipboard feature', () => {
+        const layer = makePointLayer('ModalFilters');
+        const mapStore = useMapStore();
+        mapStore.setLayers([layer]);
+
+        const feature: GeoJSON.Feature = {
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [2, 1] },
+            properties: { historyId: 'original-id' }
+        };
+
+        useSelectionStore().copyToClipboard([{ layerId: 'ModalFilters', feature }]);
+        executePaste();
+
+        // The original clipboard entry must be unchanged
+        expect(useSelectionStore().clipboard[0].feature.properties?.historyId).toBe('original-id');
+    });
+
+    it('makes a hidden target layer visible when pasting into it', () => {
+        const layer = makePointLayer('ModalFilters');
+        const mapStore = useMapStore();
+        mapStore.setLayers([layer]);
+        mapStore.visibleLayerIds = new Set();
+
+        const feature: GeoJSON.Feature = {
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [2, 1] },
+            properties: { historyId: 'original-id' }
+        };
+
+        useSelectionStore().copyToClipboard([{ layerId: 'ModalFilters', feature }]);
+        executePaste();
+
+        expect(mapStore.visibleLayerIds.has('ModalFilters')).toBe(true);
     });
 });

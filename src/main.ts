@@ -13,7 +13,12 @@ import LayersToolbar from './components/controls/LayersToolbar.vue';
 import Legend from './components/controls/Legend.vue';
 import PanelContainer from './components/controls/PanelContainer.vue';
 import AreaSelectionPanel from './components/panels/AreaSelectionPanel.vue';
-import { setupAreaSelection, executeAreaDelete } from './composables/useAreaSelection';
+import {
+    setupAreaSelection,
+    executeAreaDelete,
+    executeCopy,
+    executePaste
+} from './composables/useAreaSelection';
 import { useSelectionStore } from './stores/selectionStore';
 
 // Mount the Vue overlay app (HelpPanel, ErrorPanel) immediately.
@@ -72,6 +77,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.addEventListener('keydown', async (e: KeyboardEvent) => {
         const selectionStore = useSelectionStore(pinia);
+        const activeTextSelection = window.getSelection?.()?.toString().trim() ?? '';
 
         // s — toggle area-selection mode
         if (
@@ -111,6 +117,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (e.key === 'z' && (e.ctrlKey || e.metaKey) && !e.shiftKey && !isTyping(e)) {
             e.preventDefault();
             await getMapManager().undo();
+            return;
+        }
+
+        // Ctrl+C / Cmd+C — copy the current area selection
+        if (
+            e.key === 'c' &&
+            (e.ctrlKey || e.metaKey) &&
+            !isTyping(e) &&
+            activeTextSelection.length === 0 &&
+            selectionStore.isActive &&
+            selectionStore.selected.length > 0
+        ) {
+            e.preventDefault();
+            executeCopy();
+            return;
+        }
+
+        // Ctrl+V / Cmd+V — paste the clipboard into the current map
+        if (
+            e.key === 'v' &&
+            (e.ctrlKey || e.metaKey) &&
+            !isTyping(e) &&
+            selectionStore.isActive &&
+            selectionStore.hasClipboard
+        ) {
+            e.preventDefault();
+            executePaste();
             return;
         }
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useSelectionStore } from '../../stores/selectionStore';
-import { executeAreaDelete } from '../../composables/useAreaSelection';
+import { executeAreaDelete, executeCopy, executePaste } from '../../composables/useAreaSelection';
 
 const selectionStore = useSelectionStore();
 
@@ -12,14 +12,33 @@ const featureCount = computed(() => new Set(selectionStore.selected.map((s) => s
 
 <template>
     <div
-        v-if="selectionStore.isActive && featureCount > 0"
+        v-if="selectionStore.isActive && (featureCount > 0 || selectionStore.hasClipboard)"
         class="rounded-2xl bg-white/[0.94] shadow-xl border border-white/60 flex items-center gap-2 px-3 py-2"
     >
-        <span class="text-sm text-gray-700 font-medium">
+        <span v-if="featureCount > 0" class="text-sm text-gray-700 font-medium">
             {{ featureCount }}
             {{ featureCount === 1 ? 'feature' : 'features' }} selected
         </span>
         <button
+            v-if="featureCount > 0"
+            type="button"
+            aria-label="Copy selected features"
+            class="rounded-lg bg-slate-50 hover:bg-green-100 border border-gray-200 text-gray-700 px-3 py-1.5 text-sm font-medium focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-1 focus-visible:outline-none [touch-action:manipulation]"
+            @click.stop="executeCopy"
+        >
+            Copy
+        </button>
+        <button
+            v-if="selectionStore.hasClipboard"
+            type="button"
+            aria-label="Paste copied features"
+            class="rounded-lg bg-slate-50 hover:bg-green-100 border border-gray-200 text-gray-700 px-3 py-1.5 text-sm font-medium focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-1 focus-visible:outline-none [touch-action:manipulation]"
+            @click.stop="executePaste"
+        >
+            Paste
+        </button>
+        <button
+            v-if="featureCount > 0"
             type="button"
             aria-label="Delete selected features"
             class="rounded-lg bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 text-sm font-medium focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-1 focus-visible:outline-none [touch-action:manipulation]"
