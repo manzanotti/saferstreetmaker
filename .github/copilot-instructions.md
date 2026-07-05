@@ -41,6 +41,7 @@
     - Use the Context7 MCP to query official documentation whenever external library or framework guidance is needed.
     - Check any locally installed skills before starting a task to see whether they provide relevant guidance or reusable patterns.
 - **Package manager**: Yarn (v3 - Berry)
+- **After completing code changes**: Run `yarn format` once before the rest of the validation steps so any Prettier fixes are applied before typechecking, building, or testing.
 - **Validation order before completion**:
     1. Run `yarn format` to auto-fix any Prettier formatting issues.
     2. Run `yarn typecheck` for TypeScript validation.

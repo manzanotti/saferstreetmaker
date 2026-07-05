@@ -166,8 +166,7 @@ export async function getLayerFeatureCount(
                         getRequest.onsuccess = () => {
                             const record = getRequest.result as StoredMapRecord | undefined;
                             const featureCollection = record?.payload?.l?.[id] as
-                                | { features?: unknown[] }
-                                | undefined;
+                                { features?: unknown[] } | undefined;
                             resolve(featureCollection?.features?.length ?? 0);
                         };
                         getRequest.onerror = () => reject(getRequest.error);

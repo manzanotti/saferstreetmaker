@@ -4,6 +4,7 @@
         "build": "prettier --check . --ignore-path .gitignore && vite build",
         "preview": "vite preview",
         "format": "prettier --write .",
+        "format:check": "prettier --check . --ignore-path .gitignore",
         "test": "playwright test --config=tests/playwright.config.ts",
         "test:unit": "vitest run --config=tests/vitest.config.ts",
         "test:unit:watch": "vitest --config=tests/vitest.config.ts",
