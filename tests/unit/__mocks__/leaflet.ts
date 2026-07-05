@@ -190,7 +190,9 @@ class Marker {
 }
 
 const DomEvent = {
-    stopPropagation: vi.fn()
+    stopPropagation: vi.fn(),
+    disableClickPropagation: vi.fn(),
+    disableScrollPropagation: vi.fn()
 };
 
 function geoJSON(data?: any, options?: any) {
@@ -275,6 +277,20 @@ class TileLayer {
     }
 }
 
+class Control {
+    options: any;
+    onAdd?: () => HTMLElement;
+    onRemove?: () => void;
+
+    constructor(options?: any) {
+        this.options = options ?? {};
+    }
+}
+
+const DomUtil = {
+    create: (_tagName: string) => document.createElement('div')
+};
+
 export {
     LatLng,
     GeoJSON,
@@ -288,6 +304,8 @@ export {
     Draw,
     Map,
     TileLayer,
+    Control,
+    DomUtil,
     Point,
     popup
 };

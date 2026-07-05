@@ -138,19 +138,20 @@ export class UndoJournal {
             await this.db.historyStates.put({ mapTitle, currentSequence: newSequence });
 
             // Prune oldest entries if the history cap is exceeded.
-            // Sort by sequence ascending (via compound index) so we always delete
-            // the logically oldest entries, not just those with the lowest primary key.
-            const allEntries = await this.db.historyEntries
+            // Use count() first so we do not materialize the full history on
+            // every checkpoint write; only fetch the overflow entries that need
+            // to be deleted.
+            const entryCount = await this.db.historyEntries
                 .where('[mapTitle+sequence]')
                 .between([mapTitle, -Infinity], [mapTitle, Infinity])
-                .toArray();
-            if (allEntries.length > UndoJournal.MAX_HISTORY) {
-                const overflow = allEntries.length - UndoJournal.MAX_HISTORY;
-                // allEntries is already sorted by sequence ascending from the index.
-                const idsToRemove = allEntries
-                    .slice(0, overflow)
-                    .map((e) => e.id)
-                    .filter((id): id is number => id !== undefined);
+                .count();
+            if (entryCount > UndoJournal.MAX_HISTORY) {
+                const overflow = entryCount - UndoJournal.MAX_HISTORY;
+                const idsToRemove = (await this.db.historyEntries
+                    .where('[mapTitle+sequence]')
+                    .between([mapTitle, -Infinity], [mapTitle, Infinity])
+                    .limit(overflow)
+                    .primaryKeys()) as number[];
                 if (idsToRemove.length > 0) {
                     await this.db.historyEntries.bulkDelete(idsToRemove);
                 }

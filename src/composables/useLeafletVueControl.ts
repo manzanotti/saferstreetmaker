@@ -16,13 +16,90 @@ export function makeLeafletVueControl(
     position: L.ControlPosition = 'topleft'
 ): L.Control {
     const control = new L.Control({ position });
+    let container: HTMLElement | null = null;
+    let pointerDownHandler: ((event: PointerEvent) => void) | null = null;
+    let controlDblClickHandler: ((event: MouseEvent) => void) | null = null;
+    let documentDblClickHandler: ((event: MouseEvent) => void) | null = null;
+    let clearGuardTimer: ReturnType<typeof setTimeout> | null = null;
 
     control.onAdd = (): HTMLElement => {
-        const container = L.DomUtil.create('div');
+        container = L.DomUtil.create('div');
         L.DomEvent.disableClickPropagation(container);
         L.DomEvent.disableScrollPropagation(container);
+
+        let swallowNextDblClick = false;
+
+        const disarmGuard = () => {
+            swallowNextDblClick = false;
+            if (clearGuardTimer !== null) {
+                clearTimeout(clearGuardTimer);
+                clearGuardTimer = null;
+            }
+        };
+
+        const armGuard = () => {
+            swallowNextDblClick = true;
+            if (clearGuardTimer !== null) {
+                clearTimeout(clearGuardTimer);
+            }
+            clearGuardTimer = setTimeout(() => {
+                swallowNextDblClick = false;
+                clearGuardTimer = null;
+            }, 350);
+        };
+
+        pointerDownHandler = () => {
+            armGuard();
+        };
+        container.addEventListener('pointerdown', pointerDownHandler, true);
+
+        controlDblClickHandler = (event) => {
+            disarmGuard();
+            event.preventDefault();
+            event.stopPropagation();
+        };
+        container.addEventListener('dblclick', controlDblClickHandler);
+
+        // If the first click closes the control/panel, the second click in a
+        // double-click can land on the map behind it. Capture that next map
+        // dblclick once, then immediately release the guard.
+        documentDblClickHandler = (event) => {
+            if (!swallowNextDblClick) {
+                return;
+            }
+
+            disarmGuard();
+            if (!(event.target instanceof Node) || !container?.contains(event.target)) {
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+            }
+        };
+        document.addEventListener('dblclick', documentDblClickHandler, true);
+
         createApp(Component).use(pinia).mount(container);
         return container;
+    };
+
+    control.onRemove = () => {
+        if (container && pointerDownHandler) {
+            container.removeEventListener('pointerdown', pointerDownHandler, true);
+        }
+        if (container && controlDblClickHandler) {
+            container.removeEventListener('dblclick', controlDblClickHandler);
+        }
+        if (documentDblClickHandler) {
+            document.removeEventListener('dblclick', documentDblClickHandler, true);
+        }
+        if (clearGuardTimer !== null) {
+            clearTimeout(clearGuardTimer);
+            clearGuardTimer = null;
+        }
+
+        container = null;
+        pointerDownHandler = null;
+        controlDblClickHandler = null;
+        documentDblClickHandler = null;
     };
 
     return control;

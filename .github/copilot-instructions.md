@@ -52,6 +52,7 @@
 
 ## Testing Policy
 
+- **Always add tests for new work.** Every new feature and every bug fix must be accompanied by appropriate tests. Use Vitest unit tests for logic, composables, stores, and helpers; use Playwright E2E tests for user-visible behaviour (clicks, keyboard shortcuts, map interactions, persistence). If both apply, add both.
 - **Never modify production source code solely to support tests.** If a test needs access to internal state, use existing public APIs, DOM structure, or framework hooks (e.g. accessing Pinia stores via the mounted Vue app's `$pinia` on `document.getElementById('app').__vue_app__.config.globalProperties.$pinia`). Test helpers belong in test files, not in `src/`.
 
 ## Coding Style

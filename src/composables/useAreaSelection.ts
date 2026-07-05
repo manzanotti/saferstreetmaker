@@ -20,7 +20,11 @@
 import * as L from 'leaflet';
 import { watch } from 'vue';
 import { useMapStore, type LayerMutationEvent } from '../stores/mapStore';
-import { useSelectionStore, type SelectedMarker } from '../stores/selectionStore';
+import {
+    useSelectionStore,
+    type SelectedMarker,
+    type ClipboardEntry
+} from '../stores/selectionStore';
 import { pinia } from '../stores/index';
 
 const RECT_STYLE: L.PathOptions = {
@@ -237,6 +241,9 @@ export function setupAreaSelection(map: L.Map): void {
     // ── Rubber-band drag ───────────────────────────────────────────────────
     function onMouseDown(e: L.LeafletMouseEvent) {
         L.DomEvent.stopPropagation(e.originalEvent);
+        // Prevent the browser from starting a text-selection drag, which
+        // would highlight legend text and other map-control content.
+        e.originalEvent.preventDefault();
         origin = e.latlng;
         clearHighlights();
         selectionStore.clear();
@@ -276,6 +283,10 @@ export function setupAreaSelection(map: L.Map): void {
     function findMarkersInBounds(bounds: L.LatLngBounds): SelectedMarker[] {
         const found: SelectedMarker[] = [];
         for (const layer of mapStore.layers) {
+            // Skip layers that have been hidden via the legend.
+            if (!mapStore.visibleLayerIds.has(layer.id)) {
+                continue;
+            }
             layer.getLayer().eachLayer((m) => {
                 const pointLatLng = (m as any).getLatLng?.() as L.LatLng | undefined;
                 if (pointLatLng) {
@@ -514,4 +525,132 @@ export function executeAreaDelete(): void {
     }
 
     selectionStore.deactivate();
+}
+
+// ── Copy ───────────────────────────────────────────────────────────
+// Exported so AreaSelectionPanel and the keyboard handler can call it.
+export function executeCopy(): void {
+    const selectionStore = useSelectionStore(pinia);
+    const mapStore = useMapStore(pinia);
+
+    const selected = selectionStore.selected;
+    if (selected.length === 0) {
+        return;
+    }
+
+    // Capture the selected geometry for every unique selected marker.
+    const selectedLatLngsByMarker = new Map<object, Set<L.LatLng>>();
+    for (const { marker, latLng } of selected) {
+        const key = marker as object;
+        let set = selectedLatLngsByMarker.get(key);
+        if (!set) {
+            set = new Set<L.LatLng>();
+            selectedLatLngsByMarker.set(key, set);
+        }
+        set.add(latLng);
+    }
+
+    const seen = new Set<object>();
+    const entries: ClipboardEntry[] = [];
+
+    for (const { layerId, marker } of selected) {
+        if (seen.has(marker as object)) {
+            continue;
+        }
+        seen.add(marker as object);
+
+        const layerDef = mapStore.layers.find((l) => l.id === layerId);
+        if (!layerDef) {
+            continue;
+        }
+
+        const feature = (marker as any).toGeoJSON?.() as GeoJSON.Feature | null | undefined;
+        if (!feature) {
+            continue;
+        }
+
+        if (layerDef.kind === 'polyline') {
+            const selectedRefs =
+                selectedLatLngsByMarker.get(marker as object) ?? new Set<L.LatLng>();
+            const currentLatLngs = getPolylineLatLngs(marker);
+            if (currentLatLngs.length === 0) {
+                continue;
+            }
+
+            const selectedCoordinates = currentLatLngs
+                .filter((latLng) => selectedRefs.has(latLng))
+                .map((latLng) => [latLng.lng, latLng.lat]);
+
+            // A copied polyline subset must still be a valid line.
+            if (selectedCoordinates.length < 2) {
+                continue;
+            }
+
+            const copiedFeature = JSON.parse(JSON.stringify(feature)) as GeoJSON.Feature;
+            if (copiedFeature.geometry?.type === 'LineString') {
+                (copiedFeature.geometry as GeoJSON.LineString).coordinates = selectedCoordinates;
+            }
+            entries.push({ layerId, feature: copiedFeature });
+            continue;
+        }
+
+        entries.push({ layerId, feature });
+    }
+
+    selectionStore.copyToClipboard(entries);
+}
+
+// ── Paste ──────────────────────────────────────────────────────────
+// Exported so AreaSelectionPanel and the keyboard handler can call it.
+export function executePaste(): void {
+    const selectionStore = useSelectionStore(pinia);
+    const mapStore = useMapStore(pinia);
+
+    const { clipboard } = selectionStore;
+    if (clipboard.length === 0) {
+        return;
+    }
+
+    // Group clipboard entries by layer so we call loadFromGeoJSON once per layer.
+    const byLayer = new Map<string, GeoJSON.Feature[]>();
+    for (const { layerId, feature } of clipboard) {
+        if (!byLayer.has(layerId)) {
+            byLayer.set(layerId, []);
+        }
+        byLayer.get(layerId)!.push(feature);
+    }
+
+    const nextVisibleLayerIds = new Set(mapStore.visibleLayerIds);
+
+    for (const [layerId, features] of byLayer) {
+        const layerDef = mapStore.layers.find((l) => l.id === layerId);
+        if (!layerDef) {
+            continue;
+        }
+
+        // Pasting into a hidden layer should make that layer visible so the
+        // user gets immediate feedback that the paste succeeded.
+        nextVisibleLayerIds.add(layerId);
+
+        // Deep-clone each feature and assign a fresh historyId so the pasted
+        // copies are independent records in the undo journal.
+        const newFeatures = features.map((f) => {
+            const cloned = JSON.parse(JSON.stringify(f)) as GeoJSON.Feature;
+            cloned.properties = cloned.properties ?? {};
+            (cloned.properties as Record<string, unknown>).historyId =
+                typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+                    ? crypto.randomUUID()
+                    : `paste-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+            return cloned;
+        });
+
+        // loadFromGeoJSON adds features to the layer without clearing it.
+        layerDef.loadFromGeoJSON({ type: 'FeatureCollection', features: newFeatures } as any);
+    }
+
+    mapStore.visibleLayerIds = nextVisibleLayerIds;
+
+    // A single markLayerUpdated call with no structured mutation lets snapshot-
+    // based undo/redo restore all affected layers correctly.
+    mapStore.markLayerUpdated();
 }
