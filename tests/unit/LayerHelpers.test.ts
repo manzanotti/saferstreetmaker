@@ -5,8 +5,13 @@ vi.mock('leaflet', () => import('./__mocks__/leaflet'));
 import {
     setMapCursor,
     removeMapCursor,
+    getPointSelectCursor,
+    isPointFeatureElement,
+    setMouseMarkerCursor,
+    buildHistoryId,
     buildToolbarButton,
-    buildLegendEntry
+    buildLegendEntry,
+    buildDeletePopup
 } from '../../src/composables/layers/layerUtils';
 
 function makeMapEl() {
@@ -21,8 +26,16 @@ function getMapEl() {
     return document.getElementById('map')!;
 }
 
+function makeMouseMarkerEl() {
+    const el = document.createElement('div');
+    el.classList.add('leaflet-mouse-marker');
+    document.body.appendChild(el);
+    return el;
+}
+
 beforeEach(() => {
     document.getElementById('map')?.remove();
+    document.querySelector('.leaflet-mouse-marker')?.remove();
     vi.clearAllMocks();
 });
 
@@ -51,6 +64,79 @@ describe('removeMapCursor', () => {
 
     it('is a no-op when the map element does not exist', () => {
         expect(() => removeMapCursor('modal-filter')).not.toThrow();
+    });
+});
+
+describe('getPointSelectCursor', () => {
+    it('returns the configured map css variable when present', () => {
+        const el = makeMapEl();
+        el.style.setProperty('--point-select-cursor', 'copy');
+
+        expect(getPointSelectCursor()).toBe('copy');
+    });
+
+    it('falls back to pointer when the variable is missing', () => {
+        makeMapEl();
+
+        expect(getPointSelectCursor()).toBe('pointer');
+    });
+});
+
+describe('isPointFeatureElement', () => {
+    it('returns true for known point feature classes', () => {
+        const el = document.createElement('div');
+        el.classList.add('traffic-lights-icon');
+
+        expect(isPointFeatureElement(el)).toBe(true);
+    });
+
+    it('returns false for unrelated elements', () => {
+        const el = document.createElement('div');
+        el.classList.add('leaflet-interactive');
+
+        expect(isPointFeatureElement(el)).toBe(false);
+    });
+});
+
+describe('setMouseMarkerCursor', () => {
+    it('sets the cursor on the leaflet mouse marker', () => {
+        const marker = makeMouseMarkerEl();
+
+        setMouseMarkerCursor('crosshair');
+
+        expect(marker.style.cursor).toBe('crosshair');
+    });
+
+    it('removes the cursor when null is passed', () => {
+        const marker = makeMouseMarkerEl();
+        marker.style.cursor = 'pointer';
+
+        setMouseMarkerCursor(null);
+
+        expect(marker.style.cursor).toBe('');
+    });
+
+    it('is a no-op when the mouse marker element does not exist', () => {
+        expect(() => setMouseMarkerCursor('grab')).not.toThrow();
+    });
+});
+
+describe('buildHistoryId', () => {
+    it('includes the requested prefix when crypto.randomUUID is unavailable', () => {
+        const originalRandomUuid = crypto.randomUUID;
+        Object.defineProperty(crypto, 'randomUUID', {
+            value: undefined,
+            configurable: true
+        });
+
+        try {
+            expect(buildHistoryId('point')).toMatch(/^point-/);
+        } finally {
+            Object.defineProperty(crypto, 'randomUUID', {
+                value: originalRandomUuid,
+                configurable: true
+            });
+        }
     });
 });
 
@@ -159,5 +245,50 @@ describe('buildLegendEntry', () => {
         });
         li.click();
         expect(state.visible).toBe(false);
+    });
+});
+
+describe('buildDeletePopup', () => {
+    function getPopupContent(onDelete = vi.fn(), onCopy?: () => void) {
+        const map = { closePopup: vi.fn() } as any;
+        const popup = buildDeletePopup(map, { minWidth: 30 }, onDelete, onCopy) as any;
+        const content = popup.setContent.mock.calls[0][0] as HTMLElement;
+        return { map, popup, content };
+    }
+
+    it('renders accessible copy and delete controls when copy is enabled', () => {
+        const { content } = getPopupContent(vi.fn(), vi.fn());
+        const items = content.querySelectorAll('li');
+        const controls = content.querySelectorAll('button');
+
+        expect(items).toHaveLength(2);
+        expect(controls).toHaveLength(2);
+        expect(Array.from(content.children).every((child) => child.tagName === 'LI')).toBe(true);
+        expect(controls[0].getAttribute('type')).toBe('button');
+        expect(controls[0].getAttribute('aria-label')).toBe('Copy selected feature');
+        expect(controls[1].getAttribute('type')).toBe('button');
+        expect(controls[1].getAttribute('aria-label')).toBe('Delete selected feature');
+    });
+
+    it('activates copy on click and closes the popup', () => {
+        const onCopy = vi.fn();
+        const { map, content } = getPopupContent(vi.fn(), onCopy);
+        const copyControl = content.querySelector('.copy-button') as HTMLElement;
+
+        copyControl.click();
+
+        expect(onCopy).toHaveBeenCalledOnce();
+        expect(map.closePopup).toHaveBeenCalledOnce();
+    });
+
+    it('activates delete on click and closes the popup', () => {
+        const onDelete = vi.fn();
+        const { map, content } = getPopupContent(onDelete);
+        const deleteControl = content.querySelector('.delete-button') as HTMLElement;
+
+        deleteControl.click();
+
+        expect(onDelete).toHaveBeenCalledOnce();
+        expect(map.closePopup).toHaveBeenCalledOnce();
     });
 });

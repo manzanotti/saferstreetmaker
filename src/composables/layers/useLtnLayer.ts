@@ -2,9 +2,21 @@ import * as L from 'leaflet';
 import { watch } from 'vue';
 import { useMapStore } from '../../stores/mapStore';
 import { pinia } from '../../stores/index';
-import { setMapCursor, removeMapCursor, buildToolbarButton, buildLegendEntry } from './layerUtils';
+import {
+    setMapCursor,
+    removeMapCursor,
+    buildToolbarButton,
+    buildLegendEntry,
+    buildPopupActionControl,
+    getPointSelectCursor,
+    isPointFeatureElement,
+    setMouseMarkerCursor,
+    buildHistoryId
+} from './layerUtils';
 import type { IMapLayer } from './IMapLayer';
 import { type EditablePolylineLayer } from './usePolylineLayer';
+import { selectFeature, executeCopy } from '../useAreaSelection';
+import { useSelectionStore } from '../../stores/selectionStore';
 
 const COLOUR = '#cc00cc';
 const BUTTON_ID = 'ltn';
@@ -21,22 +33,6 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
     let pendingCursorEvent: L.LeafletMouseEvent | null = null;
     let cursorSyncFrameId: number | null = null;
     let lastCursorStyledElement: HTMLElement | SVGElement | null = null;
-
-    const pointFeatureClasses = [
-        'modal-filter-marker',
-        'bus-gate-icon',
-        'traffic-lights-icon',
-        'pedestrian-lights-icon',
-        'zebra-crossing-icon'
-    ];
-
-    const createHistoryId = (): string => {
-        if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-            return crypto.randomUUID();
-        }
-
-        return `ltn-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-    };
 
     const getPolygonHistoryFeature = (polygon: any) => {
         const feature = polygon.toGeoJSON() as any;
@@ -207,19 +203,6 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         }
     };
 
-    const setMouseMarkerCursor = (cursor: string | null): void => {
-        const marker = document.querySelector('.leaflet-mouse-marker') as HTMLElement | null;
-        if (!marker) {
-            return;
-        }
-
-        if (cursor === null) {
-            marker.style.removeProperty('cursor');
-        } else {
-            marker.style.cursor = cursor;
-        }
-    };
-
     const setFeatureCursor = (element: Element | null, cursor: string | null): void => {
         if (
             lastCursorStyledElement &&
@@ -240,19 +223,6 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         } else {
             lastCursorStyledElement = null;
         }
-    };
-
-    const getPointSelectCursor = (): string => {
-        const mapElement = document.getElementById('map');
-        const cursor = mapElement
-            ? getComputedStyle(mapElement).getPropertyValue('--point-select-cursor').trim()
-            : '';
-
-        return cursor === '' ? 'pointer' : cursor;
-    };
-
-    const isPointFeatureElement = (element: Element): boolean => {
-        return pointFeatureClasses.some((className) => element.classList.contains(className));
     };
 
     const toLocalSvgPoint = (path: SVGGeometryElement, clientX: number, clientY: number) => {
@@ -429,7 +399,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         points: L.LatLng[],
         label: string,
         color: string,
-        historyId = createHistoryId()
+        historyId = buildHistoryId('ltn')
     ) => {
         const polygon = new L.Polygon(points, {
             color: color || COLOUR,
@@ -491,6 +461,26 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
 
             L.DomEvent.stopPropagation(e.originalEvent ?? e);
 
+            const isModifierClick =
+                (e.originalEvent?.shiftKey ||
+                    e.originalEvent?.ctrlKey ||
+                    e.originalEvent?.metaKey) ??
+                false;
+
+            if (isModifierClick) {
+                // Additive selection: merge this polygon into the current
+                // selection without opening the popup or entering edit mode.
+                selectFeature(polygon as unknown as L.Layer, 'LtnCells', true);
+                return;
+            }
+
+            // Non-modifier click: remember and highlight this polygon so that
+            // a subsequent Shift/Ctrl-click can merge with it additively.
+            const selectionStore = useSelectionStore(pinia);
+            if (!selectionStore.isActive || selectionStore.selected.length === 0) {
+                selectFeature(polygon as unknown as L.Layer, 'LtnCells', false, true);
+            }
+
             // Disable editing on all other polygons in this layer first.
             geoJsonLayer.eachLayer((l: any) => {
                 if (l !== e.target) {
@@ -516,7 +506,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         return polygon;
     };
 
-    // ── Popup with label editor + delete button ──────────────────────────────
+    // ── Popup with label editor + copy + delete buttons ──────────────────────
     const createLtnPopup = (polygon: any, tooltip: any, initialLabel: string): L.Popup => {
         const popup = L.popup({ minWidth: 30, keepInView: true });
         const controlList = document.createElement('ul');
@@ -545,19 +535,29 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         labelControl.appendChild(labelEl);
         controlList.appendChild(labelControl);
 
-        const deleteControl = document.createElement('li');
-        deleteControl.classList.add('delete-button');
-        deleteControl.addEventListener('click', () => {
-            geoJsonLayer.removeLayer(polygon);
-            mapStore.markLayerUpdated({
-                kind: 'polygon-delete',
-                layerId: 'LtnCells',
-                payload: {
-                    before: (polygon as any)['historyFeature'] ?? getPolygonHistoryFeature(polygon)
-                }
-            });
+        const copyControl = buildPopupActionControl('copy-button', 'Copy selected feature', () => {
             map.closePopup(popup);
+            selectFeature(polygon as unknown as L.Layer, 'LtnCells', false);
+            executeCopy();
         });
+        controlList.appendChild(copyControl);
+
+        const deleteControl = buildPopupActionControl(
+            'delete-button',
+            'Delete selected feature',
+            () => {
+                geoJsonLayer.removeLayer(polygon);
+                mapStore.markLayerUpdated({
+                    kind: 'polygon-delete',
+                    layerId: 'LtnCells',
+                    payload: {
+                        before:
+                            (polygon as any)['historyFeature'] ?? getPolygonHistoryFeature(polygon)
+                    }
+                });
+                map.closePopup(popup);
+            }
+        );
         controlList.appendChild(deleteControl);
 
         popup.setContent(controlList);
@@ -701,7 +701,12 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                 const polygonCoords = feature.geometry.coordinates[0];
                 polygonCoords.forEach((c: number[]) => points.push(new L.LatLng(c[1], c[0])));
                 const { label, color, historyId } = feature.properties ?? {};
-                addLtnCell(points, label ?? '1', color ?? COLOUR, historyId ?? createHistoryId());
+                addLtnCell(
+                    points,
+                    label ?? '1',
+                    color ?? COLOUR,
+                    historyId ?? buildHistoryId('ltn')
+                );
             });
         },
 

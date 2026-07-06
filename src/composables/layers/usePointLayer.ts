@@ -8,7 +8,13 @@ import * as L from 'leaflet';
 import { watch } from 'vue';
 import { useMapStore } from '../../stores/mapStore';
 import { pinia } from '../../stores/index';
-import { setMapCursor, removeMapCursor, buildToolbarButton, buildLegendEntry } from './layerUtils';
+import {
+    setMapCursor,
+    removeMapCursor,
+    buildToolbarButton,
+    buildLegendEntry,
+    buildHistoryId
+} from './layerUtils';
 import type { IMapLayer } from './IMapLayer';
 
 export interface PointLayerConfig {
@@ -36,14 +42,6 @@ export function getPointEventLatLng(event: {
     return event.target?.getLatLng?.() ?? event.latlng ?? null;
 }
 
-function createPointHistoryId(): string {
-    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-        return crypto.randomUUID();
-    }
-
-    return `point-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
 export function createPointLayer(config: PointLayerConfig, map: L.Map): IMapLayer {
     const mapStore = useMapStore(pinia);
     const geoJsonLayer = new L.GeoJSON();
@@ -52,7 +50,7 @@ export function createPointLayer(config: PointLayerConfig, map: L.Map): IMapLaye
 
     const addMarker = (latlng: L.LatLng, historyId?: string) => {
         const marker = config.buildMarker(latlng, geoJsonLayer, historyId);
-        const nextHistoryId = historyId ?? createPointHistoryId();
+        const nextHistoryId = historyId ?? buildHistoryId('point');
         const feature = (marker as any).toGeoJSON?.() as any;
 
         if (feature) {

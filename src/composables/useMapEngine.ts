@@ -43,7 +43,10 @@ export function setupMapEngine(): MapEngineResult {
     map.on('keyup', (e: L.LeafletKeyboardEvent) => {
         if (e.originalEvent.key === 'Escape') {
             map.closePopup();
-            mapStore.setActiveLayer(null);
+            // setDrawLayer clears both the toolbar button visual (drawLayerId) and
+            // the internal active-layer state (activeLayerId, which triggers layer
+            // watches to disable drawing tools and editing handles).
+            mapStore.setDrawLayer(null);
         }
     });
 

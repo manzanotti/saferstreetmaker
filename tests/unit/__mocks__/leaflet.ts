@@ -199,6 +199,28 @@ function geoJSON(data?: any, options?: any) {
     return new GeoJSON(data, options);
 }
 
+function layerGroup() {
+    return {
+        addTo(_map: any) {
+            return this;
+        },
+        clearLayers() {
+            return this;
+        },
+        remove() {
+            return this;
+        }
+    };
+}
+
+function circleMarker(_latlng: LatLng, _options?: any) {
+    return {
+        addTo(_layer: any) {
+            return this;
+        }
+    };
+}
+
 class Point {
     constructor(
         public x: number,
@@ -295,6 +317,8 @@ export {
     LatLng,
     GeoJSON,
     geoJSON,
+    layerGroup,
+    circleMarker,
     CircleMarker,
     Marker,
     Polyline,

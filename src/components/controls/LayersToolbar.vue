@@ -50,7 +50,7 @@ const layerItems = computed<ToolbarItem[]>(() => {
 
         const lastId = lastSelectedByGroup.value[btn.groupName];
         const active =
-            groupBtns.find((b) => b.id === mapStore.activeLayerId) ??
+            groupBtns.find((b) => b.id === mapStore.drawLayerId) ??
             groupBtns.find((b) => b.id === lastId) ??
             anchor;
         const sub = groupBtns.filter((b) => b.id !== active.id);
@@ -86,8 +86,8 @@ function onLayerButtonClick(btn: ToolbarButton) {
 
     btn.action(new Event('click'), map);
 
-    const newId = mapStore.activeLayerId === btn.id ? null : btn.id;
-    mapStore.setActiveLayer(newId);
+    const newId = mapStore.drawLayerId === btn.id ? null : btn.id;
+    mapStore.setDrawLayer(newId);
 
     // When a layer tool is toggled off, return focus to the document body so
     // keyboard shortcuts (e.g. 's') remain immediately usable without the
@@ -218,14 +218,14 @@ onUnmounted(() => {
                     "
                     type="button"
                     :aria-label="item.button.tooltip"
-                    :aria-pressed="mapStore.activeLayerId === item.button.id"
+                    :aria-pressed="mapStore.drawLayerId === item.button.id"
                     :style="{ transform: `scale(${buttonScales[item.button.id] ?? 1})` }"
                     :class="[
                         'w-12 h-12 rounded-xl flex items-center justify-center',
                         'transition-transform duration-150 ease-out origin-left',
                         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-1',
                         '[touch-action:manipulation] cursor-pointer select-none',
-                        mapStore.activeLayerId === item.button.id
+                        mapStore.drawLayerId === item.button.id
                             ? 'bg-green-700 shadow-inner'
                             : 'bg-slate-50 hover:bg-green-100'
                     ]"
@@ -239,16 +239,14 @@ onUnmounted(() => {
                         alt=""
                         aria-hidden="true"
                         class="w-7 h-7 object-contain pointer-events-none"
-                        :class="{ invert: mapStore.activeLayerId === item.button.id }"
+                        :class="{ invert: mapStore.drawLayerId === item.button.id }"
                     />
                     <span
                         v-else-if="item.button.text"
                         aria-hidden="true"
                         class="text-xl font-bold pointer-events-none leading-none"
                         :class="
-                            mapStore.activeLayerId === item.button.id
-                                ? 'text-white'
-                                : 'text-gray-700'
+                            mapStore.drawLayerId === item.button.id ? 'text-white' : 'text-gray-700'
                         "
                         >{{ item.button.text }}</span
                     >
@@ -272,7 +270,7 @@ onUnmounted(() => {
                     "
                     type="button"
                     :aria-label="item.parent.tooltip"
-                    :aria-pressed="mapStore.activeLayerId === item.parent.id"
+                    :aria-pressed="mapStore.drawLayerId === item.parent.id"
                     :aria-expanded="openSubmenus[item.groupName] ?? false"
                     :style="{ transform: `scale(${buttonScales[item.parent.id] ?? 1})` }"
                     :class="[
@@ -280,7 +278,7 @@ onUnmounted(() => {
                         'transition-transform duration-150 ease-out origin-left',
                         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-1',
                         '[touch-action:manipulation] cursor-pointer select-none',
-                        mapStore.activeLayerId === item.parent.id
+                        mapStore.drawLayerId === item.parent.id
                             ? 'bg-green-700 shadow-inner'
                             : 'bg-slate-50 hover:bg-green-100'
                     ]"
@@ -296,16 +294,14 @@ onUnmounted(() => {
                         alt=""
                         aria-hidden="true"
                         class="w-7 h-7 object-contain pointer-events-none"
-                        :class="{ invert: mapStore.activeLayerId === item.parent.id }"
+                        :class="{ invert: mapStore.drawLayerId === item.parent.id }"
                     />
                     <span
                         v-else-if="item.parent.text"
                         aria-hidden="true"
                         class="text-xl font-bold pointer-events-none leading-none"
                         :class="
-                            mapStore.activeLayerId === item.parent.id
-                                ? 'text-white'
-                                : 'text-gray-700'
+                            mapStore.drawLayerId === item.parent.id ? 'text-white' : 'text-gray-700'
                         "
                         >{{ item.parent.text }}</span
                     >
@@ -313,7 +309,7 @@ onUnmounted(() => {
                     <span
                         class="absolute top-0.5 right-0.5 text-base leading-none pointer-events-none font-bold"
                         :class="
-                            mapStore.activeLayerId === item.parent.id
+                            mapStore.drawLayerId === item.parent.id
                                 ? 'text-white/80'
                                 : 'text-gray-500'
                         "
@@ -343,13 +339,13 @@ onUnmounted(() => {
                                 :id="`${subBtn.id}-button`"
                                 type="button"
                                 :aria-label="subBtn.tooltip"
-                                :aria-pressed="mapStore.activeLayerId === subBtn.id"
+                                :aria-pressed="mapStore.drawLayerId === subBtn.id"
                                 :class="[
                                     'w-12 h-12 rounded-xl flex items-center justify-center',
                                     'transition-transform duration-150 ease-out',
                                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-1',
                                     '[touch-action:manipulation] cursor-pointer select-none',
-                                    mapStore.activeLayerId === subBtn.id
+                                    mapStore.drawLayerId === subBtn.id
                                         ? 'bg-green-700 shadow-inner'
                                         : 'bg-slate-50 hover:bg-green-100'
                                 ]"
@@ -363,14 +359,14 @@ onUnmounted(() => {
                                     alt=""
                                     aria-hidden="true"
                                     class="w-7 h-7 object-contain pointer-events-none"
-                                    :class="{ invert: mapStore.activeLayerId === subBtn.id }"
+                                    :class="{ invert: mapStore.drawLayerId === subBtn.id }"
                                 />
                                 <span
                                     v-else-if="subBtn.text"
                                     aria-hidden="true"
                                     class="text-xl font-bold pointer-events-none leading-none"
                                     :class="
-                                        mapStore.activeLayerId === subBtn.id
+                                        mapStore.drawLayerId === subBtn.id
                                             ? 'text-white'
                                             : 'text-gray-700'
                                     "

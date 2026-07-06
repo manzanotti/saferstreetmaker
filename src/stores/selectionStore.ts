@@ -16,6 +16,10 @@ export interface ClipboardEntry {
     feature: GeoJSON.Feature;
 }
 
+function selectedMarkerLatLngKey(marker: SelectedMarker): string {
+    return `${marker.latLng.lat}:${marker.latLng.lng}`;
+}
+
 export const useSelectionStore = defineStore('selection', () => {
     const isActive = ref(false);
     // shallowRef: Leaflet Layer objects must not be wrapped in Vue Proxy.
@@ -40,6 +44,52 @@ export const useSelectionStore = defineStore('selection', () => {
         selected.value = [];
     }
 
+    /**
+     * Append entries to the current selection, de-duping at marker + LatLng
+     * granularity so additive polyline selection can extend an already-
+     * selected feature vertex-by-vertex without duplicating rows.
+     *
+     * Returns only the entries that were actually appended. Callers can use
+     * that subset for additive highlight updates.
+     */
+    function mergeSelected(markers: SelectedMarker[]): SelectedMarker[] {
+        const selectedLatLngsByMarker = new Map<object, Set<string>>();
+
+        for (const marker of selected.value) {
+            const markerKey = marker.marker as object;
+            let latLngs = selectedLatLngsByMarker.get(markerKey);
+            if (!latLngs) {
+                latLngs = new Set<string>();
+                selectedLatLngsByMarker.set(markerKey, latLngs);
+            }
+            latLngs.add(selectedMarkerLatLngKey(marker));
+        }
+
+        const toAdd: SelectedMarker[] = [];
+
+        for (const marker of markers) {
+            const markerKey = marker.marker as object;
+            const latLngKey = selectedMarkerLatLngKey(marker);
+            let latLngs = selectedLatLngsByMarker.get(markerKey);
+
+            if (!latLngs) {
+                latLngs = new Set<string>();
+                selectedLatLngsByMarker.set(markerKey, latLngs);
+            }
+
+            if (!latLngs.has(latLngKey)) {
+                toAdd.push(marker);
+                latLngs.add(latLngKey);
+            }
+        }
+
+        if (toAdd.length > 0) {
+            selected.value = [...selected.value, ...toAdd];
+        }
+
+        return toAdd;
+    }
+
     function copyToClipboard(entries: ClipboardEntry[]) {
         clipboard.value = entries;
     }
@@ -53,6 +103,7 @@ export const useSelectionStore = defineStore('selection', () => {
         deactivate,
         setSelected,
         clear,
+        mergeSelected,
         copyToClipboard
     };
 });

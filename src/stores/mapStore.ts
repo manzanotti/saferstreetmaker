@@ -30,6 +30,18 @@ export const useMapStore = defineStore('map', () => {
     /** ID of the currently active (drawing) layer, or null when none selected. */
     const activeLayerId = ref<string | null>(null);
 
+    /**
+     * ID of the layer the user has explicitly activated via the toolbar for
+     * drawing new features.  This is the ONLY value that drives the toolbar
+     * button aria-pressed state.
+     *
+     * It differs from activeLayerId: selectForEdit() sets activeLayerId so the
+     * layer can manage its own cursor / event-handler state, but does NOT set
+     * drawLayerId — clicking an existing feature to edit it should not put the
+     * toolbar button into "draw mode".
+     */
+    const drawLayerId = ref<string | null>(null);
+
     /** IDs of layers currently shown on the map.
      *
      * Note: Vue cannot track mutations on a Set (e.g. `.add()` / `.delete()`).
@@ -56,6 +68,17 @@ export const useMapStore = defineStore('map', () => {
     }
 
     function setActiveLayer(id: string | null) {
+        activeLayerId.value = id;
+    }
+
+    /**
+     * Set both the draw layer (toolbar button visual) and the active layer
+     * (internal layer coordination) to the same id.  Use when the user
+     * explicitly selects a layer via the toolbar to start drawing, or when
+     * Escape / Cancel needs to clear both states at once.
+     */
+    function setDrawLayer(id: string | null) {
+        drawLayerId.value = id;
         activeLayerId.value = id;
     }
 
@@ -90,12 +113,14 @@ export const useMapStore = defineStore('map', () => {
         map,
         layers,
         activeLayerId,
+        drawLayerId,
         visibleLayerIds,
         layerUpdateCount,
         lastLayerMutation,
         setMap,
         setLayers,
         setActiveLayer,
+        setDrawLayer,
         toggleLayerVisibility,
         markLayerUpdated,
         clearLastLayerMutation,

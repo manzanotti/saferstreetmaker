@@ -537,3 +537,434 @@ test.describe('Area selection — layer visibility', () => {
         await expect(page.getByText('1 feature selected')).toBeVisible();
     });
 });
+
+// ---------------------------------------------------------------------------
+// Helper: place two modal filters without toggling the button twice
+// ---------------------------------------------------------------------------
+async function placeTwoModalFilters(page: Page, offset = 70): Promise<void> {
+    const map = page.locator('.leaflet-container');
+    const box = await map.boundingBox();
+    if (!box) throw new Error('Map bounding box not found');
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+    await page.locator('#modal-filter-button').click();
+    await page.mouse.click(cx - offset, cy);
+    await page.waitForTimeout(150);
+    await page.mouse.click(cx + offset, cy);
+    await page.waitForTimeout(150);
+}
+
+// ---------------------------------------------------------------------------
+// Additive drag selection (Shift / Ctrl)
+// ---------------------------------------------------------------------------
+test.describe('Area selection — additive drag (Shift/Ctrl)', () => {
+    test.beforeEach(async ({ page, context }) => {
+        await setupPage(page, context);
+    });
+
+    test('Shift-drag adds newly found features to an existing selection', async ({ page }) => {
+        await placeTwoModalFilters(page, 70);
+        expect(await getLayerFeatureCount(page, 'Hello Cleveland', 'ModalFilters')).toBe(2);
+
+        await page.locator('#select-area-button').click();
+
+        const map = page.locator('.leaflet-container');
+        const box = await map.boundingBox();
+        if (!box) throw new Error('Map bounding box not found');
+        const cx = box.x + box.width / 2;
+        const cy = box.y + box.height / 2;
+
+        // First drag: select only the left filter
+        await page.mouse.move(cx - 120, cy - 50);
+        await page.mouse.down();
+        await page.mouse.move(cx - 20, cy + 50, { steps: 10 });
+        await page.mouse.up();
+        await page.waitForTimeout(200);
+        await expect(page.getByText('1 feature selected')).toBeVisible();
+
+        // Shift-drag: add the right filter without clearing the first
+        await page.keyboard.down('Shift');
+        await page.mouse.move(cx + 20, cy - 50);
+        await page.mouse.down();
+        await page.mouse.move(cx + 120, cy + 50, { steps: 10 });
+        await page.mouse.up();
+        await page.keyboard.up('Shift');
+        await page.waitForTimeout(200);
+
+        await expect(page.getByText('2 features selected')).toBeVisible();
+    });
+
+    test('Ctrl-drag adds newly found features to an existing selection', async ({ page }) => {
+        await placeTwoModalFilters(page, 70);
+        expect(await getLayerFeatureCount(page, 'Hello Cleveland', 'ModalFilters')).toBe(2);
+
+        await page.locator('#select-area-button').click();
+
+        const map = page.locator('.leaflet-container');
+        const box = await map.boundingBox();
+        if (!box) throw new Error('Map bounding box not found');
+        const cx = box.x + box.width / 2;
+        const cy = box.y + box.height / 2;
+
+        // Select left filter
+        await page.mouse.move(cx - 120, cy - 50);
+        await page.mouse.down();
+        await page.mouse.move(cx - 20, cy + 50, { steps: 10 });
+        await page.mouse.up();
+        await page.waitForTimeout(200);
+        await expect(page.getByText('1 feature selected')).toBeVisible();
+
+        // Ctrl-drag to add the right filter
+        await page.keyboard.down('Control');
+        await page.mouse.move(cx + 20, cy - 50);
+        await page.mouse.down();
+        await page.mouse.move(cx + 120, cy + 50, { steps: 10 });
+        await page.mouse.up();
+        await page.keyboard.up('Control');
+        await page.waitForTimeout(200);
+
+        await expect(page.getByText('2 features selected')).toBeVisible();
+    });
+
+    test('plain drag replaces an existing selection', async ({ page }) => {
+        await placeTwoModalFilters(page, 70);
+        expect(await getLayerFeatureCount(page, 'Hello Cleveland', 'ModalFilters')).toBe(2);
+
+        await page.locator('#select-area-button').click();
+
+        const map = page.locator('.leaflet-container');
+        const box = await map.boundingBox();
+        if (!box) throw new Error('Map bounding box not found');
+        const cx = box.x + box.width / 2;
+        const cy = box.y + box.height / 2;
+
+        // Select both
+        await dragSelectCenter(page, 120);
+        await page.waitForTimeout(200);
+        await expect(page.getByText('2 features selected')).toBeVisible();
+
+        // Plain drag over only the right feature replaces the selection
+        await page.mouse.move(cx + 20, cy - 50);
+        await page.mouse.down();
+        await page.mouse.move(cx + 120, cy + 50, { steps: 10 });
+        await page.mouse.up();
+        await page.waitForTimeout(200);
+
+        await expect(page.getByText('1 feature selected')).toBeVisible();
+    });
+
+    test('additive drag over an already-selected feature does not duplicate it', async ({
+        page
+    }) => {
+        await placeModalFilter(page);
+
+        await page.locator('#select-area-button').click();
+        await dragSelectCenter(page);
+        await page.waitForTimeout(200);
+        await expect(page.getByText('1 feature selected')).toBeVisible();
+
+        // Shift-drag over the same feature again — count must stay 1
+        await page.keyboard.down('Shift');
+        await dragSelectCenter(page);
+        await page.keyboard.up('Shift');
+        await page.waitForTimeout(200);
+
+        await expect(page.getByText('1 feature selected')).toBeVisible();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Popup copy (polyline / polygon)
+// ---------------------------------------------------------------------------
+test.describe('Area selection — popup copy (polyline/polygon)', () => {
+    test.beforeEach(async ({ page, context }) => {
+        await setupPage(page, context);
+    });
+
+    test('polyline popup contains a Copy button', async ({ page }) => {
+        await drawMobilityLane(page);
+        await page.locator('#mobility-lane-button').click();
+
+        const path = page.locator('.leaflet-overlay-pane path.leaflet-interactive');
+        await path.first().dispatchEvent('click');
+        await page.waitForSelector('.popup-buttons');
+
+        await expect(page.locator('.popup-buttons .copy-button')).toBeVisible();
+    });
+
+    test('clicking Copy in the polyline popup shows the Paste button', async ({ page }) => {
+        await drawMobilityLane(page);
+        await page.locator('#mobility-lane-button').click();
+
+        const path = page.locator('.leaflet-overlay-pane path.leaflet-interactive');
+        await path.first().dispatchEvent('click');
+        await page.waitForSelector('.popup-buttons .copy-button');
+        await page.locator('.popup-buttons .copy-button').first().dispatchEvent('click');
+        await page.waitForTimeout(200);
+
+        await expect(page.getByRole('button', { name: 'Paste copied features' })).toBeVisible();
+    });
+
+    test('pasting after popup-copy of a polyline increases the layer feature count', async ({
+        page
+    }) => {
+        await drawMobilityLane(page);
+        expect(await getLayerFeatureCount(page, 'Hello Cleveland', 'MobilityLanes')).toBe(1);
+
+        await page.locator('#mobility-lane-button').click();
+        const path = page.locator('.leaflet-overlay-pane path.leaflet-interactive');
+        await path.first().dispatchEvent('click');
+        await page.waitForSelector('.popup-buttons .copy-button');
+        await page.locator('.popup-buttons .copy-button').first().dispatchEvent('click');
+        await page.waitForTimeout(200);
+
+        await page.getByRole('button', { name: 'Paste copied features' }).click();
+        await page.waitForTimeout(500);
+
+        expect(await getLayerFeatureCount(page, 'Hello Cleveland', 'MobilityLanes')).toBe(2);
+    });
+
+    test('LTN polygon popup contains a Copy button', async ({ page }) => {
+        await drawLtnPolygon(page);
+        await page.locator('#ltn-button').click();
+
+        const polygon = page.locator('.leaflet-ltns-pane path.ltn-cell.leaflet-interactive');
+        await polygon.first().dispatchEvent('click');
+        await page.waitForSelector('.popup-buttons');
+
+        await expect(page.locator('.popup-buttons .copy-button')).toBeVisible();
+    });
+
+    test('clicking Copy in the LTN popup shows the Paste button', async ({ page }) => {
+        await drawLtnPolygon(page);
+        await page.locator('#ltn-button').click();
+
+        const polygon = page.locator('.leaflet-ltns-pane path.ltn-cell.leaflet-interactive');
+        await polygon.first().dispatchEvent('click');
+        await page.waitForSelector('.popup-buttons .copy-button');
+        await page.locator('.popup-buttons .copy-button').first().dispatchEvent('click');
+        await page.waitForTimeout(200);
+
+        await expect(page.getByRole('button', { name: 'Paste copied features' })).toBeVisible();
+    });
+
+    test('pasting after popup-copy of an LTN polygon increases the layer feature count', async ({
+        page
+    }) => {
+        await drawLtnPolygon(page);
+        expect(await getLayerFeatureCount(page, 'Hello Cleveland', 'LtnCells')).toBe(1);
+
+        await page.locator('#ltn-button').click();
+        const polygon = page.locator('.leaflet-ltns-pane path.ltn-cell.leaflet-interactive');
+        await polygon.first().dispatchEvent('click');
+        await page.waitForSelector('.popup-buttons .copy-button');
+        await page.locator('.popup-buttons .copy-button').first().dispatchEvent('click');
+        await page.waitForTimeout(200);
+
+        await page.getByRole('button', { name: 'Paste copied features' }).click();
+        await page.waitForTimeout(500);
+
+        expect(await getLayerFeatureCount(page, 'Hello Cleveland', 'LtnCells')).toBe(2);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Modifier-click additive selection (polyline / polygon)
+// Note: dispatchEvent is used instead of page.mouse.click({modifiers}) because
+// SVG path strokes are not reliably hit-tested by Playwright's coordinate-based
+// click — the same reason the existing delete tests use dispatchEvent.
+// ---------------------------------------------------------------------------
+test.describe('Area selection — modifier-click additive selection (polyline/polygon)', () => {
+    test.beforeEach(async ({ page, context }) => {
+        await setupPage(page, context);
+    });
+
+    test('Shift-clicking a polyline activates selection mode and selects it', async ({ page }) => {
+        await drawMobilityLane(page);
+        await page.locator('#mobility-lane-button').click();
+
+        const path = page.locator('.leaflet-overlay-pane path.leaflet-interactive');
+        // Shift-click: modifier triggers additive selection instead of opening the popup
+        await path.first().dispatchEvent('click', { shiftKey: true });
+        await page.waitForTimeout(200);
+
+        await expect(page.getByText('feature selected', { exact: false })).toBeVisible();
+    });
+
+    test('Ctrl-clicking a polyline activates selection mode and selects it', async ({ page }) => {
+        await drawMobilityLane(page);
+        await page.locator('#mobility-lane-button').click();
+
+        const path = page.locator('.leaflet-overlay-pane path.leaflet-interactive');
+        await path.first().dispatchEvent('click', { ctrlKey: true });
+        await page.waitForTimeout(200);
+
+        await expect(page.getByText('feature selected', { exact: false })).toBeVisible();
+    });
+
+    test('Shift-clicking a second polyline while in selection mode adds it to the selection', async ({
+        page
+    }) => {
+        // drawMobilityLane leaves the tool active — draw the second lane immediately
+        await drawMobilityLane(page);
+        const map = page.locator('.leaflet-container');
+        const box = await map.boundingBox();
+        if (!box) throw new Error('Map bounding box not found');
+        const cx = box.x + box.width / 2;
+        const cy = box.y + box.height / 2;
+        await page.waitForTimeout(200);
+        await page.mouse.click(cx - 60, cy + 80);
+        await page.waitForTimeout(200);
+        await page.mouse.click(cx + 60, cy + 80);
+        await page.waitForTimeout(200);
+        await page.mouse.dblclick(cx + 60, cy + 100);
+        await page.waitForTimeout(500);
+        await page.locator('#mobility-lane-button').click(); // deactivate after second draw
+
+        expect(await getLayerFeatureCount(page, 'Hello Cleveland', 'MobilityLanes')).toBe(2);
+
+        // Enter selection mode and select the first polyline with a drag
+        await page.locator('#select-area-button').click();
+        await page.mouse.move(cx - 80, cy - 30);
+        await page.mouse.down();
+        await page.mouse.move(cx + 80, cy + 30, { steps: 10 });
+        await page.mouse.up();
+        await page.waitForTimeout(200);
+        await expect(page.getByText('1 feature selected')).toBeVisible();
+
+        // Shift-click the second polyline to add it
+        const paths = page.locator('.leaflet-overlay-pane path.leaflet-interactive');
+        await paths.last().dispatchEvent('click', { shiftKey: true });
+        await page.waitForTimeout(200);
+
+        await expect(page.getByText('2 features selected')).toBeVisible();
+    });
+
+    test('Shift-clicking an LTN polygon activates selection mode and selects it', async ({
+        page
+    }) => {
+        await drawLtnPolygon(page);
+        await page.locator('#ltn-button').click();
+
+        const polygon = page.locator('.leaflet-ltns-pane path.ltn-cell.leaflet-interactive');
+        await polygon.first().dispatchEvent('click', { shiftKey: true });
+        await page.waitForTimeout(200);
+
+        await expect(page.getByText('feature selected', { exact: false })).toBeVisible();
+    });
+
+    test('Ctrl-clicking an LTN polygon activates selection mode and selects it', async ({
+        page
+    }) => {
+        await drawLtnPolygon(page);
+        await page.locator('#ltn-button').click();
+
+        const polygon = page.locator('.leaflet-ltns-pane path.ltn-cell.leaflet-interactive');
+        await polygon.first().dispatchEvent('click', { ctrlKey: true });
+        await page.waitForTimeout(200);
+
+        await expect(page.getByText('feature selected', { exact: false })).toBeVisible();
+    });
+
+    test('normal click on a polyline then Shift-click on a second selects both', async ({
+        page
+    }) => {
+        // drawMobilityLane leaves the tool active — draw a second lane immediately
+        await drawMobilityLane(page);
+        const map = page.locator('.leaflet-container');
+        const box = await map.boundingBox();
+        if (!box) throw new Error('Map bounding box not found');
+        const cx = box.x + box.width / 2;
+        const cy = box.y + box.height / 2;
+        await page.waitForTimeout(200);
+        await page.mouse.click(cx - 60, cy + 80);
+        await page.waitForTimeout(200);
+        await page.mouse.click(cx + 60, cy + 80);
+        await page.waitForTimeout(200);
+        await page.mouse.dblclick(cx + 60, cy + 100);
+        await page.waitForTimeout(500);
+        await page.locator('#mobility-lane-button').click(); // deactivate
+
+        const paths = page.locator('.leaflet-overlay-pane path.leaflet-interactive');
+
+        // Normal click on the first polyline — popup opens, edit mode
+        await paths.first().dispatchEvent('click');
+        await page.waitForSelector('.popup-buttons');
+        // Close the popup so it doesn't interfere with the next click
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(100);
+
+        // Shift-click the second polyline — should add to the implicit selection
+        await paths.last().dispatchEvent('click', { shiftKey: true });
+        await page.waitForTimeout(200);
+
+        await expect(page.getByText('2 features selected')).toBeVisible();
+    });
+
+    test('normal click while in selection mode then Shift-click selects both', async ({ page }) => {
+        // drawMobilityLane leaves the tool active — draw a second lane immediately
+        await drawMobilityLane(page);
+        const map = page.locator('.leaflet-container');
+        const box = await map.boundingBox();
+        if (!box) throw new Error('Map bounding box not found');
+        const cx = box.x + box.width / 2;
+        const cy = box.y + box.height / 2;
+        await page.waitForTimeout(200);
+        await page.mouse.click(cx - 60, cy + 80);
+        await page.waitForTimeout(200);
+        await page.mouse.click(cx + 60, cy + 80);
+        await page.waitForTimeout(200);
+        await page.mouse.dblclick(cx + 60, cy + 100);
+        await page.waitForTimeout(500);
+        await page.locator('#mobility-lane-button').click(); // deactivate
+
+        const paths = page.locator('.leaflet-overlay-pane path.leaflet-interactive');
+
+        // Activate area-selection mode FIRST (empty selection)
+        await page.locator('#select-area-button').click();
+
+        // Normal click on first polyline while in selection mode — pre-selects it, popup opens
+        await paths.first().dispatchEvent('click');
+        await page.waitForTimeout(100);
+        // Do not press Escape here — that would deactivate area-selection mode and clear selection.
+        // The popup can remain open; the Shift-click on the second path still works.
+
+        // Shift-click the second polyline — should add to the remembered selection
+        await paths.last().dispatchEvent('click', { shiftKey: true });
+        await page.waitForTimeout(200);
+
+        await expect(page.getByText('2 features selected')).toBeVisible();
+    });
+});
+
+test.describe('Area selection — handle cleanup on edit-mode exit', () => {
+    test.beforeEach(async ({ page, context }) => {
+        await setupPage(page, context);
+    });
+
+    test('circle vertex handles disappear after Escape exits polyline edit mode', async ({
+        page
+    }) => {
+        await drawMobilityLane(page);
+        await page.locator('#mobility-lane-button').click(); // deactivate draw tool
+
+        const path = page.locator('.leaflet-overlay-pane path.leaflet-interactive');
+
+        // Normal click opens popup + speculatively pre-selects the polyline
+        await path.first().dispatchEvent('click');
+        await page.waitForSelector('.popup-buttons');
+
+        // Press Escape — edit mode exits; the pre-selection must be cleaned up
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(150);
+
+        // The area-selection panel must NOT show (selection was cleared)
+        await expect(page.getByText('feature selected', { exact: false })).not.toBeVisible();
+
+        // A subsequent Shift-click should result in exactly 1 feature selected,
+        // confirming the prior pre-selection was discarded and not accumulated.
+        await path.first().dispatchEvent('click', { shiftKey: true });
+        await page.waitForTimeout(200);
+        await expect(page.getByText('1 feature selected')).toBeVisible();
+    });
+});

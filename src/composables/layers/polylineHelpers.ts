@@ -6,9 +6,16 @@
  * Leaflet controls the popup DOM lifecycle and it lives outside Vue's virtual DOM.
  */
 import * as L from 'leaflet';
-import { buildDeletePopup, removeMapCursor } from './layerUtils';
+import {
+    buildDeletePopup,
+    removeMapCursor,
+    setMouseMarkerCursor,
+    buildHistoryId
+} from './layerUtils';
 import { useMapStore } from '../../stores/mapStore';
 import { pinia } from '../../stores/index';
+import { selectFeature, executeCopy } from '../useAreaSelection';
+import { useSelectionStore } from '../../stores/selectionStore';
 
 export interface PolylineOptions {
     color: string;
@@ -142,31 +149,10 @@ function buildPolylinePointChanges(beforeCoords: number[][], afterCoords: number
     return pointChanges.length > 0 ? pointChanges : null;
 }
 
-function createHistoryId(): string {
-    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-        return crypto.randomUUID();
-    }
-
-    return `polyline-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
 export function addPolylineToLayer(opts: AddPolylineOpts): void {
     const mapStore = useMapStore(pinia);
     const { points, geoJsonLayer, map, layerId, polylineOpts, buttonId } = opts;
     const mutationKind = buttonId === 'ltn-cell' ? 'polygon' : 'polyline';
-
-    const setMouseMarkerCursor = (cursor: string | null) => {
-        const marker = document.querySelector('.leaflet-mouse-marker') as HTMLElement | null;
-        if (!marker) {
-            return;
-        }
-
-        if (cursor === null) {
-            marker.style.removeProperty('cursor');
-        } else {
-            marker.style.cursor = cursor;
-        }
-    };
 
     let polyline = new L.Polyline(points, polylineOpts) as any;
 
@@ -174,7 +160,7 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
         polyline = polyline.arrowheads(opts.arrowheads);
     }
 
-    const historyId = opts.historyId ?? createHistoryId();
+    const historyId = opts.historyId ?? buildHistoryId('polyline');
 
     const buildPolylineHistoryFeature = () => {
         const feature = polyline.toGeoJSON() as any;
@@ -233,6 +219,11 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
                     before: lastCommittedFeature
                 }
             });
+        },
+        () => {
+            // Populate the selection with this entire feature, then copy it.
+            selectFeature(polyline as unknown as L.Layer, layerId, false);
+            executeCopy();
         }
     );
 
@@ -244,6 +235,28 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
         }
 
         L.DomEvent.stopPropagation(e.originalEvent ?? e);
+
+        const isModifierClick =
+            (e.originalEvent?.shiftKey || e.originalEvent?.ctrlKey || e.originalEvent?.metaKey) ??
+            false;
+
+        if (isModifierClick) {
+            // Additive selection: merge this feature into the current selection
+            // without opening the popup or entering edit mode.
+            selectFeature(polyline as unknown as L.Layer, layerId, true);
+            return;
+        }
+
+        // Non-modifier click: remember and highlight this feature so that a
+        // subsequent Shift/Ctrl-click can merge with it additively.  Update
+        // whenever selection mode is inactive OR the selection is currently
+        // empty (e.g. user entered selection mode via the button but hasn't
+        // rubber-band-dragged anything yet).  skipActivate=true prevents
+        // area-selection mode from activating on a plain click.
+        const selectionStore = useSelectionStore(pinia);
+        if (!selectionStore.isActive || selectionStore.selected.length === 0) {
+            selectFeature(polyline as unknown as L.Layer, layerId, false, true);
+        }
 
         opts.selectForEdit();
         removeMapCursor(buttonId);
