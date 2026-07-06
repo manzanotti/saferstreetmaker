@@ -54,6 +54,44 @@ const VERTEX_HANDLE_STYLE: L.CircleMarkerOptions = {
 /** CSS class added to DivIcon marker DOM elements while selected. */
 const SELECTED_CLASS = 'area-selected';
 
+function isPlainPropertiesRecord(value: unknown): value is Record<string, unknown> {
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+        return false;
+    }
+
+    const prototype = Object.getPrototypeOf(value);
+    return prototype === Object.prototype || prototype === null;
+}
+
+function buildClipboardFeature(
+    layerId: string,
+    marker: L.Layer,
+    feature: GeoJSON.Feature
+): GeoJSON.Feature {
+    const rawMarkerProperties = (marker as any)['properties'];
+    const markerProperties = isPlainPropertiesRecord(rawMarkerProperties)
+        ? rawMarkerProperties
+        : null;
+
+    if (!markerProperties) {
+        return feature;
+    }
+
+    const clipboardFeature = JSON.parse(JSON.stringify(feature)) as GeoJSON.Feature;
+    const markerColor = (marker as any).options?.color;
+
+    clipboardFeature.properties = {
+        ...(clipboardFeature.properties ?? {}),
+        ...markerProperties
+    };
+
+    if (layerId === 'LtnCells' && typeof markerColor === 'string') {
+        (clipboardFeature.properties as Record<string, unknown>).color = markerColor;
+    }
+
+    return clipboardFeature;
+}
+
 function getPolygonRings(m: L.Layer): L.LatLng[][] {
     const raw = (m as any).getLatLngs?.();
     if (!raw || !Array.isArray(raw) || raw.length === 0) {
@@ -564,10 +602,12 @@ export function executeCopy(): void {
             continue;
         }
 
-        const feature = (marker as any).toGeoJSON?.() as GeoJSON.Feature | null | undefined;
-        if (!feature) {
+        const sourceFeature = (marker as any).toGeoJSON?.() as GeoJSON.Feature | null | undefined;
+        if (!sourceFeature) {
             continue;
         }
+
+        const feature = buildClipboardFeature(layerId, marker, sourceFeature);
 
         if (layerDef.kind === 'polyline') {
             const selectedRefs =
