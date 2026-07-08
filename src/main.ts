@@ -79,6 +79,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         const selectionStore = useSelectionStore(pinia);
         const activeTextSelection = window.getSelection?.()?.toString().trim() ?? '';
 
+        // Escape — exit LTN edit mode even when the map no longer owns focus
+        // (for example after closing its popup). Other feature layers still
+        // use Escape to dismiss the popup while preserving the remembered
+        // pre-selection used by additive Shift/Ctrl-click flows.
+        if (e.key === 'Escape' && mapStore.activeLayerId === 'ltn') {
+            e.preventDefault();
+            map.closePopup();
+            mapStore.setDrawLayer(null);
+            return;
+        }
+
         // s — toggle area-selection mode
         if (
             e.key === 's' &&

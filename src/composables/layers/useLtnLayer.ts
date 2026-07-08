@@ -11,7 +11,8 @@ import {
     getPointSelectCursor,
     isPointFeatureElement,
     setMouseMarkerCursor,
-    buildHistoryId
+    buildHistoryId,
+    isFeatureEditLayerButtonId
 } from './layerUtils';
 import type { IMapLayer } from './IMapLayer';
 import { type EditablePolylineLayer } from './usePolylineLayer';
@@ -33,6 +34,12 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
     let pendingCursorEvent: L.LeafletMouseEvent | null = null;
     let cursorSyncFrameId: number | null = null;
     let lastCursorStyledElement: HTMLElement | SVGElement | null = null;
+
+    const enableDrawMode = (): void => {
+        _drawingTool = new L.Draw.Polygon(map, { color: COLOUR });
+        _drawingTool.enable();
+        map.on('draw:created', handleDrawCreated);
+    };
 
     const getPolygonHistoryFeature = (polygon: any) => {
         const feature = polygon.toGeoJSON() as any;
@@ -201,6 +208,13 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         } else {
             polygon.closeTooltip?.();
         }
+    };
+
+    const syncPolygonTooltip = (polygon: any, label?: string): void => {
+        const nextLabel = label ?? polygon['properties']?.label ?? '';
+        polygon.setTooltipContent?.(nextLabel);
+        polygon.getTooltip?.()?.setLatLng?.(polygon.getBounds().getCenter());
+        syncTooltipVisibility(polygon);
     };
 
     const setFeatureCursor = (element: Element | null, cursor: string | null): void => {
@@ -412,6 +426,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         polygon.on('edit', () => {
             const previousFeature =
                 (polygon as any)['historyFeature'] ?? getPolygonHistoryFeature(polygon);
+            syncPolygonTooltip(polygon);
             const nextFeature = getPolygonHistoryFeature(polygon);
             mapStore.markLayerUpdated({
                 kind: 'polygon-edit',
@@ -419,6 +434,17 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                 payload: getPolygonMutationPayload(previousFeature, nextFeature)
             });
             (polygon as any)['historyFeature'] = nextFeature;
+        });
+
+        polygon.on('mousedown', () => {
+            if (
+                selectionMode === 'draw' &&
+                _drawingTool !== null &&
+                mapStore.drawLayerId === BUTTON_ID &&
+                mapStore.activeLayerId === BUTTON_ID
+            ) {
+                disableDrawMode();
+            }
         });
 
         polygon.on('mousemove', (e: any) => {
@@ -441,8 +467,8 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         (polygon as any)['properties'] = { label, historyId };
         (polygon as any)['historyFeature'] = getPolygonHistoryFeature(polygon);
 
-        const tooltip = polygon.bindTooltip(label, { permanent: true, direction: 'center' });
-        syncTooltipVisibility(polygon);
+        polygon.bindTooltip(label, { permanent: true, direction: 'center' });
+        syncPolygonTooltip(polygon, label);
 
         // Leaflet can re-open permanent tooltips when the parent layer is attached to the map.
         // Re-apply zoom/label gating at add-time so load-time visibility is always correct.
@@ -450,12 +476,20 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             syncTooltipVisibility(polygon);
         });
 
-        const popup = createLtnPopup(polygon, tooltip, label);
+        const { popup, labelEl } = createLtnPopup(polygon, label);
 
         polygon.on('click', (e: any) => {
-            // Let the currently active tool own the click instead of forcing
-            // LTN edit mode underneath it.
-            if (mapStore.activeLayerId !== null && mapStore.activeLayerId !== BUTTON_ID) {
+            // Let an explicitly armed draw tool own the click instead of
+            // forcing LTN edit mode underneath it. Existing-feature edit mode
+            // keeps drawLayerId=null, so cross-layer clicks can switch
+            // selection.
+            if (
+                (mapStore.drawLayerId !== null && mapStore.activeLayerId !== BUTTON_ID) ||
+                (mapStore.drawLayerId === null &&
+                    mapStore.activeLayerId !== null &&
+                    mapStore.activeLayerId !== BUTTON_ID &&
+                    !isFeatureEditLayerButtonId(mapStore.activeLayerId))
+            ) {
                 return;
             }
 
@@ -474,12 +508,10 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                 return;
             }
 
-            // Non-modifier click: remember and highlight this polygon so that
-            // a subsequent Shift/Ctrl-click can merge with it additively.
-            const selectionStore = useSelectionStore(pinia);
-            if (!selectionStore.isActive || selectionStore.selected.length === 0) {
-                selectFeature(polygon as unknown as L.Layer, 'LtnCells', false, true);
-            }
+            // Non-modifier click: replace any previously remembered polygon
+            // with this one so switching between polygons clears the old
+            // selection immediately.
+            selectFeature(polygon as unknown as L.Layer, 'LtnCells', false, true);
 
             // Disable editing on all other polygons in this layer first.
             geoJsonLayer.eachLayer((l: any) => {
@@ -499,6 +531,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             e.target.editing.enable();
             popup.setLatLng(e.target.getBounds().getCenter());
             map.openPopup(popup);
+            labelEl.focus();
         });
 
         geoJsonLayer.addLayer(polygon);
@@ -507,7 +540,10 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
     };
 
     // ── Popup with label editor + copy + delete buttons ──────────────────────
-    const createLtnPopup = (polygon: any, tooltip: any, initialLabel: string): L.Popup => {
+    const createLtnPopup = (
+        polygon: any,
+        initialLabel: string
+    ): { popup: L.Popup; labelEl: HTMLInputElement } => {
         const popup = L.popup({ minWidth: 30, keepInView: true });
         const controlList = document.createElement('ul');
         controlList.classList.add('popup-buttons');
@@ -517,11 +553,10 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         labelEl.type = 'text';
         labelEl.value = initialLabel;
         labelEl.classList.add('label-editor');
-        labelEl.addEventListener('keyup', () => {
+        const applyLabelChange = () => {
             const text = labelEl.value;
-            tooltip.setTooltipContent(text);
             polygon['properties'].label = text;
-            syncTooltipVisibility(polygon);
+            syncPolygonTooltip(polygon, text);
             const previousFeature =
                 (polygon as any)['historyFeature'] ?? getPolygonHistoryFeature(polygon);
             const nextFeature = getPolygonHistoryFeature(polygon);
@@ -531,6 +566,22 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                 payload: getPolygonMutationPayload(previousFeature, nextFeature)
             });
             (polygon as any)['historyFeature'] = nextFeature;
+        };
+        labelEl.addEventListener('keyup', (event: KeyboardEvent) => {
+            if (event.key === 'Enter') {
+                return;
+            }
+
+            applyLabelChange();
+        });
+        labelEl.addEventListener('keydown', (event: KeyboardEvent) => {
+            if (event.key !== 'Enter') {
+                return;
+            }
+
+            event.preventDefault();
+            applyLabelChange();
+            map.closePopup(popup);
         });
         labelControl.appendChild(labelEl);
         controlList.appendChild(labelControl);
@@ -561,7 +612,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         controlList.appendChild(deleteControl);
 
         popup.setContent(controlList);
-        return popup;
+        return { popup, labelEl };
     };
 
     // ── draw:created handler ─────────────────────────────────────────────────
@@ -601,9 +652,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                 setMapCursor(CURSOR_CSS);
                 map.on('mousemove', syncMouseMarkerCursor as L.LeafletEventHandlerFn);
                 if (selectionMode === 'draw') {
-                    _drawingTool = new L.Draw.Polygon(map, { color: COLOUR });
-                    _drawingTool.enable();
-                    map.on('draw:created', handleDrawCreated);
+                    enableDrawMode();
                 }
             } else if (!shouldBeSelected && _selected) {
                 _selected = false;
@@ -708,6 +757,11 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                     historyId ?? buildHistoryId('ltn')
                 );
             });
+
+            if (_selected && selectionMode === 'draw' && mapStore.drawLayerId === BUTTON_ID) {
+                disableDrawMode();
+                enableDrawMode();
+            }
         },
 
         getLayer(): L.GeoJSON {

@@ -1456,6 +1456,28 @@ test.describe('Layer: LTN Cell (polygon)', () => {
         expect(await getLayerFeatureCount(page, 'LtnCells')).toBe(1);
     });
 
+    test('Escape exits LTN edit mode after the popup has been closed', async ({ page }) => {
+        await page.locator('#ltn-button').click();
+        await drawPolygon(page);
+        await page.locator('#ltn-button').click();
+
+        const polygon = page.locator('.leaflet-ltns-pane path.ltn-cell.leaflet-interactive');
+        await polygon.first().dispatchEvent('click');
+        await expect(page.locator('.popup-buttons')).toHaveCount(1);
+        expect(await page.locator('.leaflet-editing-icon').count()).toBeGreaterThan(0);
+
+        await clickMap(page, 0, -140);
+        await expect(page.locator('.popup-buttons')).toHaveCount(0);
+        expect(await page.locator('.leaflet-editing-icon').count()).toBeGreaterThan(0);
+
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(150);
+
+        await expect(page.locator('.popup-buttons')).toHaveCount(0);
+        await expect(page.locator('.leaflet-editing-icon')).toHaveCount(0);
+        await expect(page.locator('#ltn-button')).toHaveAttribute('aria-pressed', 'false');
+    });
+
     test('undo removes a newly drawn LTN cell and redo restores it', async ({ page }) => {
         await page.locator('#ltn-button').click();
         await drawPolygon(page);
@@ -1472,6 +1494,24 @@ test.describe('Layer: LTN Cell (polygon)', () => {
         await page.locator('#redo-button').click();
         await page.waitForTimeout(150);
         expect(await getLayerFeatureCount(page, 'LtnCells')).toBeGreaterThanOrEqual(1);
+        await waitForHistoryButtons(page, { canUndo: true, canRedo: false });
+    });
+
+    test('can draw a new LTN cell immediately after undoing the previous creation', async ({
+        page
+    }) => {
+        await page.locator('#ltn-button').click();
+        await drawPolygon(page);
+        expect(await getLayerFeatureCount(page, 'LtnCells')).toBe(1);
+
+        await page.locator('#undo-button').click();
+        await page.waitForTimeout(150);
+        expect(await getLayerFeatureCount(page, 'LtnCells')).toBe(0);
+        await expect(page.locator('#ltn-button')).toHaveAttribute('aria-pressed', 'true');
+
+        await drawPolygon(page);
+
+        expect(await getLayerFeatureCount(page, 'LtnCells')).toBe(1);
         await waitForHistoryButtons(page, { canUndo: true, canRedo: false });
     });
 

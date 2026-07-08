@@ -10,7 +10,8 @@ import {
     buildDeletePopup,
     removeMapCursor,
     setMouseMarkerCursor,
-    buildHistoryId
+    buildHistoryId,
+    isFeatureEditLayerButtonId
 } from './layerUtils';
 import { useMapStore } from '../../stores/mapStore';
 import { pinia } from '../../stores/index';
@@ -228,9 +229,16 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
     );
 
     polyline.on('click', (e: any) => {
-        // Let the currently active tool own the click instead of forcing
-        // polyline edit mode underneath it.
-        if (mapStore.activeLayerId !== null && mapStore.activeLayerId !== buttonId) {
+        // Let an explicitly armed draw tool own the click instead of forcing
+        // polyline edit mode underneath it. Existing-feature edit mode keeps
+        // drawLayerId=null, so cross-layer clicks can switch selection.
+        if (
+            (mapStore.drawLayerId !== null && mapStore.activeLayerId !== buttonId) ||
+            (mapStore.drawLayerId === null &&
+                mapStore.activeLayerId !== null &&
+                mapStore.activeLayerId !== buttonId &&
+                !isFeatureEditLayerButtonId(mapStore.activeLayerId))
+        ) {
             return;
         }
 
@@ -247,16 +255,19 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
             return;
         }
 
-        // Non-modifier click: remember and highlight this feature so that a
-        // subsequent Shift/Ctrl-click can merge with it additively.  Update
-        // whenever selection mode is inactive OR the selection is currently
-        // empty (e.g. user entered selection mode via the button but hasn't
-        // rubber-band-dragged anything yet).  skipActivate=true prevents
-        // area-selection mode from activating on a plain click.
-        const selectionStore = useSelectionStore(pinia);
-        if (!selectionStore.isActive || selectionStore.selected.length === 0) {
-            selectFeature(polyline as unknown as L.Layer, layerId, false, true);
-        }
+        // Non-modifier click: replace any previously remembered feature with
+        // this one so switching from one line to another clears the old
+        // selection immediately. skipActivate=true prevents area-selection
+        // mode from activating on a plain click.
+        selectFeature(polyline as unknown as L.Layer, layerId, false, true);
+
+        // Disable editing on sibling features in the same layer before
+        // enabling the clicked line so only one feature stays in edit mode.
+        geoJsonLayer.eachLayer((layer: any) => {
+            if (layer !== e.target) {
+                layer.editing?.disable?.();
+            }
+        });
 
         opts.selectForEdit();
         removeMapCursor(buttonId);
