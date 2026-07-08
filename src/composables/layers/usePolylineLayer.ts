@@ -9,7 +9,14 @@ import * as L from 'leaflet';
 import { watch } from 'vue';
 import { useMapStore } from '../../stores/mapStore';
 import { pinia } from '../../stores/index';
-import { setMapCursor, removeMapCursor, buildToolbarButton, buildLegendEntry } from './layerUtils';
+import {
+    setMapCursor,
+    removeMapCursor,
+    buildToolbarButton,
+    buildLegendEntry,
+    getPointSelectCursor,
+    isPointFeatureElement
+} from './layerUtils';
 import type { IMapLayer } from './IMapLayer';
 
 export interface PolylineLayerConfig {
@@ -65,27 +72,6 @@ export function createPolylineLayer(
             json.features.push(feature);
         });
         return json;
-    };
-
-    const pointFeatureClasses = [
-        'modal-filter-marker',
-        'bus-gate-icon',
-        'traffic-lights-icon',
-        'pedestrian-lights-icon',
-        'zebra-crossing-icon'
-    ];
-
-    const getPointSelectCursor = (): string => {
-        const mapElement = document.getElementById('map');
-        const cursor = mapElement
-            ? getComputedStyle(mapElement).getPropertyValue('--point-select-cursor').trim()
-            : '';
-
-        return cursor === '' ? 'pointer' : cursor;
-    };
-
-    const isPointFeatureElement = (element: Element): boolean => {
-        return pointFeatureClasses.some((className) => element.classList.contains(className));
     };
 
     const isInteractiveShapeElement = (element: Element): boolean => {

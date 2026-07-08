@@ -54,6 +54,28 @@ const VERTEX_HANDLE_STYLE: L.CircleMarkerOptions = {
 /** CSS class added to DivIcon marker DOM elements while selected. */
 const SELECTED_CLASS = 'area-selected';
 
+/**
+ * Highlight function set once by setupAreaSelection, then shared by
+ * selectFeature so individual polyline/polygon clicks can add vertex handles.
+ * Will be null until setupAreaSelection has been called.
+ */
+let _addSelectionHighlights: ((markers: SelectedMarker[]) => void) | null = null;
+
+/**
+ * Like _addSelectionHighlights but first clears any existing vertex handles
+ * from the handle layer before drawing new ones.  Used when the selection is
+ * being replaced (non-additive) so stale handle dots from a previous click
+ * don't accumulate.
+ */
+let _replaceSelectionHighlights: ((markers: SelectedMarker[]) => void) | null = null;
+
+/**
+ * Shared clear-highlights callback set by setupAreaSelection so selectFeature
+ * can remove stale point/polyline highlight state before replacing the current
+ * selection.
+ */
+let _clearSelectionHighlights: (() => void) | null = null;
+
 function isPlainPropertiesRecord(value: unknown): value is Record<string, unknown> {
     if (typeof value !== 'object' || value === null || Array.isArray(value)) {
         return false;
@@ -231,6 +253,68 @@ export function polygonIntersectsBounds(m: L.Layer, bounds: L.LatLngBounds): boo
     return false;
 }
 
+/**
+ * Build SelectedMarker entries for all vertices of a single polyline or
+ * polygon feature. Used by popup-copy and modifier-click selection paths so
+ * they produce the same SelectedMarker shape that executeCopy / executeAreaDelete
+ * already understand.
+ */
+export function buildFeatureSelectionEntries(marker: L.Layer, layerId: string): SelectedMarker[] {
+    const historyId = (marker as any).feature?.properties?.historyId ?? null;
+    return getPolylineLatLngs(marker).map((latLng) => ({ layerId, historyId, latLng, marker }));
+}
+
+/**
+ * Programmatically select a single polyline or polygon feature.
+ *
+ * When `additive` is true the feature is merged into the existing selection
+ * (no-op if the marker is already present).  When false the current selection
+ * is replaced with just this feature.
+ *
+ * Activates area-selection mode unless `skipActivate` is true.  Pass
+ * `skipActivate = true` when tracking a feature on a normal (non-modifier)
+ * click so selection mode doesn't activate prematurely — the user will
+ * trigger activation with their subsequent Shift/Ctrl-click.
+ *
+ * Vertex handles are drawn in all cases so the user gets immediate visual
+ * feedback about which feature is "remembered".
+ */
+export function selectFeature(
+    marker: L.Layer,
+    layerId: string,
+    additive: boolean,
+    skipActivate = false
+): void {
+    const selectionStore = useSelectionStore(pinia);
+    const entries = buildFeatureSelectionEntries(marker, layerId);
+    if (entries.length === 0) {
+        return;
+    }
+
+    if (additive) {
+        const addedEntries = selectionStore.mergeSelected(entries);
+
+        if (!skipActivate && !selectionStore.isActive) {
+            selectionStore.activate();
+        }
+
+        if (addedEntries.length > 0) {
+            _addSelectionHighlights?.(addedEntries);
+        }
+
+        return;
+    } else {
+        _clearSelectionHighlights?.();
+        selectionStore.setSelected(entries);
+    }
+
+    if (!skipActivate && !selectionStore.isActive) {
+        selectionStore.activate();
+    }
+
+    (_replaceSelectionHighlights ?? _addSelectionHighlights)?.(entries);
+}
+
 export function setupAreaSelection(map: L.Map): void {
     const selectionStore = useSelectionStore(pinia);
     const mapStore = useMapStore(pinia);
@@ -238,7 +322,7 @@ export function setupAreaSelection(map: L.Map): void {
     let origin: L.LatLng | null = null;
     let selRect: L.Rectangle | null = null;
     let handleLayer: L.LayerGroup | null = null;
-    let previousActiveLayerId: string | null = null;
+    let previousDrawLayerId: string | null = null;
     const originalStyles = new WeakMap<object, L.PathOptions>();
 
     // ── Activate / deactivate ──────────────────────────────────────────────
@@ -246,8 +330,8 @@ export function setupAreaSelection(map: L.Map): void {
         () => selectionStore.isActive,
         (active) => {
             if (active) {
-                previousActiveLayerId = mapStore.activeLayerId;
-                mapStore.setActiveLayer(null);
+                previousDrawLayerId = mapStore.drawLayerId;
+                mapStore.setDrawLayer(null);
                 map.dragging.disable();
                 map.getContainer().classList.add('area-select');
                 map.on('mousedown', onMouseDown as L.LeafletEventHandlerFn);
@@ -262,8 +346,8 @@ export function setupAreaSelection(map: L.Map): void {
                 origin = null;
                 clearHighlights();
                 removeRect();
-                mapStore.setActiveLayer(previousActiveLayerId);
-                previousActiveLayerId = null;
+                mapStore.setDrawLayer(previousDrawLayerId);
+                previousDrawLayerId = null;
             }
         },
         { flush: 'sync' }
@@ -276,15 +360,39 @@ export function setupAreaSelection(map: L.Map): void {
         }
     });
 
+    // ── Clean up pre-selection handles on layer deactivation ───────────────
+    // When a polyline/polygon is clicked normally (no modifier) its vertex
+    // handles are drawn speculatively so a subsequent Shift/Ctrl-click can
+    // add to them. If the user exits that editing context (Escape, toolbar
+    // button click, etc.) without doing a modifier-click, the handles become
+    // stale. Clearing them when activeLayerId returns to null, while
+    // selection mode is not yet active, discards those stale handles.
+    watch(
+        () => mapStore.activeLayerId,
+        (newId) => {
+            if (newId === null && !selectionStore.isActive && selectionStore.selected.length > 0) {
+                clearHighlights();
+                selectionStore.clear();
+            }
+        },
+        { flush: 'sync' }
+    );
+
     // ── Rubber-band drag ───────────────────────────────────────────────────
+    let isAdditiveDrag = false;
+
     function onMouseDown(e: L.LeafletMouseEvent) {
         L.DomEvent.stopPropagation(e.originalEvent);
         // Prevent the browser from starting a text-selection drag, which
         // would highlight legend text and other map-control content.
         e.originalEvent.preventDefault();
+        isAdditiveDrag =
+            e.originalEvent.shiftKey || e.originalEvent.ctrlKey || e.originalEvent.metaKey;
         origin = e.latlng;
-        clearHighlights();
-        selectionStore.clear();
+        if (!isAdditiveDrag) {
+            clearHighlights();
+            selectionStore.clear();
+        }
         removeRect();
         map.on('mousemove', onMouseMove as L.LeafletEventHandlerFn);
         map.on('mouseup', onMouseUp as L.LeafletEventHandlerFn);
@@ -311,9 +419,18 @@ export function setupAreaSelection(map: L.Map): void {
         const bounds = L.latLngBounds(origin, e.latlng);
         origin = null;
         const found = findMarkersInBounds(bounds);
-        selectionStore.setSelected(found);
-        if (found.length > 0) {
-            highlightMarkers(found);
+        if (isAdditiveDrag) {
+            if (found.length > 0) {
+                const addedFound = selectionStore.mergeSelected(found);
+                if (addedFound.length > 0) {
+                    highlightMarkers(addedFound);
+                }
+            }
+        } else {
+            selectionStore.setSelected(found);
+            if (found.length > 0) {
+                highlightMarkers(found);
+            }
         }
     }
 
@@ -374,8 +491,11 @@ export function setupAreaSelection(map: L.Map): void {
 
     // ── Visual highlight ───────────────────────────────────────────────────
     function highlightMarkers(markers: SelectedMarker[]) {
-        handleLayer?.remove();
-        handleLayer = L.layerGroup().addTo(map);
+        // Reuse the existing handle layer so that additive drags and individual
+        // feature selections accumulate handles rather than resetting them.
+        if (!handleLayer) {
+            handleLayer = L.layerGroup().addTo(map);
+        }
 
         for (const { marker, latLng } of markers) {
             const isPointMarker = typeof (marker as any).getLatLng === 'function';
@@ -432,6 +552,17 @@ export function setupAreaSelection(map: L.Map): void {
         selRect?.remove();
         selRect = null;
     }
+
+    // Expose highlightMarkers so selectFeature (and future callers) can add
+    // vertex handles from outside the setupAreaSelection closure.
+    _addSelectionHighlights = highlightMarkers;
+    _clearSelectionHighlights = clearHighlights;
+    _replaceSelectionHighlights = (markers: SelectedMarker[]) => {
+        if (handleLayer) {
+            handleLayer.clearLayers();
+        }
+        highlightMarkers(markers);
+    };
 }
 
 // ── Batch delete ───────────────────────────────────────────────────────────

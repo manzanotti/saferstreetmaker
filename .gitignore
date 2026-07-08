@@ -4,3 +4,5 @@ node_modules/
 dist/
 test-results/
 playwright-report/
+playwright-results*.txt
+pw-*.txt

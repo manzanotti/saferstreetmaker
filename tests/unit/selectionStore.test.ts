@@ -91,4 +91,152 @@ describe('selectionStore', () => {
             expect(store.isActive).toBe(true);
         });
     });
+
+    describe('mergeSelected()', () => {
+        it('adds entries whose marker is not yet in the selection', () => {
+            const store = useSelectionStore();
+            const m1 = makeMockMarker(1, 2);
+            const m2 = makeMockMarker(3, 4);
+            store.setSelected([makeMockSelected('ModalFilters', 1, 2)]);
+            // Override the marker reference so we can match exactly
+            (store.selected as any)[0] = {
+                layerId: 'ModalFilters',
+                historyId: 'id-1-2',
+                latLng: { lat: 1, lng: 2 } as L.LatLng,
+                marker: m1
+            };
+
+            const added = store.mergeSelected([
+                {
+                    layerId: 'MobilityLanes',
+                    historyId: 'id-3-4',
+                    latLng: { lat: 3, lng: 4 } as L.LatLng,
+                    marker: m2
+                }
+            ]);
+
+            expect(added).toHaveLength(1);
+            expect(store.selected).toHaveLength(2);
+        });
+
+        it('skips entries whose marker and latLng are already in the selection', () => {
+            const store = useSelectionStore();
+            const m1 = makeMockMarker(1, 2);
+            store.setSelected([
+                {
+                    layerId: 'ModalFilters',
+                    historyId: 'id-1-2',
+                    latLng: { lat: 1, lng: 2 } as L.LatLng,
+                    marker: m1 as unknown as L.Layer
+                }
+            ]);
+
+            const added = store.mergeSelected([
+                {
+                    layerId: 'ModalFilters',
+                    historyId: 'id-1-2',
+                    latLng: { lat: 1, lng: 2 } as L.LatLng,
+                    marker: m1 as unknown as L.Layer
+                }
+            ]);
+
+            expect(added).toHaveLength(0);
+            expect(store.selected).toHaveLength(1);
+        });
+
+        it('does nothing when every new entry is already present', () => {
+            const store = useSelectionStore();
+            const m1 = makeMockMarker(1, 2);
+            const existing = [
+                {
+                    layerId: 'MobilityLanes',
+                    historyId: 'id-1-2',
+                    latLng: { lat: 1, lng: 2 } as L.LatLng,
+                    marker: m1 as unknown as L.Layer
+                }
+            ];
+            store.setSelected(existing);
+            const before = store.selected;
+
+            const added = store.mergeSelected(existing);
+
+            // Array reference unchanged (no new array created)
+            expect(added).toHaveLength(0);
+            expect(store.selected).toBe(before);
+            expect(store.selected).toHaveLength(1);
+        });
+
+        it('handles merging into an empty selection', () => {
+            const store = useSelectionStore();
+            const m1 = makeMockMarker(1, 2);
+
+            const added = store.mergeSelected([
+                {
+                    layerId: 'MobilityLanes',
+                    historyId: 'id-1-2',
+                    latLng: { lat: 1, lng: 2 } as L.LatLng,
+                    marker: m1 as unknown as L.Layer
+                }
+            ]);
+
+            expect(added).toHaveLength(1);
+            expect(store.selected).toHaveLength(1);
+        });
+
+        it('adds missing vertices from an already-selected polyline', () => {
+            const store = useSelectionStore();
+            const polyline = makeMockMarker(1, 2);
+
+            store.setSelected([
+                {
+                    layerId: 'MobilityLanes',
+                    historyId: 'id-1-2',
+                    latLng: { lat: 1, lng: 2 } as L.LatLng,
+                    marker: polyline
+                }
+            ]);
+
+            const added = store.mergeSelected([
+                {
+                    layerId: 'MobilityLanes',
+                    historyId: 'id-1-2',
+                    latLng: { lat: 1, lng: 2 } as L.LatLng,
+                    marker: polyline
+                },
+                {
+                    layerId: 'MobilityLanes',
+                    historyId: 'id-1-2',
+                    latLng: { lat: 3, lng: 4 } as L.LatLng,
+                    marker: polyline
+                }
+            ]);
+
+            expect(added).toHaveLength(1);
+            expect(added[0].latLng).toMatchObject({ lat: 3, lng: 4 });
+            expect(store.selected).toHaveLength(2);
+        });
+
+        it('de-dupes duplicate rows within the incoming merge batch', () => {
+            const store = useSelectionStore();
+            const polyline = makeMockMarker(1, 2);
+
+            const added = store.mergeSelected([
+                {
+                    layerId: 'MobilityLanes',
+                    historyId: 'id-1-2',
+                    latLng: { lat: 3, lng: 4 } as L.LatLng,
+                    marker: polyline
+                },
+                {
+                    layerId: 'MobilityLanes',
+                    historyId: 'id-1-2',
+                    latLng: { lat: 3, lng: 4 } as L.LatLng,
+                    marker: polyline
+                }
+            ]);
+
+            expect(added).toHaveLength(1);
+            expect(store.selected).toHaveLength(1);
+        });
+    });
 });

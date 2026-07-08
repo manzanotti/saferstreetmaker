@@ -1351,7 +1351,7 @@ test.describe('Layer: LTN Cell (polygon)', () => {
         await page.locator('#ltn-button').click();
         await expect(page.locator('#ltn-button')).toHaveAttribute('aria-pressed', 'false');
 
-        // Click the existing polygon — should enter edit mode for the LTN layer
+        // Click the existing polygon — should enter edit mode but NOT activate the draw button
         await page
             .locator(
                 '.leaflet-overlay-pane path, .leaflet-polygon-pane path, .leaflet-ltns-pane path'
@@ -1360,8 +1360,8 @@ test.describe('Layer: LTN Cell (polygon)', () => {
             .dispatchEvent('click');
         await page.waitForTimeout(200);
 
-        // LTN button should now be selected
-        await expect(page.locator('#ltn-button')).toHaveAttribute('aria-pressed', 'true');
+        // LTN button should NOT be selected — feature clicks are edit-only, not draw-mode
+        await expect(page.locator('#ltn-button')).toHaveAttribute('aria-pressed', 'false');
 
         // A map click should NOT create a new LTN cell (edit mode, not draw mode)
         await clickMap(page, 0, -150);
@@ -1405,15 +1405,15 @@ test.describe('Layer: LTN Cell (polygon)', () => {
         );
         await polygons.first().dispatchEvent('click');
         await page.waitForTimeout(200);
-        await expect(page.locator('#ltn-button')).toHaveAttribute('aria-pressed', 'true');
+        await expect(page.locator('#ltn-button')).toHaveAttribute('aria-pressed', 'false');
         await expect(page.locator('.popup-buttons')).toBeVisible();
 
         // Click the second polygon — popup should switch to the second polygon
         await polygons.last().dispatchEvent('click');
         await page.waitForTimeout(200);
 
-        // LTN button still selected (edit mode)
-        await expect(page.locator('#ltn-button')).toHaveAttribute('aria-pressed', 'true');
+        // LTN button remains inactive (edit mode, not draw mode)
+        await expect(page.locator('#ltn-button')).toHaveAttribute('aria-pressed', 'false');
 
         // Only one popup open at a time
         await expect(page.locator('.popup-buttons')).toHaveCount(1);

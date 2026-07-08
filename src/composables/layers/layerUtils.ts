@@ -29,6 +29,48 @@ export function removeMapCursor(cssClass: string): void {
     map?.classList.add('leaflet-grab');
 }
 
+const POINT_FEATURE_CLASSES = [
+    'modal-filter-marker',
+    'bus-gate-icon',
+    'traffic-lights-icon',
+    'pedestrian-lights-icon',
+    'zebra-crossing-icon'
+];
+
+export function getPointSelectCursor(): string {
+    const mapElement = document.getElementById('map');
+    const cursor = mapElement
+        ? getComputedStyle(mapElement).getPropertyValue('--point-select-cursor').trim()
+        : '';
+
+    return cursor === '' ? 'pointer' : cursor;
+}
+
+export function isPointFeatureElement(element: Element): boolean {
+    return POINT_FEATURE_CLASSES.some((className) => element.classList.contains(className));
+}
+
+export function setMouseMarkerCursor(cursor: string | null): void {
+    const marker = document.querySelector('.leaflet-mouse-marker') as HTMLElement | null;
+    if (!marker) {
+        return;
+    }
+
+    if (cursor === null) {
+        marker.style.removeProperty('cursor');
+    } else {
+        marker.style.cursor = cursor;
+    }
+}
+
+export function buildHistoryId(prefix: string): string {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID();
+    }
+
+    return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 // ---------------------------------------------------------------------------
 // Toolbar button builder
 // ---------------------------------------------------------------------------
@@ -88,26 +130,64 @@ export function buildLegendEntry(opts: LegendEntryOpts): HTMLElement {
     return li;
 }
 
+export function buildPopupActionControl(
+    cssClass: string,
+    ariaLabel: string,
+    onActivate: () => void
+): HTMLLIElement {
+    const item = document.createElement('li');
+    const control = document.createElement('button');
+    control.type = 'button';
+    control.classList.add(cssClass);
+    control.setAttribute('aria-label', ariaLabel);
+
+    const activate = () => {
+        onActivate();
+    };
+
+    control.addEventListener('click', activate);
+
+    item.appendChild(control);
+
+    return item;
+}
+
 // ---------------------------------------------------------------------------
-// Popup builder for polyline / polygon delete controls
+// Popup builder for polyline / polygon controls
 // ---------------------------------------------------------------------------
 
+/**
+ * Build a Leaflet popup containing optional Copy and mandatory Delete controls.
+ * Pass `onCopy` to render a Copy button before the Delete button.
+ * Both buttons close the popup after firing their callback.
+ */
 export function buildDeletePopup(
     map: L.Map,
     popupOptions: L.PopupOptions,
-    onDelete: () => void
+    onDelete: () => void,
+    onCopy?: () => void
 ): L.Popup {
     const popup = L.popup(popupOptions);
 
     const controlList = document.createElement('ul');
     controlList.classList.add('popup-buttons');
 
-    const deleteControl = document.createElement('li');
-    deleteControl.classList.add('delete-button');
-    deleteControl.addEventListener('click', () => {
-        onDelete();
-        map.closePopup(popup);
-    });
+    if (onCopy) {
+        const copyControl = buildPopupActionControl('copy-button', 'Copy selected feature', () => {
+            onCopy();
+            map.closePopup(popup);
+        });
+        controlList.appendChild(copyControl);
+    }
+
+    const deleteControl = buildPopupActionControl(
+        'delete-button',
+        'Delete selected feature',
+        () => {
+            onDelete();
+            map.closePopup(popup);
+        }
+    );
     controlList.appendChild(deleteControl);
     popup.setContent(controlList);
 
