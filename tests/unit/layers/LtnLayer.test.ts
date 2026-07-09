@@ -10,6 +10,8 @@ import * as L from 'leaflet';
 import { createLtnLayer } from '../../../src/composables/layers/useLtnLayer';
 import { pinia } from '../../../src/stores/index';
 import { useMapStore } from '../../../src/stores/mapStore';
+import { useSelectionStore } from '../../../src/stores/selectionStore';
+import { selectFeature } from '../../../src/composables/useAreaSelection';
 
 function makeMockMap(): L.Map {
     return new L.Map();
@@ -333,5 +335,235 @@ describe('LtnLayer history payloads', () => {
                 }
             ]
         });
+    });
+
+    it('recenters the tooltip when an edited polygon changes shape', () => {
+        const layer = createLtnLayer(makeMockMap());
+
+        layer.loadFromGeoJSON(
+            polygonFeatureCollection([
+                [
+                    [
+                        [0, 0],
+                        [1, 0],
+                        [1, 1],
+                        [0, 1],
+                        [0, 0]
+                    ]
+                ]
+            ]) as any
+        );
+
+        const polygon = layer.getLayer().getLayers()[0] as any;
+        const nextCenter = new L.LatLng(9, 9);
+        const setLatLngSpy = vi.fn();
+        polygon.getBounds = () => ({ getCenter: () => nextCenter });
+        polygon.getTooltip = () => ({ setLatLng: setLatLngSpy });
+
+        polygon.fire('edit');
+
+        expect(setLatLngSpy).toHaveBeenCalledWith(nextCenter);
+    });
+
+    it('re-enables polygon drawing when polygons are reloaded while the LTN tool stays armed', () => {
+        const map = makeMockMap();
+        const layer = createLtnLayer(map);
+        const mapStore = useMapStore(pinia);
+        const enableSpy = vi.spyOn((L.Draw.Polygon as any).prototype, 'enable');
+
+        mapStore.setDrawLayer(null);
+        mapStore.setDrawLayer('ltn');
+        layer.selectForEdit();
+        layer.getToolbarButton().action(new Event('click'), map);
+        const enableCountBeforeReload = enableSpy.mock.calls.length;
+
+        layer.loadFromGeoJSON(
+            polygonFeatureCollection([
+                [
+                    [
+                        [0, 0],
+                        [1, 0],
+                        [1, 1],
+                        [0, 0]
+                    ]
+                ]
+            ]) as any
+        );
+
+        expect(enableSpy.mock.calls.length).toBe(enableCountBeforeReload + 1);
+        expect(layer.getLayer().getLayers()).toHaveLength(1);
+    });
+
+    it('re-enables polygon drawing when undo reloads an empty LTN layer', () => {
+        const map = makeMockMap();
+        const layer = createLtnLayer(map);
+        const mapStore = useMapStore(pinia);
+        const enableSpy = vi.spyOn((L.Draw.Polygon as any).prototype, 'enable');
+
+        mapStore.setDrawLayer(null);
+        mapStore.setDrawLayer('ltn');
+        const enableCountBeforeReload = enableSpy.mock.calls.length;
+
+        layer.loadFromGeoJSON({ features: [] } as any);
+
+        expect(enableSpy.mock.calls.length).toBe(enableCountBeforeReload + 1);
+        expect(layer.getLayer().getLayers()).toHaveLength(0);
+    });
+});
+
+describe('LtnLayer feature clicks', () => {
+    beforeEach(() => {
+        setActivePinia(pinia);
+        useSelectionStore(pinia).deactivate();
+        useMapStore(pinia).setDrawLayer(null);
+    });
+
+    it('replaces the previously selected polygon on a plain click', () => {
+        const map = makeMockMap();
+        const layer = createLtnLayer(map);
+
+        layer.loadFromGeoJSON(
+            polygonFeatureCollection([
+                [
+                    [
+                        [0, 0],
+                        [1, 0],
+                        [1, 1],
+                        [0, 1],
+                        [0, 0]
+                    ]
+                ],
+                [
+                    [
+                        [2, 2],
+                        [3, 2],
+                        [3, 3],
+                        [2, 3],
+                        [2, 2]
+                    ]
+                ]
+            ]) as any
+        );
+
+        const [polygon1, polygon2] = layer.getLayer().getLayers() as any[];
+        polygon1.editing = { disable: vi.fn(), enable: vi.fn() };
+        polygon2.editing = { disable: vi.fn(), enable: vi.fn() };
+
+        const selectionStore = useSelectionStore(pinia);
+        selectionStore.activate();
+        selectFeature(polygon1 as unknown as L.Layer, 'LtnCells', false, true);
+
+        polygon2.fire('click', {
+            originalEvent: { clientX: 0, clientY: 0 },
+            target: polygon2
+        });
+
+        expect(selectionStore.selected).toHaveLength(5);
+        expect(selectionStore.selected.every((entry) => entry.marker === polygon2)).toBe(true);
+    });
+
+    it('focuses the title input when the polygon popup opens in edit mode', () => {
+        const map = makeMockMap();
+        const layer = createLtnLayer(map);
+
+        layer.loadFromGeoJSON(
+            polygonFeatureCollection([
+                [
+                    [
+                        [0, 0],
+                        [1, 0],
+                        [1, 1],
+                        [0, 1],
+                        [0, 0]
+                    ]
+                ]
+            ]) as any
+        );
+
+        const polygon = layer.getLayer().getLayers()[0] as any;
+        polygon.editing = { disable: vi.fn(), enable: vi.fn() };
+        const focusSpy = vi.spyOn(HTMLInputElement.prototype, 'focus');
+
+        polygon.fire('click', {
+            originalEvent: { clientX: 0, clientY: 0 },
+            target: polygon
+        });
+
+        expect(focusSpy).toHaveBeenCalled();
+    });
+
+    it('saves the title and closes the popup when Enter is pressed in the title input', () => {
+        const map = makeMockMap();
+        const layer = createLtnLayer(map);
+
+        layer.loadFromGeoJSON(
+            polygonFeatureCollection([
+                [
+                    [
+                        [0, 0],
+                        [1, 0],
+                        [1, 1],
+                        [0, 1],
+                        [0, 0]
+                    ]
+                ]
+            ]) as any
+        );
+
+        const polygon = layer.getLayer().getLayers()[0] as any;
+        polygon.editing = { disable: vi.fn(), enable: vi.fn() };
+        const mapClosePopupSpy = vi.spyOn(map, 'closePopup');
+        const mapOpenPopupSpy = vi.spyOn(map, 'openPopup');
+
+        polygon.fire('click', {
+            originalEvent: { clientX: 0, clientY: 0 },
+            target: polygon
+        });
+
+        const popup = mapOpenPopupSpy.mock.calls[0][0] as any;
+        const content = popup.setContent.mock.calls[0][0] as HTMLElement;
+        const input = content.querySelector('.label-editor') as HTMLInputElement;
+
+        input.value = 'Updated LTN';
+        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+        expect(polygon.properties.label).toBe('Updated LTN');
+        expect(mapClosePopupSpy).toHaveBeenCalledWith(popup);
+    });
+
+    it('switches selection to a polygon while another editable layer is active', () => {
+        const map = makeMockMap();
+        const ltnLayer = createLtnLayer(map);
+
+        ltnLayer.loadFromGeoJSON(
+            polygonFeatureCollection([
+                [
+                    [
+                        [2, 2],
+                        [3, 2],
+                        [3, 3],
+                        [2, 3],
+                        [2, 2]
+                    ]
+                ]
+            ]) as any
+        );
+
+        const polygon = ltnLayer.getLayer().getLayers()[0] as any;
+        polygon.editing = { disable: vi.fn(), enable: vi.fn() };
+
+        const selectionStore = useSelectionStore(pinia);
+        const mapStore = useMapStore(pinia);
+        selectionStore.activate();
+        mapStore.setActiveLayer('mobility-lane');
+
+        polygon.fire('click', {
+            originalEvent: { clientX: 0, clientY: 0 },
+            target: polygon
+        });
+
+        expect(mapStore.activeLayerId).toBe('ltn');
+        expect(selectionStore.selected).toHaveLength(5);
+        expect(selectionStore.selected.every((entry) => entry.marker === polygon)).toBe(true);
     });
 });

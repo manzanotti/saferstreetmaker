@@ -37,6 +37,15 @@ const POINT_FEATURE_CLASSES = [
     'zebra-crossing-icon'
 ];
 
+const FEATURE_EDIT_LAYER_BUTTON_IDS = new Set([
+    'mobility-lane',
+    'tram-line',
+    'car-free-street',
+    'school-street',
+    'one-way-street',
+    'ltn'
+]);
+
 export function getPointSelectCursor(): string {
     const mapElement = document.getElementById('map');
     const cursor = mapElement
@@ -61,6 +70,10 @@ export function setMouseMarkerCursor(cursor: string | null): void {
     } else {
         marker.style.cursor = cursor;
     }
+}
+
+export function isFeatureEditLayerButtonId(id: string | null): boolean {
+    return id !== null && FEATURE_EDIT_LAYER_BUTTON_IDS.has(id);
 }
 
 export function buildHistoryId(prefix: string): string {

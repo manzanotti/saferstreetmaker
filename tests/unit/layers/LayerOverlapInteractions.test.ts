@@ -25,7 +25,7 @@ describe('Layer overlap interactions', () => {
 
     beforeEach(() => {
         const mapStore = useMapStore(pinia);
-        mapStore.setActiveLayer(null);
+        mapStore.setDrawLayer(null);
         mapStore.layerUpdateCount = 0;
         map = new L.Map();
     });
