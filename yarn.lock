@@ -826,12 +826,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:^26.1.0":
-  version: 26.1.0
-  resolution: "@types/node@npm:26.1.0"
+"@types/node@npm:^26.1.1":
+  version: 26.1.1
+  resolution: "@types/node@npm:26.1.1"
   dependencies:
     undici-types: ~8.3.0
-  checksum: bbced3378635cb48e739e384e53ff4c7d3e18194a2e003fb5240fc4f6c18fdc9f2452539a9f6fa608ca7b510a40f844d483c23f5d8bd2cf2c245b16d43ce4236
+  checksum: c6727bd4761280b389a2706cc55cbb3511f37f3e2aa609dda65590e1aec5690ce3b14a865edd070c97c5ae4f566dbbae1a811c1b61f69efaee4226015205f304
   languageName: node
   linkType: hard
 
@@ -2629,7 +2629,7 @@ __metadata:
     "@tailwindcss/vite": ^4.3.2
     "@types/leaflet": ^1.9.21
     "@types/lz-string": ^1.5.0
-    "@types/node": ^26.1.0
+    "@types/node": ^26.1.1
     "@vitejs/plugin-vue": ^6.0.7
     "@vue/tsconfig": ^0.9.1
     dexie: ^4.2.0
