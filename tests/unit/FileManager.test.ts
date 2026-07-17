@@ -214,6 +214,36 @@ describe('FileManager', () => {
             });
         });
 
+        it('persists and restores element groups through storage', async () => {
+            const settings = makeSettings('GroupCity');
+            const layers = new Map<string, IMapLayer>([
+                ['ModalFilters', makeLayer('ModalFilters')]
+            ]);
+            const groups = [
+                {
+                    id: 'g1',
+                    name: 'Zone',
+                    members: [{ layerId: 'ModalFilters', historyId: 'h1' }]
+                }
+            ];
+
+            await fm.saveMap(settings, layers, groups);
+
+            const loaded = await fm.loadMapFromStorage('GroupCity');
+            expect(loaded?.groups).toHaveLength(1);
+            expect(loaded?.groups?.[0]).toEqual(groups[0]);
+        });
+
+        it('round-trips groups through the share hash', () => {
+            const settings = makeSettings('HashCity');
+            const groups = [{ id: 'g1', name: 'Zone', members: [] }];
+
+            const hash = fm.saveMapToHash(settings, new Map(), groups);
+            const restored = fm.loadMapFromHash(hash);
+            expect(restored?.groups).toHaveLength(1);
+            expect(restored?.groups?.[0].name).toBe('Zone');
+        });
+
         it('builds a clone-safe serialized snapshot', () => {
             const settings = makeSettings('CloneSafeCity');
             const snapshot = fm.buildSerializedMap(settings, new Map());

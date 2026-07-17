@@ -19,7 +19,7 @@ function toggleCollapse() {
 
 <template>
     <div
-        class="legend rounded-2xl bg-white/[0.94] shadow-xl border border-white/60 w-52 overflow-hidden"
+        class="legend rounded-2xl bg-white/[0.94] shadow-xl border border-white/60 w-36 sm:w-52 overflow-hidden"
         :class="{ collapsed: isCollapsed }"
     >
         <div
@@ -39,7 +39,7 @@ function toggleCollapse() {
             }}</span>
         </div>
         <div class="legend-content border-t border-gray-100" :class="{ hidden: isCollapsed }">
-            <ul class="px-3 pt-1 pb-1 space-y-0 m-0">
+            <ul class="px-2 sm:px-3 pt-1 pb-1 space-y-0 m-0">
                 <li
                     v-for="layer in activeLayers"
                     :key="layer.id"
@@ -48,7 +48,7 @@ function toggleCollapse() {
                     role="button"
                     tabindex="0"
                     :aria-pressed="mapStore.visibleLayerIds.has(layer.id)"
-                    class="flex items-center gap-2 px-2 py-1 rounded-lg cursor-pointer hover:bg-green-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-green-600"
+                    class="flex items-center gap-2 px-1 sm:px-2 py-1 rounded-lg cursor-pointer hover:bg-green-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-green-600"
                     :class="{
                         disabled: !mapStore.visibleLayerIds.has(layer.id),
                         'opacity-40 bg-gray-50': !mapStore.visibleLayerIds.has(layer.id)
@@ -62,7 +62,9 @@ function toggleCollapse() {
                     <span class="text-sm text-gray-700 truncate">{{ layer.title }}</span>
                 </li>
             </ul>
-            <p class="text-xs text-gray-400 px-5 pb-2 mt-0">Click item to toggle visibility</p>
+            <p class="text-xs text-gray-400 px-3 sm:px-5 pb-2 mt-0">
+                Click item to toggle visibility
+            </p>
         </div>
     </div>
 </template>

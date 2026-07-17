@@ -13,8 +13,11 @@ import {
     removeMapCursor,
     buildToolbarButton,
     buildLegendEntry,
-    buildHistoryId
+    buildHistoryId,
+    getFeatureHistoryId
 } from './layerUtils';
+import { useSelectionStore } from '../../stores/selectionStore';
+import { selectFeature } from '../useAreaSelection';
 import type { IMapLayer } from './IMapLayer';
 
 export interface PointLayerConfig {
@@ -40,6 +43,41 @@ export function getPointEventLatLng(event: {
     latlng?: L.LatLng;
 }) {
     return event.target?.getLatLng?.() ?? event.latlng ?? null;
+}
+
+/**
+ * Shared click handler for point-marker features. While an area selection is
+ * active (including the "add to group" flow), clicking a point adds it to the
+ * current selection instead of deleting it — so points can be gathered the
+ * same way polylines/polygons are. Otherwise it deletes the point as before.
+ */
+export function handlePointFeatureClick(
+    event: L.LeafletMouseEvent,
+    layerId: string,
+    geoJsonLayer: L.GeoJSON
+): void {
+    L.DomEvent.stopPropagation(event);
+
+    const selectionStore = useSelectionStore(pinia);
+    if (selectionStore.isActive) {
+        // Accumulate the clicked point into the selection (de-duped).
+        selectFeature(event.target as unknown as L.Layer, layerId, true);
+        return;
+    }
+
+    const mapStore = useMapStore(pinia);
+    const latLng = getPointEventLatLng(event);
+    const historyId = getFeatureHistoryId(event.target);
+    geoJsonLayer.removeLayer(event.target as unknown as L.Layer);
+    mapStore.markLayerUpdated({
+        kind: 'point-delete',
+        layerId,
+        payload: {
+            lat: latLng?.lat ?? null,
+            lng: latLng?.lng ?? null,
+            historyId
+        }
+    });
 }
 
 export function createPointLayer(config: PointLayerConfig, map: L.Map): IMapLayer {

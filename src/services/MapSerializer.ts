@@ -10,6 +10,7 @@
 import LZString from 'lz-string';
 import type { IMapLayer } from '../composables/layers/IMapLayer';
 import type { Settings } from '../models/Settings';
+import type { Group } from '../models/Group';
 
 /**
  * Typed shape of the JSON document produced by `MapSerializer.toJSON` and
@@ -42,6 +43,8 @@ export interface SerializedMap {
     zoom?: number;
     /** ISO-8601 timestamp set by MapSerializer.toJSON */
     lastSaved?: string;
+    /** Element groups — serialised alongside layer data. */
+    groups?: Group[];
 }
 
 interface CompactSettings {
@@ -54,20 +57,33 @@ interface CompactSettings {
     v: string;
 }
 
+/** Compact serialisation of a Group (short keys to minimise URL hash length). */
+interface CompactGroup {
+    i: string;
+    n: string;
+    m: Array<[string, string]>;
+}
+
 export interface CompactStoredMap {
     s: CompactSettings;
     l: Record<string, unknown>;
     d: string;
+    /** Compact groups — present only when at least one group exists. */
+    g?: CompactGroup[];
 }
 
 export class MapSerializer {
     /** Convert the current map state to a plain JSON-serialisable object. */
-    toJSON(settings: Settings, layersData: Map<string, IMapLayer>): SerializedMap {
+    toJSON(
+        settings: Settings,
+        layersData: Map<string, IMapLayer>,
+        groups?: Group[]
+    ): SerializedMap {
         const layers: Record<string, unknown> = {};
         layersData.forEach((layer, layerName) => {
             layers[layerName] = layer.toGeoJSON();
         });
-        return {
+        const result: SerializedMap = {
             settings: {
                 title: settings.title,
                 readOnly: settings.readOnly,
@@ -82,24 +98,42 @@ export class MapSerializer {
             layers,
             lastSaved: new Date().toISOString()
         };
+        if (groups && groups.length > 0) {
+            // Explicitly create plain objects to avoid IndexedDB DataCloneError
+            // when groups are read from a Vue reactive Proxy.
+            result.groups = groups.map((g) => ({
+                id: g.id,
+                name: g.name,
+                members: g.members.map((m) => ({ layerId: m.layerId, historyId: m.historyId }))
+            }));
+        }
+        return result;
     }
 
     /**
      * Serialise the map state to a URI-encoded LZ-string hash suitable for use
      * as a URL fragment or iframe `src` parameter.
      */
-    toEncodedHash(settings: Settings, layersData: Map<string, IMapLayer>): string {
-        const mapString = JSON.stringify(this.toJSON(settings, layersData));
+    toEncodedHash(
+        settings: Settings,
+        layersData: Map<string, IMapLayer>,
+        groups?: Group[]
+    ): string {
+        const mapString = JSON.stringify(this.toJSON(settings, layersData, groups));
         return LZString.compressToEncodedURIComponent(mapString);
     }
 
-    toCompactStoredMap(settings: Settings, layersData: Map<string, IMapLayer>): CompactStoredMap {
+    toCompactStoredMap(
+        settings: Settings,
+        layersData: Map<string, IMapLayer>,
+        groups?: Group[]
+    ): CompactStoredMap {
         const layers: Record<string, unknown> = {};
         layersData.forEach((layer, layerName) => {
             layers[layerName] = layer.toGeoJSON();
         });
 
-        return {
+        const result: CompactStoredMap = {
             s: {
                 t: settings.title,
                 r: settings.readOnly ? 1 : 0,
@@ -112,10 +146,18 @@ export class MapSerializer {
             l: layers,
             d: new Date().toISOString()
         };
+        if (groups && groups.length > 0) {
+            result.g = groups.map((g) => ({
+                i: g.id,
+                n: g.name,
+                m: g.members.map((mb) => [mb.layerId, mb.historyId] as [string, string])
+            }));
+        }
+        return result;
     }
 
     fromCompactStoredMap(data: CompactStoredMap): SerializedMap {
-        return {
+        const result: SerializedMap = {
             settings: {
                 title: data.s.t,
                 readOnly: data.s.r === 1,
@@ -128,6 +170,14 @@ export class MapSerializer {
             layers: data.l,
             lastSaved: data.d
         };
+        if (data.g && data.g.length > 0) {
+            result.groups = data.g.map((g) => ({
+                id: g.i,
+                name: g.n,
+                members: g.m.map(([layerId, historyId]) => ({ layerId, historyId }))
+            }));
+        }
+        return result;
     }
 
     toCompactStoredMapFromSerialized(data: SerializedMap, fallbackTitle = ''): CompactStoredMap {
@@ -149,7 +199,7 @@ export class MapSerializer {
             };
         }
 
-        return {
+        const fromSerializedResult: CompactStoredMap = {
             s: {
                 t: settings.title,
                 r: settings.readOnly ? 1 : 0,
@@ -162,6 +212,14 @@ export class MapSerializer {
             l: data.layers ?? {},
             d: data.lastSaved ?? new Date().toISOString()
         };
+        if (data.groups && data.groups.length > 0) {
+            fromSerializedResult.g = data.groups.map((g) => ({
+                i: g.id,
+                n: g.name,
+                m: g.members.map((mb) => [mb.layerId, mb.historyId] as [string, string])
+            }));
+        }
+        return fromSerializedResult;
     }
 
     /**

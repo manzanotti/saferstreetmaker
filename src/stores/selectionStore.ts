@@ -27,6 +27,11 @@ export const useSelectionStore = defineStore('selection', () => {
     const clipboard = ref<ClipboardEntry[]>([]);
     const hasClipboard = computed(() => clipboard.value.length > 0);
 
+    // Bounds of the most recent rubber-band area-selection drag. Used when
+    // splitting a partially-selected polyline so the new line can be clipped
+    // to the selection rectangle. shallowRef: Leaflet object, no Proxy.
+    const lastAreaBounds = shallowRef<L.LatLngBounds | null>(null);
+
     function activate() {
         isActive.value = true;
     }
@@ -34,6 +39,7 @@ export const useSelectionStore = defineStore('selection', () => {
     function deactivate() {
         isActive.value = false;
         selected.value = [];
+        lastAreaBounds.value = null;
     }
 
     function setSelected(markers: SelectedMarker[]) {
@@ -42,6 +48,11 @@ export const useSelectionStore = defineStore('selection', () => {
 
     function clear() {
         selected.value = [];
+        lastAreaBounds.value = null;
+    }
+
+    function setLastAreaBounds(bounds: L.LatLngBounds | null) {
+        lastAreaBounds.value = bounds;
     }
 
     /**
@@ -99,10 +110,12 @@ export const useSelectionStore = defineStore('selection', () => {
         selected,
         clipboard,
         hasClipboard,
+        lastAreaBounds,
         activate,
         deactivate,
         setSelected,
         clear,
+        setLastAreaBounds,
         mergeSelected,
         copyToClipboard
     };
