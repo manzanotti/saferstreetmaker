@@ -11,7 +11,8 @@ import {
     buildHistoryId,
     buildToolbarButton,
     buildLegendEntry,
-    buildDeletePopup
+    buildDeletePopup,
+    getFeatureHistoryId
 } from '../../src/composables/layers/layerUtils';
 
 function makeMapEl() {
@@ -137,6 +138,33 @@ describe('buildHistoryId', () => {
                 configurable: true
             });
         }
+    });
+});
+
+describe('getFeatureHistoryId', () => {
+    it('reads the id from feature.properties.historyId (points, polylines)', () => {
+        const marker = { feature: { properties: { historyId: 'abc-123' } } };
+        expect(getFeatureHistoryId(marker)).toBe('abc-123');
+    });
+
+    it('falls back to properties.historyId (LTN polygons)', () => {
+        const polygon = { properties: { historyId: 'ltn-456' } };
+        expect(getFeatureHistoryId(polygon)).toBe('ltn-456');
+    });
+
+    it('prefers feature.properties.historyId when both are present', () => {
+        const marker = {
+            feature: { properties: { historyId: 'from-feature' } },
+            properties: { historyId: 'from-properties' }
+        };
+        expect(getFeatureHistoryId(marker)).toBe('from-feature');
+    });
+
+    it('returns null when no id is present', () => {
+        expect(getFeatureHistoryId({})).toBeNull();
+        expect(getFeatureHistoryId(null)).toBeNull();
+        expect(getFeatureHistoryId({ feature: { properties: {} } })).toBeNull();
+        expect(getFeatureHistoryId({ properties: { historyId: '' } })).toBeNull();
     });
 });
 

@@ -1,12 +1,8 @@
 import * as L from 'leaflet';
-import { createPointLayer, getPointEventLatLng } from './usePointLayer';
+import { createPointLayer, handlePointFeatureClick } from './usePointLayer';
 import type { IMapLayer } from './IMapLayer';
-import { useMapStore } from '../../stores/mapStore';
-import { pinia } from '../../stores/index';
 
 export function createModalFilterLayer(map: L.Map): IMapLayer {
-    const mapStore = useMapStore(pinia);
-
     return createPointLayer(
         {
             id: 'ModalFilters',
@@ -24,21 +20,7 @@ export function createModalFilterLayer(map: L.Map): IMapLayer {
                     radius: 10,
                     className: 'modal-filter-marker',
                     pane: 'filters'
-                }).on('click', (e) => {
-                    L.DomEvent.stopPropagation(e);
-                    const latLng = getPointEventLatLng(e);
-                    const historyId = (e.target as any).feature?.properties?.historyId ?? null;
-                    geoJsonLayer.removeLayer(e.target);
-                    mapStore.markLayerUpdated({
-                        kind: 'point-delete',
-                        layerId: 'ModalFilters',
-                        payload: {
-                            lat: latLng?.lat ?? null,
-                            lng: latLng?.lng ?? null,
-                            historyId
-                        }
-                    });
-                });
+                }).on('click', (e) => handlePointFeatureClick(e, 'ModalFilters', geoJsonLayer));
                 geoJsonLayer.addLayer(marker);
                 return marker;
             },
