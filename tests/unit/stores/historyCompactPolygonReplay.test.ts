@@ -5,6 +5,7 @@ vi.mock('leaflet', () => import('../__mocks__/leaflet'));
 
 import * as L from 'leaflet';
 import { pinia } from '../../../src/stores/index';
+import { useGroupStore } from '../../../src/stores/groupStore';
 import { useMapStore } from '../../../src/stores/mapStore';
 import { useSettingsStore } from '../../../src/stores/settingsStore';
 import { setupMapManager } from '../../../src/composables/useMapManager';
@@ -134,6 +135,7 @@ describe('useMapManager compact polygon replay', () => {
         settingsStore.centre = new L.LatLng(52.5, -1.9) as unknown as L.LatLng;
         settingsStore.zoom = 12;
         settingsStore.version = '0.9.0';
+        useGroupStore(pinia).setGroups([]);
 
         await journal.clearHistory('Hello Cleveland');
     });
@@ -221,6 +223,51 @@ describe('useMapManager compact polygon replay', () => {
                 color: '#00aa00'
             }
         });
+    });
+
+    it('preserves groups when fallback layer replay saves after undo', async () => {
+        const beforeCoordinates = [
+            [
+                [-1.9, 52.5],
+                [-1.8, 52.5],
+                [-1.8, 52.6],
+                [-1.9, 52.5]
+            ]
+        ];
+        const afterCoordinates = [
+            [
+                [-1.9, 52.5],
+                [-1.7, 52.5],
+                [-1.7, 52.7],
+                [-1.9, 52.5]
+            ]
+        ];
+        const groups = [
+            {
+                id: 'g1',
+                name: 'Grouped LTN',
+                members: [{ layerId: 'LtnCells', historyId: 'polygon-1' }]
+            }
+        ];
+
+        const layer = createFakeLtnLayer(afterCoordinates);
+        useMapStore(pinia).setLayers([layer]);
+        useGroupStore(pinia).setGroups(groups);
+
+        await journal.recordCheckpoint(
+            'Hello Cleveland',
+            makeSerializedMap(beforeCoordinates),
+            makeSerializedMap(afterCoordinates),
+            'checkpoint',
+            {
+                kind: 'polygon-edit',
+                layerId: 'LtnCells',
+                payload: { historyId: 'polygon-1' }
+            }
+        );
+
+        await expect(mapManager.undo()).resolves.toBe(true);
+        expect(vi.mocked(fileManager.saveMap).mock.calls.at(-1)?.[2]).toEqual(groups);
     });
 
     it('undoes and redoes a polygon vertex insertion by historyId', async () => {

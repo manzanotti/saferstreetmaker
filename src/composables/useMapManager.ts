@@ -19,7 +19,7 @@ import { useMapStore, type LayerMutationEvent } from '../stores/mapStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useUiStore } from '../stores/uiStore';
 import { useGroupStore } from '../stores/groupStore';
-import { pruneDanglingGroupMembers } from './useGroups';
+import { pruneDanglingGroupMembers, resetGroupVisibility } from './useGroups';
 import { pinia } from '../stores/index';
 
 const APP_VERSION = '0.9.0';
@@ -414,7 +414,12 @@ export function setupMapManager(fileManager: FileManager): MapManager {
                 layer.loadFromGeoJSON(layerState as L.GeoJSON);
             }
 
-            await fileManager.saveMap(settingsStore.toSettings(), mapStore.toLayers());
+            const groupStore = useGroupStore(pinia);
+            await fileManager.saveMap(
+                settingsStore.toSettings(),
+                mapStore.toLayers(),
+                groupStore.groups
+            );
             lastSavedSnapshot = buildCurrentSnapshot();
             return true;
         } finally {
@@ -1202,6 +1207,7 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         });
         groupStore.setGroups([]);
         groupStore.setAllHidden(false);
+        resetGroupVisibility();
     };
 
     const buildAllActiveLayerIds = (): string[] => {
@@ -1308,6 +1314,8 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         // Load groups from payload
         const groupStore = useGroupStore(pinia);
         groupStore.setGroups(geoJSON.groups ?? []);
+        groupStore.setAllHidden(false);
+        resetGroupVisibility();
         // Drop any members referencing features that are not present in the
         // loaded data (e.g. from an older/edited payload).
         pruneDanglingGroupMembers();

@@ -83,6 +83,13 @@ export function recomputeFeatureVisibility(): void {
     }
 }
 
+export function resetGroupVisibility(): void {
+    for (const marker of [...currentlyHidden]) {
+        showMarker(marker);
+    }
+    currentlyHidden.clear();
+}
+
 // ── Module-level visibility state ─────────────────────────────────────────
 /**
  * Tracks original styles for markers currently hidden by group visibility.

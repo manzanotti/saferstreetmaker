@@ -22,6 +22,7 @@ import {
     skipSplitsAndProceed,
     toggleGroupVisibility,
     setAllGroupsVisibility,
+    resetGroupVisibility,
     pruneDanglingGroupMembers,
     deleteGroup,
     beginAddToGroup,
@@ -949,6 +950,30 @@ describe('useGroups', () => {
             setAllGroupsVisibility(false);
             expect(markerA.options.opacity).toBe(1);
             expect(markerB.options.opacity).toBe(1);
+        });
+
+        it('resetGroupVisibility reveals hidden members after groups are cleared', () => {
+            const layer = makePointLayer('ModalFilters');
+            const marker = makeStyledMarker('h1');
+            layer.getLayer().addLayer(marker as any);
+            useMapStore(pinia).setLayers([layer]);
+
+            const groupStore = useGroupStore(pinia);
+            groupStore.addGroup({
+                id: 'g1',
+                name: 'V',
+                members: [{ layerId: 'ModalFilters', historyId: 'h1' }]
+            });
+
+            toggleGroupVisibility('g1');
+            expect(marker.options.opacity).toBe(0);
+
+            groupStore.setGroups([]);
+            groupStore.setAllHidden(false);
+            resetGroupVisibility();
+
+            expect(marker.options.opacity).toBe(1);
+            expect(marker.options.fillOpacity).toBe(0.5);
         });
     });
 
