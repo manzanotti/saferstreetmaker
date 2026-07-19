@@ -33,6 +33,8 @@ export interface SerializedMap {
     };
     /** GeoJSON FeatureCollections keyed by layer id */
     layers?: Record<string, unknown>;
+    /** Persisted feature groups */
+    groups?: unknown[];
     /**
      * Legacy top-level centre (stored directly before settings was introduced).
      * Only read when `settings` is absent.
@@ -57,12 +59,17 @@ interface CompactSettings {
 export interface CompactStoredMap {
     s: CompactSettings;
     l: Record<string, unknown>;
+    g?: unknown[];
     d: string;
 }
 
 export class MapSerializer {
     /** Convert the current map state to a plain JSON-serialisable object. */
-    toJSON(settings: Settings, layersData: Map<string, IMapLayer>): SerializedMap {
+    toJSON(
+        settings: Settings,
+        layersData: Map<string, IMapLayer>,
+        groups: unknown[] = []
+    ): SerializedMap {
         const layers: Record<string, unknown> = {};
         layersData.forEach((layer, layerName) => {
             layers[layerName] = layer.toGeoJSON();
@@ -80,6 +87,7 @@ export class MapSerializer {
                 version: settings.version
             },
             layers,
+            groups: JSON.parse(JSON.stringify(groups)) as unknown[],
             lastSaved: new Date().toISOString()
         };
     }
@@ -88,12 +96,20 @@ export class MapSerializer {
      * Serialise the map state to a URI-encoded LZ-string hash suitable for use
      * as a URL fragment or iframe `src` parameter.
      */
-    toEncodedHash(settings: Settings, layersData: Map<string, IMapLayer>): string {
-        const mapString = JSON.stringify(this.toJSON(settings, layersData));
+    toEncodedHash(
+        settings: Settings,
+        layersData: Map<string, IMapLayer>,
+        groups: unknown[] = []
+    ): string {
+        const mapString = JSON.stringify(this.toJSON(settings, layersData, groups));
         return LZString.compressToEncodedURIComponent(mapString);
     }
 
-    toCompactStoredMap(settings: Settings, layersData: Map<string, IMapLayer>): CompactStoredMap {
+    toCompactStoredMap(
+        settings: Settings,
+        layersData: Map<string, IMapLayer>,
+        groups: unknown[] = []
+    ): CompactStoredMap {
         const layers: Record<string, unknown> = {};
         layersData.forEach((layer, layerName) => {
             layers[layerName] = layer.toGeoJSON();
@@ -110,6 +126,7 @@ export class MapSerializer {
                 v: settings.version
             },
             l: layers,
+            g: JSON.parse(JSON.stringify(groups)) as unknown[],
             d: new Date().toISOString()
         };
     }
@@ -126,6 +143,7 @@ export class MapSerializer {
                 version: data.s.v
             },
             layers: data.l,
+            groups: data.g ?? [],
             lastSaved: data.d
         };
     }
@@ -145,6 +163,7 @@ export class MapSerializer {
                     v: ''
                 },
                 l: data.layers ?? {},
+                g: data.groups ?? [],
                 d: data.lastSaved ?? new Date().toISOString()
             };
         }
@@ -160,6 +179,7 @@ export class MapSerializer {
                 v: settings.version ?? ''
             },
             l: data.layers ?? {},
+            g: data.groups ?? [],
             d: data.lastSaved ?? new Date().toISOString()
         };
     }

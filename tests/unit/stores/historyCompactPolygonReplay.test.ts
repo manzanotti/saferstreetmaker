@@ -5,6 +5,7 @@ vi.mock('leaflet', () => import('../__mocks__/leaflet'));
 
 import * as L from 'leaflet';
 import { pinia } from '../../../src/stores/index';
+import { useGroupStore } from '../../../src/stores/groupStore';
 import { useMapStore } from '../../../src/stores/mapStore';
 import { useSettingsStore } from '../../../src/stores/settingsStore';
 import { setupMapManager } from '../../../src/composables/useMapManager';
@@ -135,6 +136,8 @@ describe('useMapManager compact polygon replay', () => {
         settingsStore.zoom = 12;
         settingsStore.version = '0.9.0';
 
+        useGroupStore(pinia).setGroups([]);
+
         await journal.clearHistory('Hello Cleveland');
     });
 
@@ -163,6 +166,14 @@ describe('useMapManager compact polygon replay', () => {
         const layer = createFakeLtnLayer(afterCoordinates);
         const mapStore = useMapStore(pinia);
         mapStore.setLayers([layer]);
+        const groups = [
+            {
+                id: 'group-1',
+                name: 'LTN group',
+                members: [{ layerId: 'LtnCells', historyId: 'polygon-1' }]
+            }
+        ];
+        useGroupStore(pinia).setGroups(groups);
 
         await journal.recordCheckpoint(
             'Hello Cleveland',
@@ -199,6 +210,7 @@ describe('useMapManager compact polygon replay', () => {
         );
 
         await expect(mapManager.undo()).resolves.toBe(true);
+        expect(vi.mocked(fileManager.saveMap).mock.calls.at(-1)?.[2]).toEqual(groups);
         expect(layer.getState().features[0]).toMatchObject({
             geometry: {
                 coordinates: beforeCoordinates

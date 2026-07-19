@@ -565,6 +565,24 @@ export function setupAreaSelection(map: L.Map): void {
     };
 }
 
+export function applySelectionHighlights(markers: SelectedMarker[], replace = true): void {
+    if (replace) {
+        _clearSelectionHighlights?.();
+        _replaceSelectionHighlights?.(markers);
+    } else {
+        _addSelectionHighlights?.(markers);
+    }
+}
+
+export function clearFeatureHighlight(): void {
+    const selectionStore = useSelectionStore(pinia);
+    if (selectionStore.isActive) {
+        return;
+    }
+    _clearSelectionHighlights?.();
+    selectionStore.clear();
+}
+
 // ── Batch delete ───────────────────────────────────────────────────────────
 // Exported so AreaSelectionPanel can call it directly.
 export function executeAreaDelete(): void {

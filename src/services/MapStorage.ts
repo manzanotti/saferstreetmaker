@@ -30,10 +30,14 @@ export class MapStorage {
     // ── Persistence ───────────────────────────────────────────────────────────
 
     /** Serialise the current map state into a compact payload, then persist it. */
-    async saveMap(settings: Settings, layersData: Map<string, IMapLayer>): Promise<void> {
+    async saveMap(
+        settings: Settings,
+        layersData: Map<string, IMapLayer>,
+        groups: unknown[] = []
+    ): Promise<void> {
         await this.ready;
 
-        const payload = this.serializer.toCompactStoredMap(settings, layersData);
+        const payload = this.serializer.toCompactStoredMap(settings, layersData, groups);
 
         await this.db.transaction('rw', this.db.maps, this.db.metadata, async () => {
             const sortOrder = await this.getNextSortOrder();
@@ -98,14 +102,18 @@ export class MapStorage {
      * Copy the current map to a new title using the pattern `<title>_copy_N`
      * where N is the lowest integer not already taken.
      */
-    async copyMap(settings: Settings, layersData: Map<string, IMapLayer>): Promise<void> {
+    async copyMap(
+        settings: Settings,
+        layersData: Map<string, IMapLayer>,
+        groups: unknown[] = []
+    ): Promise<void> {
         const existing = await this.listMaps();
         let index = 1;
         while (existing.includes(`${settings.title}_copy_${index}`)) {
             index++;
         }
         settings.title = `${settings.title}_copy_${index}`;
-        await this.saveMap(settings, layersData);
+        await this.saveMap(settings, layersData, groups);
     }
 
     // ── Map list ──────────────────────────────────────────────────────────────

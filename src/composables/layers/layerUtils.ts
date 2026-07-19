@@ -84,6 +84,14 @@ export function buildHistoryId(prefix: string): string {
     return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+export function getFeatureHistoryId(marker: L.Layer): string | null {
+    return (
+        ((marker as any).feature?.properties?.historyId as string | undefined) ??
+        ((marker as any).properties?.historyId as string | undefined) ??
+        null
+    );
+}
+
 // ---------------------------------------------------------------------------
 // Toolbar button builder
 // ---------------------------------------------------------------------------

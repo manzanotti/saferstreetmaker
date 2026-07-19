@@ -15,10 +15,12 @@ import { SAVE_ERROR_ALREADY_SHOWN } from './saveErrorMarker';
 import type { SerializedMap } from '../services/MapSerializer';
 import { Settings } from '../models/Settings';
 import { useHistoryStore } from '../stores/historyStore';
+import { useGroupStore } from '../stores/groupStore';
 import { useMapStore, type LayerMutationEvent } from '../stores/mapStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useUiStore } from '../stores/uiStore';
 import { pinia } from '../stores/index';
+import { resetGroupVisibility } from './useGroups';
 
 const APP_VERSION = '0.9.0';
 
@@ -67,6 +69,7 @@ export function getFileManager(): FileManager {
 export function setupMapManager(fileManager: FileManager): MapManager {
     _fileManager = fileManager;
     const historyStore = useHistoryStore(pinia);
+    const groupStore = useGroupStore(pinia);
     const mapStore = useMapStore(pinia);
     const settingsStore = useSettingsStore(pinia);
     const uiStore = useUiStore(pinia);
@@ -95,7 +98,11 @@ export function setupMapManager(fileManager: FileManager): MapManager {
     };
 
     const buildCurrentSnapshot = (): SerializedMap => {
-        return fileManager.buildSerializedMap(settingsStore.toSettings(), mapStore.toLayers());
+        return fileManager.buildSerializedMap(
+            settingsStore.toSettings(),
+            mapStore.toLayers(),
+            groupStore.groups
+        );
     };
 
     const normaliseSnapshot = (snapshot: SerializedMap | null): unknown => {
@@ -107,6 +114,7 @@ export function setupMapManager(fileManager: FileManager): MapManager {
             title: snapshot.title,
             settings: snapshot.settings,
             layers: snapshot.layers,
+            groups: snapshot.groups,
             centre: snapshot.centre,
             zoom: snapshot.zoom
         };
@@ -153,7 +161,11 @@ export function setupMapManager(fileManager: FileManager): MapManager {
                 return false;
             }
 
-            await fileManager.saveMap(settingsStore.toSettings(), mapStore.toLayers());
+            await fileManager.saveMap(
+                settingsStore.toSettings(),
+                mapStore.toLayers(),
+                groupStore.groups
+            );
             lastSavedSnapshot = buildCurrentSnapshot();
             return true;
         } finally {
@@ -366,7 +378,11 @@ export function setupMapManager(fileManager: FileManager): MapManager {
                 layer.loadFromGeoJSON(layerState as L.GeoJSON);
             }
 
-            await fileManager.saveMap(settingsStore.toSettings(), mapStore.toLayers());
+            await fileManager.saveMap(
+                settingsStore.toSettings(),
+                mapStore.toLayers(),
+                groupStore.groups
+            );
             lastSavedSnapshot = buildCurrentSnapshot();
             return true;
         } finally {
@@ -880,7 +896,11 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         try {
             layer.getLayer().clearLayers();
             layer.loadFromGeoJSON(featureCollection as unknown as L.GeoJSON);
-            await fileManager.saveMap(settingsStore.toSettings(), mapStore.toLayers());
+            await fileManager.saveMap(
+                settingsStore.toSettings(),
+                mapStore.toLayers(),
+                groupStore.groups
+            );
             lastSavedSnapshot = buildCurrentSnapshot();
             return true;
         } finally {
@@ -943,7 +963,11 @@ export function setupMapManager(fileManager: FileManager): MapManager {
             addLayersToMap(targetSettings.activeLayers);
             mapStore.visibleLayerIds = new Set(targetSettings.activeLayers);
 
-            await fileManager.saveMap(settingsStore.toSettings(), mapStore.toLayers());
+            await fileManager.saveMap(
+                settingsStore.toSettings(),
+                mapStore.toLayers(),
+                groupStore.groups
+            );
             lastSavedSnapshot = buildCurrentSnapshot();
             return true;
         } finally {
@@ -1068,7 +1092,11 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         const mutation = mapStore.lastLayerMutation ?? pendingHistoryMutation ?? undefined;
 
         try {
-            await fileManager.saveMap(settingsStore.toSettings(), mapStore.toLayers());
+            await fileManager.saveMap(
+                settingsStore.toSettings(),
+                mapStore.toLayers(),
+                groupStore.groups
+            );
 
             if (
                 options?.recordHistory !== false &&
@@ -1131,6 +1159,9 @@ export function setupMapManager(fileManager: FileManager): MapManager {
             layer.clearLayer();
             map.removeLayer(layer.getLayer());
         });
+        groupStore.setGroups([]);
+        groupStore.setAllHidden(false);
+        resetGroupVisibility();
     };
 
     const buildAllActiveLayerIds = (): string[] => {
@@ -1199,6 +1230,13 @@ export function setupMapManager(fileManager: FileManager): MapManager {
                 }
             });
         }
+
+        const loadedGroups = (Array.isArray(geoJSON.groups) ? geoJSON.groups : []) as Parameters<
+            typeof groupStore.setGroups
+        >[0];
+        groupStore.setGroups(loadedGroups);
+        groupStore.setAllHidden(false);
+        resetGroupVisibility();
 
         // Apply stored centre/zoom from legacy JSON documents (only when settings is absent)
         if (
