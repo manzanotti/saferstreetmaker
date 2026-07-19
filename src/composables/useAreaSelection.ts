@@ -26,6 +26,8 @@ import {
     type ClipboardEntry
 } from '../stores/selectionStore';
 import { pinia } from '../stores/index';
+import { getFeatureHistoryId } from './layers/layerUtils';
+import { useGroupStore } from '../stores/groupStore';
 
 const RECT_STYLE: L.PathOptions = {
     color: '#3b82f6',
@@ -254,13 +256,26 @@ export function polygonIntersectsBounds(m: L.Layer, bounds: L.LatLngBounds): boo
 }
 
 /**
- * Build SelectedMarker entries for all vertices of a single polyline or
- * polygon feature. Used by popup-copy and modifier-click selection paths so
- * they produce the same SelectedMarker shape that executeCopy / executeAreaDelete
- * already understand.
+ * Build SelectedMarker entries for a single feature. For point markers this is
+ * one entry at the marker's position; for polyline/polygon features it is one
+ * entry per vertex. Used by popup-copy, click and modifier-click selection
+ * paths so they produce the same SelectedMarker shape that executeCopy /
+ * executeAreaDelete / grouping already understand.
  */
 export function buildFeatureSelectionEntries(marker: L.Layer, layerId: string): SelectedMarker[] {
-    const historyId = (marker as any).feature?.properties?.historyId ?? null;
+    const historyId = getFeatureHistoryId(marker);
+    const anyMarker = marker as unknown as {
+        getLatLng?: () => L.LatLng;
+        getLatLngs?: () => unknown;
+    };
+
+    // Point marker: a single entry from getLatLng(). Polylines/polygons expose
+    // getLatLngs() instead, so exclude those here.
+    if (typeof anyMarker.getLatLng === 'function' && typeof anyMarker.getLatLngs !== 'function') {
+        const latLng = anyMarker.getLatLng();
+        return latLng ? [{ layerId, historyId, latLng, marker }] : [];
+    }
+
     return getPolylineLatLngs(marker).map((latLng) => ({ layerId, historyId, latLng, marker }));
 }
 
@@ -332,6 +347,9 @@ export function setupAreaSelection(map: L.Map): void {
             if (active) {
                 previousDrawLayerId = mapStore.drawLayerId;
                 mapStore.setDrawLayer(null);
+                // Dismiss any transient popup (e.g. the LTN draw naming popup)
+                // so its DOM doesn't overlap and intercept the selection drag.
+                map.closePopup();
                 map.dragging.disable();
                 map.getContainer().classList.add('area-select');
                 map.on('mousedown', onMouseDown as L.LeafletEventHandlerFn);
@@ -348,6 +366,8 @@ export function setupAreaSelection(map: L.Map): void {
                 removeRect();
                 mapStore.setDrawLayer(previousDrawLayerId);
                 previousDrawLayerId = null;
+                // Abandon any pending "add to group" target when selection ends.
+                useGroupStore(pinia).setAddToGroupId(null);
             }
         },
         { flush: 'sync' }
@@ -418,6 +438,9 @@ export function setupAreaSelection(map: L.Map): void {
         }
         const bounds = L.latLngBounds(origin, e.latlng);
         origin = null;
+        // Remember the drag rectangle so a subsequent polyline split can clip
+        // the new line to the selection area.
+        selectionStore.setLastAreaBounds(bounds);
         const found = findMarkersInBounds(bounds);
         if (isAdditiveDrag) {
             if (found.length > 0) {
@@ -449,7 +472,7 @@ export function setupAreaSelection(map: L.Map): void {
                     if (bounds.contains(pointLatLng)) {
                         found.push({
                             layerId: layer.id,
-                            historyId: (m as any).feature?.properties?.historyId ?? null,
+                            historyId: getFeatureHistoryId(m),
                             latLng: pointLatLng,
                             marker: m
                         });
@@ -460,7 +483,7 @@ export function setupAreaSelection(map: L.Map): void {
                     // added as handles so the user can clearly see which polygon
                     // is selected.
                     if (polygonIntersectsBounds(m, bounds)) {
-                        const historyId = (m as any).feature?.properties?.historyId ?? null;
+                        const historyId = getFeatureHistoryId(m);
                         for (const vertexLatLng of getPolylineLatLngs(m)) {
                             found.push({
                                 layerId: layer.id,
@@ -477,7 +500,7 @@ export function setupAreaSelection(map: L.Map): void {
                         if (bounds.contains(vertexLatLng)) {
                             found.push({
                                 layerId: layer.id,
-                                historyId: (m as any).feature?.properties?.historyId ?? null,
+                                historyId: getFeatureHistoryId(m),
                                 latLng: vertexLatLng,
                                 marker: m
                             });
@@ -563,6 +586,38 @@ export function setupAreaSelection(map: L.Map): void {
         }
         highlightMarkers(markers);
     };
+}
+
+/**
+ * Apply visual selection highlights to an explicit set of SelectedMarker entries.
+ * Exported so useGroups (and other external callers) can trigger highlights
+ * without going through selectFeature.
+ *
+ * When `replace` is true (default), existing highlights are cleared first.
+ */
+export function applySelectionHighlights(markers: SelectedMarker[], replace = true): void {
+    if (replace) {
+        _clearSelectionHighlights?.();
+        _replaceSelectionHighlights?.(markers);
+    } else {
+        _addSelectionHighlights?.(markers);
+    }
+}
+
+/**
+ * Clear the vertex handles and selection state left over from a single-feature
+ * click selection. Call this after deleting a feature via its popup so its
+ * selection handles (e.g. polyline/polygon vertex dots) do not linger on the
+ * map after the feature is gone. No-op while a rubber-band area selection is
+ * active — that flow manages its own cleanup.
+ */
+export function clearFeatureHighlight(): void {
+    const selectionStore = useSelectionStore(pinia);
+    if (selectionStore.isActive) {
+        return;
+    }
+    _clearSelectionHighlights?.();
+    selectionStore.clear();
 }
 
 // ── Batch delete ───────────────────────────────────────────────────────────
@@ -657,8 +712,7 @@ export function executeAreaDelete(): void {
                 // Mutate in place; GeoJSON serialisation uses getLatLngs() so
                 // the updated coordinates will be saved correctly.
                 (marker as any).setLatLngs?.(remaining);
-                const historyId =
-                    ((marker as any).feature?.properties?.historyId as string | undefined) ?? null;
+                const historyId = getFeatureHistoryId(marker);
                 otherMutations.push({
                     kind: 'polyline-vertices-delete',
                     layerId,

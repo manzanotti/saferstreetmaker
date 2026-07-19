@@ -1,12 +1,8 @@
 import * as L from 'leaflet';
-import { createPointLayer, getPointEventLatLng } from './usePointLayer';
+import { createPointLayer, handlePointFeatureClick } from './usePointLayer';
 import type { IMapLayer } from './IMapLayer';
-import { useMapStore } from '../../stores/mapStore';
-import { pinia } from '../../stores/index';
 
 export function createBusGateLayer(map: L.Map): IMapLayer {
-    const mapStore = useMapStore(pinia);
-
     return createPointLayer(
         {
             id: 'BusGates',
@@ -22,21 +18,9 @@ export function createBusGateLayer(map: L.Map): IMapLayer {
                     icon: new L.DivIcon({ className: 'bus-gate-icon' }),
                     draggable: true,
                     pane: 'filters'
-                } as any).on('click', (e: any) => {
-                    L.DomEvent.stopPropagation(e);
-                    const latLng = getPointEventLatLng(e);
-                    const historyId = e.target.feature?.properties?.historyId ?? null;
-                    geoJsonLayer.removeLayer(e.target);
-                    mapStore.markLayerUpdated({
-                        kind: 'point-delete',
-                        layerId: 'BusGates',
-                        payload: {
-                            lat: latLng?.lat ?? null,
-                            lng: latLng?.lng ?? null,
-                            historyId
-                        }
-                    });
-                });
+                } as any).on('click', (e: any) =>
+                    handlePointFeatureClick(e, 'BusGates', geoJsonLayer)
+                );
                 geoJsonLayer.addLayer(marker);
                 return marker;
             },

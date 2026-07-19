@@ -259,4 +259,107 @@ export class UndoJournal {
                 .last()) ?? null
         );
     }
+
+    /** Metadata flag key for the one-time view-only-checkpoint migration. */
+    static readonly VIEW_CHECKPOINT_MIGRATION_KEY = 'historyViewCheckpointMigration:v1';
+
+    /**
+     * Remove history entries whose before/after snapshots represent no real
+     * change (as decided by `isNoOp`) from a single map's history. Sequences of
+     * the surviving entries are compacted to stay contiguous and
+     * currentSequence is shifted so undo/redo navigation remains consistent.
+     * Returns the number of entries removed.
+     */
+    async pruneNoOpCheckpoints(
+        mapTitle: string,
+        isNoOp: (before: unknown, after: unknown) => boolean
+    ): Promise<number> {
+        return await this.db.transaction(
+            'rw',
+            this.db.historyEntries,
+            this.db.historyStates,
+            async () => {
+                const entries = await this.db.historyEntries
+                    .where('[mapTitle+sequence]')
+                    .between([mapTitle, -Infinity], [mapTitle, Infinity])
+                    .sortBy('sequence');
+                if (entries.length === 0) {
+                    return 0;
+                }
+
+                const state = await this.db.historyStates.get(mapTitle);
+                const currentSequence = state?.currentSequence ?? 0;
+                const minSequence = entries[0].sequence;
+
+                const survivors: HistoryEntryRecord[] = [];
+                let removedCount = 0;
+                let removedBeforeCurrent = 0;
+                for (const entry of entries) {
+                    if (isNoOp(entry.before, entry.after)) {
+                        removedCount++;
+                        if (entry.sequence < currentSequence) {
+                            removedBeforeCurrent++;
+                        }
+                        continue;
+                    }
+                    survivors.push(entry);
+                }
+
+                if (removedCount === 0) {
+                    return 0;
+                }
+
+                const idsToDelete = entries
+                    .map((entry) => entry.id)
+                    .filter((id): id is number => id != null);
+                await this.db.historyEntries.bulkDelete(idsToDelete);
+
+                if (survivors.length > 0) {
+                    // Re-add survivors with fresh ids and contiguous sequences.
+                    const renumbered = survivors.map((entry, index) => {
+                        const { id: _id, ...rest } = entry;
+                        return { ...rest, sequence: index };
+                    });
+                    await this.db.historyEntries.bulkAdd(renumbered);
+                }
+
+                const newCurrentSequence = Math.min(
+                    survivors.length,
+                    Math.max(0, currentSequence - minSequence - removedBeforeCurrent)
+                );
+                await this.db.historyStates.put({
+                    mapTitle,
+                    currentSequence: newCurrentSequence
+                });
+
+                return removedCount;
+            }
+        );
+    }
+
+    /**
+     * One-time migration that strips legacy pan/zoom-only checkpoints — entries
+     * recorded before map view state was excluded from history — from every
+     * supplied map's history. Guarded by a metadata flag so it runs at most
+     * once. `isNoOp` decides whether an entry's before/after snapshots differ
+     * only in map view state (and therefore should never have been recorded).
+     */
+    async migrateRemoveViewOnlyCheckpoints(
+        mapTitles: string[],
+        isNoOp: (before: unknown, after: unknown) => boolean
+    ): Promise<void> {
+        const flag = await this.db.metadata.get(UndoJournal.VIEW_CHECKPOINT_MIGRATION_KEY);
+        if (flag?.value === '1') {
+            return;
+        }
+
+        for (const mapTitle of mapTitles) {
+            await this.pruneNoOpCheckpoints(mapTitle, isNoOp);
+        }
+
+        await this.db.metadata.put({
+            key: UndoJournal.VIEW_CHECKPOINT_MIGRATION_KEY,
+            value: '1'
+        });
+    }
 }

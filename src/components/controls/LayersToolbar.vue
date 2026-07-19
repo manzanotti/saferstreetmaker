@@ -77,6 +77,21 @@ function hideSubmenu(groupName: string) {
     openSubmenus.value = { ...openSubmenus.value, [groupName]: false };
 }
 
+/** Collapse every expanded submenu. No-op when none are open. */
+function hideAllSubmenus() {
+    const anyOpen = Object.values(openSubmenus.value).some(Boolean);
+    if (!anyOpen) {
+        return;
+    }
+    openSubmenus.value = {};
+}
+
+function onDocumentKeydown(e: KeyboardEvent) {
+    if (e.key === 'Escape') {
+        hideAllSubmenus();
+    }
+}
+
 // ── Button click handlers ──────────────────────────────────────────────────
 function onLayerButtonClick(btn: ToolbarButton) {
     const map = mapStore.map;
@@ -186,10 +201,17 @@ onMounted(() => {
         resizeObserver = new ResizeObserver(cacheRects);
         resizeObserver.observe(toolbarRef.value);
     }
+
+    // Collapse an expanded button sub-group when the user clicks on the map
+    // or presses Escape.
+    mapStore.map?.on('click', hideAllSubmenus);
+    document.addEventListener('keydown', onDocumentKeydown);
 });
 
 onUnmounted(() => {
     resizeObserver?.disconnect();
+    mapStore.map?.off('click', hideAllSubmenus);
+    document.removeEventListener('keydown', onDocumentKeydown);
 });
 </script>
 
@@ -218,6 +240,7 @@ onUnmounted(() => {
                     "
                     type="button"
                     :aria-label="item.button.tooltip"
+                    :title="item.button.tooltip"
                     :aria-pressed="mapStore.drawLayerId === item.button.id"
                     :style="{ transform: `scale(${buttonScales[item.button.id] ?? 1})` }"
                     :class="[
@@ -270,6 +293,7 @@ onUnmounted(() => {
                     "
                     type="button"
                     :aria-label="item.parent.tooltip"
+                    :title="item.parent.tooltip"
                     :aria-pressed="mapStore.drawLayerId === item.parent.id"
                     :aria-expanded="openSubmenus[item.groupName] ?? false"
                     :style="{ transform: `scale(${buttonScales[item.parent.id] ?? 1})` }"
@@ -323,9 +347,9 @@ onUnmounted(() => {
                     enter-active-class="transition-[opacity,transform] duration-200 ease-out"
                     enter-from-class="opacity-0 -translate-x-1"
                     enter-to-class="opacity-100 translate-x-0"
-                    leave-active-class="transition-[opacity,transform] duration-150 ease-in"
-                    leave-from-class="opacity-100 translate-x-0"
-                    leave-to-class="opacity-0 -translate-x-1"
+                    leave-active-class=""
+                    leave-from-class=""
+                    leave-to-class=""
                 >
                     <ul
                         v-show="openSubmenus[item.groupName]"
@@ -339,6 +363,7 @@ onUnmounted(() => {
                                 :id="`${subBtn.id}-button`"
                                 type="button"
                                 :aria-label="subBtn.tooltip"
+                                :title="subBtn.tooltip"
                                 :aria-pressed="mapStore.drawLayerId === subBtn.id"
                                 :class="[
                                     'w-12 h-12 rounded-xl flex items-center justify-center',

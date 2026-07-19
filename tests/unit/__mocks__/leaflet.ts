@@ -14,12 +14,94 @@ class LatLng {
     ) {}
 }
 
+class LatLngBounds {
+    private _sw: LatLng;
+    private _ne: LatLng;
+
+    constructor(a?: LatLng[] | LatLng, b?: LatLng) {
+        if (Array.isArray(a)) {
+            let minLat = Infinity;
+            let minLng = Infinity;
+            let maxLat = -Infinity;
+            let maxLng = -Infinity;
+            for (const ll of a) {
+                minLat = Math.min(minLat, ll.lat);
+                maxLat = Math.max(maxLat, ll.lat);
+                minLng = Math.min(minLng, ll.lng);
+                maxLng = Math.max(maxLng, ll.lng);
+            }
+            this._sw = new LatLng(minLat, minLng);
+            this._ne = new LatLng(maxLat, maxLng);
+        } else if (a && b) {
+            this._sw = a;
+            this._ne = b;
+        } else {
+            this._sw = new LatLng(0, 0);
+            this._ne = new LatLng(0, 0);
+        }
+    }
+
+    getNorth() {
+        return this._ne.lat;
+    }
+    getSouth() {
+        return this._sw.lat;
+    }
+    getEast() {
+        return this._ne.lng;
+    }
+    getWest() {
+        return this._sw.lng;
+    }
+    getCenter() {
+        return new LatLng((this._sw.lat + this._ne.lat) / 2, (this._sw.lng + this._ne.lng) / 2);
+    }
+    contains(other: any) {
+        if (other instanceof LatLngBounds) {
+            return (
+                other.getSouth() >= this.getSouth() &&
+                other.getNorth() <= this.getNorth() &&
+                other.getWest() >= this.getWest() &&
+                other.getEast() <= this.getEast()
+            );
+        }
+        return (
+            other.lat >= this.getSouth() &&
+            other.lat <= this.getNorth() &&
+            other.lng >= this.getWest() &&
+            other.lng <= this.getEast()
+        );
+    }
+}
+
+function latLngBounds(a?: LatLng[] | LatLng, b?: LatLng) {
+    return new LatLngBounds(a, b);
+}
+
 class GeoJSON {
     private _layers: any[] = [];
+    private _handlers: Record<string, Function[]> = {};
     options: any;
 
     constructor(_data?: any, options?: any) {
         this.options = options ?? {};
+    }
+
+    on(event: string, fn: Function) {
+        (this._handlers[event] ??= []).push(fn);
+        return this;
+    }
+    off(event: string, fn: Function) {
+        if (this._handlers[event]) {
+            this._handlers[event] = this._handlers[event].filter((f) => f !== fn);
+        }
+        return this;
+    }
+    fire(event: string, payload?: Record<string, unknown>) {
+        for (const handler of this._handlers[event] ?? []) {
+            handler({ target: this, ...payload });
+        }
+        return this;
     }
 
     addLayer(layer: any) {
@@ -27,6 +109,7 @@ class GeoJSON {
     }
     removeLayer(layer: any) {
         this._layers = this._layers.filter((l) => l !== layer);
+        this.fire('layerremove', { layer });
     }
     clearLayers() {
         this._layers = [];
@@ -284,7 +367,18 @@ class Map {
     getCenter() {
         return new LatLng(0, 0);
     }
+    getBounds() {
+        // Whole-world bounds so viewport.contains() is always true in unit
+        // tests and undo/redo area reveal never needs to move the mock map.
+        return new LatLngBounds([new LatLng(-90, -180), new LatLng(90, 180)]);
+    }
     setView(_center: any, _zoom?: any) {
+        return this;
+    }
+    panTo(_center: any, _opts?: any) {
+        return this;
+    }
+    fitBounds(_bounds: any, _opts?: any) {
         return this;
     }
     createPane(_name: string) {
@@ -315,6 +409,8 @@ const DomUtil = {
 
 export {
     LatLng,
+    LatLngBounds,
+    latLngBounds,
     GeoJSON,
     geoJSON,
     layerGroup,

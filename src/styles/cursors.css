@@ -12,6 +12,10 @@
     user-select: none;
 }
 
+#map.area-select .leaflet-popup {
+    pointer-events: none;
+}
+
 #map.modal-filter,
 #map.modal-filter .leaflet-interactive,
 #map.modal-filter .leaflet-marker-icon,

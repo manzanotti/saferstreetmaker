@@ -1225,6 +1225,7 @@ describe('selectFeature', () => {
                 enable: vi.fn()
             },
             getContainer: () => mapContainer,
+            closePopup: vi.fn().mockReturnThis(),
             on: vi.fn().mockReturnThis(),
             off: vi.fn().mockReturnThis()
         } as unknown as L.Map);
