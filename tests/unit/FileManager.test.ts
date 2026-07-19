@@ -202,22 +202,6 @@ describe('FileManager', () => {
             expect((loaded?.layers as any).ModalFilters.features).toHaveLength(1);
         });
 
-        it('saves groups correctly into the stored data', async () => {
-            const settings = makeSettings('GroupedCity');
-            const groups = [
-                {
-                    id: 'group-1',
-                    name: 'Filtered streets',
-                    members: [{ layerId: 'ModalFilters', historyId: 'modal-1' }]
-                }
-            ];
-
-            await fm.saveMap(settings, new Map(), groups);
-
-            const loaded = await fm.loadMapFromStorage('GroupedCity');
-            expect(loaded?.groups).toEqual(groups);
-        });
-
         it('loads the raw stored record without deserialising it', async () => {
             const settings = makeSettings('RawCity');
             await fm.saveMap(settings, new Map());

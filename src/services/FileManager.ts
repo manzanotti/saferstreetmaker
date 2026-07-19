@@ -37,34 +37,22 @@ export class FileManager {
 
     // ── Serialisation (delegate to MapSerializer) ─────────────────────────────
 
-    saveMapToHash(
-        settings: Settings,
-        layersData: Map<string, IMapLayer>,
-        groups: unknown[] = []
-    ): string {
-        return this.serializer.toEncodedHash(settings, layersData, groups);
+    saveMapToHash(settings: Settings, layersData: Map<string, IMapLayer>): string {
+        return this.serializer.toEncodedHash(settings, layersData);
     }
 
     loadMapFromHash(hash: string): SerializedMap | null {
         return this.serializer.fromEncodedHash(hash);
     }
 
-    buildSerializedMap(
-        settings: Settings,
-        layersData: Map<string, IMapLayer>,
-        groups: unknown[] = []
-    ): SerializedMap {
-        return this.serializer.toJSON(settings, layersData, groups);
+    buildSerializedMap(settings: Settings, layersData: Map<string, IMapLayer>): SerializedMap {
+        return this.serializer.toJSON(settings, layersData);
     }
 
     // ── Storage (delegate to MapStorage) ─────────────────────────────────────
 
-    async saveMap(
-        settings: Settings,
-        layersData: Map<string, IMapLayer>,
-        groups: unknown[] = []
-    ): Promise<void> {
-        await this.storage.saveMap(settings, layersData, groups);
+    async saveMap(settings: Settings, layersData: Map<string, IMapLayer>): Promise<void> {
+        await this.storage.saveMap(settings, layersData);
     }
 
     async loadMapFromStorage(mapName: string): Promise<SerializedMap | null> {
@@ -79,12 +67,8 @@ export class FileManager {
         await this.storage.deleteMap(mapName);
     }
 
-    async copyMap(
-        settings: Settings,
-        layersData: Map<string, IMapLayer>,
-        groups: unknown[] = []
-    ): Promise<void> {
-        await this.storage.copyMap(settings, layersData, groups);
+    async copyMap(settings: Settings, layersData: Map<string, IMapLayer>): Promise<void> {
+        await this.storage.copyMap(settings, layersData);
     }
 
     async loadMapListFromStorage(): Promise<string[]> {
@@ -105,12 +89,8 @@ export class FileManager {
 
     // ── File download ─────────────────────────────────────────────────────────
 
-    saveMapToFile(
-        settings: Settings,
-        layersData: Map<string, IMapLayer>,
-        groups: unknown[] = []
-    ): void {
-        const mapString = JSON.stringify(this.serializer.toJSON(settings, layersData, groups));
+    saveMapToFile(settings: Settings, layersData: Map<string, IMapLayer>): void {
+        const mapString = JSON.stringify(this.serializer.toJSON(settings, layersData));
         this._downloadBlob(mapString, `${settings.title}.json`);
     }
 
