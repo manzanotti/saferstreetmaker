@@ -289,6 +289,7 @@ export class UndoJournal {
 
                 const state = await this.db.historyStates.get(mapTitle);
                 const currentSequence = state?.currentSequence ?? 0;
+                const minSequence = entries[0].sequence;
 
                 const survivors: HistoryEntryRecord[] = [];
                 let removedCount = 0;
@@ -322,7 +323,10 @@ export class UndoJournal {
                     await this.db.historyEntries.bulkAdd(renumbered);
                 }
 
-                const newCurrentSequence = Math.max(0, currentSequence - removedBeforeCurrent);
+                const newCurrentSequence = Math.min(
+                    survivors.length,
+                    Math.max(0, currentSequence - minSequence - removedBeforeCurrent)
+                );
                 await this.db.historyStates.put({
                     mapTitle,
                     currentSequence: newCurrentSequence

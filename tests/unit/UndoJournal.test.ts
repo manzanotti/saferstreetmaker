@@ -335,6 +335,34 @@ describe('UndoJournal', () => {
             expect(await journal.getStatus('PruneMid')).toEqual({ canUndo: true, canRedo: true });
         });
 
+        it('renumbers currentSequence correctly after cap-pruned history is compacted', async () => {
+            await journal.clearHistory('PruneAfterCap');
+
+            for (let i = 0; i <= UndoJournal.MAX_HISTORY; i++) {
+                await journal.recordCheckpoint(
+                    'PruneAfterCap',
+                    viewSnapshot(12, { L: i }),
+                    i === 150 ? viewSnapshot(15, { L: i }) : viewSnapshot(12, { L: i + 1 })
+                );
+            }
+
+            const removed = await journal.pruneNoOpCheckpoints('PruneAfterCap', isNoOp);
+            expect(removed).toBe(1);
+
+            expect(await journal.getStatus('PruneAfterCap')).toEqual({
+                canUndo: true,
+                canRedo: false
+            });
+
+            const firstUndo = await journal.undo('PruneAfterCap');
+            expect(firstUndo).not.toBeNull();
+            expect((firstUndo as SerializedMap).layers).toEqual({ L: UndoJournal.MAX_HISTORY });
+            expect(await journal.getStatus('PruneAfterCap')).toEqual({
+                canUndo: true,
+                canRedo: true
+            });
+        });
+
         it('returns 0 and preserves history when there are no no-op entries', async () => {
             await journal.clearHistory('NoNoop');
             await journal.recordCheckpoint(
