@@ -122,35 +122,6 @@ describe('LtnLayer (composable)', () => {
             expect(addLayerSpy).toHaveBeenCalledTimes(1);
         });
 
-        it('exposes historyId on loaded polygons so grouping can identify them', () => {
-            layer.loadFromGeoJSON({
-                type: 'FeatureCollection',
-                features: [
-                    {
-                        type: 'Feature',
-                        properties: { label: 'A', color: '#cc00cc', historyId: 'ltn-xyz' },
-                        geometry: {
-                            type: 'Polygon',
-                            coordinates: [
-                                [
-                                    [0, 0],
-                                    [1, 0],
-                                    [1, 1],
-                                    [0, 1],
-                                    [0, 0]
-                                ]
-                            ]
-                        }
-                    }
-                ]
-            } as any);
-
-            const polygon = layer.getLayer().getLayers()[0] as any;
-            // Area-selection and grouping identify LTN polygons via
-            // properties.historyId, so it must be present.
-            expect(polygon.properties?.historyId).toBe('ltn-xyz');
-        });
-
         it('loads multiple polygon features', () => {
             const addLayerSpy = vi.spyOn(layer.getLayer(), 'addLayer');
             layer.loadFromGeoJSON(

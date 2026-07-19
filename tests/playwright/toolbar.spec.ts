@@ -140,45 +140,6 @@ test.describe('Toolbar button groups', () => {
     });
 });
 
-test.describe('Toolbar sub-group collapse', () => {
-    test.beforeEach(async ({ page }) => {
-        await addFreshStorageInitScript(page);
-        await page.goto('/');
-        await waitForFreshStorage(page);
-        await page.waitForSelector('.toolbar');
-        await page.addStyleTag({ content: '#help { display: none !important; }' });
-    });
-
-    function filtersGroupSubmenu(page: import('@playwright/test').Page) {
-        const group = page
-            .locator('.toolbar > li.group')
-            .filter({ has: page.locator(':scope > #modal-filter-button') });
-        return group.locator('.subToolbar');
-    }
-
-    test('pressing Escape collapses an expanded button sub-group', async ({ page }) => {
-        await page.locator('#modal-filter-button').click({ button: 'right' });
-        const submenu = filtersGroupSubmenu(page);
-        await expect(submenu).toBeVisible();
-
-        await page.keyboard.press('Escape');
-        await expect(submenu).toBeHidden();
-    });
-
-    test('clicking the map collapses an expanded button sub-group', async ({ page }) => {
-        await page.locator('#modal-filter-button').click({ button: 'right' });
-        const submenu = filtersGroupSubmenu(page);
-        await expect(submenu).toBeVisible();
-
-        const map = page.locator('.leaflet-container');
-        const box = await map.boundingBox();
-        if (!box) throw new Error('Map bounding box not found');
-        await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-
-        await expect(submenu).toBeHidden();
-    });
-});
-
 test.describe('hide-toolbar URL parameter', () => {
     test('toolbar is hidden when hide-toolbar=true is in the URL', async ({ page }) => {
         await page.goto('/?hide-toolbar=true');

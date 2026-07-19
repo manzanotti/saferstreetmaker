@@ -87,24 +87,6 @@ async function drawPolygon(page: Page) {
     await page.waitForTimeout(500);
 }
 
-/** Draw a polygon and complete it by returning to the first vertex. */
-async function drawPolygonClosingAtFirstVertex(page: Page) {
-    const map = page.locator('.leaflet-container');
-    const box = await map.boundingBox();
-    if (!box) throw new Error('Map bounding box not found');
-    const cx = box.x + box.width / 2;
-    const cy = box.y + box.height / 2;
-    await page.waitForTimeout(200);
-    await page.mouse.click(cx - 60, cy - 40);
-    await page.waitForTimeout(200);
-    await page.mouse.click(cx + 60, cy - 40);
-    await page.waitForTimeout(200);
-    await page.mouse.click(cx, cy + 40);
-    await page.waitForTimeout(200);
-    await page.mouse.dblclick(cx - 60, cy - 40);
-    await page.waitForTimeout(500);
-}
-
 async function deleteFirstShape(page: Page) {
     await page
         .locator('.leaflet-overlay-pane path, .leaflet-polygon-pane path, .leaflet-ltns-pane path')
@@ -582,82 +564,6 @@ test.describe('Layer: Modal Filter (point, primary button)', () => {
         await page.waitForTimeout(150);
         expect(await getLayerFeatureCount(page, 'ModalFilters')).toBe(1);
         await waitForHistoryButtons(page, { canUndo: true, canRedo: false });
-    });
-
-    test('panning and zooming the map does not create an undo checkpoint', async ({ page }) => {
-        // Place a filter then undo it so redo is available.
-        await page.locator('#modal-filter-button').click();
-        await clickMap(page);
-        await page.locator('#modal-filter-button').click(); // deactivate tool
-        await waitForHistoryButtons(page, { canUndo: true, canRedo: false });
-
-        await page.locator('#undo-button').click();
-        await page.waitForTimeout(150);
-        await waitForHistoryButtons(page, { canUndo: false, canRedo: true });
-
-        // Pan the map by dragging, then zoom in.
-        const map = page.locator('.leaflet-container');
-        const box = await map.boundingBox();
-        if (!box) throw new Error('Map bounding box not found');
-        const cx = box.x + box.width / 2;
-        const cy = box.y + box.height / 2;
-        await page.mouse.move(cx, cy);
-        await page.mouse.down();
-        await page.mouse.move(cx + 120, cy + 120, { steps: 10 });
-        await page.mouse.up();
-        await page.keyboard.press('+');
-        // Wait past the 500ms debounced view save.
-        await page.waitForTimeout(800);
-
-        // A view-only change must NOT record a checkpoint: the redo entry must
-        // still be available and no new undo entry created.
-        await waitForHistoryButtons(page, { canUndo: false, canRedo: true });
-
-        // Redo still restores the feature, proving the redo stack was intact.
-        await page.locator('#redo-button').click();
-        await page.waitForTimeout(150);
-        expect(await getLayerFeatureCount(page, 'ModalFilters')).toBe(1);
-    });
-
-    test('undo moves the map to reveal a change that is off-screen', async ({ page }) => {
-        // Place a modal filter at the map centre.
-        await page.locator('#modal-filter-button').click();
-        await clickMap(page);
-        await page.locator('#modal-filter-button').click(); // deactivate
-        await waitForHistoryButtons(page, { canUndo: true, canRedo: false });
-
-        // Record the filter location, then jump the view far away so the
-        // filter leaves the viewport.
-        const filterLatLng = await page.evaluate(() => {
-            const app = (document.getElementById('app') as any).__vue_app__;
-            const pinia = app?.config?.globalProperties?.$pinia;
-            const map = pinia?._s?.get('map')?.map;
-            const c = map.getCenter();
-            map.setView([c.lat + 5, c.lng + 5], map.getZoom(), { animate: false });
-            return { lat: c.lat, lng: c.lng };
-        });
-        await page.waitForTimeout(300);
-
-        // Confirm the filter location is now outside the viewport.
-        const offScreen = await page.evaluate(({ lat, lng }) => {
-            const app = (document.getElementById('app') as any).__vue_app__;
-            const pinia = app?.config?.globalProperties?.$pinia;
-            const map = pinia?._s?.get('map')?.map;
-            return !map.getBounds().contains([lat, lng]);
-        }, filterLatLng);
-        expect(offScreen).toBe(true);
-
-        // Undo — the map should move back to reveal the affected area.
-        await page.locator('#undo-button').click();
-        await page.waitForTimeout(400);
-
-        const nowVisible = await page.evaluate(({ lat, lng }) => {
-            const app = (document.getElementById('app') as any).__vue_app__;
-            const pinia = app?.config?.globalProperties?.$pinia;
-            const map = pinia?._s?.get('map')?.map;
-            return map.getBounds().contains([lat, lng]);
-        }, filterLatLng);
-        expect(nowVisible).toBe(true);
     });
 
     test('undo restores a deleted modal filter and redo removes it again', async ({ page }) => {
@@ -1416,18 +1322,6 @@ test.describe('Layer: LTN Cell (polygon)', () => {
         expect(count).toBeGreaterThanOrEqual(1);
     });
 
-    test('completing a polygon opens the LTN popup with the title input focused', async ({
-        page
-    }) => {
-        await page.locator('#ltn-button').click();
-        await drawPolygonClosingAtFirstVertex(page);
-
-        // The naming popup appears immediately, focused so the user can type a
-        // title straight away.
-        await expect(page.locator('.label-editor')).toBeVisible();
-        await expect(page.locator('.label-editor')).toBeFocused();
-    });
-
     test('deleting a drawn LTN cell removes it from storage', async ({ page }) => {
         await page.locator('#ltn-button').click();
         await drawPolygon(page);
@@ -1551,12 +1445,6 @@ test.describe('Layer: LTN Cell (polygon)', () => {
     }) => {
         await page.locator('#ltn-button').click();
         await drawPolygon(page);
-
-        // Drawing opens the naming popup focused on the title. Confirm the name
-        // with Enter to close it, then clicking the polygon switches to edit mode.
-        await expect(page.locator('.label-editor')).toBeVisible();
-        await page.keyboard.press('Enter');
-        await expect(page.locator('.popup-buttons')).toHaveCount(0);
 
         const polygon = page.locator('.leaflet-ltns-pane path.ltn-cell.leaflet-interactive');
         await clickSvgPath(page, polygon);
@@ -1927,31 +1815,6 @@ test.describe('Layer: LTN Cell (polygon)', () => {
         await expect(page.locator('.label-editor')).toHaveValue('Zone A');
     });
 
-    test('deleting an LTN polygon removes its selection vertex handles', async ({ page }) => {
-        await page.locator('#ltn-button').click();
-        await drawPolygon(page);
-        await page.locator('#ltn-button').click();
-
-        // Click the polygon to select it — vertex handles (blue circle markers)
-        // appear in the overlay pane.
-        await page
-            .locator('.leaflet-ltns-pane path.ltn-cell.leaflet-interactive')
-            .first()
-            .dispatchEvent('click');
-        await page.waitForTimeout(200);
-
-        const handles = page.locator('.leaflet-overlay-pane path[stroke="#3b82f6"]');
-        expect(await handles.count()).toBeGreaterThan(0);
-
-        // Delete the polygon via its popup.
-        await page.waitForSelector('.popup-buttons .delete-button');
-        await page.locator('.popup-buttons .delete-button').first().dispatchEvent('click');
-        await page.waitForTimeout(200);
-
-        // The vertex handles must be gone once the polygon is deleted.
-        expect(await handles.count()).toBe(0);
-    });
-
     test('hovering an existing point feature shows the select cursor even while another tool is active', async ({
         page
     }) => {
@@ -2033,14 +1896,9 @@ test.describe('Layer exclusivity', () => {
         await drawPolygon(page);
         expect(await getLayerFeatureCount(page, 'LtnCells')).toBe(1);
 
-        // Switch to modal filter tool; this also closes the auto-opened label popup.
         await page.locator('#modal-filter-button').click();
         await expect(page.locator('#modal-filter-button')).toHaveAttribute('aria-pressed', 'true');
-        // The naming popup must be closed before clicking to place a filter.
-        await expect(page.locator('.popup-buttons')).toHaveCount(0);
 
-        // The popup should now be closed. Clicking inside the LTN cell should
-        // place a modal filter, not open the LTN popup.
         await clickMap(page, 0, 0);
 
         await expect(page.locator('#modal-filter-button')).toHaveAttribute('aria-pressed', 'true');

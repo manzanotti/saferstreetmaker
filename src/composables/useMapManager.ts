@@ -18,8 +18,6 @@ import { useHistoryStore } from '../stores/historyStore';
 import { useMapStore, type LayerMutationEvent } from '../stores/mapStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useUiStore } from '../stores/uiStore';
-import { useGroupStore } from '../stores/groupStore';
-import { pruneDanglingGroupMembers } from './useGroups';
 import { pinia } from '../stores/index';
 
 const APP_VERSION = '0.9.0';
@@ -41,7 +39,6 @@ export interface MapManager {
     setUserLocation: (position: GeolocationPosition) => void;
     setDefaultView: () => void;
     downloadStorageMap: () => Promise<void>;
-    runViewCheckpointMigration: () => Promise<void>;
 }
 
 interface HistoryMutation {
@@ -98,12 +95,7 @@ export function setupMapManager(fileManager: FileManager): MapManager {
     };
 
     const buildCurrentSnapshot = (): SerializedMap => {
-        const groupStore = useGroupStore(pinia);
-        return fileManager.buildSerializedMap(
-            settingsStore.toSettings(),
-            mapStore.toLayers(),
-            groupStore.groups
-        );
+        return fileManager.buildSerializedMap(settingsStore.toSettings(), mapStore.toLayers());
     };
 
     const normaliseSnapshot = (snapshot: SerializedMap | null): unknown => {
@@ -111,25 +103,12 @@ export function setupMapManager(fileManager: FileManager): MapManager {
             return null;
         }
 
-        // Map view state (centre + zoom) is persisted to storage but must NOT
-        // count as a feature change for undo/redo. Excluding it here means
-        // panning or zooming the map never records a history checkpoint — only
-        // actual feature/settings/group edits do.
-        const settingsWithoutView = snapshot.settings
-            ? {
-                  title: snapshot.settings.title,
-                  readOnly: snapshot.settings.readOnly,
-                  hideToolbar: snapshot.settings.hideToolbar,
-                  activeLayers: snapshot.settings.activeLayers,
-                  version: snapshot.settings.version
-              }
-            : snapshot.settings;
-
         return {
             title: snapshot.title,
-            settings: settingsWithoutView,
+            settings: snapshot.settings,
             layers: snapshot.layers,
-            groups: snapshot.groups
+            centre: snapshot.centre,
+            zoom: snapshot.zoom
         };
     };
 
@@ -144,28 +123,6 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         }
 
         historyStore.setStatus(await undoJournal.getStatus(activeHistoryMapTitle));
-    };
-
-    /**
-     * One-time cleanup of legacy pan/zoom-only checkpoints from every stored
-     * map's history. Older releases recorded a checkpoint whenever the map view
-     * (centre/zoom) changed; those entries are no-ops now that view state is
-     * excluded from history, so remove them from existing undo stacks. Guarded
-     * by a metadata flag inside UndoJournal so it runs at most once.
-     */
-    const runViewCheckpointMigration = async () => {
-        try {
-            const titles = new Set(await fileManager.loadMapListFromStorage());
-            if (activeHistoryMapTitle) {
-                titles.add(activeHistoryMapTitle);
-            }
-            await undoJournal.migrateRemoveViewOnlyCheckpoints([...titles], (before, after) =>
-                snapshotsEqual(before as SerializedMap, after as SerializedMap)
-            );
-            await syncHistoryStatus();
-        } catch {
-            // Best-effort cleanup — never block map loading on a migration error.
-        }
     };
 
     const activateHistory = async (mapTitle: string, options?: { reset?: boolean }) => {
@@ -196,12 +153,7 @@ export function setupMapManager(fileManager: FileManager): MapManager {
                 return false;
             }
 
-            const groupStore = useGroupStore(pinia);
-            await fileManager.saveMap(
-                settingsStore.toSettings(),
-                mapStore.toLayers(),
-                groupStore.groups
-            );
+            await fileManager.saveMap(settingsStore.toSettings(), mapStore.toLayers());
             lastSavedSnapshot = buildCurrentSnapshot();
             return true;
         } finally {
@@ -928,12 +880,7 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         try {
             layer.getLayer().clearLayers();
             layer.loadFromGeoJSON(featureCollection as unknown as L.GeoJSON);
-            const groupStore = useGroupStore(pinia);
-            await fileManager.saveMap(
-                settingsStore.toSettings(),
-                mapStore.toLayers(),
-                groupStore.groups
-            );
+            await fileManager.saveMap(settingsStore.toSettings(), mapStore.toLayers());
             lastSavedSnapshot = buildCurrentSnapshot();
             return true;
         } finally {
@@ -996,12 +943,7 @@ export function setupMapManager(fileManager: FileManager): MapManager {
             addLayersToMap(targetSettings.activeLayers);
             mapStore.visibleLayerIds = new Set(targetSettings.activeLayers);
 
-            const groupStore = useGroupStore(pinia);
-            await fileManager.saveMap(
-                settingsStore.toSettings(),
-                mapStore.toLayers(),
-                groupStore.groups
-            );
+            await fileManager.saveMap(settingsStore.toSettings(), mapStore.toLayers());
             lastSavedSnapshot = buildCurrentSnapshot();
             return true;
         } finally {
@@ -1121,22 +1063,12 @@ export function setupMapManager(fileManager: FileManager): MapManager {
 
     // ── saveMap ───────────────────────────────────────────────────────────────
     const persistMap = async (options?: { throwOnFailure?: boolean; recordHistory?: boolean }) => {
-        // Drop any group members whose feature was deleted through a non-group
-        // path (area-select, popup delete, etc.) before snapshotting, so the
-        // cleanup is folded into the same checkpoint as the deletion.
-        pruneDanglingGroupMembers();
-
         const beforeSnapshot = lastSavedSnapshot;
         const afterSnapshot = buildCurrentSnapshot();
         const mutation = mapStore.lastLayerMutation ?? pendingHistoryMutation ?? undefined;
 
         try {
-            const groupStore = useGroupStore(pinia);
-            await fileManager.saveMap(
-                settingsStore.toSettings(),
-                mapStore.toLayers(),
-                groupStore.groups
-            );
+            await fileManager.saveMap(settingsStore.toSettings(), mapStore.toLayers());
 
             if (
                 options?.recordHistory !== false &&
@@ -1195,13 +1127,10 @@ export function setupMapManager(fileManager: FileManager): MapManager {
 
     const clearAllLayers = () => {
         const map = getMap();
-        const groupStore = useGroupStore(pinia);
         mapStore.layers.forEach((layer) => {
             layer.clearLayer();
             map.removeLayer(layer.getLayer());
         });
-        groupStore.setGroups([]);
-        groupStore.setAllHidden(false);
     };
 
     const buildAllActiveLayerIds = (): string[] => {
@@ -1304,13 +1233,6 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         // Sync visibleLayerIds store from the layers that were just added
         const newVisible = new Set(settingsStore.activeLayers);
         mapStore.visibleLayerIds = newVisible;
-
-        // Load groups from payload
-        const groupStore = useGroupStore(pinia);
-        groupStore.setGroups(geoJSON.groups ?? []);
-        // Drop any members referencing features that are not present in the
-        // loaded data (e.g. from an older/edited payload).
-        pruneDanglingGroupMembers();
 
         return true;
     };
@@ -1613,148 +1535,6 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         }
     };
 
-    // ── Undo / redo area reveal ──────────────────────────────────────────────
-    /**
-     * Collect every geographic coordinate referenced by a history mutation
-     * payload, regardless of its shape (point lat/lng, GeoJSON feature
-     * geometry, edit coordinate lists, point-change pairs, batched features).
-     * Returns the LatLngs so the affected area can be framed after undo/redo.
-     */
-    const collectLatLngsFromPayload = (payload: unknown): L.LatLng[] => {
-        const latLngs: L.LatLng[] = [];
-
-        const addLngLat = (lng: unknown, lat: unknown) => {
-            if (
-                typeof lng === 'number' &&
-                typeof lat === 'number' &&
-                Number.isFinite(lng) &&
-                Number.isFinite(lat)
-            ) {
-                latLngs.push(new L.LatLng(lat, lng));
-            }
-        };
-
-        // Walk arbitrarily-nested coordinate arrays whose leaves are [lng, lat].
-        const walkCoordinates = (coords: unknown) => {
-            if (!Array.isArray(coords)) {
-                return;
-            }
-            if (
-                coords.length === 2 &&
-                typeof coords[0] === 'number' &&
-                typeof coords[1] === 'number'
-            ) {
-                addLngLat(coords[0], coords[1]);
-                return;
-            }
-            for (const child of coords) {
-                walkCoordinates(child);
-            }
-        };
-
-        const walk = (node: unknown) => {
-            if (node == null || typeof node !== 'object') {
-                return;
-            }
-            if (Array.isArray(node)) {
-                for (const child of node) {
-                    walk(child);
-                }
-                return;
-            }
-
-            const obj = node as Record<string, unknown>;
-
-            // Bare { lat, lng } (point-add / point-delete).
-            if (typeof obj.lat === 'number' && typeof obj.lng === 'number') {
-                addLngLat(obj.lng, obj.lat);
-            }
-
-            // GeoJSON geometry coordinates (features / geometries).
-            const geometry = obj.geometry as Record<string, unknown> | undefined;
-            if (geometry && 'coordinates' in geometry) {
-                walkCoordinates(geometry.coordinates);
-            }
-            if ('coordinates' in obj) {
-                walkCoordinates(obj.coordinates);
-            }
-
-            // Edit payloads: coordinate-pair lists.
-            if (Array.isArray(obj.beforeCoordinates)) {
-                walkCoordinates(obj.beforeCoordinates);
-            }
-            if (Array.isArray(obj.afterCoordinates)) {
-                walkCoordinates(obj.afterCoordinates);
-            }
-            if (Array.isArray(obj.pointChanges)) {
-                for (const change of obj.pointChanges) {
-                    if (change && typeof change === 'object') {
-                        const c = change as Record<string, unknown>;
-                        walkCoordinates(c.before);
-                        walkCoordinates(c.after);
-                    }
-                }
-            }
-
-            // point-batch-delete: { points: [feature, ...] }.
-            if (Array.isArray(obj.points)) {
-                for (const point of obj.points) {
-                    walk(point);
-                }
-            }
-
-            // Nested before/after (whole features or objects).
-            if (obj.before && typeof obj.before === 'object') {
-                walk(obj.before);
-            }
-            if (obj.after && typeof obj.after === 'object') {
-                walk(obj.after);
-            }
-        };
-
-        walk(payload);
-        return latLngs;
-    };
-
-    /**
-     * Ensure the given bounds are within the current viewport; if not, move the
-     * map so the affected area becomes visible. Preserves the current zoom when
-     * the area fits at that zoom (pans only); otherwise zooms out to fit.
-     */
-    const ensureBoundsVisible = (bounds: L.LatLngBounds) => {
-        const map = getMap();
-        const viewport = map.getBounds();
-        if (viewport.contains(bounds)) {
-            return;
-        }
-
-        const viewLatSpan = viewport.getNorth() - viewport.getSouth();
-        const viewLngSpan = viewport.getEast() - viewport.getWest();
-        const boundsLatSpan = bounds.getNorth() - bounds.getSouth();
-        const boundsLngSpan = bounds.getEast() - bounds.getWest();
-
-        if (boundsLatSpan <= viewLatSpan && boundsLngSpan <= viewLngSpan) {
-            // Fits at the current zoom — just pan to centre it.
-            map.panTo(bounds.getCenter());
-        } else {
-            // Larger than the viewport — zoom out to fit the whole change.
-            map.fitBounds(bounds, { padding: [40, 40] });
-        }
-    };
-
-    /**
-     * After an undo/redo, move the map to reveal the affected area if it lies
-     * outside the current viewport. No-op when the mutation carries no
-     * geographic coordinates (e.g. settings-only changes or snapshot fallback).
-     */
-    const revealMutationArea = (replay: HistoryReplayEntry) => {
-        const latLngs = collectLatLngsFromPayload(replay.entry.mutationPayload);
-        if (latLngs.length === 0) {
-            return;
-        }
-        ensureBoundsVisible(L.latLngBounds(latLngs));
-    };
-
     const undo = async (): Promise<boolean> => {
         if (!activeHistoryMapTitle) {
             return false;
@@ -1767,9 +1547,6 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         }
 
         const ok = await applyHistoryReplay(replay);
-        if (ok) {
-            revealMutationArea(replay);
-        }
         await syncHistoryStatus();
         return ok;
     };
@@ -1786,9 +1563,6 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         }
 
         const ok = await applyHistoryReplay(replay);
-        if (ok) {
-            revealMutationArea(replay);
-        }
         await syncHistoryStatus();
         return ok;
     };
@@ -1837,8 +1611,7 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         redo,
         setUserLocation,
         setDefaultView,
-        downloadStorageMap,
-        runViewCheckpointMigration
+        downloadStorageMap
     };
 
     return _instance;

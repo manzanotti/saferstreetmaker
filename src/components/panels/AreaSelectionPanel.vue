@@ -1,44 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useSelectionStore } from '../../stores/selectionStore';
-import { useGroupStore } from '../../stores/groupStore';
 import { executeAreaDelete, executeCopy, executePaste } from '../../composables/useAreaSelection';
-import { createGroupFromSelection, addSelectionToGroup } from '../../composables/useGroups';
 
 const selectionStore = useSelectionStore();
-const groupStore = useGroupStore();
 
 // Multiple vertex entries from the same polyline/polygon share the same
 // marker reference; count unique features rather than raw vertex entries.
 const featureCount = computed(() => new Set(selectionStore.selected.map((s) => s.marker)).size);
-
-// The group being targeted by a group-first "Add features" flow, if any.
-const addTargetGroup = computed(() =>
-    groupStore.addToGroupId
-        ? (groupStore.groups.find((g) => g.id === groupStore.addToGroupId) ?? null)
-        : null
-);
-
-// Show the "Add to group" dropdown when features are selected, groups exist,
-// and we are not already mid-flow (add target set / dialogs open).
-const showAddToGroupDropdown = computed(
-    () =>
-        featureCount.value > 0 &&
-        groupStore.groups.length > 0 &&
-        !groupStore.addToGroupId &&
-        !groupStore.nameDialogOpen &&
-        !groupStore.splitDialogOpen
-);
-
-function onAddToGroupSelect(event: Event) {
-    const select = event.target as HTMLSelectElement;
-    const groupId = select.value;
-    if (groupId) {
-        addSelectionToGroup(groupId);
-    }
-    // Reset so the placeholder shows again if the panel stays open.
-    select.value = '';
-}
 </script>
 
 <template>
@@ -68,42 +37,6 @@ function onAddToGroupSelect(event: Event) {
         >
             Paste
         </button>
-        <!-- Group-first: confirm adding the selection to the targeted group. -->
-        <button
-            v-if="addTargetGroup && featureCount > 0 && !groupStore.splitDialogOpen"
-            type="button"
-            :aria-label="`Add selected features to group ${addTargetGroup.name}`"
-            class="rounded-lg bg-green-700 hover:bg-green-800 text-white px-3 py-1.5 text-sm font-medium focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-1 focus-visible:outline-none [touch-action:manipulation]"
-            @click.stop="addSelectionToGroup(addTargetGroup.id)"
-        >
-            Add to {{ addTargetGroup.name }}
-        </button>
-        <button
-            v-if="
-                featureCount > 1 &&
-                !groupStore.addToGroupId &&
-                !groupStore.nameDialogOpen &&
-                !groupStore.splitDialogOpen
-            "
-            type="button"
-            aria-label="Add selected features to a group"
-            class="rounded-lg bg-slate-50 hover:bg-green-100 border border-gray-200 text-gray-700 px-3 py-1.5 text-sm font-medium focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-1 focus-visible:outline-none [touch-action:manipulation]"
-            @click.stop="createGroupFromSelection"
-        >
-            Group
-        </button>
-        <!-- Selection-first: fold the selection into an existing group. -->
-        <select
-            v-if="showAddToGroupDropdown"
-            aria-label="Add selected features to an existing group"
-            class="rounded-lg bg-slate-50 hover:bg-green-100 border border-gray-200 text-gray-700 px-3 py-1.5 text-sm font-medium focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-1 focus-visible:outline-none [touch-action:manipulation]"
-            @change.stop="onAddToGroupSelect"
-        >
-            <option value="">Add to group…</option>
-            <option v-for="g in groupStore.groups" :key="g.id" :value="g.id">
-                {{ g.name }}
-            </option>
-        </select>
         <button
             v-if="featureCount > 0"
             type="button"

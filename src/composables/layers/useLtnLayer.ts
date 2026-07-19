@@ -16,7 +16,7 @@ import {
 } from './layerUtils';
 import type { IMapLayer } from './IMapLayer';
 import { type EditablePolylineLayer } from './usePolylineLayer';
-import { selectFeature, executeCopy, clearFeatureHighlight } from '../useAreaSelection';
+import { selectFeature, executeCopy } from '../useAreaSelection';
 import { useSelectionStore } from '../../stores/selectionStore';
 
 const COLOUR = '#cc00cc';
@@ -30,12 +30,6 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
     let _visible = false;
     let _drawingTool: any = null;
     let _ltnTitle = '1';
-    /**
-     * Popup opened automatically after drawing a cell so the user can name it.
-     * Tracked so it can be closed when the naming context ends (the layer is
-     * deactivated, or the just-drawn cell is removed by undo/delete).
-     */
-    let _drawPopup: L.Popup | null = null;
     let selectionMode: 'draw' | 'edit' = 'draw';
     let pendingCursorEvent: L.LeafletMouseEvent | null = null;
     let cursorSyncFrameId: number | null = null;
@@ -483,10 +477,6 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         });
 
         const { popup, labelEl } = createLtnPopup(polygon, label);
-        // Expose the popup + label input on the polygon so the draw-created
-        // handler can open it to prompt for a title immediately after drawing.
-        (polygon as any).__ltnPopup = popup;
-        (polygon as any).__ltnLabelEl = labelEl;
 
         polygon.on('click', (e: any) => {
             // Let an explicitly armed draw tool own the click instead of
@@ -617,9 +607,6 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                     }
                 });
                 map.closePopup(popup);
-                // Remove the selection vertex handles left from clicking the
-                // polygon so they don't linger after it is deleted.
-                clearFeatureHighlight();
             }
         );
         controlList.appendChild(deleteControl);
@@ -640,19 +627,6 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             layerId: 'LtnCells',
             payload: polygon?.historyFeature ?? e.layer.toGeoJSON?.() ?? null
         });
-
-        // Prompt for the cell's title immediately: open its popup with the
-        // label input focused. Draw mode stays active so more cells can be
-        // drawn after naming this one (pressing Enter closes the popup).
-        const popup = polygon?.__ltnPopup as L.Popup | undefined;
-        const labelEl = polygon?.__ltnLabelEl as HTMLInputElement | undefined;
-        if (popup) {
-            popup.setLatLng(polygon.getBounds().getCenter());
-            map.openPopup(popup);
-            _drawPopup = popup;
-            labelEl?.focus();
-            labelEl?.select();
-        }
     };
 
     const disableDrawMode = () => {
@@ -660,29 +634,6 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         _drawingTool = null;
         map.off('draw:created', handleDrawCreated);
     };
-
-    /** Close the auto-opened "name this cell" popup, if one is showing. */
-    const closeDrawPopup = () => {
-        if (_drawPopup) {
-            map.closePopup(_drawPopup);
-            _drawPopup = null;
-        }
-    };
-
-    // Close the naming popup if the cell it belongs to is removed (undo/delete).
-    geoJsonLayer.on('layerremove', (e: any) => {
-        if (_drawPopup && e.layer?.__ltnPopup === _drawPopup) {
-            closeDrawPopup();
-        }
-    });
-
-    // Forget the naming popup once it closes for any reason (Enter, close
-    // button, clicking away) so no stale reference is kept.
-    map.on('popupclose', (e: L.PopupEvent) => {
-        if (e.popup === _drawPopup) {
-            _drawPopup = null;
-        }
-    });
 
     // ── Zoom-based tooltip visibility ────────────────────────────────────────
     map.on('zoomend', () => {
@@ -706,7 +657,6 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             } else if (!shouldBeSelected && _selected) {
                 _selected = false;
                 disableDrawMode();
-                closeDrawPopup();
                 geoJsonLayer.eachLayer((l: any) => l.editing?.disable());
                 map.off('mousemove', syncMouseMarkerCursor as L.LeafletEventHandlerFn);
                 if (cursorSyncFrameId !== null) {

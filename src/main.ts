@@ -20,7 +20,6 @@ import {
     executePaste
 } from './composables/useAreaSelection';
 import { useSelectionStore } from './stores/selectionStore';
-import { useUiStore } from './stores/uiStore';
 
 // Mount the Vue overlay app (HelpPanel, ErrorPanel) immediately.
 createApp(App).use(pinia).mount('#app');
@@ -105,25 +104,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 selectionStore.deactivate();
             } else {
                 selectionStore.activate();
-            }
-            return;
-        }
-
-        // g — toggle the Groups popup
-        if (
-            e.key === 'g' &&
-            !e.ctrlKey &&
-            !e.metaKey &&
-            !e.altKey &&
-            !isTyping(e) &&
-            isMapContext(e)
-        ) {
-            e.preventDefault();
-            const uiStore = useUiStore(pinia);
-            if (uiStore.activePanel === 'groups') {
-                uiStore.closePanel();
-            } else {
-                uiStore.openPanel('groups');
             }
             return;
         }
@@ -219,8 +199,4 @@ document.addEventListener('DOMContentLoaded', async () => {
             () => setDefaultView()
         );
     }
-
-    // One-time cleanup of legacy pan/zoom-only checkpoints from existing undo
-    // stacks. Runs after the map has loaded so it never blocks first paint.
-    void getMapManager().runViewCheckpointMigration();
 });

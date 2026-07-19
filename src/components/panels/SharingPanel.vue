@@ -3,13 +3,11 @@ import { ref } from 'vue';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useMapStore } from '../../stores/mapStore';
 import { useUiStore } from '../../stores/uiStore';
-import { useGroupStore } from '../../stores/groupStore';
 import { getFileManager } from '../../composables/useMapManager';
 
 const settingsStore = useSettingsStore();
 const mapStore = useMapStore();
 const uiStore = useUiStore();
-const groupStore = useGroupStore();
 
 const width = ref<number | null>(null);
 const height = ref<number | null>(null);
@@ -21,11 +19,7 @@ function onCreate() {
         return;
     }
 
-    const mapHash = getFileManager().saveMapToHash(
-        settingsStore.toSettings(),
-        mapStore.toLayers(),
-        groupStore.groups
-    );
+    const mapHash = getFileManager().saveMapToHash(settingsStore.toSettings(), mapStore.toLayers());
     const baseUrl = window.location.origin + window.location.pathname;
     const html = `<iframe src="${baseUrl}?hide-toolbar=${hideToolbar.value}#${mapHash}" width="${width.value}" height="${height.value}" title="Safer Street Maker map"></iframe>`;
 

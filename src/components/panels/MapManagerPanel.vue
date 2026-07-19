@@ -3,14 +3,12 @@ import { onMounted, ref } from 'vue';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useMapStore } from '../../stores/mapStore';
 import { useUiStore } from '../../stores/uiStore';
-import { useGroupStore } from '../../stores/groupStore';
 import { getMapManager, getFileManager } from '../../composables/useMapManager';
 import { isSaveErrorAlreadyShown } from '../../composables/saveErrorMarker';
 
 const settingsStore = useSettingsStore();
 const mapStore = useMapStore();
 const uiStore = useUiStore();
-const groupStore = useGroupStore();
 
 const showCreateForm = ref(false);
 const newMapTitle = ref('');
@@ -47,11 +45,7 @@ function onNewMap() {
 
 async function onCopyMap() {
     try {
-        await getFileManager().copyMap(
-            settingsStore.toSettings(),
-            mapStore.toLayers(),
-            groupStore.groups
-        );
+        await getFileManager().copyMap(settingsStore.toSettings(), mapStore.toLayers());
     } catch (e: any) {
         uiStore.showErrors(['There was a problem copying the map:', String(e?.message ?? e)]);
         return;
@@ -101,11 +95,7 @@ function onLoadFile() {
 }
 
 function onSaveFile() {
-    getFileManager().saveMapToFile(
-        settingsStore.toSettings(),
-        mapStore.toLayers(),
-        groupStore.groups
-    );
+    getFileManager().saveMapToFile(settingsStore.toSettings(), mapStore.toLayers());
     uiStore.closePanel();
 }
 

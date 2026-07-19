@@ -29,26 +29,6 @@ export function removeMapCursor(cssClass: string): void {
     map?.classList.add('leaflet-grab');
 }
 
-/**
- * Read a feature's history id from a Leaflet layer, tolerating the two storage
- * conventions in use across the app:
- *   - Points and polylines attach a GeoJSON `feature`, so the id lives at
- *     `feature.properties.historyId`.
- *   - LTN polygons keep their metadata on a plain `properties` bag, so the id
- *     lives at `properties.historyId`.
- * Returns null when neither is present. Centralising this lookup avoids the
- * class of bugs where one call site checks only one location and silently
- * fails to identify polygons.
- */
-export function getFeatureHistoryId(marker: unknown): string | null {
-    const layer = marker as {
-        feature?: { properties?: { historyId?: unknown } };
-        properties?: { historyId?: unknown };
-    } | null;
-    const id = layer?.feature?.properties?.historyId ?? layer?.properties?.historyId;
-    return typeof id === 'string' && id !== '' ? id : null;
-}
-
 const POINT_FEATURE_CLASSES = [
     'modal-filter-marker',
     'bus-gate-icon',
@@ -173,7 +153,6 @@ export function buildPopupActionControl(
     control.type = 'button';
     control.classList.add(cssClass);
     control.setAttribute('aria-label', ariaLabel);
-    control.title = ariaLabel;
 
     const activate = () => {
         onActivate();

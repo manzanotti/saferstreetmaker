@@ -1,8 +1,12 @@
 import * as L from 'leaflet';
-import { createPointLayer, handlePointFeatureClick } from './usePointLayer';
+import { createPointLayer, getPointEventLatLng } from './usePointLayer';
 import type { IMapLayer } from './IMapLayer';
+import { useMapStore } from '../../stores/mapStore';
+import { pinia } from '../../stores/index';
 
 export function createZebraCrossingLayer(map: L.Map): IMapLayer {
+    const mapStore = useMapStore(pinia);
+
     const layer = createPointLayer(
         {
             id: 'ZebraCrossing',
@@ -18,9 +22,21 @@ export function createZebraCrossingLayer(map: L.Map): IMapLayer {
                     icon: new L.DivIcon({ className: 'zebra-crossing-icon' }),
                     draggable: true,
                     pane: 'filters'
-                } as any).on('click', (e: any) =>
-                    handlePointFeatureClick(e, 'ZebraCrossing', geoJsonLayer)
-                );
+                } as any).on('click', (e: any) => {
+                    L.DomEvent.stopPropagation(e);
+                    const latLng = getPointEventLatLng(e);
+                    const historyId = e.target.feature?.properties?.historyId ?? null;
+                    geoJsonLayer.removeLayer(e.target);
+                    mapStore.markLayerUpdated({
+                        kind: 'point-delete',
+                        layerId: 'ZebraCrossing',
+                        payload: {
+                            lat: latLng?.lat ?? null,
+                            lng: latLng?.lng ?? null,
+                            historyId
+                        }
+                    });
+                });
                 geoJsonLayer.addLayer(marker);
                 return marker;
             },

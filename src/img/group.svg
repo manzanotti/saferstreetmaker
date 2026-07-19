@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="iso-8859-1"?>
-<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" xml:space="preserve">
-  <circle cx="50" cy="18" r="14"/>
-  <circle cx="18" cy="72" r="14"/>
-  <circle cx="82" cy="72" r="14"/>
-  <rect x="44" y="30" width="10" height="30" rx="5" transform="rotate(-30 49 45)"/>
-  <rect x="44" y="30" width="10" height="30" rx="5" transform="rotate(30 51 45)"/>
-  <rect x="26" y="69" width="48" height="10" rx="5"/>
-</svg>

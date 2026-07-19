@@ -15,7 +15,7 @@ import {
 } from './layerUtils';
 import { useMapStore } from '../../stores/mapStore';
 import { pinia } from '../../stores/index';
-import { selectFeature, executeCopy, clearFeatureHighlight } from '../useAreaSelection';
+import { selectFeature, executeCopy } from '../useAreaSelection';
 import { useSelectionStore } from '../../stores/selectionStore';
 
 export interface PolylineOptions {
@@ -220,9 +220,6 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
                     before: lastCommittedFeature
                 }
             });
-            // Remove the selection vertex handles left from clicking the line
-            // so they don't linger after it is deleted.
-            clearFeatureHighlight();
         },
         () => {
             // Populate the selection with this entire feature, then copy it.
