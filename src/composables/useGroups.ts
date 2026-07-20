@@ -14,7 +14,7 @@
 import * as L from 'leaflet';
 import { useMapStore } from '../stores/mapStore';
 import { useSelectionStore } from '../stores/selectionStore';
-import { useGroupStore, type PartialPolylineSplit } from '../stores/groupStore';
+import { useGroupStore } from '../stores/groupStore';
 import { pinia } from '../stores/index';
 import { buildHistoryId, getFeatureHistoryId } from './layers/layerUtils';
 import {
@@ -24,281 +24,9 @@ import {
 } from './useAreaSelection';
 import type { GroupMember } from '../models/Group';
 import type { SelectedMarker } from '../stores/selectionStore';
-
-/**
- * Recompute visual visibility for all group members based on current
- * hiddenGroupIds. A feature is hidden only when every group it belongs to
- * is hidden; showing any one group reveals the feature.
- *
- * Reconciles against `currentlyHidden` so markers that are no longer members
- * of any hidden group (e.g. after their group's members were cleared or the
- * group was deleted) are revealed rather than left as invisible "ghosts".
- */
-export function recomputeFeatureVisibility(): void {
-    const groupStore = useGroupStore(pinia);
-    const groups = groupStore.groups;
-
-    // Build: memberKey → set of groupIds that contain this member.
-    const memberToGroupIds = new Map<string, Set<string>>();
-    const memberByKey = new Map<string, GroupMember>();
-
-    for (const group of groups) {
-        for (const member of group.members) {
-            const key = `${member.layerId}:${member.historyId}`;
-            if (!memberToGroupIds.has(key)) {
-                memberToGroupIds.set(key, new Set());
-                memberByKey.set(key, member);
-            }
-            memberToGroupIds.get(key)!.add(group.id);
-        }
-    }
-
-    // Determine which markers SHOULD be hidden right now.
-    const desiredHidden = new Set<L.Layer>();
-    for (const [key, groupIds] of memberToGroupIds) {
-        const shouldBeHidden = [...groupIds].every((gid) => groupStore.hiddenGroupIds.has(gid));
-        if (!shouldBeHidden) {
-            continue;
-        }
-        const member = memberByKey.get(key)!;
-        const marker = findMarkerByHistoryId(member.layerId, member.historyId);
-        if (marker) {
-            desiredHidden.add(marker);
-        }
-    }
-
-    // Reveal markers that are currently hidden but should no longer be
-    // (including orphans no longer referenced by any group).
-    for (const marker of [...currentlyHidden]) {
-        if (!desiredHidden.has(marker)) {
-            showMarker(marker);
-        }
-    }
-
-    // Hide markers that should be hidden but are not yet.
-    for (const marker of desiredHidden) {
-        if (!currentlyHidden.has(marker)) {
-            hideMarker(marker);
-        }
-    }
-}
-
-export function resetGroupVisibility(): void {
-    for (const marker of [...currentlyHidden]) {
-        showMarker(marker);
-    }
-    currentlyHidden.clear();
-}
-
-// ── Module-level visibility state ─────────────────────────────────────────
-/**
- * Tracks original styles for markers currently hidden by group visibility.
- * WeakMap keys are L.Layer objects (not proxied).
- */
-const hiddenStyles = new WeakMap<object, { opacity: number; fillOpacity: number }>();
-
-/**
- * Iterable set of markers currently hidden by group visibility. Needed because
- * a WeakMap cannot be iterated, and recomputeFeatureVisibility must be able to
- * reveal markers that are no longer members of any hidden group (e.g. after a
- * group's members are cleared or the group is deleted). Runtime-only.
- */
-const currentlyHidden = new Set<L.Layer>();
-
-// ── Internal helpers ──────────────────────────────────────────────────────
-
-function getPolylineLatLngs(marker: L.Layer): L.LatLng[] {
-    const raw = (marker as any).getLatLngs?.();
-    if (!raw || !Array.isArray(raw) || raw.length === 0) {
-        return [];
-    }
-    // Flatten polygon rings if nested.
-    if (Array.isArray(raw[0])) {
-        return (raw as L.LatLng[][]).flat();
-    }
-    return raw as L.LatLng[];
-}
-
-/**
- * Liang–Barsky clip of the segment a→b against the axis-aligned bounds.
- * Returns the [tEnter, tExit] parameters (0..1 along a→b) of the portion
- * inside the rectangle, or null when the segment does not intersect it.
- * Operates in lng/lat space (planar approximation, fine at map scale).
- */
-function clipSegmentParams(
-    a: L.LatLng,
-    b: L.LatLng,
-    bounds: L.LatLngBounds
-): [number, number] | null {
-    const xmin = bounds.getWest();
-    const xmax = bounds.getEast();
-    const ymin = bounds.getSouth();
-    const ymax = bounds.getNorth();
-
-    const dx = b.lng - a.lng;
-    const dy = b.lat - a.lat;
-
-    const p = [-dx, dx, -dy, dy];
-    const q = [a.lng - xmin, xmax - a.lng, a.lat - ymin, ymax - a.lat];
-
-    let tEnter = 0;
-    let tExit = 1;
-
-    for (let i = 0; i < 4; i++) {
-        if (p[i] === 0) {
-            // Segment parallel to this edge — reject if outside the slab.
-            if (q[i] < 0) {
-                return null;
-            }
-        } else {
-            const r = q[i] / p[i];
-            if (p[i] < 0) {
-                if (r > tExit) {
-                    return null;
-                }
-                if (r > tEnter) {
-                    tEnter = r;
-                }
-            } else {
-                if (r < tEnter) {
-                    return null;
-                }
-                if (r < tExit) {
-                    tExit = r;
-                }
-            }
-        }
-    }
-
-    return [tEnter, tExit];
-}
-
-function lerpLatLng(a: L.LatLng, b: L.LatLng, t: number): L.LatLng {
-    return new L.LatLng(a.lat + (b.lat - a.lat) * t, a.lng + (b.lng - a.lng) * t);
-}
-
-/**
- * Build the coordinate run(s) that represent the portion(s) of a polyline
- * lying inside the selection rectangle. Each maximal run of in-selection
- * vertices becomes one run; where the path crosses the rectangle edge to
- * enter/leave the run, a boundary intersection point is inserted so the new
- * line reaches the edge of the selection area rather than stopping at the last
- * inside vertex.
- */
-function buildClippedRuns(
-    allLatLngs: L.LatLng[],
-    selectedSet: Set<L.LatLng>,
-    bounds: L.LatLngBounds
-): L.LatLng[][] {
-    const n = allLatLngs.length;
-    const inside = allLatLngs.map((v) => selectedSet.has(v));
-    const runs: L.LatLng[][] = [];
-
-    let i = 0;
-    while (i < n) {
-        if (!inside[i]) {
-            i++;
-            continue;
-        }
-
-        // Extend the run over consecutive inside vertices.
-        let j = i;
-        while (j + 1 < n && inside[j + 1]) {
-            j++;
-        }
-
-        const run: L.LatLng[] = [];
-
-        // Entry point: where segment (i-1 → i) crosses into the rectangle.
-        if (i > 0) {
-            const params = clipSegmentParams(allLatLngs[i - 1], allLatLngs[i], bounds);
-            if (params && params[0] > 0 && params[0] < 1) {
-                run.push(lerpLatLng(allLatLngs[i - 1], allLatLngs[i], params[0]));
-            }
-        }
-
-        for (let k = i; k <= j; k++) {
-            run.push(allLatLngs[k]);
-        }
-
-        // Exit point: where segment (j → j+1) crosses out of the rectangle.
-        if (j < n - 1) {
-            const params = clipSegmentParams(allLatLngs[j], allLatLngs[j + 1], bounds);
-            if (params && params[1] > 0 && params[1] < 1) {
-                run.push(lerpLatLng(allLatLngs[j], allLatLngs[j + 1], params[1]));
-            }
-        }
-
-        runs.push(run);
-        i = j + 1;
-    }
-
-    return runs;
-}
-
-/**
- * Build the coordinate run(s) that represent the portion(s) of a polyline
- * lying OUTSIDE the selection rectangle — the complement of buildClippedRuns.
- * Each maximal run of out-of-selection vertices becomes one run; where the
- * path crosses the rectangle edge to leave/re-enter the selection, the same
- * boundary intersection point used by buildClippedRuns is inserted so the
- * remaining line reaches the edge of the selection area with no gap between
- * it and the grouped (inside) line.
- */
-function buildComplementRuns(
-    allLatLngs: L.LatLng[],
-    selectedSet: Set<L.LatLng>,
-    bounds: L.LatLngBounds
-): L.LatLng[][] {
-    const n = allLatLngs.length;
-    const inside = allLatLngs.map((v) => selectedSet.has(v));
-    const runs: L.LatLng[][] = [];
-
-    let i = 0;
-    while (i < n) {
-        if (inside[i]) {
-            i++;
-            continue;
-        }
-
-        // Extend the run over consecutive outside vertices.
-        let j = i;
-        while (j + 1 < n && !inside[j + 1]) {
-            j++;
-        }
-
-        const run: L.LatLng[] = [];
-
-        // Entry point: where segment (i-1 → i) crosses out of the rectangle.
-        // The previous vertex is inside, so this is the same boundary point
-        // used as the exit point of the preceding inside run.
-        if (i > 0) {
-            const params = clipSegmentParams(allLatLngs[i - 1], allLatLngs[i], bounds);
-            if (params && params[1] > 0 && params[1] < 1) {
-                run.push(lerpLatLng(allLatLngs[i - 1], allLatLngs[i], params[1]));
-            }
-        }
-
-        for (let k = i; k <= j; k++) {
-            run.push(allLatLngs[k]);
-        }
-
-        // Exit point: where segment (j → j+1) crosses back into the rectangle.
-        // The next vertex is inside, so this matches the entry point of the
-        // following inside run.
-        if (j < n - 1) {
-            const params = clipSegmentParams(allLatLngs[j], allLatLngs[j + 1], bounds);
-            if (params && params[0] > 0 && params[0] < 1) {
-                run.push(lerpLatLng(allLatLngs[j], allLatLngs[j + 1], params[0]));
-            }
-        }
-
-        runs.push(run);
-        i = j + 1;
-    }
-
-    return runs;
-}
+import { GroupVisibilityController } from '../features/groups/GroupVisibilityController';
+import { analyzeSelectionMembership } from '../features/groups/groupMembership';
+import { GroupPolylineSplitter } from '../features/groups/GroupPolylineSplitter';
 
 function findMarkerByHistoryId(layerId: string, historyId: string): L.Layer | null {
     const mapStore = useMapStore(pinia);
@@ -315,45 +43,23 @@ function findMarkerByHistoryId(layerId: string, historyId: string): L.Layer | nu
     return found;
 }
 
-function hideMarker(marker: L.Layer): void {
-    const isPoint = typeof (marker as any).getLatLng === 'function';
-    if (isPoint && typeof (marker as any).setStyle !== 'function') {
-        // DivIcon marker (L.Marker) — hide via CSS display.
-        const el = (marker as any).getElement?.() as HTMLElement | undefined;
-        if (el) {
-            hiddenStyles.set(marker as object, { opacity: 1, fillOpacity: 0 });
-            el.style.display = 'none';
-            currentlyHidden.add(marker);
-        }
-    } else if (typeof (marker as any).setStyle === 'function') {
-        // CircleMarker, Polyline, Polygon — zero-out opacity.
-        const opts = (marker as any).options ?? {};
-        hiddenStyles.set(marker as object, {
-            opacity: typeof opts.opacity === 'number' ? opts.opacity : 1,
-            fillOpacity: typeof opts.fillOpacity === 'number' ? opts.fillOpacity : 0
-        });
-        (marker as any).setStyle({ opacity: 0, fillOpacity: 0 });
-        currentlyHidden.add(marker);
-    }
+const groupVisibilityController = new GroupVisibilityController({
+    getGroups: () => useGroupStore(pinia).groups,
+    getHiddenGroupIds: () => useGroupStore(pinia).hiddenGroupIds,
+    findMarker: (member) => findMarkerByHistoryId(member.layerId, member.historyId)
+});
+
+const groupPolylineSplitter = new GroupPolylineSplitter({
+    getLayer: (layerId) => useMapStore(pinia).layers.find((layer) => layer.id === layerId),
+    createHistoryId: () => buildHistoryId('polyline')
+});
+
+export function recomputeFeatureVisibility(): void {
+    groupVisibilityController.recompute();
 }
 
-function showMarker(marker: L.Layer): void {
-    const isPoint = typeof (marker as any).getLatLng === 'function';
-    if (isPoint && typeof (marker as any).setStyle !== 'function') {
-        // DivIcon marker.
-        const el = (marker as any).getElement?.() as HTMLElement | undefined;
-        if (el) {
-            el.style.display = '';
-        }
-        hiddenStyles.delete(marker as object);
-    } else if (typeof (marker as any).setStyle === 'function') {
-        const orig = hiddenStyles.get(marker as object);
-        if (orig) {
-            (marker as any).setStyle({ opacity: orig.opacity, fillOpacity: orig.fillOpacity });
-            hiddenStyles.delete(marker as object);
-        }
-    }
-    currentlyHidden.delete(marker);
+export function resetGroupVisibility(): void {
+    groupVisibilityController.reset();
 }
 
 // ── Selection → membership helpers ───────────────────────────────────────
@@ -363,76 +69,20 @@ function showMarker(marker: L.Layer): void {
  * open the appropriate dialog.
  * Called when the user clicks the "Group" button in AreaSelectionPanel.
  */
-/**
- * Analyse the current selection and split it into fully-selected members and
- * partially-selected polylines that require a split before joining a group.
- * Shared by the create-group and add-to-group flows. Returns null when nothing
- * is selected.
- */
-function computeSelectionMembership(): {
-    fullMembers: GroupMember[];
-    partialSplits: PartialPolylineSplit[];
-} | null {
+function getSelectionMembership() {
     const selectionStore = useSelectionStore(pinia);
     const mapStore = useMapStore(pinia);
-
-    const selected = selectionStore.selected;
-    if (selected.length === 0) {
-        return null;
-    }
-
-    // Group SelectedMarker entries by their Leaflet layer reference.
-    const byMarker = new Map<object, typeof selected>();
-    for (const entry of selected) {
-        const key = entry.marker as object;
-        if (!byMarker.has(key)) {
-            byMarker.set(key, []);
-        }
-        byMarker.get(key)!.push(entry);
-    }
-
-    const fullMembers: GroupMember[] = [];
-    const partialSplits: PartialPolylineSplit[] = [];
-
-    for (const [, entries] of byMarker) {
-        const first = entries[0];
-        if (!first.historyId) {
-            continue;
-        }
-
-        const marker = first.marker;
-        const layerDef = mapStore.layers.find((l) => l.id === first.layerId);
-
-        if (layerDef?.kind === 'polyline') {
-            const allLatLngs = getPolylineLatLngs(marker);
-            const selectedLatLngs = entries.map((e) => e.latLng);
-
-            if (selectedLatLngs.length < allLatLngs.length) {
-                // Partial selection — must split before grouping.
-                partialSplits.push({
-                    layerId: first.layerId,
-                    layerTitle: layerDef.title,
-                    marker,
-                    selectedLatLngs,
-                    allLatLngs,
-                    clipBounds: selectionStore.lastAreaBounds ?? null
-                });
-            } else {
-                fullMembers.push({ layerId: first.layerId, historyId: first.historyId });
-            }
-        } else {
-            // Point or polygon — always a full selection.
-            fullMembers.push({ layerId: first.layerId, historyId: first.historyId });
-        }
-    }
-
-    return { fullMembers, partialSplits };
+    return analyzeSelectionMembership(
+        selectionStore.selected,
+        mapStore.layers,
+        selectionStore.lastAreaBounds
+    );
 }
 
 export function createGroupFromSelection(): void {
     const groupStore = useGroupStore(pinia);
 
-    const membership = computeSelectionMembership();
+    const membership = getSelectionMembership();
     if (!membership) {
         return;
     }
@@ -473,7 +123,7 @@ export function beginAddToGroup(groupId: string): void {
 export function addSelectionToGroup(groupId: string): void {
     const groupStore = useGroupStore(pinia);
 
-    const membership = computeSelectionMembership();
+    const membership = getSelectionMembership();
     if (!membership) {
         return;
     }
@@ -526,84 +176,7 @@ export function finalizeAddToGroup(): void {
  */
 function performPendingSplits(): GroupMember[] {
     const groupStore = useGroupStore(pinia);
-    const mapStore = useMapStore(pinia);
-
-    const splits: PartialPolylineSplit[] = [...groupStore.pendingSplits];
-    const newMembers: GroupMember[] = [];
-
-    for (const split of splits) {
-        const layerDef = mapStore.layers.find((l) => l.id === split.layerId);
-        if (!layerDef) {
-            continue;
-        }
-
-        const geoJsonLayer = layerDef.getLayer();
-        const selectedSet = new Set<L.LatLng>(split.selectedLatLngs);
-
-        // Helper: create a fresh polyline feature for one coordinate run and
-        // return its history id. Recreating both halves as new lines (rather
-        // than trimming the original in place) avoids leaving stale geometry,
-        // edit handlers, or cached features on the original marker.
-        const createLineFromRun = (run: L.LatLng[]): string => {
-            const historyId = buildHistoryId('polyline');
-            const feature: GeoJSON.Feature = {
-                type: 'Feature',
-                geometry: {
-                    type: 'LineString',
-                    coordinates: run.map((ll: L.LatLng) => [ll.lng, ll.lat])
-                },
-                properties: { historyId }
-            };
-            layerDef.loadFromGeoJSON({
-                type: 'FeatureCollection',
-                features: [feature]
-            } as any);
-            return historyId;
-        };
-
-        // Build the grouped (inside-selection) run(s). When the selection
-        // rectangle is known, clip the polyline to it so each new line extends
-        // to where it crosses the rectangle edge (adding boundary points).
-        // Otherwise fall back to just the selected vertices.
-        const insideRuns = (
-            split.clipBounds
-                ? buildClippedRuns(split.allLatLngs, selectedSet, split.clipBounds)
-                : split.selectedLatLngs.length >= 2
-                  ? [split.selectedLatLngs]
-                  : []
-        ).filter((run) => run.length >= 2);
-
-        // Build the remaining (outside-of-selection) run(s). When the selection
-        // rectangle is known, extend each run to where the polyline crosses the
-        // rectangle edge (inserting the same boundary points as the grouped
-        // line) so the remaining line reaches the split point with no gap.
-        // Otherwise fall back to the raw outside vertices as a single run.
-        const remainingRuns = (
-            split.clipBounds
-                ? buildComplementRuns(split.allLatLngs, selectedSet, split.clipBounds)
-                : [split.allLatLngs.filter((v: L.LatLng) => !selectedSet.has(v))]
-        ).filter((run) => run.length >= 2);
-
-        // Remove the original polyline. Both the grouped portion(s) and the
-        // remaining portion(s) are recreated below as independent lines so the
-        // original never lingers on the map with its full geometry.
-        geoJsonLayer.removeLayer(split.marker as L.Layer);
-
-        // Create the new grouped line(s) — these join the group.
-        for (const run of insideRuns) {
-            const newHistoryId = createLineFromRun(run);
-            newMembers.push({ layerId: split.layerId, historyId: newHistoryId });
-        }
-
-        // Create the remaining (ungrouped) line(s) so the sections of the
-        // original line outside the selection stay on the map as their own
-        // lines, each reaching the edge of the selection area.
-        for (const run of remainingRuns) {
-            createLineFromRun(run);
-        }
-    }
-
-    return newMembers;
+    return groupPolylineSplitter.split([...groupStore.pendingSplits]);
 }
 
 /**
@@ -728,6 +301,7 @@ export function selectGroup(id: string): void {
     // but do NOT enter area-selection mode. Selecting a group should only
     // reveal it; if the user wants to add to the group they can activate the
     // selection tool themselves.
+    const previousEntries = selectionStore.selected;
     selectionStore.setSelected(allEntries);
 
     // Fit the map to the bounds of all selected features BEFORE applying
@@ -745,7 +319,7 @@ export function selectGroup(id: string): void {
         }
     }
 
-    applySelectionHighlights(allEntries, true);
+    applySelectionHighlights(allEntries, true, previousEntries);
 }
 
 /**
@@ -764,8 +338,8 @@ export function deleteGroupWithElements(id: string): void {
     // Restore visibility for any hidden members before removing them.
     for (const member of group.members) {
         const marker = findMarkerByHistoryId(member.layerId, member.historyId);
-        if (marker && hiddenStyles.has(marker as object)) {
-            showMarker(marker);
+        if (marker) {
+            groupVisibilityController.reveal(marker);
         }
     }
 

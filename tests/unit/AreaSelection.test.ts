@@ -473,6 +473,29 @@ describe('executeAreaDelete', () => {
     });
 });
 
+describe('setupAreaSelection cleanup', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        setActivePinia(pinia);
+        useSelectionStore(pinia).deactivate();
+        useMapStore(pinia).setLayers([]);
+    });
+
+    it('clears active selection state when disposed', () => {
+        const map = new L.Map() as unknown as L.Map;
+        const cleanup = setupAreaSelection(map);
+        const selectionStore = useSelectionStore(pinia);
+
+        selectionStore.activate();
+        selectionStore.setSelected([makeSelected('ModalFilters', makeMockMarker())]);
+
+        cleanup();
+
+        expect(selectionStore.isActive).toBe(false);
+        expect(selectionStore.selected).toHaveLength(0);
+    });
+});
+
 // ---------------------------------------------------------------------------
 // executeCopy
 // ---------------------------------------------------------------------------

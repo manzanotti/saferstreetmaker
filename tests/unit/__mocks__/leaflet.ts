@@ -304,6 +304,16 @@ function circleMarker(_latlng: LatLng, _options?: any) {
     };
 }
 
+function rectangle(_bounds: LatLngBounds, _options?: any) {
+    return {
+        addTo(_map: any) {
+            return this;
+        },
+        setBounds: vi.fn().mockReturnThis(),
+        remove: vi.fn().mockReturnThis()
+    };
+}
+
 class Point {
     constructor(
         public x: number,
@@ -336,6 +346,11 @@ const Draw = {
 
 class Map {
     private _handlers: Record<string, Function[]> = {};
+    dragging = {
+        disable: vi.fn(),
+        enable: vi.fn()
+    };
+    private readonly _container = document.createElement('div');
 
     constructor(_el?: any, _opts?: any) {}
 
@@ -360,6 +375,9 @@ class Map {
     }
     closePopup(_popup?: any) {
         return this;
+    }
+    getContainer() {
+        return this._container;
     }
     getZoom() {
         return 10;
@@ -415,6 +433,7 @@ export {
     geoJSON,
     layerGroup,
     circleMarker,
+    rectangle,
     CircleMarker,
     Marker,
     Polyline,

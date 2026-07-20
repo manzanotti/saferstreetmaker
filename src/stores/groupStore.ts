@@ -1,25 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, shallowRef } from 'vue';
-import type { Group, GroupMember } from '../models/Group';
-import type * as L from 'leaflet';
-
-export interface PartialPolylineSplit {
-    layerId: string;
-    layerTitle: string;
-    /** The Leaflet Layer being partially selected (must NOT be wrapped in Vue Proxy). */
-    marker: L.Layer;
-    /** The selected LatLng references from selectionStore.selected. */
-    selectedLatLngs: L.LatLng[];
-    /** All LatLngs of the polyline. */
-    allLatLngs: L.LatLng[];
-    /**
-     * Bounds of the selection rectangle, when the selection came from a
-     * rubber-band drag. Used to clip the new line to the selection area so it
-     * extends to where the polyline crosses the rectangle edge. Null when the
-     * selection region is unknown (falls back to selected-vertices-only split).
-     */
-    clipBounds?: L.LatLngBounds | null;
-}
+import type { Group, GroupMember, PartialPolylineSplit } from '../models/Group';
 
 export const useGroupStore = defineStore('group', () => {
     /** Groups — part of the persisted map payload and included in undo snapshots. */

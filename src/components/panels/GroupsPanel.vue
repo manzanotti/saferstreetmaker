@@ -22,6 +22,11 @@ const pendingConfirm = ref<
     | null
 >(null);
 
+function closePanel() {
+    uiStore.closePanel();
+    (document.activeElement as HTMLElement | null)?.blur();
+}
+
 /** Close the panel on Escape. If an inline confirmation is open, Escape
  * dismisses that first so it does not close the whole panel unexpectedly. */
 function onKeydown(e: KeyboardEvent) {
@@ -32,7 +37,7 @@ function onKeydown(e: KeyboardEvent) {
         pendingConfirm.value = null;
         return;
     }
-    uiStore.closePanel();
+    closePanel();
 }
 
 onMounted(() => {
@@ -122,7 +127,7 @@ function onConfirmDeleteWithElements() {
                 type="button"
                 aria-label="Close groups panel"
                 class="text-gray-400 hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 rounded"
-                @click="uiStore.closePanel()"
+                @click="closePanel"
             >
                 <svg
                     viewBox="0 0 24 24"

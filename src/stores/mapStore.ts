@@ -2,23 +2,7 @@ import { defineStore } from 'pinia';
 import { shallowRef, ref } from 'vue';
 import type * as L from 'leaflet';
 import type { IMapLayer } from '../composables/layers/IMapLayer';
-
-export interface LayerMutationEvent {
-    kind:
-        | 'point-add'
-        | 'point-delete'
-        | 'point-batch-delete'
-        | 'polyline-vertices-delete'
-        | 'polygon-batch-delete'
-        | 'polyline-add'
-        | 'polyline-delete'
-        | 'polyline-edit'
-        | 'polygon-add'
-        | 'polygon-delete'
-        | 'polygon-edit';
-    layerId: string;
-    payload?: unknown;
-}
+import type { LayerMutationEvent } from '../models/LayerMutation';
 
 export const useMapStore = defineStore('map', () => {
     /** The Leaflet map instance. shallowRef prevents Vue wrapping Leaflet internals. */
