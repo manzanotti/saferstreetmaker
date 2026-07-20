@@ -23,15 +23,18 @@ describe('StorageMapDownloader', () => {
         const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
         const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
 
-        await state.downloader.download();
+        try {
+            await state.downloader.download();
 
-        expect(state.options.loadRawMapFromStorage).toHaveBeenCalledWith('Selected map');
-        expect(createObjectURL).toHaveBeenCalledOnce();
-        expect(click).toHaveBeenCalledOnce();
-        expect(revokeObjectURL).not.toHaveBeenCalled();
-        vi.runAllTimers();
-        expect(revokeObjectURL).toHaveBeenCalledWith('blob:test');
-        vi.useRealTimers();
+            expect(state.options.loadRawMapFromStorage).toHaveBeenCalledWith('Selected map');
+            expect(createObjectURL).toHaveBeenCalledOnce();
+            expect(click).toHaveBeenCalledOnce();
+            expect(revokeObjectURL).not.toHaveBeenCalled();
+            vi.runAllTimers();
+            expect(revokeObjectURL).toHaveBeenCalledWith('blob:test');
+        } finally {
+            vi.useRealTimers();
+        }
     });
 
     it('falls back to the current title when no map is selected', async () => {
