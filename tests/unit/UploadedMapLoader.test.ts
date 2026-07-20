@@ -36,6 +36,22 @@ describe('UploadedMapLoader', () => {
         expect(state.options.showErrors).not.toHaveBeenCalled();
     });
 
+    it('reports save errors from a successfully loaded upload', async () => {
+        const failure = new Error('Save unavailable');
+        const state = createLoader({
+            saveMap: vi.fn().mockRejectedValue(failure)
+        });
+
+        state.loader.load({ layers: {} });
+        await Promise.resolve();
+
+        expect(state.options.showErrors).toHaveBeenCalledWith([
+            'There was a problem saving the map:',
+            'Save unavailable',
+            failure.stack
+        ]);
+    });
+
     it('reports load errors with the original message and stack', () => {
         const failure = new Error('Invalid uploaded map');
         const state = createLoader({

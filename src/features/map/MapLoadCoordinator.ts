@@ -51,6 +51,15 @@ export class MapLoadCoordinator {
             if (mapLoaded) {
                 this.options.setLastSavedSnapshot(this.options.buildSnapshot());
                 await this.options.activateHistory(this.options.getCurrentTitle());
+            } else {
+                const canDownloadStorageMap =
+                    loadingFromStorage && storageMapName !== ''
+                        ? await this.options.hasMapInStorage(storageMapName).catch(() => false)
+                        : false;
+                this.options.showErrors(
+                    [sourceErrorIntro, 'The map data could not be processed. It may be corrupted.'],
+                    { showDownloadStorageLink: canDownloadStorageMap }
+                );
             }
         } catch (error) {
             if (error instanceof MapLoadSourceError) {

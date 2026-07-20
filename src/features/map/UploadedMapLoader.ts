@@ -22,7 +22,9 @@ export class UploadedMapLoader {
         try {
             const loaded = this.options.loadMapData(data as SerializedMap | null);
             if (loaded) {
-                void this.options.saveMap();
+                void this.options.saveMap().catch((error) => {
+                    this.options.showErrors(this.buildSaveErrors(error));
+                });
             }
         } catch (error) {
             const errors = [
@@ -44,5 +46,14 @@ export class UploadedMapLoader {
     private getErrorStack(error: unknown): string | null {
         const stack = (error as { stack?: unknown } | null | undefined)?.stack;
         return stack == null ? null : String(stack);
+    }
+
+    private buildSaveErrors(error: unknown): string[] {
+        const errors = ['There was a problem saving the map:', this.getErrorMessage(error)];
+        const errorStack = this.getErrorStack(error);
+        if (errorStack) {
+            errors.push(errorStack);
+        }
+        return errors;
     }
 }

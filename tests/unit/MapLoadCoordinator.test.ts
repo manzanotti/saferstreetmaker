@@ -60,4 +60,20 @@ describe('MapLoadCoordinator', () => {
             { showDownloadStorageLink: true }
         );
     });
+
+    it('reports when resolved map data cannot be processed', async () => {
+        const state = createCoordinator({
+            loadMapData: vi.fn().mockReturnValue(false)
+        });
+
+        await expect(state.coordinator.load(null, '', false, null, null)).resolves.toBe(false);
+
+        expect(state.options.showErrors).toHaveBeenCalledWith(
+            [
+                'There was a problem processing the map file:',
+                'The map data could not be processed. It may be corrupted.'
+            ],
+            { showDownloadStorageLink: false }
+        );
+    });
 });
