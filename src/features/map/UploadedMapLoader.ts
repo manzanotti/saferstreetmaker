@@ -25,6 +25,11 @@ export class UploadedMapLoader {
                 void this.options.saveMap().catch((error) => {
                     this.options.showErrors(this.buildSaveErrors(error));
                 });
+            } else {
+                this.options.showErrors([
+                    'There was a problem processing the uploaded map file:',
+                    'The map data could not be processed. It may be corrupted.'
+                ]);
             }
         } catch (error) {
             const errors = [

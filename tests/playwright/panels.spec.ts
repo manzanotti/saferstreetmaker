@@ -1,14 +1,11 @@
 import { test, expect } from '@playwright/test';
+import { Buffer } from 'node:buffer';
 import {
     addFreshStorageInitScript,
     getLayerFeatureCount,
     seedStoredMap,
     waitForFreshStorage
 } from './indexedDbHelpers';
-
-declare const Buffer: {
-    from(value: string): unknown;
-};
 
 test.describe('Settings Panel', () => {
     test.beforeEach(async ({ page }) => {
@@ -235,7 +232,7 @@ test.describe('Map Manager Panel', () => {
         await fileInput.setInputFiles({
             name: 'uploaded-test-map.json',
             mimeType: 'application/json',
-            buffer: Buffer.from(JSON.stringify(uploadedMap)) as never
+            buffer: Buffer.from(JSON.stringify(uploadedMap))
         });
 
         await expect(page.locator('#map-manager')).not.toBeAttached();

@@ -27,13 +27,16 @@ describe('UploadedMapLoader', () => {
         expect(state.options.showErrors).not.toHaveBeenCalled();
     });
 
-    it('does not save when uploaded data is rejected', () => {
+    it('reports when uploaded data cannot be processed', () => {
         const state = createLoader({ loadMapData: vi.fn().mockReturnValue(false) });
 
         state.loader.load(null);
 
         expect(state.options.saveMap).not.toHaveBeenCalled();
-        expect(state.options.showErrors).not.toHaveBeenCalled();
+        expect(state.options.showErrors).toHaveBeenCalledWith([
+            'There was a problem processing the uploaded map file:',
+            'The map data could not be processed. It may be corrupted.'
+        ]);
     });
 
     it('reports save errors from a successfully loaded upload', async () => {
