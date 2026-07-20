@@ -62,6 +62,17 @@ describe('HistoryLifecycleCoordinator', () => {
         );
     });
 
+    it('clears history status when activation cannot read the current status', async () => {
+        const state = createCoordinator();
+        state.options.undoJournal.getStatus.mockRejectedValue(new Error('storage unavailable'));
+
+        await expect(state.coordinator.activate('Active map')).resolves.toBeUndefined();
+        await Promise.resolve();
+
+        expect(state.options.historyStore.clearStatus).toHaveBeenCalledOnce();
+        expect(state.options.historyStore.setStatus).not.toHaveBeenCalled();
+    });
+
     it('does not surface migration failures', async () => {
         const state = createCoordinator();
         state.options.loadMapListFromStorage.mockRejectedValue(new Error('storage unavailable'));

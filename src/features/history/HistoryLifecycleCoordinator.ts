@@ -35,7 +35,9 @@ export class HistoryLifecycleCoordinator {
             this.options.setLastSavedSnapshot(this.options.buildSnapshot());
             this.options.historyStore.clearStatus();
         }
-        void this.syncStatus();
+        void this.syncStatus().catch(() => {
+            this.options.historyStore.clearStatus();
+        });
     }
 
     async syncStatus(): Promise<void> {

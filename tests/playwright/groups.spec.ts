@@ -247,6 +247,22 @@ test.describe('Groups — Select and zoom', () => {
         await expect(page.locator('.leaflet-filters-pane path[stroke="#3b82f6"]')).toHaveCount(0);
     });
 
+    test('Escape while typing does not clear group highlights', async ({ page }) => {
+        await placeTwoModalFilters(page);
+        await selectBothFilters(page);
+        await createGroup(page, 'Typing Group');
+
+        await openGroupsPanel(page);
+        await page.getByRole('button', { name: /Select group Typing Group/ }).click();
+        await expect(page.locator('.leaflet-filters-pane path[stroke="#3b82f6"]')).toHaveCount(2);
+
+        await page.locator('#settings-button').click();
+        await page.locator('#title').focus();
+        await page.keyboard.press('Escape');
+
+        await expect(page.locator('.leaflet-filters-pane path[stroke="#3b82f6"]')).toHaveCount(2);
+    });
+
     test('switching groups clears the previous point highlights', async ({ page }) => {
         await placeTwoModalFilters(page, 70);
         await selectBothFilters(page);

@@ -85,6 +85,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // mode or a drawing layer. Escape should still clear that selection.
         if (
             e.key === 'Escape' &&
+            !isTyping(e) &&
             !selectionStore.isActive &&
             selectionStore.selected.length > 0 &&
             mapStore.activeLayerId === null

@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { StoredMapLoader } from '../../src/features/map/StoredMapLoader';
 import type { SerializedMap } from '../../src/services/MapSerializer';
 
-function createLoader(overrides: Partial<Parameters<typeof StoredMapLoader>[0]> = {}) {
+function createLoader(overrides: Partial<ConstructorParameters<typeof StoredMapLoader>[0]> = {}) {
     const mapData: SerializedMap = { title: 'Loaded map', layers: {} };
-    const options: Parameters<typeof StoredMapLoader>[0] = {
+    const options: ConstructorParameters<typeof StoredMapLoader>[0] = {
         loadMapFromStorage: vi.fn().mockResolvedValue(mapData),
         hasMapInStorage: vi.fn().mockResolvedValue(false),
         clearAndReset: vi.fn(),
