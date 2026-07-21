@@ -386,6 +386,41 @@ describe('useGroups', () => {
             expect(markSpy).toHaveBeenCalledOnce();
         });
 
+        it('removes members from inactive versions as well', () => {
+            const layer = makePointLayer('ModalFilters');
+            const activeMarker = makePointMarker('active-feature');
+            const inactiveMarker = makePointMarker('inactive-feature');
+            layer.getLayer().addLayer(activeMarker as any);
+            layer.getLayer().addLayer(inactiveMarker as any);
+            useMapStore(pinia).setLayers([layer]);
+
+            const groupStore = useGroupStore(pinia);
+            groupStore.setGroups([
+                {
+                    id: 'g1',
+                    name: 'Versioned group',
+                    defaultVersionId: 'v1',
+                    versions: [
+                        {
+                            id: 'v1',
+                            name: 'Active',
+                            members: [{ layerId: 'ModalFilters', historyId: 'active-feature' }]
+                        },
+                        {
+                            id: 'v2',
+                            name: 'Inactive',
+                            members: [{ layerId: 'ModalFilters', historyId: 'inactive-feature' }]
+                        }
+                    ]
+                }
+            ]);
+
+            deleteGroupWithElements('g1');
+
+            expect(layer.getLayer().getLayers()).toHaveLength(0);
+            expect(groupStore.groups).toHaveLength(0);
+        });
+
         it('does nothing for an unknown group id', () => {
             deleteGroupWithElements('nonexistent');
             expect(useGroupStore(pinia).groups).toHaveLength(0);

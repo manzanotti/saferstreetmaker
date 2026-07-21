@@ -63,10 +63,9 @@ export function memberKey(member: GroupMember): string {
 }
 
 export function hasVersionName(group: Group, name: string, excludedVersionId?: string): boolean {
-    const normalizedName = name.trim().toLocaleLowerCase();
+    const normalizedName = name.trim().toLowerCase();
     return getGroupVersions(group).some(
         (version) =>
-            version.id !== excludedVersionId &&
-            version.name.trim().toLocaleLowerCase() === normalizedName
+            version.id !== excludedVersionId && version.name.trim().toLowerCase() === normalizedName
     );
 }

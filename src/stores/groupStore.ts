@@ -6,7 +6,7 @@ import {
     getDefaultVersionId,
     getGroupVersions,
     hasVersionName,
-    normalizeGroups
+    normalizeGroup
 } from '../features/groups/groupVersions';
 
 export const useGroupStore = defineStore('group', () => {
@@ -44,7 +44,7 @@ export const useGroupStore = defineStore('group', () => {
     function setGroups(newGroups: Group[], preserveActiveVersions = false) {
         const normalizedGroups = newGroups.map((group) =>
             group.versions
-                ? normalizeGroups([group])[0]
+                ? normalizeGroup(group)
                 : {
                       ...group,
                       members: [...(group.members ?? [])]
@@ -75,7 +75,7 @@ export const useGroupStore = defineStore('group', () => {
 
     function addGroup(group: Group) {
         const normalizedGroup = group.versions
-            ? normalizeGroups([group])[0]
+            ? normalizeGroup(group)
             : { ...group, members: [...(group.members ?? [])] };
         groups.value = [...groups.value, normalizedGroup];
         const defaultVersionId = getDefaultVersionId(normalizedGroup);

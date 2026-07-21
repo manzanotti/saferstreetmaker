@@ -416,7 +416,7 @@ export function deleteGroupWithElements(id: string): void {
     if (!group) {
         return;
     }
-    const members = getActiveVersion(group, groupStore.activeVersionIds[id]).members;
+    const members = getGroupVersions(group).flatMap((version) => version.members);
 
     // Restore visibility for any hidden members before removing them.
     for (const member of members) {
