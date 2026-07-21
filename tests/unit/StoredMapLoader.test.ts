@@ -69,4 +69,20 @@ describe('StoredMapLoader', () => {
             { showDownloadStorageLink: false }
         );
     });
+
+    it('reports persistence exceptions with their message and stack', async () => {
+        const state = createLoader({
+            persistMap: vi.fn().mockRejectedValue({
+                message: 'Storage write failed',
+                stack: 'persist stack'
+            })
+        });
+
+        await expect(state.loader.load('Loaded map')).resolves.toBe(false);
+
+        expect(state.options.showErrors).toHaveBeenCalledWith(
+            ['There was a problem saving the map:', 'Storage write failed', 'persist stack'],
+            { showDownloadStorageLink: false }
+        );
+    });
 });

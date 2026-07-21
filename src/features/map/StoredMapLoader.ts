@@ -36,7 +36,13 @@ export class StoredMapLoader {
 
             try {
                 await this.options.persistMap();
-            } catch {
+            } catch (error) {
+                const errors = ['There was a problem saving the map:', getErrorMessage(error)];
+                const stack = getErrorStack(error);
+                if (stack) {
+                    errors.push(stack);
+                }
+                this.options.showErrors(errors, { showDownloadStorageLink: false });
                 return false;
             }
 
