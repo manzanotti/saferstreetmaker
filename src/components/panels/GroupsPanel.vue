@@ -2,7 +2,11 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useGroupStore } from '../../stores/groupStore';
 import { useUiStore } from '../../stores/uiStore';
-import { getActiveVersion, getGroupVersions } from '../../features/groups/groupVersions';
+import {
+    getActiveVersion,
+    getDefaultVersionId,
+    getGroupVersions
+} from '../../features/groups/groupVersions';
 import GroupVersionNameDialog from './GroupVersionNameDialog.vue';
 import {
     selectGroup,
@@ -511,13 +515,13 @@ function onConfirmDeleteWithElements() {
                             type="button"
                             :class="[
                                 'w-24 shrink-0 rounded border px-2 py-1 text-center text-xs transition-colors',
-                                group.defaultVersionId === groupStore.activeVersionIds[group.id]
+                                getDefaultVersionId(group) === groupStore.activeVersionIds[group.id]
                                     ? 'border-green-200 bg-green-50 text-green-700'
                                     : 'border-gray-200 text-gray-600 hover:bg-gray-50'
                             ]"
                             aria-label="Set default version"
                             :aria-pressed="
-                                group.defaultVersionId === groupStore.activeVersionIds[group.id]
+                                getDefaultVersionId(group) === groupStore.activeVersionIds[group.id]
                             "
                             @click="
                                 onSetDefaultVersion(group.id, groupStore.activeVersionIds[group.id])
@@ -525,7 +529,8 @@ function onConfirmDeleteWithElements() {
                         >
                             <span aria-hidden="true">
                                 {{
-                                    group.defaultVersionId === groupStore.activeVersionIds[group.id]
+                                    getDefaultVersionId(group) ===
+                                    groupStore.activeVersionIds[group.id]
                                         ? 'Default ✓'
                                         : 'Set default'
                                 }}
