@@ -212,6 +212,83 @@ describe('useMapManager – groups loaded from SerializedMap', () => {
         expect(groupStore.groups[0].members[0].historyId).toBe('h1');
     });
 
+    it('hides inactive version members after loading a serialized map', async () => {
+        const defaultMarker = {
+            feature: { properties: { historyId: 'default-feature' } },
+            options: { opacity: 0.7, fillOpacity: 0.4 },
+            setStyle: vi.fn(function (style: Record<string, number>) {
+                Object.assign(this.options, style);
+            })
+        };
+        const alternativeMarker = {
+            feature: { properties: { historyId: 'alternative-feature' } },
+            options: { opacity: 0.7, fillOpacity: 0.4 },
+            setStyle: vi.fn(function (style: Record<string, number>) {
+                Object.assign(this.options, style);
+            })
+        };
+        const stubLayer = {
+            id: 'ModalFilters',
+            title: 'ModalFilters',
+            kind: 'point',
+            visible: true,
+            loadFromGeoJSON: vi.fn(),
+            clearLayer: vi.fn(),
+            getLayer: () => ({
+                eachLayer: (fn: (marker: unknown) => void) => {
+                    fn(defaultMarker);
+                    fn(alternativeMarker);
+                },
+                addLayer: vi.fn(),
+                removeLayer: vi.fn(),
+                clearLayers: vi.fn()
+            }),
+            toGeoJSON: () => ({ type: 'FeatureCollection', features: [] })
+        } as any;
+        useMapStore(pinia).setLayers([stubLayer]);
+
+        const serialized: SerializedMap = {
+            settings: {
+                title: 'Versioned Map',
+                readOnly: false,
+                hideToolbar: false,
+                activeLayers: [],
+                centre: null,
+                zoom: 12,
+                version: '0.9.0'
+            },
+            layers: {},
+            groups: [
+                {
+                    id: 'g1',
+                    name: 'Zone A',
+                    defaultVersionId: 'v-default',
+                    versions: [
+                        {
+                            id: 'v-default',
+                            name: 'Default',
+                            members: [{ layerId: 'ModalFilters', historyId: 'default-feature' }]
+                        },
+                        {
+                            id: 'v-alternative',
+                            name: 'Alternative',
+                            members: [{ layerId: 'ModalFilters', historyId: 'alternative-feature' }]
+                        }
+                    ]
+                }
+            ]
+        };
+
+        vi.spyOn(fm, 'loadMapFromStorage').mockReturnValue(serialized);
+        vi.spyOn(fm, 'loadLastMapSelected').mockReturnValue('Versioned Map');
+
+        await mapManager.loadMap(null, '', false, null, null);
+
+        expect(defaultMarker.options.opacity).toBe(0.7);
+        expect(alternativeMarker.options.opacity).toBe(0);
+        expect(alternativeMarker.options.fillOpacity).toBe(0);
+    });
+
     it('prunes group members whose feature is absent from the loaded map', async () => {
         useMapStore(pinia).setLayers([]);
 

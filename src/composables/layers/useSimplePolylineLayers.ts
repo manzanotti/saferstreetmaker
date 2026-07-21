@@ -7,6 +7,7 @@ import * as L from 'leaflet';
 import { createPolylineLayer, type EditablePolylineLayer } from './usePolylineLayer';
 import { addPolylineToLayer, loadPolylineGeoJSON } from './polylineHelpers';
 import type { IMapLayer } from './IMapLayer';
+import { buildHistoryId } from './layerUtils';
 
 interface SimplePolylineConfig {
     id: string;
@@ -80,6 +81,17 @@ function createSimplePolylineLayer(cfg: SimplePolylineConfig, map: L.Map): IMapL
 
     layer.loadFromGeoJSON = (geoJson: any) => {
         loadPolylineGeoJSON(geoJson, (pts, historyId) => addLine(pts, layer.getLayer(), historyId));
+    };
+    layer.loadFeature = (feature: any, historyId?: string) => {
+        if (feature?.geometry?.type !== 'LineString') {
+            return null;
+        }
+        const points = feature.geometry.coordinates.map(
+            ([lng, lat]: [number, number]) => new L.LatLng(lat, lng)
+        );
+        const id = historyId ?? buildHistoryId('polyline');
+        addLine(points, layer.getLayer(), id);
+        return id;
     };
 
     return layer;

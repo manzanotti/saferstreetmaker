@@ -1,10 +1,20 @@
 import { defineStore } from 'pinia';
 import { ref, shallowRef } from 'vue';
-import type { Group, GroupMember, PartialPolylineSplit } from '../models/Group';
+import type { Group, GroupMember, GroupVersion, PartialPolylineSplit } from '../models/Group';
+import {
+    getActiveVersion,
+    getDefaultVersionId,
+    getGroupVersions,
+    hasVersionName,
+    normalizeGroup
+} from '../features/groups/groupVersions';
 
 export const useGroupStore = defineStore('group', () => {
     /** Groups — part of the persisted map payload and included in undo snapshots. */
     const groups = ref<Group[]>([]);
+
+    /** Runtime-only active version per group. Defaults are restored on load. */
+    const activeVersionIds = ref<Record<string, string>>({});
 
     /** Runtime-only: not persisted, not part of undo snapshots. */
     const hiddenGroupIds = ref<Set<string>>(new Set());
@@ -31,12 +41,48 @@ export const useGroupStore = defineStore('group', () => {
 
     // ── Group mutations ───────────────────────────────────────────────────────
 
-    function setGroups(newGroups: Group[]) {
-        groups.value = newGroups;
+    function setGroups(newGroups: Group[], preserveActiveVersions = false) {
+        const normalizedGroups = newGroups.map((group) =>
+            group.versions
+                ? normalizeGroup(group)
+                : {
+                      ...group,
+                      members: [...(group.members ?? [])]
+                  }
+        );
+        const projectedGroups = normalizedGroups.map((group) => {
+            if (!preserveActiveVersions) {
+                return group;
+            }
+            const activeVersionId = activeVersionIds.value[group.id];
+            const activeVersion = getGroupVersions(group).find(
+                (version) => version.id === activeVersionId
+            );
+            return activeVersion ? { ...group, members: [...activeVersion.members] } : group;
+        });
+        groups.value = projectedGroups;
+        const nextActive: Record<string, string> = {};
+        for (const group of projectedGroups) {
+            const currentVersionId = activeVersionIds.value[group.id];
+            nextActive[group.id] =
+                preserveActiveVersions &&
+                getGroupVersions(group).some((version) => version.id === currentVersionId)
+                    ? currentVersionId
+                    : getDefaultVersionId(group);
+        }
+        activeVersionIds.value = nextActive;
     }
 
     function addGroup(group: Group) {
-        groups.value = [...groups.value, group];
+        const normalizedGroup = group.versions
+            ? normalizeGroup(group)
+            : { ...group, members: [...(group.members ?? [])] };
+        groups.value = [...groups.value, normalizedGroup];
+        const defaultVersionId = getDefaultVersionId(normalizedGroup);
+        activeVersionIds.value = {
+            ...activeVersionIds.value,
+            [normalizedGroup.id]: defaultVersionId
+        };
     }
 
     function renameGroup(id: string, name: string) {
@@ -45,6 +91,9 @@ export const useGroupStore = defineStore('group', () => {
 
     function removeGroup(id: string) {
         groups.value = groups.value.filter((g) => g.id !== id);
+        const nextActive = { ...activeVersionIds.value };
+        delete nextActive[id];
+        activeVersionIds.value = nextActive;
         const next = new Set(hiddenGroupIds.value);
         next.delete(id);
         hiddenGroupIds.value = next;
@@ -55,14 +104,138 @@ export const useGroupStore = defineStore('group', () => {
             if (g.id !== id) {
                 return g;
             }
-            const existingKeys = new Set(g.members.map((m) => `${m.layerId}:${m.historyId}`));
+            const activeVersion = getActiveVersion(g, activeVersionIds.value[id]);
+            const existingKeys = new Set(
+                activeVersion.members.map((m) => `${m.layerId}:${m.historyId}`)
+            );
             const toAdd = members.filter((m) => !existingKeys.has(`${m.layerId}:${m.historyId}`));
-            return { ...g, members: [...g.members, ...toAdd] };
+            return {
+                ...g,
+                versions: getGroupVersions(g).map((version) =>
+                    version.id === activeVersion.id
+                        ? { ...version, members: [...version.members, ...toAdd] }
+                        : version
+                ),
+                members: [...activeVersion.members, ...toAdd]
+            };
         });
     }
 
     function clearGroupMembers(id: string) {
-        groups.value = groups.value.map((g) => (g.id === id ? { ...g, members: [] } : g));
+        groups.value = groups.value.map((g) => {
+            if (g.id !== id) {
+                return g;
+            }
+            const activeVersion = getActiveVersion(g, activeVersionIds.value[id]);
+            return {
+                ...g,
+                versions: getGroupVersions(g).map((version) =>
+                    version.id === activeVersion.id ? { ...version, members: [] } : version
+                ),
+                members: []
+            };
+        });
+    }
+
+    function getActiveGroupVersion(id: string): GroupVersion | null {
+        const group = groups.value.find((item) => item.id === id);
+        return group ? getActiveVersion(group, activeVersionIds.value[id]) : null;
+    }
+
+    function setActiveVersion(groupId: string, versionId: string): boolean {
+        const group = groups.value.find((item) => item.id === groupId);
+        if (!group || !getGroupVersions(group).some((version) => version.id === versionId)) {
+            return false;
+        }
+        activeVersionIds.value = { ...activeVersionIds.value, [groupId]: versionId };
+        groups.value = groups.value.map((item) =>
+            item.id === groupId
+                ? { ...item, members: [...getActiveVersion(item, versionId).members] }
+                : item
+        );
+        return true;
+    }
+
+    function addVersion(groupId: string, version: GroupVersion): boolean {
+        const group = groups.value.find((item) => item.id === groupId);
+        if (!group || !version.name.trim() || hasVersionName(group, version.name)) {
+            return false;
+        }
+        const defaultVersionId = getDefaultVersionId(group);
+        groups.value = groups.value.map((item) =>
+            item.id === groupId
+                ? {
+                      ...item,
+                      versions: [...getGroupVersions(item), version],
+                      defaultVersionId
+                  }
+                : item
+        );
+        return true;
+    }
+
+    function renameVersion(groupId: string, versionId: string, name: string): boolean {
+        const group = groups.value.find((item) => item.id === groupId);
+        if (!group || !name.trim() || hasVersionName(group, name, versionId)) {
+            return false;
+        }
+        groups.value = groups.value.map((item) =>
+            item.id === groupId
+                ? {
+                      ...item,
+                      versions: getGroupVersions(item).map((version) =>
+                          version.id === versionId ? { ...version, name: name.trim() } : version
+                      ),
+                      members: item.members
+                  }
+                : item
+        );
+        return true;
+    }
+
+    function setDefaultVersion(groupId: string, versionId: string): boolean {
+        const group = groups.value.find((item) => item.id === groupId);
+        if (!group || !getGroupVersions(group).some((version) => version.id === versionId)) {
+            return false;
+        }
+        groups.value = groups.value.map((item) =>
+            item.id === groupId ? { ...item, defaultVersionId: versionId } : item
+        );
+        return true;
+    }
+
+    function removeVersion(groupId: string, versionId: string): GroupVersion | null {
+        const group = groups.value.find((item) => item.id === groupId);
+        if (!group) {
+            return null;
+        }
+        const versions = getGroupVersions(group);
+        if (versions.length <= 1 || !versions.some((version) => version.id === versionId)) {
+            return null;
+        }
+        const remaining = versions.filter((version) => version.id !== versionId);
+        const currentDefault = getDefaultVersionId(group);
+        const nextDefault = currentDefault === versionId ? remaining[0].id : currentDefault;
+        groups.value = groups.value.map((item) =>
+            item.id === groupId
+                ? {
+                      ...item,
+                      versions: remaining,
+                      defaultVersionId: nextDefault,
+                      members:
+                          activeVersionIds.value[groupId] === versionId
+                              ? [
+                                    ...remaining.find((version) => version.id === nextDefault)!
+                                        .members
+                                ]
+                              : item.members
+                  }
+                : item
+        );
+        if (activeVersionIds.value[groupId] === versionId) {
+            activeVersionIds.value = { ...activeVersionIds.value, [groupId]: nextDefault };
+        }
+        return versions.find((version) => version.id === versionId) ?? null;
     }
 
     // ── Visibility ────────────────────────────────────────────────────────────
@@ -132,6 +305,7 @@ export const useGroupStore = defineStore('group', () => {
 
     return {
         groups,
+        activeVersionIds,
         hiddenGroupIds,
         nameDialogOpen,
         renameGroupId,
@@ -145,6 +319,12 @@ export const useGroupStore = defineStore('group', () => {
         removeGroup,
         addMembersToGroup,
         clearGroupMembers,
+        getActiveGroupVersion,
+        setActiveVersion,
+        addVersion,
+        renameVersion,
+        setDefaultVersion,
+        removeVersion,
         toggleHidden,
         setAllHidden,
         openNameDialog,

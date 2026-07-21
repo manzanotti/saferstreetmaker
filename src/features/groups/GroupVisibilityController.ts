@@ -1,9 +1,11 @@
 import type * as L from 'leaflet';
 import type { Group, GroupMember } from '../../models/Group';
+import { getActiveVersion, getGroupVersions } from './groupVersions';
 
 interface GroupVisibilityControllerOptions {
     getGroups: () => Group[];
     getHiddenGroupIds: () => Set<string>;
+    getActiveVersionIds?: () => Record<string, string>;
     findMarker: (member: GroupMember) => L.Layer | null;
 }
 
@@ -27,15 +29,35 @@ export class GroupVisibilityController {
 
     recompute(): void {
         const memberToGroupIds = new Map<string, Set<string>>();
+        const inactiveMemberGroupIds = new Map<string, Set<string>>();
         const memberByKey = new Map<string, GroupMember>();
+        const activeVersionIds = this.options.getActiveVersionIds?.() ?? {};
 
         for (const group of this.options.getGroups()) {
-            for (const member of group.members) {
+            const activeVersion = getActiveVersion(group, activeVersionIds[group.id]);
+            const activeMemberKeys = new Set<string>();
+            for (const member of activeVersion.members) {
                 const key = `${member.layerId}:${member.historyId}`;
+                activeMemberKeys.add(key);
                 const groupIds = memberToGroupIds.get(key) ?? new Set<string>();
                 groupIds.add(group.id);
                 memberToGroupIds.set(key, groupIds);
                 memberByKey.set(key, member);
+            }
+            for (const version of getGroupVersions(group)) {
+                if (version.id === activeVersion.id) {
+                    continue;
+                }
+                for (const member of version.members) {
+                    const key = `${member.layerId}:${member.historyId}`;
+                    if (activeMemberKeys.has(key)) {
+                        continue;
+                    }
+                    const groupIds = inactiveMemberGroupIds.get(key) ?? new Set<string>();
+                    groupIds.add(group.id);
+                    inactiveMemberGroupIds.set(key, groupIds);
+                    memberByKey.set(key, member);
+                }
             }
         }
 
@@ -51,6 +73,22 @@ export class GroupVisibilityController {
                 continue;
             }
 
+            const marker = this.options.findMarker(member);
+            if (marker) {
+                desiredHidden.add(marker);
+            }
+        }
+
+        // A feature that belongs only to an inactive version must not remain
+        // rendered after switching away from that version.
+        for (const [key] of inactiveMemberGroupIds) {
+            if (memberToGroupIds.has(key)) {
+                continue;
+            }
+            const member = memberByKey.get(key);
+            if (!member) {
+                continue;
+            }
             const marker = this.options.findMarker(member);
             if (marker) {
                 desiredHidden.add(marker);

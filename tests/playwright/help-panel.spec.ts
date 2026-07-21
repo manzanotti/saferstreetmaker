@@ -43,6 +43,21 @@ test.describe('Help Panel', () => {
         await expect(page.locator('#tabs-home')).not.toBeVisible();
     });
 
+    test('Groups tab appears between Features and Maps with version guidance', async ({ page }) => {
+        await page.locator('#help-button').click();
+
+        const tabs = page.locator('[data-tab-nav] [role="presentation"]');
+        await expect(tabs.nth(1)).toContainText('Features');
+        await expect(tabs.nth(2)).toContainText('Groups');
+        await expect(tabs.nth(3)).toContainText('Maps');
+
+        await page.locator('a[data-tab-target="#tabs-groups"]').click();
+
+        await expect(page.locator('#tabs-groups')).toBeVisible();
+        await expect(page.locator('#tabs-groups')).toContainText('Group versions');
+        await expect(page.locator('#tabs-groups')).toContainText('version dropdown');
+    });
+
     test('clicking the help modal close button hides the modal', async ({ page }) => {
         await page.locator('#help-button').click();
         await page.locator('button[name="closeHelp"]').first().click();

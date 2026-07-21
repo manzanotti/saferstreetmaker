@@ -15,6 +15,12 @@ import * as L from 'leaflet';
 import { useMapStore } from '../stores/mapStore';
 import { useSelectionStore } from '../stores/selectionStore';
 import { useGroupStore } from '../stores/groupStore';
+import {
+    getActiveVersion,
+    getGroupVersions,
+    hasVersionName
+} from '../features/groups/groupVersions';
+import { GroupVersionFeatureCloner } from '../features/groups/GroupVersionFeatureCloner';
 import { pinia } from '../stores/index';
 import { buildHistoryId, getFeatureHistoryId } from './layers/layerUtils';
 import {
@@ -46,6 +52,7 @@ function findMarkerByHistoryId(layerId: string, historyId: string): L.Layer | nu
 const groupVisibilityController = new GroupVisibilityController({
     getGroups: () => useGroupStore(pinia).groups,
     getHiddenGroupIds: () => useGroupStore(pinia).hiddenGroupIds,
+    getActiveVersionIds: () => useGroupStore(pinia).activeVersionIds,
     findMarker: (member) => findMarkerByHistoryId(member.layerId, member.historyId)
 });
 
@@ -262,7 +269,8 @@ export function selectGroup(id: string): void {
     const selectionStore = useSelectionStore(pinia);
 
     const group = groupStore.groups.find((g) => g.id === id);
-    if (!group || group.members.length === 0) {
+    const members = group ? getActiveVersion(group, groupStore.activeVersionIds[id]).members : [];
+    if (!group || members.length === 0) {
         return;
     }
 
@@ -270,7 +278,7 @@ export function selectGroup(id: string): void {
     // markers (getLatLng) and polyline/polygon features (getLatLngs).
     const allEntries: SelectedMarker[] = [];
 
-    for (const member of group.members) {
+    for (const member of members) {
         const marker = findMarkerByHistoryId(member.layerId, member.historyId);
         if (!marker) {
             continue;
@@ -322,6 +330,90 @@ export function selectGroup(id: string): void {
     applySelectionHighlights(allEntries, true, previousEntries);
 }
 
+export function switchGroupVersion(groupId: string, versionId: string): boolean {
+    const groupStore = useGroupStore(pinia);
+    const mapStore = useMapStore(pinia);
+    const selectionStore = useSelectionStore(pinia);
+    const switched = groupStore.setActiveVersion(groupId, versionId);
+    if (switched) {
+        const previousSelection = selectionStore.selected;
+        applySelectionHighlights([], true, previousSelection);
+        selectionStore.setSelected([]);
+        recomputeFeatureVisibility();
+        selectGroup(groupId);
+        mapStore.markLayerUpdated();
+    }
+    return switched;
+}
+
+export function createGroupVersion(groupId: string, name: string): boolean {
+    const groupStore = useGroupStore(pinia);
+    const group = groupStore.groups.find((item) => item.id === groupId);
+    const source = group ? groupStore.getActiveGroupVersion(groupId) : null;
+    const mapStore = useMapStore(pinia);
+    if (!group || !source || !name.trim() || hasVersionName(group, name)) {
+        return false;
+    }
+
+    const cloner = new GroupVersionFeatureCloner({
+        getLayer: (layerId) => mapStore.layers.find((layer) => layer.id === layerId),
+        findFeature: (layer, historyId) => {
+            let found: any = null;
+            layer.getLayer().eachLayer((item: any) => {
+                if (getFeatureHistoryId(item) === historyId) {
+                    found = item.feature ?? item.toGeoJSON?.() ?? null;
+                }
+            });
+            return found;
+        }
+    });
+    const cloned = cloner.clone({ id: source.id, name: name.trim(), members: source.members });
+    if (!groupStore.addVersion(groupId, cloned)) {
+        return false;
+    }
+    mapStore.markLayerUpdated();
+    return switchGroupVersion(groupId, cloned.id);
+}
+
+export function setGroupDefaultVersion(groupId: string, versionId: string): boolean {
+    const groupStore = useGroupStore(pinia);
+    const mapStore = useMapStore(pinia);
+    const changed = groupStore.setDefaultVersion(groupId, versionId);
+    if (changed) {
+        mapStore.markLayerUpdated();
+    }
+    return changed;
+}
+
+export function deleteGroupVersion(groupId: string, versionId: string): boolean {
+    const groupStore = useGroupStore(pinia);
+    const version = groupStore.removeVersion(groupId, versionId);
+    if (!version) {
+        return false;
+    }
+    const mapStore = useMapStore(pinia);
+    const remainingMembers = new Set(
+        groupStore.groups.flatMap((group) =>
+            getGroupVersions(group).flatMap((remainingVersion) =>
+                remainingVersion.members.map((member) => `${member.layerId}:${member.historyId}`)
+            )
+        )
+    );
+    for (const member of version.members) {
+        if (remainingMembers.has(`${member.layerId}:${member.historyId}`)) {
+            continue;
+        }
+        const marker = findMarkerByHistoryId(member.layerId, member.historyId);
+        const layer = mapStore.layers.find((item) => item.id === member.layerId);
+        if (marker && layer) {
+            layer.getLayer().removeLayer(marker);
+        }
+    }
+    mapStore.markLayerUpdated();
+    recomputeFeatureVisibility();
+    return true;
+}
+
 /**
  * Delete a group AND all its member features from the map.
  * This is undoable via the snapshot journal.
@@ -334,9 +426,10 @@ export function deleteGroupWithElements(id: string): void {
     if (!group) {
         return;
     }
+    const members = getGroupVersions(group).flatMap((version) => version.members);
 
     // Restore visibility for any hidden members before removing them.
-    for (const member of group.members) {
+    for (const member of members) {
         const marker = findMarkerByHistoryId(member.layerId, member.historyId);
         if (marker) {
             groupVisibilityController.reveal(marker);
@@ -345,7 +438,7 @@ export function deleteGroupWithElements(id: string): void {
 
     // Remove each member feature from its layer.
     const seen = new Set<string>();
-    for (const member of group.members) {
+    for (const member of members) {
         const key = `${member.layerId}:${member.historyId}`;
         if (seen.has(key)) {
             continue;
@@ -446,18 +539,37 @@ export function pruneDanglingGroupMembers(): boolean {
 
     let changed = false;
     const nextGroups = groupStore.groups.map((group) => {
-        const kept = group.members.filter((member) =>
-            existing.has(`${member.layerId}:${member.historyId}`)
-        );
-        if (kept.length !== group.members.length) {
+        const versions = getGroupVersions(group).map((version) => ({
+            ...version,
+            members: version.members.filter((member) =>
+                existing.has(`${member.layerId}:${member.historyId}`)
+            )
+        }));
+        const kept =
+            versions.find((version) => version.id === groupStore.activeVersionIds[group.id])
+                ?.members ??
+            versions.find((version) => version.id === group.defaultVersionId)?.members ??
+            versions[0]?.members ??
+            [];
+        const currentMembers = getActiveVersion(
+            group,
+            groupStore.activeVersionIds[group.id]
+        ).members;
+        if (
+            kept.length !== currentMembers.length ||
+            versions.some(
+                (version, index) =>
+                    version.members.length !== getGroupVersions(group)[index].members.length
+            )
+        ) {
             changed = true;
-            return { ...group, members: kept };
+            return { ...group, versions, members: kept };
         }
         return group;
     });
 
     if (changed) {
-        groupStore.setGroups(nextGroups);
+        groupStore.setGroups(nextGroups, true);
     }
     return changed;
 }

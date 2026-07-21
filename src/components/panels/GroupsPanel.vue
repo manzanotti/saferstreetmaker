@@ -3,17 +3,45 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useGroupStore } from '../../stores/groupStore';
 import { useUiStore } from '../../stores/uiStore';
 import {
+    getActiveVersion,
+    getDefaultVersionId,
+    getGroupVersions
+} from '../../features/groups/groupVersions';
+import GroupVersionNameDialog from './GroupVersionNameDialog.vue';
+import {
     selectGroup,
     deleteGroupWithElements,
     removeAllGroupElements,
     deleteGroup,
     toggleGroupVisibility,
     setAllGroupsVisibility,
-    beginAddToGroup
+    beginAddToGroup,
+    createGroupVersion,
+    switchGroupVersion,
+    setGroupDefaultVersion,
+    deleteGroupVersion
 } from '../../composables/useGroups';
 
 const groupStore = useGroupStore();
 const uiStore = useUiStore();
+const versionsByGroupId = computed(() =>
+    Object.fromEntries(groupStore.groups.map((group) => [group.id, getGroupVersions(group)]))
+);
+const memberCountByGroupId = computed<Record<string, number>>(() =>
+    Object.fromEntries(
+        groupStore.groups.map((group) => [
+            group.id,
+            getActiveVersion(group, groupStore.activeVersionIds[group.id]).members.length
+        ])
+    )
+);
+const versionDialogOpen = ref(false);
+const versionDialogGroupId = ref<string | null>(null);
+const versionDialogError = ref('');
+const versionDialogGroupName = computed(() => {
+    const group = groupStore.groups.find((item) => item.id === versionDialogGroupId.value);
+    return group?.name ?? '';
+});
 
 /** Inline confirmation state: pending action awaiting user confirm. */
 const pendingConfirm = ref<
@@ -83,6 +111,42 @@ function onRemoveMembers(id: string) {
     pendingConfirm.value = { type: 'deleteEmpty', groupId: id };
 }
 
+function onVersionChange(groupId: string, event: Event) {
+    const versionId = (event.target as HTMLSelectElement).value;
+    switchGroupVersion(groupId, versionId);
+}
+
+function onCreateVersion(groupId: string) {
+    versionDialogGroupId.value = groupId;
+    versionDialogError.value = '';
+    versionDialogOpen.value = true;
+}
+
+function onCancelCreateVersion() {
+    versionDialogOpen.value = false;
+    versionDialogGroupId.value = null;
+    versionDialogError.value = '';
+}
+
+function onSubmitCreateVersion(name: string) {
+    if (!versionDialogGroupId.value) {
+        return;
+    }
+    if (!createGroupVersion(versionDialogGroupId.value, name)) {
+        versionDialogError.value = 'Enter a unique version name.';
+        return;
+    }
+    onCancelCreateVersion();
+}
+
+function onSetDefaultVersion(groupId: string, versionId: string) {
+    setGroupDefaultVersion(groupId, versionId);
+}
+
+function onDeleteVersion(groupId: string, versionId: string) {
+    deleteGroupVersion(groupId, versionId);
+}
+
 function onConfirmDeleteEmpty() {
     if (pendingConfirm.value?.type === 'deleteEmpty') {
         deleteGroup(pendingConfirm.value.groupId);
@@ -117,7 +181,7 @@ function onConfirmDeleteWithElements() {
     <div
         role="dialog"
         aria-labelledby="groups-panel-title"
-        class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] rounded-2xl bg-white shadow-xl border border-gray-100 w-96 flex flex-col overflow-hidden max-h-[90vh]"
+        class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-9999 rounded-2xl bg-white shadow-xl border border-gray-100 w-96 flex flex-col overflow-hidden max-h-[90vh]"
         @dblclick.stop
     >
         <!-- Header -->
@@ -186,8 +250,8 @@ function onConfirmDeleteWithElements() {
                         <p class="text-sm text-gray-700">
                             Delete <strong>{{ group.name }}</strong
                             >? Choose whether to keep or delete its
-                            {{ group.members.length }} member{{
-                                group.members.length === 1 ? '' : 's'
+                            {{ memberCountByGroupId[group.id] }} member{{
+                                memberCountByGroupId[group.id] === 1 ? '' : 's'
                             }}.
                         </p>
                         <div class="flex flex-wrap gap-2">
@@ -261,7 +325,7 @@ function onConfirmDeleteWithElements() {
                         >
                             {{ group.name }}
                             <span class="text-xs text-gray-400 font-normal ml-1"
-                                >({{ group.members.length }})</span
+                                >({{ memberCountByGroupId[group.id] }})</span
                             >
                         </button>
 
@@ -407,8 +471,99 @@ function onConfirmDeleteWithElements() {
                             </svg>
                         </button>
                     </div>
+                    <div
+                        v-if="versionsByGroupId[group.id]?.length"
+                        class="mt-2 flex items-center gap-2"
+                    >
+                        <label
+                            v-if="versionsByGroupId[group.id].length > 1"
+                            :for="`group-version-${group.id}`"
+                            class="sr-only"
+                        >
+                            Group version
+                        </label>
+                        <div
+                            v-if="versionsByGroupId[group.id].length === 1"
+                            class="min-w-0 flex-1"
+                            aria-hidden="true"
+                        ></div>
+                        <select
+                            v-else
+                            :id="`group-version-${group.id}`"
+                            class="min-w-0 flex-1 rounded border border-gray-200 px-2 py-1 text-xs text-gray-700"
+                            :value="groupStore.activeVersionIds[group.id]"
+                            :aria-label="`Version for group ${group.name}`"
+                            @change="onVersionChange(group.id, $event)"
+                        >
+                            <option
+                                v-for="version in versionsByGroupId[group.id]"
+                                :key="version.id"
+                                :value="version.id"
+                            >
+                                {{ version.name }}
+                            </option>
+                        </select>
+                        <button
+                            type="button"
+                            class="w-20 shrink-0 rounded border border-gray-200 px-2 py-1 text-center text-xs text-gray-600 hover:bg-gray-50"
+                            aria-label="Create version"
+                            @click="onCreateVersion(group.id)"
+                        >
+                            + Version
+                        </button>
+                        <button
+                            type="button"
+                            :class="[
+                                'w-24 shrink-0 rounded border px-2 py-1 text-center text-xs transition-colors',
+                                getDefaultVersionId(group) === groupStore.activeVersionIds[group.id]
+                                    ? 'border-green-200 bg-green-50 text-green-700'
+                                    : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                            ]"
+                            aria-label="Set default version"
+                            :aria-pressed="
+                                getDefaultVersionId(group) === groupStore.activeVersionIds[group.id]
+                            "
+                            @click="
+                                onSetDefaultVersion(group.id, groupStore.activeVersionIds[group.id])
+                            "
+                        >
+                            <span aria-hidden="true">
+                                {{
+                                    getDefaultVersionId(group) ===
+                                    groupStore.activeVersionIds[group.id]
+                                        ? 'Default ✓'
+                                        : 'Set default'
+                                }}
+                            </span>
+                        </button>
+                        <button
+                            v-if="versionsByGroupId[group.id].length > 1"
+                            type="button"
+                            class="w-16 shrink-0 rounded border border-red-100 px-2 py-1 text-center text-xs text-red-600 hover:bg-red-50"
+                            aria-label="Delete version"
+                            @click="
+                                onDeleteVersion(group.id, groupStore.activeVersionIds[group.id])
+                            "
+                        >
+                            Delete
+                        </button>
+                        <span
+                            v-else
+                            class="invisible w-16 shrink-0 rounded border border-red-100 px-2 py-1 text-center text-xs"
+                            aria-hidden="true"
+                        >
+                            Delete
+                        </span>
+                    </div>
                 </li>
             </ul>
         </div>
     </div>
+    <GroupVersionNameDialog
+        :open="versionDialogOpen"
+        :group-name="versionDialogGroupName"
+        :error-message="versionDialogError"
+        @submit="onSubmitCreateVersion"
+        @cancel="onCancelCreateVersion"
+    />
 </template>

@@ -16,6 +16,8 @@ import {
     createGroupFromSelection,
     finalizeCreateGroup,
     finalizeRenameGroup,
+    createGroupVersion,
+    deleteGroupVersion,
     deleteGroupWithElements,
     removeAllGroupElements,
     executeSplitsAndProceed,
@@ -362,6 +364,109 @@ describe('useGroups', () => {
 
     // ── deleteGroupWithElements ───────────────────────────────────────────────
 
+    describe('createGroupVersion()', () => {
+        it('clones the active version features with new history ids', () => {
+            const layer = makePointLayer('ModalFilters');
+            const sourceMarker = makePointMarker('source-feature');
+            layer.getLayer().addLayer(sourceMarker as any);
+            (layer as any).loadFeature = vi.fn((_feature: unknown, historyId: string) => {
+                layer.getLayer().addLayer(makePointMarker(historyId) as any);
+                return historyId;
+            });
+            useMapStore(pinia).setLayers([layer]);
+
+            const groupStore = useGroupStore(pinia);
+            groupStore.addGroup({
+                id: 'g1',
+                name: 'Test',
+                members: [{ layerId: 'ModalFilters', historyId: 'source-feature' }]
+            });
+
+            const created = createGroupVersion('g1', 'Alternative');
+            const versions = groupStore.groups[0].versions ?? [];
+            const clonedMembers = versions[1]?.members ?? [];
+
+            expect(created).toBe(true);
+            expect(versions).toHaveLength(2);
+            expect(clonedMembers).toHaveLength(1);
+            expect(clonedMembers[0]).toEqual(expect.objectContaining({ layerId: 'ModalFilters' }));
+            expect(clonedMembers[0].historyId).not.toBe('source-feature');
+            expect(groupStore.activeVersionIds.g1).toBe(versions[1].id);
+            expect(layer.getLayer().getLayers()).toHaveLength(2);
+        });
+    });
+
+    describe('deleteGroupVersion()', () => {
+        it('removes the version features from the map', () => {
+            const layer = makePointLayer('ModalFilters');
+            const firstMarker = makePointMarker('first-feature');
+            const secondMarker = makePointMarker('second-feature');
+            layer.getLayer().addLayer(firstMarker as any);
+            layer.getLayer().addLayer(secondMarker as any);
+            useMapStore(pinia).setLayers([layer]);
+
+            const groupStore = useGroupStore(pinia);
+            groupStore.setGroups([
+                {
+                    id: 'g1',
+                    name: 'Test',
+                    defaultVersionId: 'v1',
+                    versions: [
+                        {
+                            id: 'v1',
+                            name: 'First',
+                            members: [{ layerId: 'ModalFilters', historyId: 'first-feature' }]
+                        },
+                        {
+                            id: 'v2',
+                            name: 'Second',
+                            members: [{ layerId: 'ModalFilters', historyId: 'second-feature' }]
+                        }
+                    ]
+                }
+            ]);
+
+            expect(deleteGroupVersion('g1', 'v2')).toBe(true);
+            expect(groupStore.groups[0].versions?.map((version) => version.id)).toEqual(['v1']);
+            expect(layer.getLayer().getLayers()).toEqual([firstMarker]);
+        });
+
+        it('keeps a feature referenced by another group', () => {
+            const layer = makePointLayer('ModalFilters');
+            const sharedMarker = makePointMarker('shared-feature');
+            layer.getLayer().addLayer(sharedMarker as any);
+            useMapStore(pinia).setLayers([layer]);
+
+            const groupStore = useGroupStore(pinia);
+            groupStore.setGroups([
+                {
+                    id: 'g1',
+                    name: 'First group',
+                    versions: [
+                        {
+                            id: 'v1',
+                            name: 'First',
+                            members: [{ layerId: 'ModalFilters', historyId: 'unique-feature' }]
+                        },
+                        {
+                            id: 'v2',
+                            name: 'Second',
+                            members: [{ layerId: 'ModalFilters', historyId: 'shared-feature' }]
+                        }
+                    ]
+                },
+                {
+                    id: 'g2',
+                    name: 'Second group',
+                    members: [{ layerId: 'ModalFilters', historyId: 'shared-feature' }]
+                }
+            ]);
+
+            expect(deleteGroupVersion('g1', 'v2')).toBe(true);
+            expect(layer.getLayer().getLayers()).toEqual([sharedMarker]);
+        });
+    });
+
     describe('deleteGroupWithElements()', () => {
         it('removes group members from their layers and removes the group', () => {
             const layer = makePointLayer('ModalFilters');
@@ -384,6 +489,41 @@ describe('useGroups', () => {
             expect(layer.getLayer().getLayers()).toHaveLength(0);
             expect(groupStore.groups).toHaveLength(0);
             expect(markSpy).toHaveBeenCalledOnce();
+        });
+
+        it('removes members from inactive versions as well', () => {
+            const layer = makePointLayer('ModalFilters');
+            const activeMarker = makePointMarker('active-feature');
+            const inactiveMarker = makePointMarker('inactive-feature');
+            layer.getLayer().addLayer(activeMarker as any);
+            layer.getLayer().addLayer(inactiveMarker as any);
+            useMapStore(pinia).setLayers([layer]);
+
+            const groupStore = useGroupStore(pinia);
+            groupStore.setGroups([
+                {
+                    id: 'g1',
+                    name: 'Versioned group',
+                    defaultVersionId: 'v1',
+                    versions: [
+                        {
+                            id: 'v1',
+                            name: 'Active',
+                            members: [{ layerId: 'ModalFilters', historyId: 'active-feature' }]
+                        },
+                        {
+                            id: 'v2',
+                            name: 'Inactive',
+                            members: [{ layerId: 'ModalFilters', historyId: 'inactive-feature' }]
+                        }
+                    ]
+                }
+            ]);
+
+            deleteGroupWithElements('g1');
+
+            expect(layer.getLayer().getLayers()).toHaveLength(0);
+            expect(groupStore.groups).toHaveLength(0);
         });
 
         it('does nothing for an unknown group id', () => {
@@ -1021,6 +1161,44 @@ describe('useGroups', () => {
 
             expect(changed).toBe(false);
             expect(groupStore.groups[0].members).toHaveLength(1);
+        });
+
+        it('preserves the selected version while pruning another version', () => {
+            const layer = makePointLayer('ModalFilters');
+            const alternativeMarker = makePointMarker('alternative');
+            layer.getLayer().addLayer(alternativeMarker as any);
+            useMapStore(pinia).setLayers([layer]);
+
+            const groupStore = useGroupStore(pinia);
+            groupStore.setGroups([
+                {
+                    id: 'g1',
+                    name: 'G',
+                    defaultVersionId: 'default',
+                    versions: [
+                        {
+                            id: 'default',
+                            name: 'Default',
+                            members: [{ layerId: 'ModalFilters', historyId: 'missing' }]
+                        },
+                        {
+                            id: 'alternative',
+                            name: 'Alternative',
+                            members: [
+                                { layerId: 'ModalFilters', historyId: 'alternative' },
+                                { layerId: 'ModalFilters', historyId: 'also-missing' }
+                            ]
+                        }
+                    ]
+                }
+            ]);
+            groupStore.setActiveVersion('g1', 'alternative');
+
+            expect(pruneDanglingGroupMembers()).toBe(true);
+            expect(groupStore.activeVersionIds.g1).toBe('alternative');
+            expect(groupStore.groups[0].members).toEqual([
+                { layerId: 'ModalFilters', historyId: 'alternative' }
+            ]);
         });
 
         it('is a no-op when there are no groups', () => {

@@ -15,6 +15,7 @@ export interface IMapLayer {
     getToolbarButton: () => ToolbarButton;
     getLegendEntry: () => HTMLElement;
     loadFromGeoJSON: (geoJson: L.GeoJSON) => void;
+    loadFeature?: (feature: GeoJSON.Feature, historyId?: string) => string | null;
     getLayer: () => L.GeoJSON;
     toGeoJSON: () => {};
     clearLayer: () => void;

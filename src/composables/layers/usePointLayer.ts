@@ -187,6 +187,14 @@ export function createPointLayer(config: PointLayerConfig, map: L.Map): IMapLaye
             });
         },
 
+        loadFeature(feature: any, historyId?: string): string | null {
+            if (feature?.geometry?.type !== 'Point') {
+                return null;
+            }
+            const [lng, lat] = feature.geometry.coordinates;
+            return addMarker(new L.LatLng(lat, lng), historyId).historyId;
+        },
+
         loadFromGeoJSON(geoJson: any): void {
             if (!geoJson?.features) {
                 return;
