@@ -392,7 +392,17 @@ export function deleteGroupVersion(groupId: string, versionId: string): boolean 
         return false;
     }
     const mapStore = useMapStore(pinia);
+    const remainingMembers = new Set(
+        groupStore.groups.flatMap((group) =>
+            getGroupVersions(group).flatMap((remainingVersion) =>
+                remainingVersion.members.map((member) => `${member.layerId}:${member.historyId}`)
+            )
+        )
+    );
     for (const member of version.members) {
+        if (remainingMembers.has(`${member.layerId}:${member.historyId}`)) {
+            continue;
+        }
         const marker = findMarkerByHistoryId(member.layerId, member.historyId);
         const layer = mapStore.layers.find((item) => item.id === member.layerId);
         if (marker && layer) {
