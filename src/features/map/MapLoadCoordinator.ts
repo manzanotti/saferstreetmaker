@@ -51,6 +51,9 @@ export class MapLoadCoordinator {
             if (mapLoaded) {
                 this.options.setLastSavedSnapshot(this.options.buildSnapshot());
                 await this.options.activateHistory(this.options.getCurrentTitle());
+            } else if (source.geoJSON === null && loadingFromStorage) {
+                this.options.setLastSavedSnapshot(this.options.buildSnapshot());
+                await this.options.activateHistory(this.options.getCurrentTitle());
             } else {
                 const canDownloadStorageMap =
                     loadingFromStorage && storageMapName !== ''

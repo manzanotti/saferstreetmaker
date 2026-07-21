@@ -76,4 +76,26 @@ describe('MapLoadCoordinator', () => {
             { showDownloadStorageLink: false }
         );
     });
+
+    it('keeps the default map without showing an error when storage is empty', async () => {
+        const state = createCoordinator({
+            sourceResolver: {
+                resolve: vi.fn().mockResolvedValue({
+                    loadingFromStorage: true,
+                    storageMapName: 'Hello Cleveland',
+                    geoJSON: null
+                })
+            },
+            loadMapData: vi.fn().mockReturnValue(false)
+        });
+
+        await expect(state.coordinator.load(null, '', false, null, null)).resolves.toBe(false);
+
+        expect(state.options.showErrors).not.toHaveBeenCalled();
+        expect(state.options.setLastSavedSnapshot).toHaveBeenCalledWith({
+            title: 'Map',
+            layers: {}
+        });
+        expect(state.options.activateHistory).toHaveBeenCalledWith('Map');
+    });
 });
