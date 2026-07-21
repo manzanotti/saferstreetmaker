@@ -17,7 +17,8 @@ import {
     setupAreaSelection,
     executeAreaDelete,
     executeCopy,
-    executePaste
+    executePaste,
+    clearFeatureHighlight
 } from './composables/useAreaSelection';
 import { useSelectionStore } from './stores/selectionStore';
 import { useUiStore } from './stores/uiStore';
@@ -79,6 +80,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.addEventListener('keydown', async (e: KeyboardEvent) => {
         const selectionStore = useSelectionStore(pinia);
         const activeTextSelection = window.getSelection?.()?.toString().trim() ?? '';
+
+        // Group selection highlights features without activating area-selection
+        // mode or a drawing layer. Escape should still clear that selection.
+        if (
+            e.key === 'Escape' &&
+            !isTyping(e) &&
+            !selectionStore.isActive &&
+            selectionStore.selected.length > 0 &&
+            mapStore.activeLayerId === null
+        ) {
+            clearFeatureHighlight();
+        }
 
         // Escape — exit LTN edit mode even when the map no longer owns focus
         // (for example after closing its popup). Other feature layers still

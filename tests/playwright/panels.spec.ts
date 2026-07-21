@@ -1,5 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { addFreshStorageInitScript, seedStoredMap, waitForFreshStorage } from './indexedDbHelpers';
+import { Buffer } from 'node:buffer';
+import {
+    addFreshStorageInitScript,
+    getLayerFeatureCount,
+    seedStoredMap,
+    waitForFreshStorage
+} from './indexedDbHelpers';
 
 test.describe('Settings Panel', () => {
     test.beforeEach(async ({ page }) => {
@@ -186,6 +192,54 @@ test.describe('Map Manager Panel', () => {
     test('clicking map manager button opens the panel', async ({ page }) => {
         await page.locator('#map-manager-button').click();
         await expect(page.locator('#map-manager')).toBeVisible();
+    });
+
+    test('loading a JSON file replaces the map and persists the uploaded data', async ({
+        page
+    }) => {
+        const uploadedMap = {
+            settings: {
+                title: 'Uploaded Test Map',
+                readOnly: false,
+                hideToolbar: false,
+                activeLayers: ['BusGates'],
+                centre: { lat: 52.5, lng: -1.9 },
+                zoom: 12,
+                version: '0.9.0'
+            },
+            layers: {
+                BusGates: {
+                    type: 'FeatureCollection',
+                    features: [
+                        {
+                            type: 'Feature',
+                            properties: {},
+                            geometry: {
+                                type: 'Point',
+                                coordinates: [-1.9, 52.5]
+                            }
+                        }
+                    ]
+                }
+            }
+        };
+
+        await page.locator('#map-manager-button').click();
+        await page.locator('#load-file').click();
+
+        const fileInput = page.locator('input[type="file"]');
+        await expect(fileInput).toBeAttached();
+        await fileInput.setInputFiles({
+            name: 'uploaded-test-map.json',
+            mimeType: 'application/json',
+            buffer: Buffer.from(JSON.stringify(uploadedMap))
+        });
+
+        await expect(page.locator('#map-manager')).not.toBeAttached();
+        await expect(page.locator('.leaflet-marker-icon.bus-gate-icon')).toHaveCount(1);
+        await expect
+            .poll(() => getLayerFeatureCount(page, 'Uploaded Test Map', 'BusGates'))
+            .toBe(1);
     });
 
     test('clicking map manager button a second time closes the panel', async ({ page }) => {

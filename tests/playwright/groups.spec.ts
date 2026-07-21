@@ -34,12 +34,17 @@ async function placeModalFilter(page: Page, offsetX = 0, offsetY = 0): Promise<v
     await page.waitForTimeout(150);
 }
 
-async function dragSelectCenter(page: Page, halfSize = 80): Promise<void> {
+async function dragSelectCenter(
+    page: Page,
+    halfSize = 80,
+    offsetX = 0,
+    offsetY = 0
+): Promise<void> {
     const map = page.locator('.leaflet-container');
     const box = await map.boundingBox();
     if (!box) throw new Error('Map bounding box not found');
-    const cx = box.x + box.width / 2;
-    const cy = box.y + box.height / 2;
+    const cx = box.x + box.width / 2 + offsetX;
+    const cy = box.y + box.height / 2 + offsetY;
     await page.mouse.move(cx - halfSize, cy - halfSize);
     await page.mouse.down();
     await page.mouse.move(cx + halfSize, cy + halfSize, { steps: 10 });
@@ -47,13 +52,13 @@ async function dragSelectCenter(page: Page, halfSize = 80): Promise<void> {
     await page.waitForTimeout(200);
 }
 
-async function placeTwoModalFilters(page: Page, offset = 70): Promise<void> {
+async function placeTwoModalFilters(page: Page, offset = 70, offsetY = 0): Promise<void> {
     await page.locator('#modal-filter-button').click();
     const map = page.locator('.leaflet-container');
     const box = await map.boundingBox();
     if (!box) throw new Error('Map bounding box not found');
     const cx = box.x + box.width / 2;
-    const cy = box.y + box.height / 2;
+    const cy = box.y + box.height / 2 + offsetY;
     await page.mouse.click(cx - offset, cy);
     await page.waitForTimeout(150);
     await page.mouse.click(cx + offset, cy);
@@ -61,9 +66,9 @@ async function placeTwoModalFilters(page: Page, offset = 70): Promise<void> {
     await page.locator('#modal-filter-button').click();
 }
 
-async function selectBothFilters(page: Page): Promise<void> {
+async function selectBothFilters(page: Page, offsetX = 0, offsetY = 0): Promise<void> {
     await page.locator('#select-area-button').click();
-    await dragSelectCenter(page, 120);
+    await dragSelectCenter(page, 120, offsetX, offsetY);
     await expect(page.getByText('2 features selected')).toBeVisible();
 }
 
@@ -159,6 +164,24 @@ test.describe('Groups — Create group', () => {
         await page.keyboard.press('g');
         await expect(page.getByText('No groups yet')).not.toBeVisible();
     });
+
+    test('Escape closes the keyboard-opened panel and keeps shortcuts available', async ({
+        page
+    }) => {
+        await page.locator('#map').click();
+        await page.keyboard.press('g');
+        await expect(page.getByText('No groups yet')).toBeVisible();
+        await page.locator('#groups-button').focus();
+
+        await page.keyboard.press('Escape');
+
+        await expect(page.getByText('No groups yet')).not.toBeVisible();
+        await expect(page.locator('#groups-button')).toHaveAttribute('aria-pressed', 'false');
+        await expect(page.locator('#groups-button')).not.toBeFocused();
+
+        await page.keyboard.press('s');
+        await expect(page.locator('#select-area-button')).toHaveAttribute('aria-pressed', 'true');
+    });
 });
 
 test.describe('Groups — Rename', () => {
@@ -208,6 +231,55 @@ test.describe('Groups — Select and zoom', () => {
         await expect(page.locator('.leaflet-filters-pane path[stroke="#3b82f6"]')).toHaveCount(2);
         // ...but the map is NOT put into selection mode (no selection panel).
         await expect(page.getByText('features selected', { exact: false })).not.toBeVisible();
+    });
+
+    test('Escape clears all highlights after selecting a group', async ({ page }) => {
+        await placeTwoModalFilters(page);
+        await selectBothFilters(page);
+        await createGroup(page, 'Escape Group');
+
+        await openGroupsPanel(page);
+        await page.getByRole('button', { name: /Select group Escape Group/ }).click();
+        await expect(page.locator('.leaflet-filters-pane path[stroke="#3b82f6"]')).toHaveCount(2);
+
+        await page.keyboard.press('Escape');
+
+        await expect(page.locator('.leaflet-filters-pane path[stroke="#3b82f6"]')).toHaveCount(0);
+    });
+
+    test('Escape while typing does not clear group highlights', async ({ page }) => {
+        await placeTwoModalFilters(page);
+        await selectBothFilters(page);
+        await createGroup(page, 'Typing Group');
+
+        await openGroupsPanel(page);
+        await page.getByRole('button', { name: /Select group Typing Group/ }).click();
+        await expect(page.locator('.leaflet-filters-pane path[stroke="#3b82f6"]')).toHaveCount(2);
+
+        await page.locator('#settings-button').click();
+        await page.locator('#title').focus();
+        await page.keyboard.press('Escape');
+
+        await expect(page.locator('.leaflet-filters-pane path[stroke="#3b82f6"]')).toHaveCount(2);
+    });
+
+    test('switching groups clears the previous point highlights', async ({ page }) => {
+        await placeTwoModalFilters(page, 70);
+        await selectBothFilters(page);
+        await createGroup(page, 'First Group');
+
+        await placeTwoModalFilters(page, 70, 180);
+        await selectBothFilters(page, 0, 180);
+        await createGroup(page, 'Second Group');
+
+        await openGroupsPanel(page);
+        await page.getByRole('button', { name: /Select group First Group/ }).click();
+        await expect(page.locator('.leaflet-filters-pane path[stroke="#3b82f6"]')).toHaveCount(2);
+
+        await openGroupsPanel(page);
+        await page.getByRole('button', { name: /Select group Second Group/ }).click();
+        await expect(page.locator('.leaflet-filters-pane path[stroke="#3b82f6"]')).toHaveCount(2);
+        await expect(page.locator('.leaflet-filters-pane path[stroke="green"]')).toHaveCount(2);
     });
 });
 
