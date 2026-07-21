@@ -5,10 +5,21 @@ export interface GroupMember {
     historyId: string;
 }
 
-export interface Group {
+export interface GroupVersion {
     id: string;
     name: string;
     members: GroupMember[];
+}
+
+export interface Group {
+    id: string;
+    name: string;
+    /** New versioned representation. Legacy groups may omit this field. */
+    versions?: GroupVersion[];
+    /** The version shown after loading a map. */
+    defaultVersionId?: string;
+    /** Legacy representation, accepted during migration. */
+    members?: GroupMember[];
 }
 
 export interface PartialPolylineSplit {

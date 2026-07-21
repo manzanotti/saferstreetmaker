@@ -1023,6 +1023,44 @@ describe('useGroups', () => {
             expect(groupStore.groups[0].members).toHaveLength(1);
         });
 
+        it('preserves the selected version while pruning another version', () => {
+            const layer = makePointLayer('ModalFilters');
+            const alternativeMarker = makePointMarker('alternative');
+            layer.getLayer().addLayer(alternativeMarker as any);
+            useMapStore(pinia).setLayers([layer]);
+
+            const groupStore = useGroupStore(pinia);
+            groupStore.setGroups([
+                {
+                    id: 'g1',
+                    name: 'G',
+                    defaultVersionId: 'default',
+                    versions: [
+                        {
+                            id: 'default',
+                            name: 'Default',
+                            members: [{ layerId: 'ModalFilters', historyId: 'missing' }]
+                        },
+                        {
+                            id: 'alternative',
+                            name: 'Alternative',
+                            members: [
+                                { layerId: 'ModalFilters', historyId: 'alternative' },
+                                { layerId: 'ModalFilters', historyId: 'also-missing' }
+                            ]
+                        }
+                    ]
+                }
+            ]);
+            groupStore.setActiveVersion('g1', 'alternative');
+
+            expect(pruneDanglingGroupMembers()).toBe(true);
+            expect(groupStore.activeVersionIds.g1).toBe('alternative');
+            expect(groupStore.groups[0].members).toEqual([
+                { layerId: 'ModalFilters', historyId: 'alternative' }
+            ]);
+        });
+
         it('is a no-op when there are no groups', () => {
             useMapStore(pinia).setLayers([makePointLayer('ModalFilters')]);
             expect(pruneDanglingGroupMembers()).toBe(false);

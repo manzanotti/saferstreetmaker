@@ -18,7 +18,11 @@ import { useMapStore } from '../stores/mapStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useUiStore } from '../stores/uiStore';
 import { useGroupStore } from '../stores/groupStore';
-import { pruneDanglingGroupMembers, resetGroupVisibility } from './useGroups';
+import {
+    pruneDanglingGroupMembers,
+    recomputeFeatureVisibility,
+    resetGroupVisibility
+} from './useGroups';
 import { pinia } from '../stores/index';
 import { HistoryLifecycleCoordinator } from '../features/history/HistoryLifecycleCoordinator';
 import { MutationAreaRevealer } from '../features/history/MutationAreaRevealer';
@@ -157,6 +161,7 @@ export function setupMapManager(fileManager: FileManager): MapManager {
             useGroupStore(pinia).setAllHidden(hidden);
         },
         resetGroupVisibility,
+        recomputeGroupVisibility: recomputeFeatureVisibility,
         pruneDanglingGroupMembers,
         appVersion: APP_VERSION
     });

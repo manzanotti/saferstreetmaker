@@ -10,7 +10,7 @@
 import LZString from 'lz-string';
 import type { IMapLayer } from '../composables/layers/IMapLayer';
 import type { Settings } from '../models/Settings';
-import type { Group } from '../models/Group';
+import type { Group, GroupVersion } from '../models/Group';
 
 /**
  * Typed shape of the JSON document produced by `MapSerializer.toJSON` and
@@ -61,7 +61,41 @@ interface CompactSettings {
 interface CompactGroup {
     i: string;
     n: string;
-    m: Array<[string, string]>;
+    m?: Array<[string, string]>;
+    d?: string;
+    v?: Array<{
+        i: string;
+        n: string;
+        m: Array<[string, string]>;
+    }>;
+}
+
+function serializeMembers(members: GroupVersion['members']): Array<[string, string]> {
+    return members.map((member) => [member.layerId, member.historyId]);
+}
+
+function serializeGroup(group: Group): Group {
+    if (!group.versions) {
+        return {
+            id: group.id,
+            name: group.name,
+            members: (group.members ?? []).map((member) => ({ ...member }))
+        };
+    }
+    return {
+        id: group.id,
+        name: group.name,
+        defaultVersionId: group.defaultVersionId,
+        versions: group.versions.map((version) => ({
+            id: version.id,
+            name: version.name,
+            members: version.members.map((member) => ({ ...member }))
+        }))
+    };
+}
+
+function deserializeCompactMembers(members: Array<[string, string]> | undefined) {
+    return (members ?? []).map(([layerId, historyId]) => ({ layerId, historyId }));
 }
 
 export interface CompactStoredMap {
@@ -101,11 +135,7 @@ export class MapSerializer {
         if (groups && groups.length > 0) {
             // Explicitly create plain objects to avoid IndexedDB DataCloneError
             // when groups are read from a Vue reactive Proxy.
-            result.groups = groups.map((g) => ({
-                id: g.id,
-                name: g.name,
-                members: g.members.map((m) => ({ layerId: m.layerId, historyId: m.historyId }))
-            }));
+            result.groups = groups.map(serializeGroup);
         }
         return result;
     }
@@ -147,11 +177,25 @@ export class MapSerializer {
             d: new Date().toISOString()
         };
         if (groups && groups.length > 0) {
-            result.g = groups.map((g) => ({
-                i: g.id,
-                n: g.name,
-                m: g.members.map((mb) => [mb.layerId, mb.historyId] as [string, string])
-            }));
+            result.g = groups.map((group) => {
+                if (!group.versions) {
+                    return {
+                        i: group.id,
+                        n: group.name,
+                        m: serializeMembers(group.members ?? [])
+                    };
+                }
+                return {
+                    i: group.id,
+                    n: group.name,
+                    d: group.defaultVersionId,
+                    v: group.versions.map((version) => ({
+                        i: version.id,
+                        n: version.name,
+                        m: serializeMembers(version.members)
+                    }))
+                };
+            });
         }
         return result;
     }
@@ -171,11 +215,24 @@ export class MapSerializer {
             lastSaved: data.d
         };
         if (data.g && data.g.length > 0) {
-            result.groups = data.g.map((g) => ({
-                id: g.i,
-                name: g.n,
-                members: g.m.map(([layerId, historyId]) => ({ layerId, historyId }))
-            }));
+            result.groups = data.g.map((group) =>
+                group.v
+                    ? {
+                          id: group.i,
+                          name: group.n,
+                          defaultVersionId: group.d,
+                          versions: group.v.map((version) => ({
+                              id: version.i,
+                              name: version.n,
+                              members: deserializeCompactMembers(version.m)
+                          }))
+                      }
+                    : {
+                          id: group.i,
+                          name: group.n,
+                          members: deserializeCompactMembers(group.m)
+                      }
+            );
         }
         return result;
     }
@@ -213,11 +270,25 @@ export class MapSerializer {
             d: data.lastSaved ?? new Date().toISOString()
         };
         if (data.groups && data.groups.length > 0) {
-            fromSerializedResult.g = data.groups.map((g) => ({
-                i: g.id,
-                n: g.name,
-                m: g.members.map((mb) => [mb.layerId, mb.historyId] as [string, string])
-            }));
+            fromSerializedResult.g = data.groups.map((group) => {
+                if (!group.versions) {
+                    return {
+                        i: group.id,
+                        n: group.name,
+                        m: serializeMembers(group.members ?? [])
+                    };
+                }
+                return {
+                    i: group.id,
+                    n: group.name,
+                    d: group.defaultVersionId,
+                    v: group.versions.map((version) => ({
+                        i: version.id,
+                        n: version.name,
+                        m: serializeMembers(version.members)
+                    }))
+                };
+            });
         }
         return fromSerializedResult;
     }

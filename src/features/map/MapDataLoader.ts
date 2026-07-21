@@ -28,6 +28,7 @@ export interface MapDataLoaderOptions {
     setGroups: (groups: Group[]) => void;
     setAllGroupsHidden: (hidden: boolean) => void;
     resetGroupVisibility: () => void;
+    recomputeGroupVisibility?: () => void;
     pruneDanglingGroupMembers: () => void;
     appVersion: string;
 }
@@ -48,6 +49,7 @@ export class MapDataLoader {
     private readonly setGroups: (groups: Group[]) => void;
     private readonly setAllGroupsHidden: (hidden: boolean) => void;
     private readonly resetGroupVisibility: () => void;
+    private readonly recomputeGroupVisibility: () => void;
     private readonly pruneDanglingGroupMembers: () => void;
     private readonly appVersion: string;
 
@@ -67,6 +69,7 @@ export class MapDataLoader {
         this.setGroups = options.setGroups;
         this.setAllGroupsHidden = options.setAllGroupsHidden;
         this.resetGroupVisibility = options.resetGroupVisibility;
+        this.recomputeGroupVisibility = options.recomputeGroupVisibility ?? (() => {});
         this.pruneDanglingGroupMembers = options.pruneDanglingGroupMembers;
         this.appVersion = options.appVersion;
     }
@@ -123,6 +126,7 @@ export class MapDataLoader {
         this.setAllGroupsHidden(false);
         this.resetGroupVisibility();
         this.pruneDanglingGroupMembers();
+        this.recomputeGroupVisibility();
         return true;
     }
 

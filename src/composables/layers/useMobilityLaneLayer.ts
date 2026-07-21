@@ -1,6 +1,7 @@
 import * as L from 'leaflet';
 import { createPolylineLayer, type EditablePolylineLayer } from './usePolylineLayer';
 import { addPolylineToLayer, loadPolylineGeoJSON } from './polylineHelpers';
+import { buildHistoryId } from './layerUtils';
 import type { IMapLayer } from './IMapLayer';
 
 const COLOUR = '#2222ff';
@@ -83,6 +84,17 @@ export function createMobilityLaneLayer(map: L.Map): IMapLayer {
         loadPolylineGeoJSON(geoJson, (pts, historyId) =>
             addLine(pts, layer.getLayer(), map, () => layer.selectForEdit(), undefined, historyId)
         );
+    };
+    layer.loadFeature = (feature: any, historyId?: string) => {
+        if (feature?.geometry?.type !== 'LineString') {
+            return null;
+        }
+        const points = feature.geometry.coordinates.map(
+            ([lng, lat]: [number, number]) => new L.LatLng(lat, lng)
+        );
+        const id = historyId ?? buildHistoryId('polyline');
+        addLine(points, layer.getLayer(), map, () => layer.selectForEdit(), undefined, id);
+        return id;
     };
 
     return layer;

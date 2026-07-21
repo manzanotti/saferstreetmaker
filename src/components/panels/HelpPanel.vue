@@ -8,6 +8,7 @@ const activeTab = ref('tabs-home');
 const tabs = [
     { id: 'tabs-home', label: 'Welcome' },
     { id: 'tabs-features', label: 'Features' },
+    { id: 'tabs-groups', label: 'Groups' },
     { id: 'tabs-management', label: 'Maps' },
     { id: 'tabs-settings', label: 'Settings' },
     { id: 'tabs-sharing', label: 'Sharing' },
@@ -318,6 +319,65 @@ function close() {
                                 button in the toolbar on the left-hand side of the map, click on the
                                 Zebra Crossing button, and just click on the map to place one. Once
                                 placed, you can click on one to delete it, or drag it to move it.
+                            </p>
+                        </div>
+
+                        <!-- Groups -->
+                        <div
+                            id="tabs-groups"
+                            :class="tabPanelClass"
+                            :data-tab-active="activeTab === 'tabs-groups' ? '' : undefined"
+                            role="tabpanel"
+                            aria-labelledby="tabs-groups-tab"
+                        >
+                            <h2>
+                                <img
+                                    src="../../img/group.svg"
+                                    class="inline-block w-10 h-10 object-contain align-middle"
+                                    alt=""
+                                    aria-hidden="true"
+                                />
+                                Groups
+                            </h2>
+                            <p class="mb-8">
+                                Groups let you collect related map features together. They are
+                                useful for showing a complete proposal, such as a set of modal
+                                filters and mobility lanes, selecting related features together, and
+                                keeping alternative designs organised.
+                            </p>
+                            <h2>Creating and opening groups</h2>
+                            <p class="mb-8">
+                                To create a group, use the Area Selection tool to select two or more
+                                features, then choose
+                                <strong>Add selected features to a group</strong>. Give the group a
+                                name when prompted. You can open the Groups panel with the Groups
+                                button in the command toolbar, or press <strong>G</strong> when the
+                                map has focus.
+                            </p>
+                            <h2>Using groups</h2>
+                            <p class="mb-8">
+                                Click a group name to select and highlight all of its active
+                                features and fit the map to them. Use the eye button to hide or show
+                                a group. The plus button lets you select additional features and add
+                                them to the group. You can rename a group, remove its members
+                                without deleting the map features, or delete the group and its
+                                features. Group changes can be restored with Undo.
+                            </p>
+                            <h2>Group versions</h2>
+                            <p class="mb-8">
+                                A group can contain several independent versions of a design. The
+                                first version is the default. Select <strong>+ Version</strong> to
+                                create a copy of the current version; its features are cloned so
+                                edits to the new version do not alter the original. Give each
+                                version a unique name.
+                            </p>
+                            <p class="mb-8">
+                                Use the version dropdown to switch designs. Only the selected
+                                version is shown on the map, and its features are highlighted when
+                                the group is selected. Use <strong>Set default</strong> to choose
+                                which version is shown when the map is loaded. The current default
+                                is marked <strong>Default</strong>. Deleting a version removes its
+                                copied features; Undo can restore the deletion if needed.
                             </p>
                         </div>
 

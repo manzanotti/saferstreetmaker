@@ -814,6 +814,19 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             }
         },
 
+        loadFeature(feature: any, historyId?: string): string | null {
+            if (feature?.geometry?.type !== 'Polygon') {
+                return null;
+            }
+            const points = (feature.geometry.coordinates[0] ?? []).map(
+                ([lng, lat]: [number, number]) => new L.LatLng(lat, lng)
+            );
+            const properties = feature.properties ?? {};
+            const id = historyId ?? buildHistoryId('ltn');
+            addLtnCell(points, properties.label ?? '1', properties.color ?? COLOUR, id);
+            return id;
+        },
+
         getLayer(): L.GeoJSON {
             return geoJsonLayer;
         },

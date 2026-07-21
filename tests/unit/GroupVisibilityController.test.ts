@@ -100,4 +100,27 @@ describe('GroupVisibilityController', () => {
         controller.reset();
         expect(element.style.display).toBe('');
     });
+
+    it('hides members that belong only to an inactive version', () => {
+        const defaultMarker = styledMarker();
+        const alternativeMarker = styledMarker();
+        markers.set('default', defaultMarker);
+        markers.set('alternative', alternativeMarker);
+        groups = [
+            {
+                id: 'g1',
+                name: 'g1',
+                defaultVersionId: 'v-default',
+                versions: [
+                    { id: 'v-default', name: 'Default', members: [member('default')] },
+                    { id: 'v-alternative', name: 'Alternative', members: [member('alternative')] }
+                ],
+                members: [member('default')]
+            }
+        ];
+
+        controller.recompute();
+        expect(defaultMarker.options.opacity).toBe(0.7);
+        expect(alternativeMarker.options.opacity).toBe(0);
+    });
 });
