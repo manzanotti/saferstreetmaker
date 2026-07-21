@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { setActivePinia } from 'pinia';
 import { pinia } from '../../../src/stores/index';
 import { useGroupStore } from '../../../src/stores/groupStore';
-import type { Group } from '../../../src/models/Group';
+import type { Group, GroupVersion } from '../../../src/models/Group';
 
 function makeGroup(id: string, name: string, memberHistoryIds: string[] = []): Group {
     return {
@@ -52,6 +52,54 @@ describe('groupStore', () => {
             store.addGroup(makeGroup('g2', 'Beta'));
             expect(store.groups).toHaveLength(2);
             expect(store.groups[1].name).toBe('Beta');
+        });
+
+        it('sets the active version for a legacy group', () => {
+            const store = useGroupStore();
+            store.addGroup(makeGroup('g1', 'Alpha'));
+
+            expect(store.activeVersionIds.g1).toBe('g1:default');
+        });
+    });
+
+    describe('version mutations', () => {
+        const alternativeVersion: GroupVersion = {
+            id: 'v2',
+            name: 'Alternative',
+            members: []
+        };
+
+        it('sets a default version when adding a version to a legacy group', () => {
+            const store = useGroupStore();
+            store.setGroups([makeGroup('g1', 'Alpha')]);
+
+            expect(store.addVersion('g1', alternativeVersion)).toBe(true);
+            expect(store.groups[0].defaultVersionId).toBe('g1:default');
+        });
+
+        it('does not select the deleted version as default for a legacy group', () => {
+            const store = useGroupStore();
+            store.setGroups([
+                {
+                    ...makeGroup('g1', 'Alpha'),
+                    versions: [
+                        {
+                            id: 'v1',
+                            name: 'First',
+                            members: []
+                        },
+                        alternativeVersion
+                    ]
+                }
+            ]);
+            store.addVersion('g1', { id: 'v3', name: 'Third', members: [] });
+            store.setDefaultVersion('g1', 'v2');
+
+            const removed = store.removeVersion('g1', 'v1');
+
+            expect(removed?.id).toBe('v1');
+            expect(store.groups[0].defaultVersionId).toBe('v2');
+            expect(store.groups[0].versions?.map((version) => version.id)).toEqual(['v2', 'v3']);
         });
     });
 

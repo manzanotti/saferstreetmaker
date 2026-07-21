@@ -161,8 +161,15 @@ export const useGroupStore = defineStore('group', () => {
         if (!group || !version.name.trim() || hasVersionName(group, version.name)) {
             return false;
         }
+        const defaultVersionId = getDefaultVersionId(group);
         groups.value = groups.value.map((item) =>
-            item.id === groupId ? { ...item, versions: [...getGroupVersions(item), version] } : item
+            item.id === groupId
+                ? {
+                      ...item,
+                      versions: [...getGroupVersions(item), version],
+                      defaultVersionId
+                  }
+                : item
         );
         return true;
     }
@@ -207,8 +214,8 @@ export const useGroupStore = defineStore('group', () => {
             return null;
         }
         const remaining = versions.filter((version) => version.id !== versionId);
-        const nextDefault =
-            group.defaultVersionId === versionId ? remaining[0].id : getDefaultVersionId(group);
+        const currentDefault = getDefaultVersionId(group);
+        const nextDefault = currentDefault === versionId ? remaining[0].id : currentDefault;
         groups.value = groups.value.map((item) =>
             item.id === groupId
                 ? {
