@@ -33,12 +33,16 @@ export class MapLayerController {
 
     removeAllLayers(): void {
         const map = this.getMap();
-        this.getLayers().forEach((layer) => map.removeLayer(layer.getLayer()));
+        this.getLayers().forEach((layer) => {
+            layer.visible = false;
+            map.removeLayer(layer.getLayer());
+        });
     }
 
     clearAllLayers(): void {
         const map = this.getMap();
         this.getLayers().forEach((layer) => {
+            layer.visible = false;
             layer.clearLayer();
             map.removeLayer(layer.getLayer());
         });
@@ -57,6 +61,7 @@ export class MapLayerController {
                 layer.visible = true;
                 map.addLayer(layer.getLayer());
             } else {
+                layer.visible = false;
                 map.removeLayer(layer.getLayer());
             }
         });

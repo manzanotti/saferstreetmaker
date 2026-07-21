@@ -53,14 +53,16 @@ export function replayFeatureMutation(
 
     if (mutation.kind === 'point-add' || mutation.kind === 'point-delete') {
         const pointFeature = buildPointFeatureFromMutation(mutation);
+        if (!pointFeature) {
+            return null;
+        }
+
         const shouldAdd =
             (mutation.kind === 'point-add' && direction === 'redo') ||
             (mutation.kind === 'point-delete' && direction === 'undo');
 
         if (shouldAdd) {
-            if (pointFeature) {
-                addFeatureIfMissing(features, pointFeature);
-            }
+            addFeatureIfMissing(features, pointFeature);
         } else {
             featureCollection.features = removeFeatures(features, [pointFeature]);
         }

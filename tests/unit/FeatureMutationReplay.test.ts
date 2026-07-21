@@ -53,6 +53,18 @@ describe('feature mutation replay', () => {
         expect(replay([first, second], mutation, 'redo')?.features).toEqual([]);
     });
 
+    it('requests snapshot fallback for malformed point mutations', () => {
+        const malformedAdd: LayerMutationEvent = {
+            kind: 'point-add',
+            layerId: 'ModalFilters',
+            payload: { historyId: 'point-1' }
+        };
+        const malformedDelete = { ...malformedAdd, kind: 'point-delete' as const };
+
+        expect(replay([], malformedAdd, 'redo')).toBeNull();
+        expect(replay([], malformedDelete, 'redo')).toBeNull();
+    });
+
     it('replays whole-feature add and delete mutations without duplicates', () => {
         const line = makeFeature('line-1', [
             [0, 0],

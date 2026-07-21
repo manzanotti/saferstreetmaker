@@ -70,6 +70,7 @@ describe('MapLayerController', () => {
         expect(layers[1].loaded).toEqual([legacyCycleLanes]);
         expect(addLayer).toHaveBeenCalledOnce();
         expect(removeLayer).toHaveBeenCalledOnce();
+        expect(layers[1].visible).toBe(false);
     });
 
     it('clears layer data and removes every layer from the map', () => {
@@ -82,5 +83,19 @@ describe('MapLayerController', () => {
 
         expect(layers.map((layer) => layer.clearCount)).toEqual([1, 1]);
         expect(removeLayer).toHaveBeenCalledTimes(2);
+        expect(layers.every((layer) => !layer.visible)).toBe(true);
+    });
+
+    it('removes every layer and marks it hidden', () => {
+        const map = new L.Map();
+        const layers = [makeLayer('a'), makeLayer('b')];
+        layers.forEach((layer) => (layer.visible = true));
+        const removeLayer = vi.spyOn(map, 'removeLayer');
+        const controller = new MapLayerController({ getMap: () => map, getLayers: () => layers });
+
+        controller.removeAllLayers();
+
+        expect(removeLayer).toHaveBeenCalledTimes(2);
+        expect(layers.every((layer) => !layer.visible)).toBe(true);
     });
 });
