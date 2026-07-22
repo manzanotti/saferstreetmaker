@@ -1902,7 +1902,7 @@ test.describe('Layer: LTN Cell (polygon)', () => {
         await page.waitForTimeout(200);
 
         await page.locator('.label-editor').fill('Zone A');
-        await page.locator('.label-editor').dispatchEvent('keyup');
+        await page.locator('.apply-changes-button').click();
         await page.waitForTimeout(300);
 
         await page.locator('#undo-button').click();

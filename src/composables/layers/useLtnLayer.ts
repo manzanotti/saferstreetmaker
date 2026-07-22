@@ -482,7 +482,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             syncTooltipVisibility(polygon);
         });
 
-        const { popup, labelEl } = createLtnPopup(polygon, label);
+        const { popup, labelEl, colorEl } = createLtnPopup(polygon, label);
         // Expose the popup + label input on the polygon so the draw-created
         // handler can open it to prompt for a title immediately after drawing.
         (polygon as any).__ltnPopup = popup;
@@ -533,6 +533,8 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             // Switch to this layer for editing (deselects any active point/polyline layer).
             selectForEdit();
             removeMapCursor(CURSOR_CSS);
+            labelEl.value = polygon.properties.label ?? '';
+            colorEl.value = polygon.options.color ?? COLOUR;
             syncPolygonEditCursor(
                 (e.target as any)?._path ?? null,
                 e.originalEvent.clientX,
@@ -542,6 +544,9 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             popup.setLatLng(e.target.getBounds().getCenter());
             map.openPopup(popup);
             labelEl.focus();
+            window.setTimeout(() => {
+                labelEl.focus();
+            }, 0);
         });
 
         geoJsonLayer.addLayer(polygon);
@@ -553,55 +558,41 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
     const createLtnPopup = (
         polygon: any,
         initialLabel: string
-    ): { popup: L.Popup; labelEl: HTMLInputElement } => {
+    ): { popup: L.Popup; labelEl: HTMLInputElement; colorEl: HTMLInputElement } => {
         const popup = L.popup({ minWidth: 30, keepInView: true });
         const controlList = document.createElement('ul');
         controlList.classList.add('popup-buttons');
+        const currentControls = document.createElement('li');
+        currentControls.classList.add('current-controls');
+        const currentControlsContent = document.createElement('div');
+        currentControlsContent.classList.add('current-controls-content');
+        currentControls.appendChild(currentControlsContent);
+        controlList.appendChild(currentControls);
 
         const labelControl = document.createElement('li');
         const labelEl = document.createElement('input');
         labelEl.type = 'text';
         labelEl.value = initialLabel;
         labelEl.classList.add('label-editor');
-        const applyLabelChange = () => {
-            const text = labelEl.value;
-            polygon['properties'].label = text;
-            syncPolygonTooltip(polygon, text);
-            const previousFeature =
-                (polygon as any)['historyFeature'] ?? getPolygonHistoryFeature(polygon);
-            const nextFeature = getPolygonHistoryFeature(polygon);
-            mapStore.markLayerUpdated({
-                kind: 'polygon-edit',
-                layerId: 'LtnCells',
-                payload: getPolygonMutationPayload(previousFeature, nextFeature)
-            });
-            (polygon as any)['historyFeature'] = nextFeature;
-        };
-        labelEl.addEventListener('keyup', (event: KeyboardEvent) => {
-            if (event.key === 'Enter') {
-                return;
-            }
-
-            applyLabelChange();
-        });
-        labelEl.addEventListener('keydown', (event: KeyboardEvent) => {
-            if (event.key !== 'Enter') {
-                return;
-            }
-
-            event.preventDefault();
-            applyLabelChange();
-            map.closePopup(popup);
-        });
         labelControl.appendChild(labelEl);
-        controlList.appendChild(labelControl);
+        currentControlsContent.appendChild(labelControl);
+
+        const colorControl = document.createElement('li');
+        const colorEl = document.createElement('input');
+        colorEl.type = 'color';
+        colorEl.value = polygon.options.color ?? COLOUR;
+        colorEl.classList.add('colour-swatch');
+        colorEl.setAttribute('aria-label', 'Change cell colour');
+        colorEl.title = 'Change cell colour';
+        colorControl.appendChild(colorEl);
+        currentControlsContent.appendChild(colorControl);
 
         const copyControl = buildPopupActionControl('copy-button', 'Copy selected feature', () => {
             map.closePopup(popup);
             selectFeature(polygon as unknown as L.Layer, 'LtnCells', false);
             executeCopy();
         });
-        controlList.appendChild(copyControl);
+        currentControlsContent.appendChild(copyControl);
 
         const deleteControl = buildPopupActionControl(
             'delete-button',
@@ -622,10 +613,61 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                 clearFeatureHighlight();
             }
         );
-        controlList.appendChild(deleteControl);
+        currentControlsContent.appendChild(deleteControl);
+
+        const colourActions = document.createElement('li');
+        colourActions.classList.add('colour-actions');
+        const applyColourButton = document.createElement('button');
+        applyColourButton.type = 'button';
+        applyColourButton.classList.add('apply-changes-button');
+        applyColourButton.textContent = 'Apply';
+        applyColourButton.setAttribute('aria-label', 'Apply LTN cell changes');
+
+        const applyChanges = () => {
+            const previousFeature =
+                (polygon as any)['historyFeature'] ?? getPolygonHistoryFeature(polygon);
+            polygon['properties'].label = labelEl.value;
+            syncPolygonTooltip(polygon, labelEl.value);
+            polygon.setStyle({ color: colorEl.value });
+            const nextFeature = getPolygonHistoryFeature(polygon);
+            if (JSON.stringify(previousFeature) !== JSON.stringify(nextFeature)) {
+                mapStore.markLayerUpdated({
+                    kind: 'polygon-edit',
+                    layerId: 'LtnCells',
+                    payload: getPolygonMutationPayload(previousFeature, nextFeature)
+                });
+                (polygon as any)['historyFeature'] = nextFeature;
+            }
+            map.closePopup(popup);
+        };
+
+        applyColourButton.addEventListener('click', applyChanges);
+        colourActions.appendChild(applyColourButton);
+
+        const cancelColourButton = document.createElement('button');
+        cancelColourButton.type = 'button';
+        cancelColourButton.classList.add('cancel-colour-button');
+        cancelColourButton.textContent = 'Cancel';
+        cancelColourButton.setAttribute('aria-label', 'Cancel LTN cell changes');
+        cancelColourButton.addEventListener('click', () => {
+            labelEl.value = polygon.properties.label ?? '';
+            colorEl.value = polygon.options.color ?? COLOUR;
+            map.closePopup(popup);
+        });
+        colourActions.appendChild(cancelColourButton);
+        controlList.appendChild(colourActions);
+
+        labelEl.addEventListener('keydown', (event: KeyboardEvent) => {
+            if (event.key !== 'Enter') {
+                return;
+            }
+
+            event.preventDefault();
+            applyChanges();
+        });
 
         popup.setContent(controlList);
-        return { popup, labelEl };
+        return { popup, labelEl, colorEl };
     };
 
     // ── draw:created handler ─────────────────────────────────────────────────
@@ -652,6 +694,10 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             _drawPopup = popup;
             labelEl?.focus();
             labelEl?.select();
+            window.setTimeout(() => {
+                labelEl?.focus();
+                labelEl?.select();
+            }, 0);
         }
     };
 

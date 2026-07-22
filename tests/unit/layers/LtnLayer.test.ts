@@ -554,10 +554,84 @@ describe('LtnLayer feature clicks', () => {
         const input = content.querySelector('.label-editor') as HTMLInputElement;
 
         input.value = 'Updated LTN';
+        expect(polygon.properties.label).toBe('LTN 1');
         input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
 
         expect(polygon.properties.label).toBe('Updated LTN');
         expect(mapClosePopupSpy).toHaveBeenCalledWith(popup);
+    });
+
+    it('changes the cell colour from the popup swatch and records the edit', () => {
+        const map = makeMockMap();
+        const layer = createLtnLayer(map);
+        const mapStore = useMapStore(pinia);
+
+        layer.loadFromGeoJSON(
+            polygonFeatureCollection([
+                [
+                    [
+                        [0, 0],
+                        [1, 0],
+                        [1, 1],
+                        [0, 1],
+                        [0, 0]
+                    ]
+                ]
+            ]) as any
+        );
+
+        const polygon = layer.getLayer().getLayers()[0] as any;
+        const popup = polygon.__ltnPopup;
+        const content = popup.setContent.mock.calls[0][0] as HTMLElement;
+        const colorInput = content.querySelector('.colour-swatch') as HTMLInputElement;
+
+        expect(colorInput.type).toBe('color');
+        expect(colorInput.value).toBe('#cc00cc');
+
+        colorInput.value = '#00aa00';
+        colorInput.dispatchEvent(new Event('input', { bubbles: true }));
+        expect(polygon.options.color).toBe('#cc00cc');
+
+        const applyButton = content.querySelector('.apply-changes-button') as HTMLButtonElement;
+        applyButton.click();
+
+        expect(polygon.options.color).toBe('#00aa00');
+        expect(mapStore.lastLayerMutation?.kind).toBe('polygon-edit');
+        expect(mapStore.lastLayerMutation?.payload).toMatchObject({
+            beforeColor: '#cc00cc',
+            afterColor: '#00aa00'
+        });
+    });
+
+    it('cancels a pending cell colour change from the popup', () => {
+        const map = makeMockMap();
+        const layer = createLtnLayer(map);
+
+        layer.loadFromGeoJSON(
+            polygonFeatureCollection([
+                [
+                    [
+                        [0, 0],
+                        [1, 0],
+                        [1, 1],
+                        [0, 1],
+                        [0, 0]
+                    ]
+                ]
+            ]) as any
+        );
+
+        const polygon = layer.getLayer().getLayers()[0] as any;
+        const content = polygon.__ltnPopup.setContent.mock.calls[0][0] as HTMLElement;
+        const colorInput = content.querySelector('.colour-swatch') as HTMLInputElement;
+        const cancelButton = content.querySelector('.cancel-colour-button') as HTMLButtonElement;
+
+        colorInput.value = '#00aa00';
+        colorInput.dispatchEvent(new Event('input', { bubbles: true }));
+        cancelButton.click();
+
+        expect(polygon.options.color).toBe('#cc00cc');
+        expect(colorInput.value).toBe('#cc00cc');
     });
 
     it('switches selection to a polygon while another editable layer is active', () => {
