@@ -1,7 +1,7 @@
 import type * as L from 'leaflet';
 import type { Group } from '../../models/Group';
 import { getActiveVersion } from './groupVersions';
-import { normalizeGroupColour } from './groupColours';
+import { DEFAULT_GROUP_COLOUR, normalizeGroupColour } from './groupColours';
 
 const PATTERN_PREFIX = 'ssm-ltn-stripes-';
 const STRIPE_WIDTH = 12;
@@ -79,7 +79,11 @@ class SvgPatternRegistry {
     }
 
     cleanup(activePatternIds: Set<string>): void {
-        for (const svg of this.svgs) {
+        for (const svg of [...this.svgs]) {
+            if (!svg.isConnected) {
+                this.svgs.delete(svg);
+                continue;
+            }
             svg.querySelectorAll<SVGPatternElement>('pattern[data-ssm-ltn-pattern="true"]').forEach(
                 (pattern) => {
                     if (!activePatternIds.has(pattern.id)) {
@@ -108,9 +112,7 @@ export class GroupLtnFillController {
             if (typeof marker.setStyle !== 'function') {
                 return;
             }
-
-            const fallbackColor = marker.options?.color ?? '#cc00cc';
-            const resolution = resolveLtnFill(
+            const fallbackColor = marker.options?.color ?? DEFAULT_GROUP_COLOUR;
                 memberColors.get(marker.properties?.historyId ?? '') ?? [],
                 fallbackColor
             );
