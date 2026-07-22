@@ -54,9 +54,8 @@ describe('GroupLtnFillController', () => {
         });
     });
 
-    it('applies a solid fill and matching line colour from visible groups', () => {
+    it('applies solid fill and stroke without changing the cell colour', () => {
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        document.body.appendChild(svg);
         const marker = makeMarker('cell-1', svg);
         const groups = [group('visible', '#00aa00', 'cell-1')];
         groups.push({
@@ -76,12 +75,12 @@ describe('GroupLtnFillController', () => {
         controller.recompute();
 
         expect(marker.options.fillColor).toBe('#00aa00');
-        expect(marker.options.color).toBe('#00aa00');
+        expect(marker.options.color).toBe('#cc00cc');
+        expect(marker.getElement().getAttribute('stroke')).toBe('#00aa00');
     });
 
     it('creates a renderer-local pattern containing every unique colour', () => {
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        document.body.appendChild(svg);
         const marker = makeMarker('cell-1', svg);
         const groups = [group('first', '#00aa00', 'cell-1'), group('second', '#aa0000', 'cell-1')];
         const controller = new GroupLtnFillController({
@@ -95,7 +94,8 @@ describe('GroupLtnFillController', () => {
         controller.recompute();
 
         expect(marker.options.fillColor).toMatch(/^url\(#ssm-ltn-stripes-/);
-        expect(marker.options.color).toBe(marker.options.fillColor);
+        expect(marker.options.color).toBe('#cc00cc');
+        expect(marker.getElement().getAttribute('stroke')).toMatch(/^url\(#ssm-ltn-stripes-/);
         expect(svg.querySelectorAll('defs[data-ssm-ltn-defs="true"]')).toHaveLength(1);
         expect(svg.querySelectorAll('pattern[data-ssm-ltn-pattern="true"] rect')).toHaveLength(2);
         expect(svg.querySelector('pattern rect[fill="#00aa00"]')).toBeTruthy();
