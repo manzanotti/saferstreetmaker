@@ -542,11 +542,17 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             );
             e.target.editing.enable();
             popup.setLatLng(e.target.getBounds().getCenter());
+            const focusPopupLabel = (event: L.PopupEvent): void => {
+                if (event.popup !== popup) {
+                    return;
+                }
+
+                map.off('popupopen', focusPopupLabel);
+                labelEl.focus();
+            };
+            map.on('popupopen', focusPopupLabel);
             map.openPopup(popup);
             labelEl.focus();
-            window.setTimeout(() => {
-                labelEl.focus();
-            }, 0);
         });
 
         geoJsonLayer.addLayer(polygon);
@@ -561,10 +567,10 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
     ): { popup: L.Popup; labelEl: HTMLInputElement; colorEl: HTMLInputElement } => {
         const popup = L.popup({ minWidth: 30, keepInView: true });
         const controlList = document.createElement('ul');
-        controlList.classList.add('popup-buttons');
+        controlList.classList.add('popup-buttons', 'ltn-popup-buttons');
         const currentControls = document.createElement('li');
         currentControls.classList.add('current-controls');
-        const currentControlsContent = document.createElement('div');
+        const currentControlsContent = document.createElement('ul');
         currentControlsContent.classList.add('current-controls-content');
         currentControls.appendChild(currentControlsContent);
         controlList.appendChild(currentControls);
@@ -690,14 +696,20 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         const labelEl = polygon?.__ltnLabelEl as HTMLInputElement | undefined;
         if (popup) {
             popup.setLatLng(polygon.getBounds().getCenter());
+            const focusDrawPopupLabel = (event: L.PopupEvent): void => {
+                if (event.popup !== popup) {
+                    return;
+                }
+
+                map.off('popupopen', focusDrawPopupLabel);
+                labelEl?.focus();
+                labelEl?.select();
+            };
+            map.on('popupopen', focusDrawPopupLabel);
             map.openPopup(popup);
             _drawPopup = popup;
             labelEl?.focus();
             labelEl?.select();
-            window.setTimeout(() => {
-                labelEl?.focus();
-                labelEl?.select();
-            }, 0);
         }
     };
 
