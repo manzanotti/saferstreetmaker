@@ -363,6 +363,13 @@ function close() {
                                 without deleting the map features, or delete the group and its
                                 features. Group changes can be restored with Undo.
                             </p>
+                            <h2>Group colours</h2>
+                            <p class="mb-8">
+                                Use the colour swatch beside a group to apply that colour to all LTN
+                                cells in the group, including both their fill and outline. If an LTN
+                                cell belongs to multiple groups with different colours, its fill and
+                                outline use a striped pattern showing all of those colours.
+                            </p>
                             <h2>Group versions</h2>
                             <p class="mb-8">
                                 A group can contain several independent versions of a design. The

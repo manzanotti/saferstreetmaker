@@ -29,6 +29,7 @@ const groups: Group[] = [
     {
         id: 'group-1',
         name: 'School Zone',
+        color: '#00aa00',
         members: [
             { layerId: 'ModalFilters', historyId: 'hist-a' },
             { layerId: 'BusGates', historyId: 'hist-b' }
@@ -52,6 +53,7 @@ describe('MapSerializer — groups', () => {
         expect(result.groups).toHaveLength(2);
         expect(result.groups![0].id).toBe('group-1');
         expect(result.groups![0].name).toBe('School Zone');
+        expect(result.groups![0].color).toBe('#00aa00');
         expect(result.groups![0].members).toHaveLength(2);
     });
 
@@ -73,6 +75,7 @@ describe('MapSerializer — groups', () => {
         expect(compact.g![0]).toEqual({
             i: 'group-1',
             n: 'School Zone',
+            c: '#00aa00',
             m: [
                 ['ModalFilters', 'hist-a'],
                 ['BusGates', 'hist-b']
@@ -112,5 +115,6 @@ describe('MapSerializer — groups', () => {
             layerId: 'ModalFilters',
             historyId: 'hist-a'
         });
+        expect(restored?.groups![0].color).toBe('#00aa00');
     });
 });

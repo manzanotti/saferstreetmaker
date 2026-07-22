@@ -18,6 +18,7 @@ import type { IMapLayer } from './IMapLayer';
 import { type EditablePolylineLayer } from './usePolylineLayer';
 import { selectFeature, executeCopy, clearFeatureHighlight } from '../useAreaSelection';
 import { useSelectionStore } from '../../stores/selectionStore';
+import { recomputeFeatureVisibility } from '../useGroups';
 
 const COLOUR = '#cc00cc';
 const BUTTON_ID = 'ltn';
@@ -649,6 +650,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                 payload: getPolygonMutationPayload(previousFeature, nextFeature)
             });
             (polygon as any)['historyFeature'] = nextFeature;
+            recomputeFeatureVisibility();
             map.closePopup(popup);
         };
 

@@ -10,6 +10,7 @@ import { watch } from 'vue';
 import { useMapStore } from '../stores/mapStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { pinia } from '../stores/index';
+import { recomputeFeatureVisibility } from './useGroups';
 
 export interface MapEngineResult {
     map: L.Map;
@@ -91,6 +92,7 @@ export function setupMapEngine(): MapEngineResult {
                     map.addLayer(layer.getLayer());
                 }
             });
+            recomputeFeatureVisibility();
         },
         { deep: false }
     );

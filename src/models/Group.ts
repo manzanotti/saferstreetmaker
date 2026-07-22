@@ -14,6 +14,8 @@ export interface GroupVersion {
 export interface Group {
     id: string;
     name: string;
+    /** Optional colour used when rendering this group's LTN members. */
+    color?: string;
     /** New versioned representation. Legacy groups may omit this field. */
     versions?: GroupVersion[];
     /** The version shown after loading a map. */

@@ -89,6 +89,10 @@ export const useGroupStore = defineStore('group', () => {
         groups.value = groups.value.map((g) => (g.id === id ? { ...g, name } : g));
     }
 
+    function setColor(id: string, color: string) {
+        groups.value = groups.value.map((group) => (group.id === id ? { ...group, color } : group));
+    }
+
     function removeGroup(id: string) {
         groups.value = groups.value.filter((g) => g.id !== id);
         const nextActive = { ...activeVersionIds.value };
@@ -316,6 +320,7 @@ export const useGroupStore = defineStore('group', () => {
         setGroups,
         addGroup,
         renameGroup,
+        setColor,
         removeGroup,
         addMembersToGroup,
         clearGroupMembers,

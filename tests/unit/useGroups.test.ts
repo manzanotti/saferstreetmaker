@@ -28,7 +28,8 @@ import {
     pruneDanglingGroupMembers,
     deleteGroup,
     beginAddToGroup,
-    addSelectionToGroup
+    addSelectionToGroup,
+    applyGroupColor
 } from '../../src/composables/useGroups';
 import type { IMapLayer } from '../../src/composables/layers/IMapLayer';
 
@@ -128,6 +129,44 @@ describe('useGroups', () => {
         useGroupStore(pinia).closeSplitDialog();
         useSelectionStore(pinia).deactivate();
         useMapStore(pinia).setLayers([]);
+    });
+
+    describe('applyGroupColor()', () => {
+        it('returns false for an unknown group or invalid colour without persisting', () => {
+            const mapStore = useMapStore(pinia);
+            const markSpy = vi.spyOn(mapStore, 'markLayerUpdated');
+            const groupStore = useGroupStore(pinia);
+            groupStore.addGroup({ id: 'g1', name: 'Group', color: '#00aa00', members: [] });
+
+            expect(applyGroupColor('missing', '#aa0000')).toBe(false);
+            expect(applyGroupColor('g1', 'not-a-colour')).toBe(false);
+            expect(groupStore.groups[0].color).toBe('#00aa00');
+            expect(markSpy).not.toHaveBeenCalled();
+        });
+
+        it('returns false when the normalized colour is unchanged', () => {
+            const mapStore = useMapStore(pinia);
+            const markSpy = vi.spyOn(mapStore, 'markLayerUpdated');
+            useGroupStore(pinia).addGroup({
+                id: 'g1',
+                name: 'Group',
+                color: '#00aa00',
+                members: []
+            });
+
+            expect(applyGroupColor('g1', '#00AA00')).toBe(false);
+            expect(markSpy).not.toHaveBeenCalled();
+        });
+
+        it('normalizes a valid colour, updates the group, and persists once', () => {
+            const mapStore = useMapStore(pinia);
+            const markSpy = vi.spyOn(mapStore, 'markLayerUpdated');
+            useGroupStore(pinia).addGroup({ id: 'g1', name: 'Group', members: [] });
+
+            expect(applyGroupColor('g1', '#0a5')).toBe(true);
+            expect(useGroupStore(pinia).groups[0].color).toBe('#00aa55');
+            expect(markSpy).toHaveBeenCalledOnce();
+        });
     });
 
     // ── createGroupFromSelection ──────────────────────────────────────────────

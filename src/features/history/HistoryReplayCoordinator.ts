@@ -32,6 +32,7 @@ export interface HistoryReplayCoordinatorOptions {
     removeAllLayers: () => void;
     addLayers: (layerIds: string[]) => void;
     setVisibleLayerIds: (layerIds: Set<string>) => void;
+    recomputeGroupPresentation?: () => void;
 }
 
 export class HistoryReplayCoordinator {
@@ -92,6 +93,7 @@ export class HistoryReplayCoordinator {
         return await runHistoryReplayTransaction(this.options.transactionEffects, async () => {
             current.layer.getLayer().clearLayers();
             current.layer.loadFromGeoJSON(replayedFeatureCollection as unknown as L.GeoJSON);
+            this.options.recomputeGroupPresentation?.();
             await this.options.saveMap();
             this.options.setLastSavedSnapshot(this.options.buildSnapshot());
             return true;
@@ -113,6 +115,7 @@ export class HistoryReplayCoordinator {
             if (layerState) {
                 layer.loadFromGeoJSON(layerState as L.GeoJSON);
             }
+            this.options.recomputeGroupPresentation?.();
             await this.options.saveMap();
             this.options.setLastSavedSnapshot(this.options.buildSnapshot());
             return true;
@@ -143,6 +146,7 @@ export class HistoryReplayCoordinator {
             this.options.removeAllLayers();
             this.options.addLayers(targetSettings.activeLayers);
             this.options.setVisibleLayerIds(new Set(targetSettings.activeLayers));
+            this.options.recomputeGroupPresentation?.();
             await this.options.saveMap();
             this.options.setLastSavedSnapshot(this.options.buildSnapshot());
             return true;

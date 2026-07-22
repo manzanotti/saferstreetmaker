@@ -33,6 +33,8 @@ import type { SelectedMarker } from '../stores/selectionStore';
 import { GroupVisibilityController } from '../features/groups/GroupVisibilityController';
 import { analyzeSelectionMembership } from '../features/groups/groupMembership';
 import { GroupPolylineSplitter } from '../features/groups/GroupPolylineSplitter';
+import { normalizeGroupColour } from '../features/groups/groupColours';
+import { GroupLtnFillController } from '../features/groups/GroupLtnFillController';
 
 function findMarkerByHistoryId(layerId: string, historyId: string): L.Layer | null {
     const mapStore = useMapStore(pinia);
@@ -56,6 +58,16 @@ const groupVisibilityController = new GroupVisibilityController({
     findMarker: (member) => findMarkerByHistoryId(member.layerId, member.historyId)
 });
 
+const groupLtnFillController = new GroupLtnFillController({
+    getGroups: () => useGroupStore(pinia).groups,
+    getHiddenGroupIds: () => useGroupStore(pinia).hiddenGroupIds,
+    getActiveVersionIds: () => useGroupStore(pinia).activeVersionIds,
+    getLayer: () =>
+        (useMapStore(pinia)
+            .layers.find((layer) => layer.id === 'LtnCells')
+            ?.getLayer() as L.LayerGroup | undefined) ?? null
+});
+
 const groupPolylineSplitter = new GroupPolylineSplitter({
     getLayer: (layerId) => useMapStore(pinia).layers.find((layer) => layer.id === layerId),
     createHistoryId: () => buildHistoryId('polyline')
@@ -63,10 +75,26 @@ const groupPolylineSplitter = new GroupPolylineSplitter({
 
 export function recomputeFeatureVisibility(): void {
     groupVisibilityController.recompute();
+    groupLtnFillController.recompute();
 }
 
 export function resetGroupVisibility(): void {
     groupVisibilityController.reset();
+}
+
+export function applyGroupColor(id: string, color: string): boolean {
+    const normalizedColor = normalizeGroupColour(color);
+    const groupStore = useGroupStore(pinia);
+    const mapStore = useMapStore(pinia);
+    const group = groupStore.groups.find((item) => item.id === id);
+    if (!group || !normalizedColor || group.color === normalizedColor) {
+        return false;
+    }
+
+    groupStore.setColor(id, normalizedColor);
+    recomputeFeatureVisibility();
+    mapStore.markLayerUpdated();
+    return true;
 }
 
 // ── Selection → membership helpers ───────────────────────────────────────

@@ -3,6 +3,7 @@ import type { Group, GroupMember, GroupVersion } from '../../models/Group';
 export interface NormalizedGroup {
     id: string;
     name: string;
+    color?: string;
     defaultVersionId: string;
     versions: GroupVersion[];
     members: GroupMember[];
@@ -48,6 +49,7 @@ export function normalizeGroup(group: Group): NormalizedGroup {
     return {
         id: group.id,
         name: group.name,
+        ...(group.color ? { color: group.color } : {}),
         defaultVersionId,
         versions,
         members: [...versions.find((version) => version.id === defaultVersionId)!.members]

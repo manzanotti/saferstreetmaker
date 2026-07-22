@@ -56,6 +56,8 @@ test.describe('Help Panel', () => {
         await expect(page.locator('#tabs-groups')).toBeVisible();
         await expect(page.locator('#tabs-groups')).toContainText('Group versions');
         await expect(page.locator('#tabs-groups')).toContainText('version dropdown');
+        await expect(page.locator('#tabs-groups')).toContainText('all LTN cells in the group');
+        await expect(page.locator('#tabs-groups')).toContainText('striped pattern');
     });
 
     test('clicking the help modal close button hides the modal', async ({ page }) => {

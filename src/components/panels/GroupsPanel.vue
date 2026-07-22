@@ -8,7 +8,9 @@ import {
     getGroupVersions
 } from '../../features/groups/groupVersions';
 import GroupVersionNameDialog from './GroupVersionNameDialog.vue';
+import GroupColourControl from './GroupColourControl.vue';
 import {
+    applyGroupColor,
     selectGroup,
     deleteGroupWithElements,
     removeAllGroupElements,
@@ -100,6 +102,10 @@ function onAddFeatures(id: string) {
 
 function onToggleVisibility(id: string) {
     toggleGroupVisibility(id);
+}
+
+function onApplyColour(id: string, color: string) {
+    applyGroupColor(id, color);
 }
 
 function onRename(id: string) {
@@ -328,6 +334,13 @@ function onConfirmDeleteWithElements() {
                                 >({{ memberCountByGroupId[group.id] }})</span
                             >
                         </button>
+
+                        <GroupColourControl
+                            :group-id="group.id"
+                            :group-name="group.name"
+                            :color="group.color"
+                            @apply="onApplyColour(group.id, $event)"
+                        />
 
                         <!-- Visibility toggle -->
                         <button
