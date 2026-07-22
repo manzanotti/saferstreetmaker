@@ -113,6 +113,7 @@ export class GroupLtnFillController {
                 return;
             }
             const fallbackColor = marker.options?.color ?? DEFAULT_GROUP_COLOUR;
+            const resolution = resolveLtnFill(
                 memberColors.get(marker.properties?.historyId ?? '') ?? [],
                 fallbackColor
             );
