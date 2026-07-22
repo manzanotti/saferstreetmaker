@@ -46,6 +46,16 @@ describe('GroupLtnFillController', () => {
         });
     });
 
+    it('ignores invalid group colours before creating presentation styles', () => {
+        expect(
+            resolveLtnFill(['url(#unsafe)', '#00AA00', 42 as unknown as string], '#cc00cc')
+        ).toEqual({
+            kind: 'solid',
+            fillColor: '#00aa00',
+            colors: ['#00aa00']
+        });
+    });
+
     it('resolves multiple colours to ordered stripes', () => {
         expect(resolveLtnFill(['#00aa00', '#aa0000'], '#cc00cc')).toEqual({
             kind: 'pattern',

@@ -1,6 +1,7 @@
 import type * as L from 'leaflet';
 import type { Group } from '../../models/Group';
 import { getActiveVersion } from './groupVersions';
+import { normalizeGroupColour } from './groupColours';
 
 const PATTERN_PREFIX = 'ssm-ltn-stripes-';
 const STRIPE_WIDTH = 12;
@@ -11,7 +12,13 @@ export type LtnFillResolution =
     | { kind: 'pattern'; fillColor: string; colors: string[] };
 
 export function resolveLtnFill(groupColors: string[], fallbackColor: string): LtnFillResolution {
-    const colors = [...new Set(groupColors.map((color) => color.toLowerCase()))];
+    const colors = [
+        ...new Set(
+            groupColors
+                .map((color) => normalizeGroupColour(color))
+                .filter((color): color is string => color !== null)
+        )
+    ];
     if (colors.length === 0) {
         return { kind: 'fallback', fillColor: fallbackColor, colors: [] };
     }
@@ -140,7 +147,8 @@ export class GroupLtnFillController {
         const activeVersionIds = this.options.getActiveVersionIds();
 
         for (const group of this.options.getGroups()) {
-            if (hiddenGroupIds.has(group.id) || !group.color) {
+            const color = group.color ? normalizeGroupColour(group.color) : null;
+            if (hiddenGroupIds.has(group.id) || !color) {
                 continue;
             }
             const activeVersion = getActiveVersion(group, activeVersionIds[group.id]);
@@ -149,7 +157,7 @@ export class GroupLtnFillController {
                     continue;
                 }
                 const colors = colorsByMember.get(member.historyId) ?? [];
-                colors.push(group.color);
+                colors.push(color);
                 colorsByMember.set(member.historyId, colors);
             }
         }
