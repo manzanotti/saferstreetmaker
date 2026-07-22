@@ -61,6 +61,7 @@ interface CompactSettings {
 interface CompactGroup {
     i: string;
     n: string;
+    c?: string;
     m?: Array<[string, string]>;
     d?: string;
     v?: Array<{
@@ -79,12 +80,14 @@ function serializeGroup(group: Group): Group {
         return {
             id: group.id,
             name: group.name,
+            ...(group.color ? { color: group.color } : {}),
             members: (group.members ?? []).map((member) => ({ ...member }))
         };
     }
     return {
         id: group.id,
         name: group.name,
+        ...(group.color ? { color: group.color } : {}),
         defaultVersionId: group.defaultVersionId,
         versions: group.versions.map((version) => ({
             id: version.id,
@@ -182,12 +185,14 @@ export class MapSerializer {
                     return {
                         i: group.id,
                         n: group.name,
+                        ...(group.color ? { c: group.color } : {}),
                         m: serializeMembers(group.members ?? [])
                     };
                 }
                 return {
                     i: group.id,
                     n: group.name,
+                    ...(group.color ? { c: group.color } : {}),
                     d: group.defaultVersionId,
                     v: group.versions.map((version) => ({
                         i: version.id,
@@ -220,6 +225,7 @@ export class MapSerializer {
                     ? {
                           id: group.i,
                           name: group.n,
+                          ...(group.c ? { color: group.c } : {}),
                           defaultVersionId: group.d,
                           versions: group.v.map((version) => ({
                               id: version.i,
@@ -230,6 +236,7 @@ export class MapSerializer {
                     : {
                           id: group.i,
                           name: group.n,
+                          ...(group.c ? { color: group.c } : {}),
                           members: deserializeCompactMembers(group.m)
                       }
             );
@@ -275,12 +282,14 @@ export class MapSerializer {
                     return {
                         i: group.id,
                         n: group.name,
+                        ...(group.color ? { c: group.color } : {}),
                         m: serializeMembers(group.members ?? [])
                     };
                 }
                 return {
                     i: group.id,
                     n: group.name,
+                    ...(group.color ? { c: group.color } : {}),
                     d: group.defaultVersionId,
                     v: group.versions.map((version) => ({
                         i: version.id,

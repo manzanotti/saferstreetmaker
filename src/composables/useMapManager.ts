@@ -318,7 +318,8 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         addLayers: (layerIds) => addLayersToMap(layerIds),
         setVisibleLayerIds: (layerIds) => {
             mapStore.visibleLayerIds = layerIds;
-        }
+        },
+        recomputeGroupPresentation: recomputeFeatureVisibility
     });
     const historyNavigationCoordinator = new HistoryNavigationCoordinator({
         undoJournal,
