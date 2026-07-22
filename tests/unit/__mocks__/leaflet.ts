@@ -223,6 +223,10 @@ class Polygon {
     closeTooltip() {
         return this;
     }
+    setStyle(style: any) {
+        Object.assign(this.options, style);
+        return this;
+    }
     setTooltipContent(_content: any) {
         return this;
     }
