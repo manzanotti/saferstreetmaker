@@ -1609,6 +1609,31 @@ test.describe('Layer: LTN Cell (polygon)', () => {
         await waitForHistoryButtons(page, { canUndo: true, canRedo: false });
     });
 
+    test('changing an LTN cell colour supports undo and redo', async ({ page }) => {
+        await page.locator('#ltn-button').click();
+        await drawPolygon(page);
+
+        const polygon = page.locator('.leaflet-ltns-pane path.ltn-cell.leaflet-interactive');
+        const previousColour = await polygon.getAttribute('stroke');
+        expect(previousColour).toBeTruthy();
+
+        const nextColour = '#00aa55';
+        await page.locator('.colour-swatch').fill(nextColour);
+        await page.locator('.apply-changes-button').click();
+        await expect(polygon).toHaveAttribute('stroke', nextColour);
+        await waitForHistoryButtons(page, { canUndo: true, canRedo: false });
+
+        await page.locator('#undo-button').click();
+        await page.waitForTimeout(150);
+        await expect(polygon).toHaveAttribute('stroke', previousColour!);
+        await waitForHistoryButtons(page, { canUndo: true, canRedo: true });
+
+        await page.locator('#redo-button').click();
+        await page.waitForTimeout(150);
+        await expect(polygon).toHaveAttribute('stroke', nextColour);
+        await waitForHistoryButtons(page, { canUndo: true, canRedo: false });
+    });
+
     test('can draw a new LTN cell immediately after undoing the previous creation', async ({
         page
     }) => {
