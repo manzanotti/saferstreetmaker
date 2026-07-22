@@ -163,7 +163,9 @@ a {
 }
 
 ul.popup-buttons {
-    display: block;
+    display: flex;
+    align-items: stretch;
+    justify-content: space-between;
     width: 100%;
     margin: 0;
     padding: 0;
@@ -176,6 +178,10 @@ ul.popup-buttons > li {
 }
 
 ul.ltn-popup-buttons > li.current-controls {
+    display: block;
+}
+
+ul.ltn-popup-buttons {
     display: block;
 }
 

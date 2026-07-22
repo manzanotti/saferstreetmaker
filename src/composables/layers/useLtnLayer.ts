@@ -630,20 +630,25 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         applyColourButton.setAttribute('aria-label', 'Apply LTN cell changes');
 
         const applyChanges = () => {
+            const currentLabel = polygon['properties'].label ?? '';
+            const currentColor = polygon.options.color ?? COLOUR;
+            if (labelEl.value === currentLabel && colorEl.value === currentColor) {
+                map.closePopup(popup);
+                return;
+            }
+
             const previousFeature =
                 (polygon as any)['historyFeature'] ?? getPolygonHistoryFeature(polygon);
             polygon['properties'].label = labelEl.value;
             syncPolygonTooltip(polygon, labelEl.value);
             polygon.setStyle({ color: colorEl.value });
             const nextFeature = getPolygonHistoryFeature(polygon);
-            if (JSON.stringify(previousFeature) !== JSON.stringify(nextFeature)) {
-                mapStore.markLayerUpdated({
-                    kind: 'polygon-edit',
-                    layerId: 'LtnCells',
-                    payload: getPolygonMutationPayload(previousFeature, nextFeature)
-                });
-                (polygon as any)['historyFeature'] = nextFeature;
-            }
+            mapStore.markLayerUpdated({
+                kind: 'polygon-edit',
+                layerId: 'LtnCells',
+                payload: getPolygonMutationPayload(previousFeature, nextFeature)
+            });
+            (polygon as any)['historyFeature'] = nextFeature;
             map.closePopup(popup);
         };
 
@@ -696,6 +701,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         const labelEl = polygon?.__ltnLabelEl as HTMLInputElement | undefined;
         if (popup) {
             popup.setLatLng(polygon.getBounds().getCenter());
+            _drawPopup = popup;
             const focusDrawPopupLabel = (event: L.PopupEvent): void => {
                 if (event.popup !== popup) {
                     return;
@@ -706,10 +712,16 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                 labelEl?.select();
             };
             map.on('popupopen', focusDrawPopupLabel);
-            map.openPopup(popup);
-            _drawPopup = popup;
-            labelEl?.focus();
-            labelEl?.select();
+            window.setTimeout(() => {
+                if (!_selected || _drawPopup !== popup) {
+                    map.off('popupopen', focusDrawPopupLabel);
+                    return;
+                }
+
+                map.openPopup(popup);
+                labelEl?.focus();
+                labelEl?.select();
+            }, 0);
         }
     };
 
