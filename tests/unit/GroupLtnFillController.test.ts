@@ -15,12 +15,12 @@ function group(id: string, color: string, historyId: string): Group {
     };
 }
 
-function makeMarker(historyId: string, svg: SVGSVGElement) {
+function makeMarker(historyId: string, svg?: SVGSVGElement) {
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    svg.appendChild(path);
+    svg?.appendChild(path);
     const marker = {
         properties: { historyId },
-        options: { color: '#cc00cc' },
+        options: { color: '#cc00cc', fillColor: '#cc00cc' },
         getElement: () => path,
         setStyle(style: L.PathOptions) {
             Object.assign(marker.options, style);
@@ -110,5 +110,22 @@ describe('GroupLtnFillController', () => {
         expect(svg.querySelectorAll('pattern[data-ssm-ltn-pattern="true"] rect')).toHaveLength(2);
         expect(svg.querySelector('pattern rect[fill="#00aa00"]')).toBeTruthy();
         expect(svg.querySelector('pattern rect[fill="#aa0000"]')).toBeTruthy();
+    });
+
+    it('uses the computed first group colour for both fill and stroke without an SVG renderer', () => {
+        const marker = makeMarker('cell-1');
+        const groups = [group('first', '#00aa00', 'cell-1'), group('second', '#aa0000', 'cell-1')];
+        const controller = new GroupLtnFillController({
+            getGroups: () => groups,
+            getHiddenGroupIds: () => new Set(),
+            getActiveVersionIds: () => ({}),
+            getLayer: () =>
+                ({ eachLayer: (callback: (layer: unknown) => void) => callback(marker) }) as any
+        });
+
+        controller.recompute();
+
+        expect(marker.options.fillColor).toBe('#00aa00');
+        expect(marker.getElement().getAttribute('stroke')).toBe('#00aa00');
     });
 });

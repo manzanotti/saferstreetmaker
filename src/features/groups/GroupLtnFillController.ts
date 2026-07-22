@@ -129,13 +129,7 @@ export class GroupLtnFillController {
             marker.setStyle({ fillColor });
             const element = marker.getElement?.();
             if (element) {
-                const strokeColor =
-                    resolution.kind === 'pattern' && element.ownerSVGElement
-                        ? this.patterns.apply(element.ownerSVGElement, resolution.colors)
-                        : resolution.kind === 'solid'
-                          ? resolution.fillColor
-                          : fallbackColor;
-                element.setAttribute('stroke', strokeColor);
+                element.setAttribute('stroke', fillColor);
             }
         });
         this.patterns.cleanup(activePatternIds);
