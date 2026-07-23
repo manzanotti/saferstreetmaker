@@ -50,7 +50,7 @@ function isMapAction(event: KeyboardEvent, mapElement: HTMLElement): boolean {
     return !hasModifier(event) && !isTyping(event) && isMapContext(event, mapElement);
 }
 
-export function setupKeyboardShortcuts(map: L.Map): () => void {
+export function setupKeyboardShortcuts(map: L.Map): void {
     const mapStore = useMapStore(pinia);
     const selectionStore = useSelectionStore(pinia);
     const uiStore = useUiStore(pinia);
@@ -162,5 +162,4 @@ export function setupKeyboardShortcuts(map: L.Map): () => void {
     };
 
     document.addEventListener('keydown', handleKeydown);
-    return () => document.removeEventListener('keydown', handleKeydown);
 }
