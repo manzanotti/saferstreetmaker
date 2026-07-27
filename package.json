@@ -16,7 +16,7 @@
         "@types/leaflet": "^1.9.21",
         "@types/lz-string": "^1.5.0",
         "@types/node": "^26.1.1",
-        "@vitejs/plugin-vue": "^6.0.7",
+        "@vitejs/plugin-vue": "^6.0.8",
         "@vue/tsconfig": "^0.9.1",
         "fake-indexeddb": "^6.2.4",
         "jsdom": "^29.1.1",

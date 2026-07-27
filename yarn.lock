@@ -835,15 +835,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vitejs/plugin-vue@npm:^6.0.7":
-  version: 6.0.7
-  resolution: "@vitejs/plugin-vue@npm:6.0.7"
+"@vitejs/plugin-vue@npm:^6.0.8":
+  version: 6.0.8
+  resolution: "@vitejs/plugin-vue@npm:6.0.8"
   dependencies:
     "@rolldown/pluginutils": ^1.0.1
   peerDependencies:
     vite: ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0
     vue: ^3.2.25
-  checksum: 8f69e44d824bfda4b6736867141fd224a3c883bec4581d36ab26d00dbca00f5153c74884768b2b98605b91bf1d1665a57e4e8a752e437d850c09cbaa7aad9b1b
+  checksum: 9aa03f16a04a7c02a7818fc9c2c347eb5318a213241bf05984a7727f0206c453e1b0a464997555a59346a1cc0a8e4038a52f566465286fdd8e8b5cedd2cbd9c0
   languageName: node
   linkType: hard
 
@@ -2630,7 +2630,7 @@ __metadata:
     "@types/leaflet": ^1.9.21
     "@types/lz-string": ^1.5.0
     "@types/node": ^26.1.1
-    "@vitejs/plugin-vue": ^6.0.7
+    "@vitejs/plugin-vue": ^6.0.8
     "@vue/tsconfig": ^0.9.1
     dexie: ^4.2.0
     fake-indexeddb: ^6.2.4
