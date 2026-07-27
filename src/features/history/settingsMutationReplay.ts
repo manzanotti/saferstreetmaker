@@ -3,8 +3,6 @@ export interface HistorySettingsSnapshot {
     readOnly: boolean;
     hideToolbar: boolean;
     activeLayers: string[];
-    centre: { lat: number; lng: number } | null;
-    zoom: number;
     version: string;
 }
 
@@ -60,18 +58,12 @@ function isHistorySettingsSnapshot(value: unknown): value is HistorySettingsSnap
         return false;
     }
 
-    const centre = value.centre;
     return (
         typeof value.title === 'string' &&
         typeof value.readOnly === 'boolean' &&
         typeof value.hideToolbar === 'boolean' &&
         Array.isArray(value.activeLayers) &&
         value.activeLayers.every((layerId) => typeof layerId === 'string') &&
-        (centre === null ||
-            (isRecord(centre) &&
-                typeof centre.lat === 'number' &&
-                typeof centre.lng === 'number')) &&
-        typeof value.zoom === 'number' &&
         typeof value.version === 'string'
     );
 }
@@ -82,8 +74,6 @@ function toHistorySettingsSnapshot(settings: SettingsLike): HistorySettingsSnaps
         readOnly: settings.readOnly,
         hideToolbar: settings.hideToolbar,
         activeLayers: [...settings.activeLayers],
-        centre: settings.centre ? { lat: settings.centre.lat, lng: settings.centre.lng } : null,
-        zoom: settings.zoom,
         version: settings.version
     };
 }

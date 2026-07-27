@@ -15,7 +15,7 @@ import {
 } from './layerUtils';
 import { useMapStore } from '../../stores/mapStore';
 import { pinia } from '../../stores/index';
-import { selectFeature, executeCopy, clearFeatureHighlight } from '../useAreaSelection';
+import { selectFeature, executeAreaDelete, executeCopy } from '../useAreaSelection';
 import { useSelectionStore } from '../../stores/selectionStore';
 
 export interface PolylineOptions {
@@ -212,17 +212,7 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
         map,
         { minWidth: 30, keepInView: opts.popupKeepInView ?? true },
         () => {
-            geoJsonLayer.removeLayer(polyline);
-            mapStore.markLayerUpdated({
-                kind: `${mutationKind}-delete`,
-                layerId,
-                payload: {
-                    before: lastCommittedFeature
-                }
-            });
-            // Remove the selection vertex handles left from clicking the line
-            // so they don't linger after it is deleted.
-            clearFeatureHighlight();
+            executeAreaDelete();
         },
         () => {
             // Populate the selection with this entire feature, then copy it.
@@ -254,7 +244,7 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
         if (isModifierClick) {
             // Additive selection: merge this feature into the current selection
             // without opening the popup or entering edit mode.
-            selectFeature(polyline as unknown as L.Layer, layerId, true);
+            selectFeature(polyline as unknown as L.Layer, layerId, true, false, true);
             return;
         }
 

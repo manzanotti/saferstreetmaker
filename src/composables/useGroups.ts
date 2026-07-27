@@ -15,6 +15,7 @@ import * as L from 'leaflet';
 import { useMapStore } from '../stores/mapStore';
 import { useSelectionStore } from '../stores/selectionStore';
 import { useGroupStore } from '../stores/groupStore';
+import { useUiStore } from '../stores/uiStore';
 import {
     getActiveVersion,
     getGroupVersions,
@@ -114,6 +115,56 @@ function getSelectionMembership() {
     );
 }
 
+function splitRemovedSharedVersionMembers(groupId: string, nextMembers: GroupMember[]): void {
+    const groupStore = useGroupStore(pinia);
+    const mapStore = useMapStore(pinia);
+    const group = groupStore.groups.find((item) => item.id === groupId);
+    const activeVersion = groupStore.getActiveGroupVersion(groupId);
+    if (!group || !activeVersion) {
+        return;
+    }
+
+    const nextMemberKeys = new Set(
+        nextMembers.map((member) => `${member.layerId}:${member.historyId}`)
+    );
+    const removedMemberKeys = new Set(
+        activeVersion.members
+            .filter((member) => !nextMemberKeys.has(`${member.layerId}:${member.historyId}`))
+            .map((member) => `${member.layerId}:${member.historyId}`)
+    );
+    if (removedMemberKeys.size === 0) {
+        return;
+    }
+
+    const cloner = new GroupVersionFeatureCloner({
+        getLayer: (layerId) => mapStore.layers.find((layer) => layer.id === layerId),
+        findFeature: (layer, historyId) => {
+            let found: any = null;
+            layer.getLayer().eachLayer((item: any) => {
+                if (getFeatureHistoryId(item) === historyId) {
+                    found = item.feature ?? item.toGeoJSON?.() ?? null;
+                }
+            });
+            return found;
+        }
+    });
+
+    for (const version of getGroupVersions(group)) {
+        if (version.id === activeVersion.id) {
+            continue;
+        }
+        for (const member of version.members) {
+            if (!removedMemberKeys.has(`${member.layerId}:${member.historyId}`)) {
+                continue;
+            }
+            const clonedMember = cloner.clone({ ...version, members: [member] }).members[0];
+            if (clonedMember) {
+                groupStore.replaceVersionMember(groupId, version.id, member, clonedMember);
+            }
+        }
+    }
+}
+
 export function createGroupFromSelection(): void {
     const groupStore = useGroupStore(pinia);
 
@@ -170,6 +221,41 @@ export function addSelectionToGroup(groupId: string): void {
         groupStore.openSplitDialog(membership.partialSplits);
     } else {
         finalizeAddToGroup();
+    }
+}
+
+/**
+ * Replace the active version's members with the current selection after a
+ * user edits a group selection with modifier-clicks.
+ */
+export function saveGroupSelection(): void {
+    const selectionStore = useSelectionStore(pinia);
+    const groupId = selectionStore.selectedGroupId;
+    if (!groupId || !selectionStore.isGroupSelection) {
+        return;
+    }
+
+    const membership = getSelectionMembership() ?? { fullMembers: [], partialSplits: [] };
+    if (membership.partialSplits.length > 0) {
+        return;
+    }
+
+    const groupStore = useGroupStore(pinia);
+    const mapStore = useMapStore(pinia);
+    const uiStore = useUiStore(pinia);
+    splitRemovedSharedVersionMembers(groupId, membership.fullMembers);
+    const updated = groupStore.replaceActiveVersionMembers(groupId, membership.fullMembers);
+    if (!updated) {
+        return;
+    }
+
+    recomputeFeatureVisibility();
+    selectionStore.deactivate();
+    mapStore.markLayerUpdated();
+
+    if (membership.fullMembers.length === 0) {
+        groupStore.setPendingEmptyGroupDeletion(groupId);
+        uiStore.openPanel('groups');
     }
 }
 
@@ -339,6 +425,7 @@ export function selectGroup(id: string): void {
     // selection tool themselves.
     const previousEntries = selectionStore.selected;
     selectionStore.setSelected(allEntries);
+    selectionStore.markGroupSelection(id);
 
     // Fit the map to the bounds of all selected features BEFORE applying
     // highlights. fitBounds can pan/zoom the map and recreate DivIcon marker
@@ -413,28 +500,40 @@ export function setGroupDefaultVersion(groupId: string, versionId: string): bool
     return changed;
 }
 
-export function deleteGroupVersion(groupId: string, versionId: string): boolean {
+export function deleteGroupVersion(
+    groupId: string,
+    versionId: string,
+    deleteElements = false
+): boolean {
     const groupStore = useGroupStore(pinia);
+    const selectionStore = useSelectionStore(pinia);
+    if (selectionStore.selectedGroupId === groupId) {
+        clearFeatureHighlight();
+    }
     const version = groupStore.removeVersion(groupId, versionId);
     if (!version) {
         return false;
     }
     const mapStore = useMapStore(pinia);
-    const remainingMembers = new Set(
-        groupStore.groups.flatMap((group) =>
-            getGroupVersions(group).flatMap((remainingVersion) =>
-                remainingVersion.members.map((member) => `${member.layerId}:${member.historyId}`)
+    if (deleteElements) {
+        const remainingMembers = new Set(
+            groupStore.groups.flatMap((group) =>
+                getGroupVersions(group).flatMap((remainingVersion) =>
+                    remainingVersion.members.map(
+                        (member) => `${member.layerId}:${member.historyId}`
+                    )
+                )
             )
-        )
-    );
-    for (const member of version.members) {
-        if (remainingMembers.has(`${member.layerId}:${member.historyId}`)) {
-            continue;
-        }
-        const marker = findMarkerByHistoryId(member.layerId, member.historyId);
-        const layer = mapStore.layers.find((item) => item.id === member.layerId);
-        if (marker && layer) {
-            layer.getLayer().removeLayer(marker);
+        );
+        for (const member of version.members) {
+            if (remainingMembers.has(`${member.layerId}:${member.historyId}`)) {
+                continue;
+            }
+            const marker = findMarkerByHistoryId(member.layerId, member.historyId);
+            const layer = mapStore.layers.find((item) => item.id === member.layerId);
+            if (marker && layer) {
+                layer.getLayer().removeLayer(marker);
+            }
         }
     }
     mapStore.markLayerUpdated();

@@ -59,9 +59,14 @@ export function handlePointFeatureClick(
     L.DomEvent.stopPropagation(event);
 
     const selectionStore = useSelectionStore(pinia);
-    if (selectionStore.isActive) {
-        // Accumulate the clicked point into the selection (de-duped).
-        selectFeature(event.target as unknown as L.Layer, layerId, true);
+    const isModifierClick =
+        event.originalEvent?.shiftKey ||
+        event.originalEvent?.ctrlKey ||
+        event.originalEvent?.metaKey;
+    if (selectionStore.isActive || isModifierClick) {
+        // Modifier-click toggles this point in the selection. A normal click
+        // while selection mode is active adds it to the selection.
+        selectFeature(event.target as unknown as L.Layer, layerId, true, false, isModifierClick);
         return;
     }
 

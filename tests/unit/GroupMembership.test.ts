@@ -41,6 +41,20 @@ describe('analyzeSelectionMembership', () => {
         });
     });
 
+    it('deduplicates polygon render instances with the same feature identity', () => {
+        const latLng = { lat: 1, lng: 2 } as L.LatLng;
+        const result = analyzeSelectionMembership(
+            [
+                selected('LtnCells', 'polygon-1', {} as L.Layer, latLng),
+                selected('LtnCells', 'polygon-1', {} as L.Layer, latLng)
+            ],
+            [layer('LtnCells', 'polygon')],
+            null
+        );
+
+        expect(result?.fullMembers).toEqual([{ layerId: 'LtnCells', historyId: 'polygon-1' }]);
+    });
+
     it('classifies a fully selected polyline as one full member', () => {
         const first = { lat: 1, lng: 1 } as L.LatLng;
         const second = { lat: 2, lng: 2 } as L.LatLng;

@@ -42,6 +42,37 @@ describe('MapPersistenceCoordinator', () => {
         expect(state.options.clearMutation).toHaveBeenCalledOnce();
     });
 
+    it('omits centre and zoom from recorded checkpoint snapshots', async () => {
+        const settings = {
+            title: 'Map',
+            readOnly: false,
+            hideToolbar: false,
+            activeLayers: [],
+            centre: { lat: 52.5, lng: -1.9 },
+            zoom: 14,
+            version: '1.0.0'
+        };
+        const before = { settings, layers: { before: {} } };
+        const after = {
+            settings: { ...settings, centre: { lat: 51.5, lng: -0.1 }, zoom: 18 },
+            layers: { after: {} }
+        };
+        const state = createCoordinator({
+            getLastSavedSnapshot: vi.fn().mockReturnValue(before),
+            buildSnapshot: vi.fn().mockReturnValue(after)
+        });
+
+        await state.coordinator.persist();
+
+        const [, recordedBefore, recordedAfter] = vi.mocked(state.options.recordCheckpoint).mock
+            .calls[0];
+        expect(recordedBefore.settings).not.toHaveProperty('centre');
+        expect(recordedBefore.settings).not.toHaveProperty('zoom');
+        expect(recordedAfter.settings).not.toHaveProperty('centre');
+        expect(recordedAfter.settings).not.toHaveProperty('zoom');
+        expect(state.options.setLastSavedSnapshot).toHaveBeenCalledWith(after);
+    });
+
     it('skips history while replay is suppressing it', async () => {
         const state = createCoordinator({ isHistorySuppressed: vi.fn().mockReturnValue(true) });
 

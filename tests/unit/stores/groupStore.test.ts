@@ -160,6 +160,107 @@ describe('groupStore', () => {
         });
     });
 
+    describe('replaceActiveVersionMembers()', () => {
+        it('replaces members in the active version and group projection', () => {
+            const store = useGroupStore();
+            store.setGroups([makeGroup('g1', 'A', ['h1', 'h2'])]);
+
+            expect(
+                store.replaceActiveVersionMembers('g1', [
+                    { layerId: 'ModalFilters', historyId: 'h2' }
+                ])
+            ).toBe(true);
+            expect(store.groups[0].members).toEqual([{ layerId: 'ModalFilters', historyId: 'h2' }]);
+            expect(store.getActiveGroupVersion('g1')?.members).toEqual([
+                { layerId: 'ModalFilters', historyId: 'h2' }
+            ]);
+        });
+
+        it('deduplicates members by layer and history id', () => {
+            const store = useGroupStore();
+            store.setGroups([makeGroup('g1', 'A')]);
+            const member = { layerId: 'LtnCells', historyId: 'polygon-1' };
+
+            expect(store.replaceActiveVersionMembers('g1', [member, { ...member }])).toBe(true);
+            expect(store.groups[0].members).toEqual([member]);
+        });
+
+        it('preserves a matching feature in inactive versions', () => {
+            const store = useGroupStore();
+            const member = { layerId: 'LtnCells', historyId: 'polygon-shared' };
+            store.setGroups([
+                {
+                    id: 'g1',
+                    name: 'Versioned',
+                    defaultVersionId: 'v1',
+                    versions: [
+                        { id: 'v1', name: 'First', members: [member] },
+                        { id: 'v2', name: 'Alternative', members: [{ ...member }] }
+                    ],
+                    members: [member]
+                }
+            ]);
+
+            expect(store.replaceActiveVersionMembers('g1', [])).toBe(true);
+            expect(store.groups[0].versions).toEqual([
+                { id: 'v1', name: 'First', members: [] },
+                { id: 'v2', name: 'Alternative', members: [member] }
+            ]);
+        });
+    });
+
+    describe('removeMemberFromVersions()', () => {
+        it('removes a shared feature only from the requested version', () => {
+            const store = useGroupStore();
+            const member = { layerId: 'MobilityLanes', historyId: 'shared-line' };
+            store.setGroups([
+                {
+                    id: 'g1',
+                    name: 'Versioned streets',
+                    defaultVersionId: 'v1',
+                    versions: [
+                        { id: 'v1', name: 'Current', members: [member] },
+                        { id: 'v2', name: 'Alternative', members: [{ ...member }] }
+                    ]
+                }
+            ]);
+
+            expect(store.removeMemberFromVersions('g1', ['v1'], member)).toBe(true);
+            expect(store.groups[0].versions).toEqual([
+                { id: 'v1', name: 'Current', members: [] },
+                { id: 'v2', name: 'Alternative', members: [member] }
+            ]);
+            expect(store.groups[0].members).toEqual([]);
+        });
+    });
+
+    describe('replaceVersionMember()', () => {
+        it('changes only the requested version member', () => {
+            const store = useGroupStore();
+            const sharedMember = { layerId: 'LtnCells', historyId: 'polygon-shared' };
+            const clonedMember = { layerId: 'LtnCells', historyId: 'polygon-clone' };
+            store.setGroups([
+                {
+                    id: 'g1',
+                    name: 'Versioned',
+                    defaultVersionId: 'v1',
+                    versions: [
+                        { id: 'v1', name: 'First', members: [sharedMember] },
+                        { id: 'v2', name: 'Alternative', members: [{ ...sharedMember }] }
+                    ],
+                    members: [sharedMember]
+                }
+            ]);
+
+            expect(store.replaceVersionMember('g1', 'v2', sharedMember, clonedMember)).toBe(true);
+            expect(store.groups[0].versions).toEqual([
+                { id: 'v1', name: 'First', members: [sharedMember] },
+                { id: 'v2', name: 'Alternative', members: [clonedMember] }
+            ]);
+            expect(store.groups[0].members).toEqual([sharedMember]);
+        });
+    });
+
     // ── clearGroupMembers ─────────────────────────────────────────────────────
 
     describe('clearGroupMembers()', () => {

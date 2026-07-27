@@ -1,4 +1,4 @@
-import { snapshotsEqualForHistory } from '../../services/history/mapSnapshot';
+import { snapshotForHistory, snapshotsEqualForHistory } from '../../services/history/mapSnapshot';
 import type { SerializedMap } from '../../services/MapSerializer';
 import { SAVE_ERROR_ALREADY_SHOWN } from '../../composables/saveErrorMarker';
 
@@ -58,8 +58,8 @@ export class MapPersistenceCoordinator {
             ) {
                 await this.options.recordCheckpoint(
                     activeHistoryTitle,
-                    beforeSnapshot,
-                    afterSnapshot,
+                    snapshotForHistory(beforeSnapshot),
+                    snapshotForHistory(afterSnapshot),
                     mutation
                 );
                 await this.options.syncHistoryStatus();

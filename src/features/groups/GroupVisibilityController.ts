@@ -1,6 +1,7 @@
 import type * as L from 'leaflet';
 import type { Group, GroupMember } from '../../models/Group';
 import { getActiveVersion, getGroupVersions } from './groupVersions';
+import { setFeatureGroupHidden } from './featureVisibility';
 
 interface GroupVisibilityControllerOptions {
     getGroups: () => Group[];
@@ -14,6 +15,7 @@ type VisibilityLayer = L.Layer & {
     getElement?: () => HTMLElement | undefined;
     setStyle?: (style: L.PathOptions) => void;
     options?: L.PathOptions;
+    syncGroupVisibility?: () => void;
 };
 
 interface OriginalStyle {
@@ -23,6 +25,7 @@ interface OriginalStyle {
 
 export class GroupVisibilityController {
     private readonly originalStyles = new WeakMap<object, OriginalStyle>();
+    private readonly originalPointerEvents = new WeakMap<object, string>();
     private readonly hiddenMarkers = new Set<L.Layer>();
 
     constructor(private readonly options: GroupVisibilityControllerOptions) {}
@@ -131,12 +134,27 @@ export class GroupVisibilityController {
             }
         }
 
+        setFeatureGroupHidden(marker, false);
+        const element = visibilityLayer.getElement?.();
+        if (element) {
+            element.style.pointerEvents = this.originalPointerEvents.get(marker as object) ?? '';
+        }
+        visibilityLayer.syncGroupVisibility?.();
+
         this.originalStyles.delete(marker as object);
+        this.originalPointerEvents.delete(marker as object);
         this.hiddenMarkers.delete(marker);
     }
 
     private hide(marker: L.Layer): void {
         const visibilityLayer = marker as VisibilityLayer;
+        setFeatureGroupHidden(marker, true);
+        const element = visibilityLayer.getElement?.();
+        if (element) {
+            this.originalPointerEvents.set(marker as object, element.style.pointerEvents);
+            element.style.pointerEvents = 'none';
+        }
+        visibilityLayer.syncGroupVisibility?.();
         if (
             typeof visibilityLayer.getLatLng === 'function' &&
             typeof visibilityLayer.setStyle !== 'function'

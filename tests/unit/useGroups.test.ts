@@ -11,7 +11,10 @@ import * as L from 'leaflet';
 import { pinia } from '../../src/stores/index';
 import { useGroupStore } from '../../src/stores/groupStore';
 import { useMapStore } from '../../src/stores/mapStore';
+import { useUiStore } from '../../src/stores/uiStore';
 import { useSelectionStore, type SelectedMarker } from '../../src/stores/selectionStore';
+import { useFeatureDeletionStore } from '../../src/stores/featureDeletionStore';
+import { confirmFeatureDeletion } from '../../src/composables/useFeatureDeletion';
 import {
     createGroupFromSelection,
     finalizeCreateGroup,
@@ -29,7 +32,10 @@ import {
     deleteGroup,
     beginAddToGroup,
     addSelectionToGroup,
-    applyGroupColor
+    saveGroupSelection,
+    applyGroupColor,
+    recomputeFeatureVisibility,
+    switchGroupVersion
 } from '../../src/composables/useGroups';
 import type { IMapLayer } from '../../src/composables/layers/IMapLayer';
 
@@ -127,8 +133,98 @@ describe('useGroups', () => {
         useGroupStore(pinia).clearPendingState();
         useGroupStore(pinia).closeNameDialog();
         useGroupStore(pinia).closeSplitDialog();
+        useFeatureDeletionStore(pinia).close();
         useSelectionStore(pinia).deactivate();
         useMapStore(pinia).setLayers([]);
+    });
+
+    describe('confirmFeatureDeletion()', () => {
+        const member = { layerId: 'MobilityLanes', historyId: 'shared-line' };
+
+        function setupGroupedLine() {
+            const layer = makePolylineLayer('MobilityLanes');
+            const marker = makePolylineMarker('shared-line', [
+                { lat: 1, lng: 1 } as L.LatLng,
+                { lat: 2, lng: 2 } as L.LatLng
+            ]);
+            layer.getLayer().addLayer(marker);
+            useMapStore(pinia).setLayers([layer]);
+            useGroupStore(pinia).setGroups([
+                {
+                    id: 'g1',
+                    name: 'Town centre',
+                    defaultVersionId: 'v1',
+                    versions: [
+                        { id: 'v1', name: 'Current', members: [member] },
+                        { id: 'v2', name: 'Alternative', members: [{ ...member }] }
+                    ]
+                },
+                { id: 'g2', name: 'School route', members: [{ ...member }] }
+            ]);
+            useFeatureDeletionStore(pinia).open({
+                ...member,
+                memberships: [
+                    {
+                        groupId: 'g1',
+                        groupName: 'Town centre',
+                        versionId: 'v1',
+                        versionName: 'Current',
+                        isActive: true
+                    },
+                    {
+                        groupId: 'g1',
+                        groupName: 'Town centre',
+                        versionId: 'v2',
+                        versionName: 'Alternative',
+                        isActive: false
+                    },
+                    {
+                        groupId: 'g2',
+                        groupName: 'School route',
+                        versionId: 'g2:default',
+                        versionName: 'Default',
+                        isActive: true
+                    }
+                ]
+            });
+            return { layer, marker };
+        }
+
+        it('removes the line only from the selected version', () => {
+            const { layer, marker } = setupGroupedLine();
+
+            expect(confirmFeatureDeletion('version')).toBe(true);
+
+            const groups = useGroupStore(pinia).groups;
+            expect(groups[0].versions?.[0].members).toEqual([]);
+            expect(groups[0].versions?.[1].members).toEqual([member]);
+            expect(groups[1].members).toEqual([member]);
+            expect(layer.getLayer().getLayers()).toContain(marker);
+        });
+
+        it('removes the line from every version of the selected group only', () => {
+            const { layer, marker } = setupGroupedLine();
+
+            expect(confirmFeatureDeletion('group')).toBe(true);
+
+            const groups = useGroupStore(pinia).groups;
+            expect(groups[0].versions?.every((version) => version.members.length === 0)).toBe(true);
+            expect(groups[1].members).toEqual([member]);
+            expect(layer.getLayer().getLayers()).toContain(marker);
+        });
+
+        it('deletes the line and removes it from every group version', () => {
+            const { layer } = setupGroupedLine();
+
+            expect(confirmFeatureDeletion('everything')).toBe(true);
+
+            expect(
+                useGroupStore(pinia).groups.every((group) =>
+                    (group.versions ?? []).every((version) => version.members.length === 0)
+                )
+            ).toBe(true);
+            expect(layer.getLayer().getLayers()).toEqual([]);
+        });
     });
 
     describe('applyGroupColor()', () => {
@@ -341,6 +437,207 @@ describe('useGroups', () => {
         });
     });
 
+    it('saves a modified group selection and closes selection mode', () => {
+        const layer = makePointLayer('ModalFilters');
+        const marker = makePointMarker('hist-1');
+        layer.getLayer().addLayer(marker as any);
+        useMapStore(pinia).setLayers([layer]);
+
+        const groupStore = useGroupStore(pinia);
+        groupStore.addGroup({
+            id: 'g1',
+            name: 'G',
+            members: [
+                { layerId: 'ModalFilters', historyId: 'hist-1' },
+                { layerId: 'ModalFilters', historyId: 'hist-2' }
+            ]
+        });
+        const selectionStore = useSelectionStore(pinia);
+        selectionStore.markGroupSelection('g1');
+        selectionStore.activate();
+        selectionStore.setSelected([makeSelected('ModalFilters', 'hist-1', marker)]);
+        selectionStore.markGroupSelection('g1');
+
+        const markSpy = vi.spyOn(useMapStore(pinia), 'markLayerUpdated');
+        saveGroupSelection();
+
+        expect(groupStore.groups[0].members).toEqual([
+            { layerId: 'ModalFilters', historyId: 'hist-1' }
+        ]);
+        expect(selectionStore.isActive).toBe(false);
+        expect(markSpy).toHaveBeenCalledOnce();
+    });
+
+    it('asks whether to delete a group when saving removes its final member', () => {
+        const layer = makePointLayer('ModalFilters');
+        const marker = makePointMarker('hist-1');
+        layer.getLayer().addLayer(marker as any);
+        useMapStore(pinia).setLayers([layer]);
+
+        const groupStore = useGroupStore(pinia);
+        groupStore.addGroup({
+            id: 'g1',
+            name: 'G',
+            members: [{ layerId: 'ModalFilters', historyId: 'hist-1' }]
+        });
+        const selectionStore = useSelectionStore(pinia);
+        selectionStore.activate();
+        selectionStore.setSelected([]);
+        selectionStore.markGroupSelection('g1');
+
+        saveGroupSelection();
+
+        expect(groupStore.groups[0].members).toHaveLength(0);
+        expect(groupStore.pendingEmptyGroupDeletionId).toBe('g1');
+        expect(useUiStore(pinia).activePanel).toBe('groups');
+    });
+
+    it('removes an LTN polygon only from the active group version', () => {
+        const layer = { ...makePointLayer('LtnCells'), kind: 'polygon' as const };
+        const firstPolygon = {
+            properties: { historyId: 'polygon-v1' },
+            getLatLngs: () => [[{ lat: 1, lng: 1 }]],
+            options: { opacity: 1, fillOpacity: 0.5, color: '#cc00cc' },
+            setStyle: vi.fn(function (this: any, style: object) {
+                Object.assign(this.options, style);
+            })
+        } as unknown as L.Layer;
+        const secondPolygon = {
+            properties: { historyId: 'polygon-v2' },
+            getLatLngs: () => [[{ lat: 2, lng: 2 }]],
+            options: { opacity: 1, fillOpacity: 0.5, color: '#cc00cc' },
+            setStyle: vi.fn(function (this: any, style: object) {
+                Object.assign(this.options, style);
+            })
+        } as unknown as L.Layer;
+        layer.getLayer().addLayer(firstPolygon as any);
+        layer.getLayer().addLayer(secondPolygon as any);
+        const removeLayerSpy = vi.spyOn(layer.getLayer(), 'removeLayer');
+        useMapStore(pinia).setLayers([layer]);
+
+        const groupStore = useGroupStore(pinia);
+        groupStore.setGroups([
+            {
+                id: 'g1',
+                name: 'Versioned LTN',
+                defaultVersionId: 'v1',
+                versions: [
+                    {
+                        id: 'v1',
+                        name: 'First',
+                        members: [{ layerId: 'LtnCells', historyId: 'polygon-v1' }]
+                    },
+                    {
+                        id: 'v2',
+                        name: 'Alternative',
+                        members: [{ layerId: 'LtnCells', historyId: 'polygon-v2' }]
+                    }
+                ],
+                members: [{ layerId: 'LtnCells', historyId: 'polygon-v1' }]
+            }
+        ]);
+        recomputeFeatureVisibility();
+        switchGroupVersion('g1', 'v2');
+
+        const selectionStore = useSelectionStore(pinia);
+        selectionStore.activate();
+        selectionStore.setSelected([]);
+        selectionStore.markGroupSelection('g1');
+
+        saveGroupSelection();
+
+        const versions = groupStore.groups[0].versions ?? [];
+        expect(versions.find((version) => version.id === 'v1')?.members).toEqual([
+            { layerId: 'LtnCells', historyId: 'polygon-v1' }
+        ]);
+        expect(versions.find((version) => version.id === 'v2')?.members).toEqual([]);
+        expect(layer.getLayer().getLayers()).toHaveLength(2);
+        expect(removeLayerSpy).not.toHaveBeenCalled();
+        expect((secondPolygon as any).options).toMatchObject({
+            opacity: 1,
+            fillOpacity: 0.5
+        });
+
+        switchGroupVersion('g1', 'v1');
+
+        expect(layer.getLayer().getLayers()).toHaveLength(2);
+        expect(removeLayerSpy).not.toHaveBeenCalled();
+    });
+
+    it('preserves shared LTN polygon membership in inactive versions', () => {
+        const layer = { ...makePointLayer('LtnCells'), kind: 'polygon' as const };
+        const polygon = {
+            feature: {
+                type: 'Feature',
+                properties: { historyId: 'polygon-shared' },
+                geometry: {
+                    type: 'Polygon',
+                    coordinates: [
+                        [
+                            [1, 1],
+                            [2, 1],
+                            [2, 2],
+                            [1, 1]
+                        ]
+                    ]
+                }
+            },
+            properties: { historyId: 'polygon-shared' },
+            getLatLngs: () => [[{ lat: 1, lng: 1 }]],
+            options: { opacity: 1, fillOpacity: 0.5, color: '#cc00cc' },
+            setStyle: vi.fn(function (this: any, style: object) {
+                Object.assign(this.options, style);
+            })
+        } as unknown as L.Layer;
+        layer.getLayer().addLayer(polygon as any);
+        (layer as any).loadFeature = vi.fn((_feature: unknown, historyId: string) => {
+            layer.getLayer().addLayer({
+                properties: { historyId },
+                getLatLngs: () => [[{ lat: 1, lng: 1 }]],
+                options: { opacity: 1, fillOpacity: 0.5, color: '#cc00cc' },
+                setStyle(style: object) {
+                    Object.assign(this.options, style);
+                }
+            } as any);
+            return historyId;
+        });
+        useMapStore(pinia).setLayers([layer]);
+
+        const member = { layerId: 'LtnCells', historyId: 'polygon-shared' };
+        const groupStore = useGroupStore(pinia);
+        groupStore.setGroups([
+            {
+                id: 'g1',
+                name: 'Shared Version LTN',
+                defaultVersionId: 'v1',
+                versions: [
+                    { id: 'v1', name: 'First', members: [member] },
+                    { id: 'v2', name: 'Alternative', members: [{ ...member }] }
+                ],
+                members: [member]
+            }
+        ]);
+        recomputeFeatureVisibility();
+
+        const selectionStore = useSelectionStore(pinia);
+        selectionStore.activate();
+        selectionStore.setSelected([]);
+        selectionStore.markGroupSelection('g1');
+
+        saveGroupSelection();
+
+        const versions = groupStore.groups[0].versions ?? [];
+        expect(versions.find((version) => version.id === 'v1')?.members).toEqual([]);
+        expect(versions.find((version) => version.id === 'v2')?.members).toEqual([
+            {
+                layerId: 'LtnCells',
+                historyId: expect.not.stringMatching(/^polygon-shared$/)
+            }
+        ]);
+        expect((polygon as any).options).toMatchObject({ opacity: 1, fillOpacity: 0.5 });
+        expect(layer.getLayer().getLayers()).toHaveLength(2);
+    });
+
     describe('finalizeCreateGroup()', () => {
         it('creates a group with pending members and marks layer updated', () => {
             const groupStore = useGroupStore(pinia);
@@ -436,7 +733,7 @@ describe('useGroups', () => {
     });
 
     describe('deleteGroupVersion()', () => {
-        it('removes the version features from the map', () => {
+        it('keeps the version features on the map when deleting the version only', () => {
             const layer = makePointLayer('ModalFilters');
             const firstMarker = makePointMarker('first-feature');
             const secondMarker = makePointMarker('second-feature');
@@ -467,7 +764,81 @@ describe('useGroups', () => {
 
             expect(deleteGroupVersion('g1', 'v2')).toBe(true);
             expect(groupStore.groups[0].versions?.map((version) => version.id)).toEqual(['v1']);
+            expect(layer.getLayer().getLayers()).toEqual([firstMarker, secondMarker]);
+        });
+
+        it('removes unique version features when deleting the version and its elements', () => {
+            const layer = makePointLayer('ModalFilters');
+            const firstMarker = makePointMarker('first-feature');
+            const secondMarker = makePointMarker('second-feature');
+            layer.getLayer().addLayer(firstMarker as any);
+            layer.getLayer().addLayer(secondMarker as any);
+            useMapStore(pinia).setLayers([layer]);
+
+            const groupStore = useGroupStore(pinia);
+            groupStore.setGroups([
+                {
+                    id: 'g1',
+                    name: 'Test',
+                    defaultVersionId: 'v1',
+                    versions: [
+                        {
+                            id: 'v1',
+                            name: 'First',
+                            members: [{ layerId: 'ModalFilters', historyId: 'first-feature' }]
+                        },
+                        {
+                            id: 'v2',
+                            name: 'Second',
+                            members: [{ layerId: 'ModalFilters', historyId: 'second-feature' }]
+                        }
+                    ]
+                }
+            ]);
+
+            expect(deleteGroupVersion('g1', 'v2', true)).toBe(true);
+            expect(groupStore.groups[0].versions?.map((version) => version.id)).toEqual(['v1']);
             expect(layer.getLayer().getLayers()).toEqual([firstMarker]);
+        });
+
+        it('clears the selected version highlights and selection state', () => {
+            const layer = makePointLayer('ModalFilters');
+            const firstMarker = makePointMarker('first-feature');
+            const secondMarker = makePointMarker('second-feature');
+            layer.getLayer().addLayer(firstMarker as any);
+            layer.getLayer().addLayer(secondMarker as any);
+            useMapStore(pinia).setLayers([layer]);
+
+            const groupStore = useGroupStore(pinia);
+            groupStore.setGroups([
+                {
+                    id: 'g1',
+                    name: 'Test',
+                    defaultVersionId: 'v1',
+                    versions: [
+                        {
+                            id: 'v1',
+                            name: 'First',
+                            members: [{ layerId: 'ModalFilters', historyId: 'first-feature' }]
+                        },
+                        {
+                            id: 'v2',
+                            name: 'Second',
+                            members: [{ layerId: 'ModalFilters', historyId: 'second-feature' }]
+                        }
+                    ]
+                }
+            ]);
+            groupStore.setActiveVersion('g1', 'v2');
+            const selectionStore = useSelectionStore(pinia);
+            selectionStore.setSelected([
+                makeSelected('ModalFilters', 'second-feature', secondMarker as any)
+            ]);
+            selectionStore.markGroupSelection('g1');
+
+            expect(deleteGroupVersion('g1', 'v2')).toBe(true);
+            expect(selectionStore.selected).toEqual([]);
+            expect(selectionStore.selectedGroupId).toBeNull();
         });
 
         it('keeps a feature referenced by another group', () => {
@@ -501,7 +872,7 @@ describe('useGroups', () => {
                 }
             ]);
 
-            expect(deleteGroupVersion('g1', 'v2')).toBe(true);
+            expect(deleteGroupVersion('g1', 'v2', true)).toBe(true);
             expect(layer.getLayer().getLayers()).toEqual([sharedMarker]);
         });
     });

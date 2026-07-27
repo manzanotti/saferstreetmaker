@@ -101,11 +101,12 @@ export function setupKeyboardShortcuts(map: L.Map): void {
         if (
             (event.key === 'Delete' || event.key === 'Backspace') &&
             isMapAction(event, mapElement) &&
-            selectionStore.isActive &&
+            !selectionStore.isGroupSelection &&
             selectionStore.selected.length > 0
         ) {
             event.preventDefault();
             executeAreaDelete();
+            map.closePopup();
             return;
         }
 

@@ -3,6 +3,7 @@ import type { IMapLayer } from '../../composables/layers/IMapLayer';
 import { getPolylineLatLngs } from '../../geometry/leafletGeometry';
 import type { GroupMember, PartialPolylineSplit } from '../../models/Group';
 import type { SelectedMarker } from '../../stores/selectionStore';
+import { memberKey } from './groupVersions';
 
 export interface SelectionMembership {
     fullMembers: GroupMember[];
@@ -26,6 +27,7 @@ export function analyzeSelectionMembership(
     }
 
     const fullMembers: GroupMember[] = [];
+    const fullMemberKeys = new Set<string>();
     const partialSplits: PartialPolylineSplit[] = [];
 
     for (const entries of entriesByMarker.values()) {
@@ -36,14 +38,24 @@ export function analyzeSelectionMembership(
 
         const layer = layers.find((item) => item.id === first.layerId);
         if (layer?.kind !== 'polyline') {
-            fullMembers.push({ layerId: first.layerId, historyId: first.historyId });
+            const member = { layerId: first.layerId, historyId: first.historyId };
+            const key = memberKey(member);
+            if (!fullMemberKeys.has(key)) {
+                fullMembers.push(member);
+                fullMemberKeys.add(key);
+            }
             continue;
         }
 
         const allLatLngs = getPolylineLatLngs(first.marker);
         const selectedLatLngs = entries.map((entry) => entry.latLng);
         if (selectedLatLngs.length === allLatLngs.length) {
-            fullMembers.push({ layerId: first.layerId, historyId: first.historyId });
+            const member = { layerId: first.layerId, historyId: first.historyId };
+            const key = memberKey(member);
+            if (!fullMemberKeys.has(key)) {
+                fullMembers.push(member);
+                fullMemberKeys.add(key);
+            }
             continue;
         }
 

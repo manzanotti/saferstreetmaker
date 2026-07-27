@@ -619,7 +619,7 @@ test.describe('Layer: Modal Filter (point, primary button)', () => {
         expect(await getLayerFeatureCount(page, 'ModalFilters')).toBe(1);
     });
 
-    test('undo moves the map to reveal a change that is off-screen', async ({ page }) => {
+    test('undo and redo centre the map on an off-screen change', async ({ page }) => {
         // Place a modal filter at the map centre.
         await page.locator('#modal-filter-button').click();
         await clickMap(page);
@@ -651,13 +651,35 @@ test.describe('Layer: Modal Filter (point, primary button)', () => {
         await page.locator('#undo-button').click();
         await page.waitForTimeout(400);
 
-        const nowVisible = await page.evaluate(({ lat, lng }) => {
+        const centredOnChange = await page.evaluate(({ lat, lng }) => {
             const app = (document.getElementById('app') as any).__vue_app__;
             const pinia = app?.config?.globalProperties?.$pinia;
             const map = pinia?._s?.get('map')?.map;
-            return map.getBounds().contains([lat, lng]);
+            const centre = map.getCenter();
+            return Math.abs(centre.lat - lat) < 0.0001 && Math.abs(centre.lng - lng) < 0.0001;
         }, filterLatLng);
-        expect(nowVisible).toBe(true);
+        expect(centredOnChange).toBe(true);
+
+        await page.evaluate(() => {
+            const app = (document.getElementById('app') as any).__vue_app__;
+            const pinia = app?.config?.globalProperties?.$pinia;
+            const map = pinia?._s?.get('map')?.map;
+            const centre = map.getCenter();
+            map.setView([centre.lat + 5, centre.lng + 5], map.getZoom(), { animate: false });
+        });
+        await page.waitForTimeout(300);
+
+        await page.locator('#redo-button').click();
+        await page.waitForTimeout(400);
+
+        const redoCentredOnChange = await page.evaluate(({ lat, lng }) => {
+            const app = (document.getElementById('app') as any).__vue_app__;
+            const pinia = app?.config?.globalProperties?.$pinia;
+            const map = pinia?._s?.get('map')?.map;
+            const centre = map.getCenter();
+            return Math.abs(centre.lat - lat) < 0.0001 && Math.abs(centre.lng - lng) < 0.0001;
+        }, filterLatLng);
+        expect(redoCentredOnChange).toBe(true);
     });
 
     test('undo restores a deleted modal filter and redo removes it again', async ({ page }) => {

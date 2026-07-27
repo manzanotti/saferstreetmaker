@@ -32,10 +32,10 @@ describe('MutationAreaRevealer', () => {
         expect(fitBounds).not.toHaveBeenCalled();
     });
 
-    it('does nothing when the mutation area is already visible', () => {
+    it('centres the map when the mutation area is already visible', () => {
         revealer.reveal({ lat: 5, lng: 5 });
 
-        expect(panTo).not.toHaveBeenCalled();
+        expect(panTo).toHaveBeenCalledWith(expect.objectContaining({ lat: 5, lng: 5 }));
         expect(fitBounds).not.toHaveBeenCalled();
     });
 

@@ -311,6 +311,7 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         setLastSavedSnapshot: (snapshot) => {
             lastSavedSnapshot = snapshot;
         },
+        getCurrentView: () => ({ centre: getMap().getCenter(), zoom: getMap().getZoom() }),
         applySettings: (settings) => {
             settingsStore.applyFromSettings(settings);
         },
