@@ -34,8 +34,24 @@ describe('settings mutation replay', () => {
 
         originalLayers.push('LtnCells');
 
-        expect(payload).toEqual({ before, after });
-        expect(payload.before?.centre).not.toBe(before.centre);
+        expect(payload).toEqual({
+            before: {
+                title: before.title,
+                readOnly: before.readOnly,
+                hideToolbar: before.hideToolbar,
+                activeLayers: before.activeLayers,
+                version: before.version
+            },
+            after: {
+                title: after.title,
+                readOnly: after.readOnly,
+                hideToolbar: after.hideToolbar,
+                activeLayers: after.activeLayers,
+                version: after.version
+            }
+        });
+        expect(payload.before).not.toHaveProperty('centre');
+        expect(payload.before).not.toHaveProperty('zoom');
         expect(payload.before?.activeLayers).not.toBe(originalLayers);
     });
 

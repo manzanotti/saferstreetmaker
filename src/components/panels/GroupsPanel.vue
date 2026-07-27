@@ -5,7 +5,8 @@ import { useUiStore } from '../../stores/uiStore';
 import {
     getActiveVersion,
     getDefaultVersionId,
-    getGroupVersions
+    getGroupVersions,
+    memberKey
 } from '../../features/groups/groupVersions';
 import GroupVersionNameDialog from './GroupVersionNameDialog.vue';
 import GroupColourControl from './GroupColourControl.vue';
@@ -33,13 +34,18 @@ const memberCountByGroupId = computed<Record<string, number>>(() =>
     Object.fromEntries(
         groupStore.groups.map((group) => [
             group.id,
-            getActiveVersion(group, groupStore.activeVersionIds[group.id]).members.length
+            new Set(
+                getActiveVersion(group, groupStore.activeVersionIds[group.id]).members.map(
+                    memberKey
+                )
+            ).size
         ])
     )
 );
 const versionDialogOpen = ref(false);
 const versionDialogGroupId = ref<string | null>(null);
 const versionDialogError = ref('');
+const pendingEmptyGroupDeletionId = computed(() => groupStore.pendingEmptyGroupDeletionId);
 const versionDialogGroupName = computed(() => {
     const group = groupStore.groups.find((item) => item.id === versionDialogGroupId.value);
     return group?.name ?? '';
@@ -49,6 +55,13 @@ const versionDialogGroupName = computed(() => {
 const pendingConfirm = ref<
     | { type: 'deleteWithElements'; groupId: string }
     | { type: 'deleteEmpty'; groupId: string }
+    | {
+          type: 'deleteVersion';
+          groupId: string;
+          versionId: string;
+          versionName: string;
+          memberCount: number;
+      }
     | null
 >(null);
 
@@ -65,6 +78,10 @@ function onKeydown(e: KeyboardEvent) {
     }
     if (pendingConfirm.value !== null) {
         pendingConfirm.value = null;
+        return;
+    }
+    if (pendingEmptyGroupDeletionId.value !== null) {
+        groupStore.setPendingEmptyGroupDeletion(null);
         return;
     }
     closePanel();
@@ -150,21 +167,64 @@ function onSetDefaultVersion(groupId: string, versionId: string) {
 }
 
 function onDeleteVersion(groupId: string, versionId: string) {
-    deleteGroupVersion(groupId, versionId);
+    const version = versionsByGroupId.value[groupId]?.find((item) => item.id === versionId);
+    if (!version) {
+        return;
+    }
+    const memberCount = new Set(version.members.map(memberKey)).size;
+    if (memberCount === 0) {
+        deleteGroupVersion(groupId, versionId);
+        return;
+    }
+    pendingConfirm.value = {
+        type: 'deleteVersion',
+        groupId,
+        versionId,
+        versionName: version.name,
+        memberCount
+    };
 }
 
-function onConfirmDeleteEmpty() {
-    if (pendingConfirm.value?.type === 'deleteEmpty') {
-        deleteGroup(pendingConfirm.value.groupId);
+function onConfirmDeleteVersionOnly() {
+    if (pendingConfirm.value?.type === 'deleteVersion') {
+        deleteGroupVersion(pendingConfirm.value.groupId, pendingConfirm.value.versionId);
     }
     pendingConfirm.value = null;
 }
 
-function onCancelConfirm() {
+function onConfirmDeleteVersionWithElements() {
+    if (pendingConfirm.value?.type === 'deleteVersion') {
+        deleteGroupVersion(pendingConfirm.value.groupId, pendingConfirm.value.versionId, true);
+    }
     pendingConfirm.value = null;
 }
 
+function onConfirmDeleteEmpty() {
+    const groupId =
+        pendingConfirm.value?.type === 'deleteEmpty'
+            ? pendingConfirm.value.groupId
+            : pendingEmptyGroupDeletionId.value;
+    if (groupId) {
+        deleteGroup(groupId);
+    }
+    pendingConfirm.value = null;
+    groupStore.setPendingEmptyGroupDeletion(null);
+}
+
+function onCancelConfirm() {
+    pendingConfirm.value = null;
+    groupStore.setPendingEmptyGroupDeletion(null);
+}
+
 function onRequestDeleteWithElements(id: string) {
+    const group = groupStore.groups.find((item) => item.id === id);
+    const memberCount = new Set(
+        group ? getGroupVersions(group).flatMap((version) => version.members.map(memberKey)) : []
+    ).size;
+    if (group && memberCount === 0) {
+        deleteGroup(id);
+        return;
+    }
     pendingConfirm.value = { type: 'deleteWithElements', groupId: id };
 }
 
@@ -245,9 +305,49 @@ function onConfirmDeleteWithElements() {
 
             <ul v-else class="divide-y divide-gray-100">
                 <li v-for="group in groupStore.groups" :key="group.id" class="px-4 py-2">
-                    <!-- Inline confirm for delete-with-elements -->
+                    <!-- Inline confirm for deleting a version -->
                     <div
                         v-if="
+                            pendingConfirm?.type === 'deleteVersion' &&
+                            pendingConfirm.groupId === group.id
+                        "
+                        class="space-y-2"
+                    >
+                        <p class="text-sm text-gray-700">
+                            Delete version <strong>{{ pendingConfirm.versionName }}</strong
+                            >? Choose whether to keep or delete its
+                            {{ pendingConfirm.memberCount }} element{{
+                                pendingConfirm.memberCount === 1 ? '' : 's'
+                            }}.
+                        </p>
+                        <div class="flex flex-wrap gap-2">
+                            <button
+                                type="button"
+                                class="rounded-lg border border-gray-200 bg-slate-50 hover:bg-slate-100 text-gray-700 px-3 py-1 text-xs font-medium focus-visible:outline-none"
+                                @click="onConfirmDeleteVersionOnly"
+                            >
+                                Delete version only
+                            </button>
+                            <button
+                                type="button"
+                                class="rounded-lg bg-red-600 hover:bg-red-700 text-white px-3 py-1 text-xs font-medium focus-visible:outline-none"
+                                @click="onConfirmDeleteVersionWithElements"
+                            >
+                                Delete version + elements
+                            </button>
+                            <button
+                                type="button"
+                                class="rounded-lg border border-gray-200 bg-slate-50 hover:bg-slate-100 text-gray-700 px-3 py-1 text-xs font-medium focus-visible:outline-none"
+                                @click="onCancelConfirm"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Inline confirm for delete-with-elements -->
+                    <div
+                        v-else-if="
                             pendingConfirm?.type === 'deleteWithElements' &&
                             pendingConfirm.groupId === group.id
                         "
@@ -293,6 +393,29 @@ function onConfirmDeleteWithElements() {
                         "
                         class="space-y-2"
                     >
+                        <p class="text-sm text-gray-700">
+                            <strong>{{ group.name }}</strong> is now empty. Delete the group too?
+                        </p>
+                        <div class="flex gap-2">
+                            <button
+                                type="button"
+                                class="rounded-lg bg-red-600 hover:bg-red-700 text-white px-3 py-1 text-xs font-medium focus-visible:outline-none"
+                                @click="onConfirmDeleteEmpty"
+                            >
+                                Delete
+                            </button>
+                            <button
+                                type="button"
+                                class="rounded-lg border border-gray-200 bg-slate-50 hover:bg-slate-100 text-gray-700 px-3 py-1 text-xs font-medium focus-visible:outline-none"
+                                @click="onCancelConfirm"
+                            >
+                                Keep empty
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Inline confirmation after saving an empty group -->
+                    <div v-else-if="pendingEmptyGroupDeletionId === group.id" class="space-y-2">
                         <p class="text-sm text-gray-700">
                             <strong>{{ group.name }}</strong> is now empty. Delete the group too?
                         </p>

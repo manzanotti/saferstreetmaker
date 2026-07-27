@@ -1204,7 +1204,7 @@ describe('selectFeature', () => {
         expect(selectionStore.selected[1].latLng).toBe(v2);
     });
 
-    it('does not duplicate rows when additively selecting an already-selected feature', () => {
+    it('removes a fully selected feature on an additive click', () => {
         const v1 = { lat: 1, lng: 1 } as unknown as L.LatLng;
         const v2 = { lat: 2, lng: 2 } as unknown as L.LatLng;
         const polyline = { getLatLngs: () => [v1, v2] } as unknown as L.Layer;
@@ -1214,10 +1214,49 @@ describe('selectFeature', () => {
             { layerId: 'MobilityLanes', historyId: null, latLng: v1, marker: polyline },
             { layerId: 'MobilityLanes', historyId: null, latLng: v2, marker: polyline }
         ]);
+        selectionStore.activate();
 
-        selectFeature(polyline, 'MobilityLanes', true);
+        selectFeature(polyline, 'MobilityLanes', true, false, true);
 
-        expect(selectionStore.selected).toHaveLength(2);
+        expect(selectionStore.selected).toHaveLength(0);
+    });
+
+    it('removes an already-selected feature on an additive click', () => {
+        const vertex = { lat: 1, lng: 1 } as unknown as L.LatLng;
+        const otherVertex = { lat: 2, lng: 2 } as unknown as L.LatLng;
+        const polyline = { getLatLngs: () => [vertex] } as unknown as L.Layer;
+        const otherPolyline = { getLatLngs: () => [otherVertex] } as unknown as L.Layer;
+
+        const selectionStore = useSelectionStore(pinia);
+        selectionStore.setSelected([
+            { layerId: 'MobilityLanes', historyId: null, latLng: vertex, marker: polyline },
+            {
+                layerId: 'MobilityLanes',
+                historyId: null,
+                latLng: otherVertex,
+                marker: otherPolyline
+            }
+        ]);
+        selectionStore.activate();
+
+        selectFeature(polyline, 'MobilityLanes', true, false, true);
+
+        expect(selectionStore.selected).toHaveLength(1);
+        expect(selectionStore.selected[0].marker).toBe(otherPolyline);
+    });
+
+    it('does not remove stale inactive feature preselection on a modifier click', () => {
+        const vertex = { lat: 1, lng: 1 } as unknown as L.LatLng;
+        const polyline = { getLatLngs: () => [vertex] } as unknown as L.Layer;
+        const selectionStore = useSelectionStore(pinia);
+        selectionStore.setSelected([
+            { layerId: 'MobilityLanes', historyId: null, latLng: vertex, marker: polyline }
+        ]);
+
+        selectFeature(polyline, 'MobilityLanes', true, false, true);
+
+        expect(selectionStore.isActive).toBe(true);
+        expect(selectionStore.selected).toHaveLength(1);
     });
 
     it('replaces the selection when additive is false', () => {

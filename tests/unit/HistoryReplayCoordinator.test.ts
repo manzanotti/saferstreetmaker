@@ -14,6 +14,7 @@ function createCoordinator(
         saveMap: vi.fn().mockResolvedValue(undefined),
         buildSnapshot: vi.fn().mockReturnValue({ layers: {} }),
         setLastSavedSnapshot: vi.fn(),
+        getCurrentView: vi.fn().mockReturnValue({ centre: { lat: 53, lng: -2 }, zoom: 16 }),
         applySettings: vi.fn(),
         removeAllLayers: vi.fn(),
         addLayers: vi.fn(),
@@ -52,7 +53,11 @@ describe('HistoryReplayCoordinator', () => {
 
         expect(state.options.clearAllLayers).toHaveBeenCalledOnce();
         expect(state.options.resetSettings).toHaveBeenCalledOnce();
-        expect(state.options.loadMapData).toHaveBeenCalledWith({ layers: {} });
+        expect(state.options.loadMapData).toHaveBeenCalledWith({
+            layers: {},
+            centre: { lat: 53, lng: -2 },
+            zoom: 16
+        });
         expect(state.options.saveMap).toHaveBeenCalledOnce();
         expect(state.options.setLastSavedSnapshot).toHaveBeenCalledOnce();
     });
@@ -88,11 +93,39 @@ describe('HistoryReplayCoordinator', () => {
             expect.objectContaining({
                 title: 'Before',
                 activeLayers: [],
-                centre: null
+                centre: { lat: 53, lng: -2 },
+                zoom: 16
             })
         );
         expect(state.options.removeAllLayers).toHaveBeenCalledOnce();
         expect(state.options.addLayers).toHaveBeenCalledWith([]);
         expect(state.options.setVisibleLayerIds).toHaveBeenCalledWith(new Set());
+    });
+
+    it('replaces a legacy snapshot viewport with the current view', async () => {
+        const state = createCoordinator();
+        const snapshot = {
+            settings: {
+                title: 'Map',
+                readOnly: false,
+                hideToolbar: false,
+                activeLayers: [],
+                centre: { lat: 50, lng: -1 },
+                zoom: 10,
+                version: '1.0.0'
+            },
+            layers: {}
+        };
+
+        await state.coordinator.apply(makeReplay(snapshot));
+
+        expect(state.options.loadMapData).toHaveBeenCalledWith({
+            ...snapshot,
+            settings: {
+                ...snapshot.settings,
+                centre: { lat: 53, lng: -2 },
+                zoom: 16
+            }
+        });
     });
 });

@@ -491,6 +491,39 @@ describe('LtnLayer feature clicks', () => {
         expect(selectionStore.selected.every((entry) => entry.marker === polygon2)).toBe(true);
     });
 
+    it('toggles a group-selected polygon off across active layers', () => {
+        const map = makeMockMap();
+        const layer = createLtnLayer(map);
+
+        layer.loadFromGeoJSON(
+            polygonFeatureCollection([
+                [
+                    [
+                        [0, 0],
+                        [1, 0],
+                        [1, 1],
+                        [0, 1],
+                        [0, 0]
+                    ]
+                ]
+            ]) as any
+        );
+
+        const polygon = layer.getLayer().getLayers()[0] as any;
+        const selectionStore = useSelectionStore(pinia);
+        const mapStore = useMapStore(pinia);
+        selectFeature(polygon as unknown as L.Layer, 'LtnCells', false, true);
+        selectionStore.markGroupSelection('group-1');
+        mapStore.setActiveLayer('modal-filter');
+
+        polygon.fire('click', {
+            originalEvent: { shiftKey: true },
+            target: polygon
+        });
+
+        expect(selectionStore.selected).toHaveLength(0);
+    });
+
     it('focuses the title input when the polygon popup opens in edit mode', () => {
         const map = makeMockMap();
         const layer = createLtnLayer(map);

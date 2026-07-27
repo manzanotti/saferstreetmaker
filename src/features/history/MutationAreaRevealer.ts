@@ -106,10 +106,6 @@ export class MutationAreaRevealer {
     private ensureBoundsVisible(bounds: L.LatLngBounds): void {
         const map = this.options.getMap();
         const viewport = map.getBounds();
-        if (viewport.contains(bounds)) {
-            return;
-        }
-
         const viewportLatSpan = viewport.getNorth() - viewport.getSouth();
         const viewportLngSpan = viewport.getEast() - viewport.getWest();
         const boundsLatSpan = bounds.getNorth() - bounds.getSouth();

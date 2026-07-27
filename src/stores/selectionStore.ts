@@ -20,8 +20,14 @@ function selectedMarkerLatLngKey(marker: SelectedMarker): string {
     return `${marker.latLng.lat}:${marker.latLng.lng}`;
 }
 
+function selectedFeatureKey(marker: SelectedMarker): string | null {
+    return marker.historyId ? `${marker.layerId}:${marker.historyId}` : null;
+}
+
 export const useSelectionStore = defineStore('selection', () => {
     const isActive = ref(false);
+    const isGroupSelection = ref(false);
+    const selectedGroupId = ref<string | null>(null);
     // shallowRef: Leaflet Layer objects must not be wrapped in Vue Proxy.
     const selected = shallowRef<SelectedMarker[]>([]);
     const clipboard = ref<ClipboardEntry[]>([]);
@@ -40,15 +46,26 @@ export const useSelectionStore = defineStore('selection', () => {
         isActive.value = false;
         selected.value = [];
         lastAreaBounds.value = null;
+        isGroupSelection.value = false;
+        selectedGroupId.value = null;
     }
 
     function setSelected(markers: SelectedMarker[]) {
         selected.value = markers;
+        isGroupSelection.value = false;
+        selectedGroupId.value = null;
     }
 
     function clear() {
         selected.value = [];
         lastAreaBounds.value = null;
+        isGroupSelection.value = false;
+        selectedGroupId.value = null;
+    }
+
+    function markGroupSelection(groupId: string) {
+        isGroupSelection.value = true;
+        selectedGroupId.value = groupId;
     }
 
     function setLastAreaBounds(bounds: L.LatLngBounds | null) {
@@ -101,12 +118,47 @@ export const useSelectionStore = defineStore('selection', () => {
         return toAdd;
     }
 
+    function removeSelectedFeature(marker: L.Layer, feature?: SelectedMarker): SelectedMarker[] {
+        const markerEntries = selected.value.filter((entry) => entry.marker === marker);
+        const featureKey = feature ? selectedFeatureKey(feature) : null;
+        const removed =
+            featureKey !== null
+                ? selected.value.filter(
+                      (entry) =>
+                          selectedFeatureKey(entry) !== null &&
+                          selectedFeatureKey(entry) === featureKey
+                  )
+                : markerEntries;
+        if (removed.length > 0) {
+            selected.value =
+                featureKey !== null
+                    ? selected.value.filter((entry) => selectedFeatureKey(entry) !== featureKey)
+                    : selected.value.filter((entry) => entry.marker !== marker);
+        }
+        return removed;
+    }
+
+    function isFeatureFullySelected(markers: SelectedMarker[]): boolean {
+        return (
+            markers.length > 0 &&
+            markers.every((marker) =>
+                selected.value.some(
+                    (entry) =>
+                        selectedFeatureKey(entry) === selectedFeatureKey(marker) &&
+                        selectedMarkerLatLngKey(entry) === selectedMarkerLatLngKey(marker)
+                )
+            )
+        );
+    }
+
     function copyToClipboard(entries: ClipboardEntry[]) {
         clipboard.value = entries;
     }
 
     return {
         isActive,
+        isGroupSelection,
+        selectedGroupId,
         selected,
         clipboard,
         hasClipboard,
@@ -115,8 +167,11 @@ export const useSelectionStore = defineStore('selection', () => {
         deactivate,
         setSelected,
         clear,
+        markGroupSelection,
         setLastAreaBounds,
         mergeSelected,
+        removeSelectedFeature,
+        isFeatureFullySelected,
         copyToClipboard
     };
 });

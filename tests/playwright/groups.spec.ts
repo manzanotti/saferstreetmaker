@@ -84,6 +84,37 @@ async function createGroup(page: Page, name: string): Promise<void> {
     await page.waitForTimeout(300);
 }
 
+async function createGroupVersion(page: Page, name: string): Promise<void> {
+    await page.getByRole('button', { name: 'Create version' }).click();
+    const dialog = page.getByRole('dialog', { name: 'New Group Version' });
+    await dialog.getByLabel('Version name').fill(name);
+    await dialog.getByRole('button', { name: 'Create version' }).click();
+    await page.waitForTimeout(300);
+}
+
+async function drawNamedLtnCell(page: Page, name: string): Promise<void> {
+    await page.locator('#ltn-button').click();
+    const map = page.locator('.leaflet-container');
+    const box = await map.boundingBox();
+    if (!box) throw new Error('Map bounding box not found');
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+    await page.waitForTimeout(200);
+    await page.mouse.click(cx - 45, cy - 35);
+    await page.waitForTimeout(200);
+    await page.mouse.click(cx + 45, cy - 35);
+    await page.waitForTimeout(200);
+    await page.mouse.click(cx, cy + 35);
+    await page.waitForTimeout(200);
+    await page.mouse.dblclick(cx, cy + 35);
+    const labelInput = page.locator('.label-editor');
+    await expect(labelInput).toBeVisible();
+    await labelInput.fill(name);
+    await labelInput.press('Enter');
+    await page.locator('#ltn-button').click();
+    await page.waitForTimeout(300);
+}
+
 // ---------------------------------------------------------------------------
 // Test suites
 // ---------------------------------------------------------------------------
@@ -233,6 +264,61 @@ test.describe('Groups — Select and zoom', () => {
         await expect(page.getByText('features selected', { exact: false })).not.toBeVisible();
     });
 
+    test('modifier-clicking a group member removes it from the selection', async ({ page }) => {
+        await placeTwoModalFilters(page);
+        await selectBothFilters(page);
+        await createGroup(page, 'Toggle Group');
+
+        await openGroupsPanel(page);
+        await page.getByRole('button', { name: /Select group Toggle Group/ }).click();
+        await page.waitForTimeout(300);
+
+        const selectedFilters = page.locator('.leaflet-filters-pane path[stroke="#3b82f6"]');
+        await expect(selectedFilters).toHaveCount(2);
+
+        await selectedFilters.first().dispatchEvent('click', { shiftKey: true });
+        await page.waitForTimeout(200);
+
+        await expect(selectedFilters).toHaveCount(1);
+        await expect(page.getByText('1 feature selected')).toBeVisible();
+
+        await page.getByRole('button', { name: 'Save group changes' }).click();
+        await page.waitForTimeout(300);
+
+        await openGroupsPanel(page);
+        await expect(page.getByRole('button', { name: /Select group Toggle Group/ })).toContainText(
+            '(1)'
+        );
+    });
+
+    test('saving a group with no selected members asks whether to delete it', async ({ page }) => {
+        await placeTwoModalFilters(page);
+        await selectBothFilters(page);
+        await createGroup(page, 'Empty On Save');
+
+        await openGroupsPanel(page);
+        await page.getByRole('button', { name: /Select group Empty On Save/ }).click();
+        await page.waitForTimeout(300);
+
+        const selectedFilters = page.locator('.leaflet-filters-pane path[stroke="#3b82f6"]');
+        await expect(selectedFilters).toHaveCount(2);
+        await selectedFilters.first().dispatchEvent('click', { shiftKey: true });
+        await page.waitForTimeout(150);
+        await page
+            .locator('.leaflet-filters-pane path[stroke="#3b82f6"]')
+            .first()
+            .dispatchEvent('click', { shiftKey: true });
+        await page.waitForTimeout(200);
+
+        await expect(page.locator('.leaflet-filters-pane path[stroke="#3b82f6"]')).toHaveCount(0);
+        await expect(page.getByText('1 feature selected')).not.toBeVisible();
+
+        await page.getByRole('button', { name: 'Save group changes' }).click();
+        await expect(page.getByText('is now empty')).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Delete', exact: true })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Keep empty' })).toBeVisible();
+    });
+
     test('Escape clears all highlights after selecting a group', async ({ page }) => {
         await placeTwoModalFilters(page);
         await selectBothFilters(page);
@@ -347,7 +433,35 @@ test.describe('Groups — mixed member types', () => {
             page.locator('.leaflet-overlay-pane path[stroke="#3b82f6"]').first()
         ).toBeVisible();
         // Point marker is highlighted in the filters pane.
-        await expect(page.locator('.leaflet-filters-pane path[stroke="#3b82f6"]')).toHaveCount(1);
+        const selectedPoint = page.locator('.leaflet-filters-pane path[stroke="#3b82f6"]');
+        await expect(selectedPoint).toHaveCount(1);
+        await expect(
+            page.getByRole('button', { name: 'Delete selected features' })
+        ).not.toBeVisible();
+
+        // Remove the point so the polygon is the group's only remaining feature.
+        await selectedPoint.dispatchEvent('click', { shiftKey: true });
+        await page.getByRole('button', { name: 'Save group changes' }).click();
+        await page.waitForTimeout(300);
+
+        await openGroupsPanel(page);
+        const groupButton = page.getByRole('button', { name: /Select group Mixed/ });
+        await expect(groupButton).toContainText('(1)');
+        await groupButton.click();
+        await page.waitForTimeout(300);
+
+        const polygonHandles = page.locator('.leaflet-overlay-pane path[stroke="#3b82f6"]');
+        await expect(polygonHandles.first()).toBeVisible();
+        await page
+            .locator('.leaflet-ltns-pane path.ltn-cell.leaflet-interactive')
+            .first()
+            .dispatchEvent('click', { shiftKey: true });
+        await expect(polygonHandles).toHaveCount(0);
+
+        await page.getByRole('button', { name: 'Save group changes' }).click();
+        await expect(page.getByText('is now empty')).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Delete', exact: true })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Keep empty' })).toBeVisible();
     });
 });
 
@@ -495,6 +609,27 @@ test.describe('Groups — Delete group with elements', () => {
         expect(await getLayerFeatureCount(page, 'Hello Cleveland', 'ModalFilters')).toBe(0);
     });
 
+    test('deleting an empty group does not ask how to handle zero members', async ({ page }) => {
+        await placeTwoModalFilters(page);
+        await selectBothFilters(page);
+        await createGroup(page, 'Empty Group');
+
+        await openGroupsPanel(page);
+        await page
+            .getByRole('button', { name: 'Remove all elements from group Empty Group' })
+            .click();
+        await page.getByRole('button', { name: 'Keep empty' }).click();
+        await page.getByRole('button', { name: 'Delete group Empty Group' }).click();
+
+        await expect(
+            page.getByRole('button', { name: /Select group Empty Group/ })
+        ).not.toBeVisible();
+        await expect(page.getByRole('button', { name: 'Delete group only' })).not.toBeVisible();
+        await expect(
+            page.getByRole('button', { name: 'Delete group + elements' })
+        ).not.toBeVisible();
+    });
+
     test('deleting a group only keeps its features on the map', async ({ page }) => {
         await placeTwoModalFilters(page);
         expect(await getLayerFeatureCount(page, 'Hello Cleveland', 'ModalFilters')).toBe(2);
@@ -566,6 +701,120 @@ test.describe('Groups — Delete group with elements', () => {
         // Group should be restored — re-open the panel to verify.
         await openGroupsPanel(page);
         await expect(page.getByRole('button', { name: /Select group Undo Delete/ })).toBeVisible();
+    });
+});
+
+test.describe('Groups — Delete version', () => {
+    test.beforeEach(async ({ page, context }) => {
+        await setupPage(page, context);
+        await placeTwoModalFilters(page);
+        await selectBothFilters(page);
+        await createGroup(page, 'Versioned Group');
+        await openGroupsPanel(page);
+        await page.getByRole('button', { name: /Select group Versioned Group/ }).click();
+        await expect(page.locator('.leaflet-filters-pane path[stroke="#3b82f6"]')).toHaveCount(2);
+        await openGroupsPanel(page);
+        await createGroupVersion(page, 'Alternative');
+        await expect(
+            page.getByLabel('Version for group Versioned Group').locator('option:checked')
+        ).toHaveText('Alternative');
+        await expect(page.locator('.leaflet-filters-pane path[stroke="#3b82f6"]')).toHaveCount(2);
+    });
+
+    test('deleting a version only prompts, keeps its elements, and clears highlights', async ({
+        page
+    }) => {
+        expect(await getLayerFeatureCount(page, 'Hello Cleveland', 'ModalFilters')).toBe(4);
+
+        await page.getByRole('button', { name: 'Delete version' }).click();
+
+        await expect(page.getByText('Delete version Alternative?')).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Delete version only' })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Delete version + elements' })).toBeVisible();
+        expect(await getLayerFeatureCount(page, 'Hello Cleveland', 'ModalFilters')).toBe(4);
+
+        await page.getByRole('button', { name: 'Delete version only' }).click();
+        await page.waitForTimeout(300);
+
+        expect(await getLayerFeatureCount(page, 'Hello Cleveland', 'ModalFilters')).toBe(4);
+        await expect(page.getByLabel('Version for group Versioned Group')).not.toBeVisible();
+        await expect(page.locator('.leaflet-filters-pane path[stroke="#3b82f6"]')).toHaveCount(0);
+    });
+
+    test('deleting a version with its elements removes its features and clears highlights', async ({
+        page
+    }) => {
+        await page.getByRole('button', { name: 'Delete version' }).click();
+        await page.getByRole('button', { name: 'Delete version + elements' }).click();
+        await page.waitForTimeout(300);
+
+        expect(await getLayerFeatureCount(page, 'Hello Cleveland', 'ModalFilters')).toBe(2);
+        await expect(page.getByLabel('Version for group Versioned Group')).not.toBeVisible();
+        await expect(page.locator('.leaflet-filters-pane path[stroke="#3b82f6"]')).toHaveCount(0);
+    });
+
+    test('deleting an empty version does not ask how to handle zero members', async ({ page }) => {
+        await page
+            .getByRole('button', { name: 'Remove all elements from group Versioned Group' })
+            .click();
+        await page.getByRole('button', { name: 'Keep empty' }).click();
+        await page.getByRole('button', { name: 'Delete version' }).click();
+
+        await expect(page.getByLabel('Version for group Versioned Group')).not.toBeVisible();
+        await expect(page.getByRole('button', { name: 'Delete version only' })).not.toBeVisible();
+        await expect(
+            page.getByRole('button', { name: 'Delete version + elements' })
+        ).not.toBeVisible();
+    });
+});
+
+test.describe('Groups — Version-specific LTN cells', () => {
+    test.beforeEach(async ({ page, context }) => {
+        await setupPage(page, context);
+        await placeTwoModalFilters(page, 90);
+        await selectBothFilters(page);
+        await createGroup(page, 'Versioned LTN');
+        await openGroupsPanel(page);
+        await createGroupVersion(page, 'Alternative');
+    });
+
+    test('hides the cell title and excludes the cell from selection in other versions', async ({
+        page
+    }) => {
+        await page.getByRole('button', { name: 'Close groups panel' }).click();
+        await drawNamedLtnCell(page, 'New cell');
+        await expect(page.getByText('New cell', { exact: true })).toBeVisible();
+
+        await openGroupsPanel(page);
+        await page.getByRole('button', { name: /Select group Versioned LTN/ }).click();
+        await page
+            .locator('.leaflet-ltns-pane path.ltn-cell.leaflet-interactive')
+            .dispatchEvent('click', { shiftKey: true });
+        await page.getByRole('button', { name: 'Save group changes' }).click();
+
+        await openGroupsPanel(page);
+        await page.getByLabel('Version for group Versioned LTN').selectOption({ label: 'Default' });
+        await page.waitForTimeout(300);
+
+        const cellPath = page.locator('.leaflet-ltns-pane path.ltn-cell.leaflet-interactive');
+        await expect(cellPath).toHaveAttribute('stroke-opacity', '0');
+        await expect(cellPath).toHaveAttribute('fill-opacity', '0');
+        await expect(cellPath).toHaveCSS('pointer-events', 'none');
+        await expect(page.getByText('New cell', { exact: true })).not.toBeVisible();
+
+        await page.getByRole('button', { name: 'Close groups panel' }).click();
+        await page.locator('#select-area-button').click();
+        await dragSelectCenter(page, 55);
+
+        const selectedLtnCount = await page.evaluate(() => {
+            const app = (document.getElementById('app') as any).__vue_app__;
+            const pinia = app?.config?.globalProperties?.$pinia;
+            const selectionStore = pinia?._s?.get('selection');
+            return (selectionStore?.selected ?? []).filter(
+                (entry: any) => entry.layerId === 'LtnCells'
+            ).length;
+        });
+        expect(selectedLtnCount).toBe(0);
     });
 });
 

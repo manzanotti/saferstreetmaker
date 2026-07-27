@@ -3,14 +3,27 @@ import { computed } from 'vue';
 import { useSelectionStore } from '../../stores/selectionStore';
 import { useGroupStore } from '../../stores/groupStore';
 import { executeAreaDelete, executeCopy, executePaste } from '../../composables/useAreaSelection';
-import { createGroupFromSelection, addSelectionToGroup } from '../../composables/useGroups';
+import {
+    createGroupFromSelection,
+    addSelectionToGroup,
+    saveGroupSelection
+} from '../../composables/useGroups';
 
 const selectionStore = useSelectionStore();
 const groupStore = useGroupStore();
 
 // Multiple vertex entries from the same polyline/polygon share the same
 // marker reference; count unique features rather than raw vertex entries.
-const featureCount = computed(() => new Set(selectionStore.selected.map((s) => s.marker)).size);
+const featureCount = computed(
+    () =>
+        new Set(
+            selectionStore.selected.map((selection) =>
+                selection.historyId
+                    ? `${selection.layerId}:${selection.historyId}`
+                    : selection.marker
+            )
+        ).size
+);
 
 // The group being targeted by a group-first "Add features" flow, if any.
 const addTargetGroup = computed(() =>
@@ -43,7 +56,10 @@ function onAddToGroupSelect(event: Event) {
 
 <template>
     <div
-        v-if="selectionStore.isActive && (featureCount > 0 || selectionStore.hasClipboard)"
+        v-if="
+            selectionStore.isActive &&
+            (featureCount > 0 || selectionStore.hasClipboard || selectionStore.isGroupSelection)
+        "
         class="rounded-2xl bg-white/[0.94] shadow-xl border border-white/60 flex items-center gap-2 px-3 py-2"
     >
         <span v-if="featureCount > 0" class="text-sm text-gray-700 font-medium">
@@ -79,6 +95,15 @@ function onAddToGroupSelect(event: Event) {
             Add to {{ addTargetGroup.name }}
         </button>
         <button
+            v-if="selectionStore.isGroupSelection && selectionStore.selectedGroupId"
+            type="button"
+            aria-label="Save group changes"
+            class="rounded-lg bg-green-700 hover:bg-green-800 text-white px-3 py-1.5 text-sm font-medium focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-1 focus-visible:outline-none [touch-action:manipulation]"
+            @click.stop="saveGroupSelection"
+        >
+            Save group changes
+        </button>
+        <button
             v-if="
                 featureCount > 1 &&
                 !groupStore.addToGroupId &&
@@ -105,7 +130,7 @@ function onAddToGroupSelect(event: Event) {
             </option>
         </select>
         <button
-            v-if="featureCount > 0"
+            v-if="featureCount > 0 && !selectionStore.isGroupSelection"
             type="button"
             aria-label="Delete selected features"
             class="rounded-lg bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 text-sm font-medium focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-1 focus-visible:outline-none [touch-action:manipulation]"

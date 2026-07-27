@@ -24,6 +24,9 @@ import { useSelectionStore, type SelectedMarker } from '../stores/selectionStore
 import { pinia } from '../stores/index';
 import { getFeatureHistoryId } from './layers/layerUtils';
 import { useGroupStore } from '../stores/groupStore';
+import { useFeatureDeletionStore } from '../stores/featureDeletionStore';
+import { findFeatureMemberships } from '../features/groups/featureMemberships';
+import { isFeatureGroupHidden } from '../features/groups/featureVisibility';
 import { getPolylineLatLngs, polygonIntersectsBounds } from '../geometry/leafletGeometry';
 import { SelectionHighlighter } from '../features/selection/SelectionHighlighter';
 import { AreaSelectionController } from '../features/selection/AreaSelectionController';
@@ -81,7 +84,8 @@ export function selectFeature(
     marker: L.Layer,
     layerId: string,
     additive: boolean,
-    skipActivate = false
+    skipActivate = false,
+    toggle = false
 ): void {
     const selectionStore = useSelectionStore(pinia);
     const entries = buildFeatureSelectionEntries(marker, layerId);
@@ -90,6 +94,20 @@ export function selectFeature(
     }
 
     if (additive) {
+        const previousEntries = selectionStore.selected;
+        if (
+            toggle &&
+            (selectionStore.isActive || selectionStore.isGroupSelection) &&
+            selectionStore.isFeatureFullySelected(entries)
+        ) {
+            selectionStore.removeSelectedFeature(marker, entries[0]);
+            if (!skipActivate && !selectionStore.isActive) {
+                selectionStore.activate();
+            }
+            applySelectionHighlights(selectionStore.selected, true, previousEntries);
+            return;
+        }
+
         const addedEntries = selectionStore.mergeSelected(entries);
 
         if (!skipActivate && !selectionStore.isActive) {
@@ -174,6 +192,9 @@ export function setupAreaSelection(map: L.Map): () => void {
                 continue;
             }
             layer.getLayer().eachLayer((m) => {
+                if (isFeatureGroupHidden(m)) {
+                    return;
+                }
                 const pointLatLng = (m as any).getLatLng?.() as L.LatLng | undefined;
                 if (pointLatLng) {
                     // Point marker — select the whole marker if it's within bounds
@@ -288,7 +309,42 @@ function getSelectionCommandContext(): SelectionCommandContext {
 }
 
 export function executeAreaDelete(): void {
+    const selectionStore = useSelectionStore(pinia);
+    const previousSelection = [...selectionStore.selected];
+    const markers = new Set(previousSelection.map((entry) => entry.marker));
+    if (markers.size === 1) {
+        const marker = previousSelection[0]?.marker;
+        const layerId = previousSelection[0]?.layerId;
+        const historyId = marker ? getFeatureHistoryId(marker) : null;
+        const layer = useMapStore(pinia).layers.find((item) => item.id === layerId);
+        const vertices = marker ? getPolylineLatLngs(marker) : [];
+        const selectedVertices = new Set(
+            previousSelection
+                .filter((entry) => entry.marker === marker)
+                .map((entry) => entry.latLng)
+        );
+        if (
+            marker &&
+            layerId &&
+            historyId &&
+            layer?.kind === 'polyline' &&
+            vertices.length > 0 &&
+            vertices.every((vertex) => selectedVertices.has(vertex))
+        ) {
+            const groupStore = useGroupStore(pinia);
+            const memberships = findFeatureMemberships(
+                groupStore.groups,
+                groupStore.activeVersionIds,
+                { layerId, historyId }
+            );
+            if (memberships.length > 0) {
+                useFeatureDeletionStore(pinia).open({ layerId, historyId, memberships });
+                return;
+            }
+        }
+    }
     deleteSelection(getSelectionCommandContext());
+    applySelectionHighlights([], true, previousSelection);
 }
 
 export function executeCopy(): void {

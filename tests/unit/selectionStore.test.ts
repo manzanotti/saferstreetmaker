@@ -119,6 +119,66 @@ describe('selectionStore', () => {
             expect(store.selected).toHaveLength(2);
         });
 
+        it('removes every selected entry belonging to a feature', () => {
+            const store = useSelectionStore();
+            const marker = makeMockMarker(1, 2);
+            const otherMarker = makeMockMarker(3, 4);
+            store.setSelected([
+                { ...makeMockSelected('MobilityLanes', 1, 2), marker },
+                { ...makeMockSelected('MobilityLanes', 2, 3), marker },
+                { ...makeMockSelected('ModalFilters', 3, 4), marker: otherMarker }
+            ]);
+
+            const removed = store.removeSelectedFeature(marker);
+
+            expect(removed).toHaveLength(2);
+            expect(store.selected).toHaveLength(1);
+            expect(store.selected[0].marker).toBe(otherMarker);
+        });
+
+        it('removes a feature when the clicked marker instance was recreated', () => {
+            const store = useSelectionStore();
+            const originalMarker = makeMockMarker(1, 2);
+            const recreatedMarker = makeMockMarker(1, 2);
+            const selectedFeature = {
+                layerId: 'ModalFilters',
+                historyId: 'feature-1',
+                latLng: { lat: 1, lng: 2 } as L.LatLng,
+                marker: originalMarker as unknown as L.Layer
+            };
+            store.setSelected([selectedFeature]);
+
+            const removed = store.removeSelectedFeature(recreatedMarker, {
+                ...selectedFeature,
+                marker: recreatedMarker as unknown as L.Layer
+            });
+
+            expect(removed).toEqual([selectedFeature]);
+            expect(store.selected).toHaveLength(0);
+        });
+
+        it('removes every render instance with the same stable feature identity', () => {
+            const store = useSelectionStore();
+            const firstMarker = makeMockMarker(1, 2);
+            const secondMarker = makeMockMarker(1, 2);
+            const first = {
+                layerId: 'LtnCells',
+                historyId: 'polygon-1',
+                latLng: { lat: 1, lng: 2 } as L.LatLng,
+                marker: firstMarker as unknown as L.Layer
+            };
+            const second = {
+                ...first,
+                marker: secondMarker as unknown as L.Layer
+            };
+            store.setSelected([first, second]);
+
+            const removed = store.removeSelectedFeature(firstMarker, first);
+
+            expect(removed).toEqual([first, second]);
+            expect(store.selected).toHaveLength(0);
+        });
+
         it('skips entries whose marker and latLng are already in the selection', () => {
             const store = useSelectionStore();
             const m1 = makeMockMarker(1, 2);

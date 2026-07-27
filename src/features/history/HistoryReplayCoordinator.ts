@@ -20,6 +20,7 @@ export interface HistoryReplayCoordinatorOptions {
     saveMap: () => Promise<void>;
     buildSnapshot: () => SerializedMap;
     setLastSavedSnapshot: (snapshot: SerializedMap) => void;
+    getCurrentView: () => { centre: L.LatLng; zoom: number };
     applySettings: (settings: {
         title: string;
         readOnly: boolean;
@@ -59,10 +60,11 @@ export class HistoryReplayCoordinator {
 
     private async applySnapshot(snapshot: SerializedMap): Promise<boolean> {
         return await runHistoryReplayTransaction(this.options.transactionEffects, async () => {
+            const snapshotWithCurrentView = this.withCurrentView(snapshot);
             this.options.clearAllLayers();
             this.options.resetSettings();
 
-            if (!this.options.loadMapData(snapshot)) {
+            if (!this.options.loadMapData(snapshotWithCurrentView)) {
                 return false;
             }
 
@@ -132,15 +134,14 @@ export class HistoryReplayCoordinator {
         }
 
         return await runHistoryReplayTransaction(this.options.transactionEffects, async () => {
+            const currentView = this.options.getCurrentView();
             this.options.applySettings({
                 title: targetSettings.title,
                 readOnly: targetSettings.readOnly,
                 hideToolbar: targetSettings.hideToolbar,
                 activeLayers: [...targetSettings.activeLayers],
-                centre: targetSettings.centre
-                    ? new L.LatLng(targetSettings.centre.lat, targetSettings.centre.lng)
-                    : null,
-                zoom: targetSettings.zoom,
+                centre: currentView.centre,
+                zoom: currentView.zoom,
                 version: targetSettings.version
             });
             this.options.removeAllLayers();
@@ -151,6 +152,29 @@ export class HistoryReplayCoordinator {
             this.options.setLastSavedSnapshot(this.options.buildSnapshot());
             return true;
         });
+    }
+
+    private withCurrentView(snapshot: SerializedMap): SerializedMap {
+        const currentView = this.options.getCurrentView();
+        if (snapshot.settings) {
+            return {
+                ...snapshot,
+                settings: {
+                    ...snapshot.settings,
+                    centre: {
+                        lat: currentView.centre.lat,
+                        lng: currentView.centre.lng
+                    },
+                    zoom: currentView.zoom
+                }
+            };
+        }
+
+        return {
+            ...snapshot,
+            centre: { lat: currentView.centre.lat, lng: currentView.centre.lng },
+            zoom: currentView.zoom
+        };
     }
 
     private getSnapshotLayerData(snapshot: SerializedMap, layerId: string) {

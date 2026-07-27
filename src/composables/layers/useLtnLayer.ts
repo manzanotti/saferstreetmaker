@@ -19,6 +19,7 @@ import { type EditablePolylineLayer } from './usePolylineLayer';
 import { selectFeature, executeCopy, clearFeatureHighlight } from '../useAreaSelection';
 import { useSelectionStore } from '../../stores/selectionStore';
 import { recomputeFeatureVisibility } from '../useGroups';
+import { isFeatureGroupHidden } from '../../features/groups/featureVisibility';
 
 const COLOUR = '#cc00cc';
 const BUTTON_ID = 'ltn';
@@ -210,7 +211,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
 
     const syncTooltipVisibility = (polygon: any): void => {
         const label = polygon['properties']?.label ?? '';
-        if (shouldShowLabel(label)) {
+        if (!isFeatureGroupHidden(polygon) && shouldShowLabel(label)) {
             polygon.openTooltip?.();
         } else {
             polygon.closeTooltip?.();
@@ -475,6 +476,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         (polygon as any)['historyFeature'] = getPolygonHistoryFeature(polygon);
 
         polygon.bindTooltip(label, { permanent: true, direction: 'center' });
+        (polygon as any).syncGroupVisibility = () => syncTooltipVisibility(polygon);
         syncPolygonTooltip(polygon, label);
 
         // Leaflet can re-open permanent tooltips when the parent layer is attached to the map.
@@ -490,6 +492,21 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         (polygon as any).__ltnLabelEl = labelEl;
 
         polygon.on('click', (e: any) => {
+            const isModifierClick =
+                (e.originalEvent?.shiftKey ||
+                    e.originalEvent?.ctrlKey ||
+                    e.originalEvent?.metaKey) ??
+                false;
+
+            if (
+                isModifierClick &&
+                (useSelectionStore(pinia).isActive || useSelectionStore(pinia).isGroupSelection)
+            ) {
+                L.DomEvent.stopPropagation(e.originalEvent ?? e);
+                selectFeature(polygon as unknown as L.Layer, 'LtnCells', true, false, true);
+                return;
+            }
+
             // Let an explicitly armed draw tool own the click instead of
             // forcing LTN edit mode underneath it. Existing-feature edit mode
             // keeps drawLayerId=null, so cross-layer clicks can switch
@@ -506,16 +523,10 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
 
             L.DomEvent.stopPropagation(e.originalEvent ?? e);
 
-            const isModifierClick =
-                (e.originalEvent?.shiftKey ||
-                    e.originalEvent?.ctrlKey ||
-                    e.originalEvent?.metaKey) ??
-                false;
-
             if (isModifierClick) {
                 // Additive selection: merge this polygon into the current
                 // selection without opening the popup or entering edit mode.
-                selectFeature(polygon as unknown as L.Layer, 'LtnCells', true);
+                selectFeature(polygon as unknown as L.Layer, 'LtnCells', true, false, true);
                 return;
             }
 

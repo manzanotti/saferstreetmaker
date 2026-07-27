@@ -1,19 +1,24 @@
 import type { SerializedMap } from '../MapSerializer';
 
+export function snapshotForHistory(snapshot: SerializedMap): SerializedMap {
+    const { centre: _legacyCentre, zoom: _legacyZoom, ...snapshotWithoutLegacyView } = snapshot;
+    if (!snapshot.settings) {
+        return snapshotWithoutLegacyView;
+    }
+
+    const { centre: _centre, zoom: _zoom, ...settingsWithoutView } = snapshot.settings;
+    return {
+        ...snapshotWithoutLegacyView,
+        settings: settingsWithoutView as SerializedMap['settings']
+    };
+}
+
 export function normaliseSnapshotForHistory(snapshot: SerializedMap | null): unknown {
     if (!snapshot) {
         return null;
     }
 
-    const settingsWithoutView = snapshot.settings
-        ? {
-              title: snapshot.settings.title,
-              readOnly: snapshot.settings.readOnly,
-              hideToolbar: snapshot.settings.hideToolbar,
-              activeLayers: snapshot.settings.activeLayers,
-              version: snapshot.settings.version
-          }
-        : snapshot.settings;
+    const settingsWithoutView = snapshotForHistory(snapshot).settings;
 
     return {
         title: snapshot.title,

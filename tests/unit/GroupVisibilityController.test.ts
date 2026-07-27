@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as L from 'leaflet';
 import type { Group, GroupMember } from '../../src/models/Group';
 import { GroupVisibilityController } from '../../src/features/groups/GroupVisibilityController';
+import { isFeatureGroupHidden } from '../../src/features/groups/featureVisibility';
 
 function member(historyId: string): GroupMember {
     return { layerId: 'ModalFilters', historyId };
@@ -122,5 +123,36 @@ describe('GroupVisibilityController', () => {
         controller.recompute();
         expect(defaultMarker.options.opacity).toBe(0.7);
         expect(alternativeMarker.options.opacity).toBe(0);
+    });
+
+    it('hides and restores a permanent tooltip with an inactive version member', () => {
+        const marker = styledMarker() as ReturnType<typeof styledMarker> & {
+            closeTooltip: ReturnType<typeof vi.fn>;
+            openTooltip: ReturnType<typeof vi.fn>;
+            syncGroupVisibility: ReturnType<typeof vi.fn>;
+        };
+        marker.closeTooltip = vi.fn();
+        marker.openTooltip = vi.fn();
+        marker.syncGroupVisibility = vi.fn(() => {
+            if (isFeatureGroupHidden(marker)) {
+                marker.closeTooltip();
+            } else {
+                marker.openTooltip();
+            }
+        });
+        markers.set('h1', marker);
+        groups = [group('g1', [member('h1')])];
+        hiddenGroupIds.add('g1');
+
+        controller.recompute();
+
+        expect(marker.closeTooltip).toHaveBeenCalledOnce();
+        expect(isFeatureGroupHidden(marker)).toBe(true);
+
+        hiddenGroupIds.clear();
+        controller.recompute();
+
+        expect(marker.openTooltip).toHaveBeenCalledOnce();
+        expect(isFeatureGroupHidden(marker)).toBe(false);
     });
 });
