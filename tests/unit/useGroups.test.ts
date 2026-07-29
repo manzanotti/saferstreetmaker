@@ -34,6 +34,7 @@ import {
     addSelectionToGroup,
     saveGroupSelection,
     applyGroupColor,
+    applyGroupDescription,
     recomputeFeatureVisibility,
     switchGroupVersion
 } from '../../src/composables/useGroups';
@@ -262,6 +263,34 @@ describe('useGroups', () => {
             expect(applyGroupColor('g1', '#0a5')).toBe(true);
             expect(useGroupStore(pinia).groups[0].color).toBe('#00aa55');
             expect(markSpy).toHaveBeenCalledOnce();
+        });
+    });
+
+    describe('applyGroupDescription()', () => {
+        it('updates a group description and creates one map checkpoint', () => {
+            const groupStore = useGroupStore(pinia);
+            const mapStore = useMapStore(pinia);
+            groupStore.addGroup({ id: 'g1', name: 'Group', members: [] });
+            const markLayerUpdated = vi.spyOn(mapStore, 'markLayerUpdated');
+
+            expect(applyGroupDescription('g1', '<p>Notes</p>')).toBe(true);
+            expect(groupStore.groups[0].description).toBe('<p>Notes</p>');
+            expect(markLayerUpdated).toHaveBeenCalledTimes(1);
+        });
+
+        it('does not checkpoint an unchanged description', () => {
+            const groupStore = useGroupStore(pinia);
+            const mapStore = useMapStore(pinia);
+            groupStore.addGroup({
+                id: 'g1',
+                name: 'Group',
+                description: '<p>Notes</p>',
+                members: []
+            });
+            const markLayerUpdated = vi.spyOn(mapStore, 'markLayerUpdated');
+
+            expect(applyGroupDescription('g1', '<p onclick="bad()">Notes</p>')).toBe(false);
+            expect(markLayerUpdated).not.toHaveBeenCalled();
         });
     });
 
@@ -494,6 +523,7 @@ describe('useGroups', () => {
 
     it('removes an LTN polygon only from the active group version', () => {
         const layer = { ...makePointLayer('LtnCells'), kind: 'polygon' as const };
+        const secondPolygonElement = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         const firstPolygon = {
             properties: { historyId: 'polygon-v1' },
             getLatLngs: () => [[{ lat: 1, lng: 1 }]],
@@ -506,6 +536,7 @@ describe('useGroups', () => {
             properties: { historyId: 'polygon-v2' },
             getLatLngs: () => [[{ lat: 2, lng: 2 }]],
             options: { opacity: 1, fillOpacity: 0.5, color: '#cc00cc' },
+            getElement: () => secondPolygonElement,
             setStyle: vi.fn(function (this: any, style: object) {
                 Object.assign(this.options, style);
             })
@@ -520,6 +551,7 @@ describe('useGroups', () => {
             {
                 id: 'g1',
                 name: 'Versioned LTN',
+                color: '#00aa00',
                 defaultVersionId: 'v1',
                 versions: [
                     {
@@ -538,6 +570,11 @@ describe('useGroups', () => {
         ]);
         recomputeFeatureVisibility();
         switchGroupVersion('g1', 'v2');
+
+        expect((secondPolygon as any).options).toMatchObject({
+            fillColor: '#00aa00'
+        });
+        expect(secondPolygonElement.getAttribute('stroke')).toBe('#00aa00');
 
         const selectionStore = useSelectionStore(pinia);
         selectionStore.activate();

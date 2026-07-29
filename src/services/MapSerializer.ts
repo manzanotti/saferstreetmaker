@@ -11,6 +11,7 @@ import LZString from 'lz-string';
 import type { IMapLayer } from '../composables/layers/IMapLayer';
 import type { Settings } from '../models/Settings';
 import type { Group, GroupVersion } from '../models/Group';
+import { normalizeGroupDescription } from '../features/groups/groupDescription';
 
 /**
  * Typed shape of the JSON document produced by `MapSerializer.toJSON` and
@@ -64,6 +65,7 @@ interface CompactGroup {
     c?: string;
     m?: Array<[string, string]>;
     d?: string;
+    p?: string;
     v?: Array<{
         i: string;
         n: string;
@@ -76,10 +78,12 @@ function serializeMembers(members: GroupVersion['members']): Array<[string, stri
 }
 
 function serializeGroup(group: Group): Group {
+    const description = normalizeGroupDescription(group.description);
     if (!group.versions) {
         return {
             id: group.id,
             name: group.name,
+            ...(description ? { description } : {}),
             ...(group.color ? { color: group.color } : {}),
             members: (group.members ?? []).map((member) => ({ ...member }))
         };
@@ -87,6 +91,7 @@ function serializeGroup(group: Group): Group {
     return {
         id: group.id,
         name: group.name,
+        ...(description ? { description } : {}),
         ...(group.color ? { color: group.color } : {}),
         defaultVersionId: group.defaultVersionId,
         versions: group.versions.map((version) => ({
@@ -185,6 +190,9 @@ export class MapSerializer {
                     return {
                         i: group.id,
                         n: group.name,
+                        ...(normalizeGroupDescription(group.description)
+                            ? { p: normalizeGroupDescription(group.description) }
+                            : {}),
                         ...(group.color ? { c: group.color } : {}),
                         m: serializeMembers(group.members ?? [])
                     };
@@ -192,6 +200,9 @@ export class MapSerializer {
                 return {
                     i: group.id,
                     n: group.name,
+                    ...(normalizeGroupDescription(group.description)
+                        ? { p: normalizeGroupDescription(group.description) }
+                        : {}),
                     ...(group.color ? { c: group.color } : {}),
                     d: group.defaultVersionId,
                     v: group.versions.map((version) => ({
@@ -225,6 +236,7 @@ export class MapSerializer {
                     ? {
                           id: group.i,
                           name: group.n,
+                          ...(group.p ? { description: group.p } : {}),
                           ...(group.c ? { color: group.c } : {}),
                           defaultVersionId: group.d,
                           versions: group.v.map((version) => ({
@@ -236,6 +248,7 @@ export class MapSerializer {
                     : {
                           id: group.i,
                           name: group.n,
+                          ...(group.p ? { description: group.p } : {}),
                           ...(group.c ? { color: group.c } : {}),
                           members: deserializeCompactMembers(group.m)
                       }
@@ -282,6 +295,9 @@ export class MapSerializer {
                     return {
                         i: group.id,
                         n: group.name,
+                        ...(normalizeGroupDescription(group.description)
+                            ? { p: normalizeGroupDescription(group.description) }
+                            : {}),
                         ...(group.color ? { c: group.color } : {}),
                         m: serializeMembers(group.members ?? [])
                     };
@@ -289,6 +305,9 @@ export class MapSerializer {
                 return {
                     i: group.id,
                     n: group.name,
+                    ...(normalizeGroupDescription(group.description)
+                        ? { p: normalizeGroupDescription(group.description) }
+                        : {}),
                     ...(group.color ? { c: group.color } : {}),
                     d: group.defaultVersionId,
                     v: group.versions.map((version) => ({

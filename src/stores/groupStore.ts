@@ -9,6 +9,7 @@ import {
     memberKey,
     normalizeGroup
 } from '../features/groups/groupVersions';
+import { normalizeGroupDescription } from '../features/groups/groupDescription';
 
 function uniqueMembers(members: GroupMember[]): GroupMember[] {
     return Array.from(new Map(members.map((member) => [memberKey(member), member])).values());
@@ -44,6 +45,7 @@ export const useGroupStore = defineStore('group', () => {
      */
     const addToGroupId = ref<string | null>(null);
     const pendingEmptyGroupDeletionId = ref<string | null>(null);
+    const detailsGroupId = ref<string | null>(null);
 
     // ── Group mutations ───────────────────────────────────────────────────────
 
@@ -53,6 +55,10 @@ export const useGroupStore = defineStore('group', () => {
                 ? normalizeGroup(group)
                 : {
                       ...group,
+                      ...(() => {
+                          const description = normalizeGroupDescription(group.description);
+                          return description ? { description } : { description: undefined };
+                      })(),
                       members: [...(group.members ?? [])]
                   }
         );
@@ -67,6 +73,12 @@ export const useGroupStore = defineStore('group', () => {
             return activeVersion ? { ...group, members: [...activeVersion.members] } : group;
         });
         groups.value = projectedGroups;
+        if (
+            detailsGroupId.value &&
+            !projectedGroups.some((group) => group.id === detailsGroupId.value)
+        ) {
+            detailsGroupId.value = null;
+        }
         const nextActive: Record<string, string> = {};
         for (const group of projectedGroups) {
             const currentVersionId = activeVersionIds.value[group.id];
@@ -82,7 +94,14 @@ export const useGroupStore = defineStore('group', () => {
     function addGroup(group: Group) {
         const normalizedGroup = group.versions
             ? normalizeGroup(group)
-            : { ...group, members: [...(group.members ?? [])] };
+            : {
+                  ...group,
+                  ...(() => {
+                      const description = normalizeGroupDescription(group.description);
+                      return description ? { description } : { description: undefined };
+                  })(),
+                  members: [...(group.members ?? [])]
+              };
         groups.value = [...groups.value, normalizedGroup];
         const defaultVersionId = getDefaultVersionId(normalizedGroup);
         activeVersionIds.value = {
@@ -99,6 +118,64 @@ export const useGroupStore = defineStore('group', () => {
         groups.value = groups.value.map((group) => (group.id === id ? { ...group, color } : group));
     }
 
+    function setDescription(id: string, description: string): boolean {
+        const group = groups.value.find((item) => item.id === id);
+        if (!group) {
+            return false;
+        }
+
+        const nextDescription = normalizeGroupDescription(description);
+        const currentDescription = normalizeGroupDescription(group.description);
+        if (nextDescription === currentDescription) {
+            return false;
+        }
+
+        groups.value = groups.value.map((item) =>
+            item.id === id
+                ? {
+                      ...item,
+                      ...(nextDescription
+                          ? { description: nextDescription }
+                          : { description: undefined })
+                  }
+                : item
+        );
+        return true;
+    }
+
+    function setMetadata(id: string, name: string, color: string, description: string): boolean {
+        const group = groups.value.find((item) => item.id === id);
+        if (!group || !name.trim()) {
+            return false;
+        }
+
+        const nextName = name.trim();
+        const nextDescription = normalizeGroupDescription(description);
+        const currentDescription = normalizeGroupDescription(group.description);
+        const nextColor = color || undefined;
+        if (
+            group.name === nextName &&
+            group.color === nextColor &&
+            currentDescription === nextDescription
+        ) {
+            return false;
+        }
+
+        groups.value = groups.value.map((item) =>
+            item.id === id
+                ? {
+                      ...item,
+                      name: nextName,
+                      ...(nextColor ? { color: nextColor } : { color: undefined }),
+                      ...(nextDescription
+                          ? { description: nextDescription }
+                          : { description: undefined })
+                  }
+                : item
+        );
+        return true;
+    }
+
     function removeGroup(id: string) {
         groups.value = groups.value.filter((g) => g.id !== id);
         const nextActive = { ...activeVersionIds.value };
@@ -107,6 +184,9 @@ export const useGroupStore = defineStore('group', () => {
         const next = new Set(hiddenGroupIds.value);
         next.delete(id);
         hiddenGroupIds.value = next;
+        if (detailsGroupId.value === id) {
+            detailsGroupId.value = null;
+        }
     }
 
     function addMembersToGroup(id: string, members: GroupMember[]) {
@@ -423,12 +503,23 @@ export const useGroupStore = defineStore('group', () => {
         pendingEmptyGroupDeletionId.value = id;
     }
 
+    function openDetailsDialog(id: string) {
+        if (groups.value.some((group) => group.id === id)) {
+            detailsGroupId.value = id;
+        }
+    }
+
+    function closeDetailsDialog() {
+        detailsGroupId.value = null;
+    }
+
     function clearPendingState() {
         pendingGroupMembers.value = [];
         pendingSplits.value = [];
         renameGroupId.value = null;
         addToGroupId.value = null;
         pendingEmptyGroupDeletionId.value = null;
+        detailsGroupId.value = null;
     }
 
     return {
@@ -442,10 +533,13 @@ export const useGroupStore = defineStore('group', () => {
         pendingGroupMembers,
         addToGroupId,
         pendingEmptyGroupDeletionId,
+        detailsGroupId,
         setGroups,
         addGroup,
         renameGroup,
         setColor,
+        setDescription,
+        setMetadata,
         removeGroup,
         addMembersToGroup,
         replaceActiveVersionMembers,
@@ -468,6 +562,8 @@ export const useGroupStore = defineStore('group', () => {
         setPendingGroupMembers,
         setAddToGroupId,
         setPendingEmptyGroupDeletion,
+        openDetailsDialog,
+        closeDetailsDialog,
         clearPendingState
     };
 });

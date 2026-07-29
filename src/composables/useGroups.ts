@@ -98,6 +98,37 @@ export function applyGroupColor(id: string, color: string): boolean {
     return true;
 }
 
+export function applyGroupDescription(id: string, description: string): boolean {
+    const groupStore = useGroupStore(pinia);
+    const mapStore = useMapStore(pinia);
+    const updated = groupStore.setDescription(id, description);
+    if (!updated) {
+        return false;
+    }
+
+    mapStore.markLayerUpdated();
+    return true;
+}
+
+export function applyGroupDetails(
+    id: string,
+    name: string,
+    color: string,
+    description: string
+): boolean {
+    const groupStore = useGroupStore(pinia);
+    const mapStore = useMapStore(pinia);
+    const normalizedColor = normalizeGroupColour(color) ?? '';
+    const updated = groupStore.setMetadata(id, name, normalizedColor, description);
+    if (!updated) {
+        return false;
+    }
+
+    recomputeFeatureVisibility();
+    mapStore.markLayerUpdated();
+    return true;
+}
+
 // ── Selection → membership helpers ───────────────────────────────────────
 
 /**
@@ -194,6 +225,7 @@ export function beginAddToGroup(groupId: string): void {
     const selectionStore = useSelectionStore(pinia);
 
     groupStore.setAddToGroupId(groupId);
+    selectionStore.clear();
     if (!selectionStore.isActive) {
         selectionStore.activate();
     }
@@ -334,7 +366,7 @@ export function skipSplitsAndProceed(): void {
  * Performs any approved polyline splits, creates the group, and triggers a
  * single snapshot checkpoint covering both the split and the new group.
  */
-export function finalizeCreateGroup(name: string): void {
+export function finalizeCreateGroup(name: string, description = ''): void {
     if (!name.trim()) {
         return;
     }
@@ -346,7 +378,7 @@ export function finalizeCreateGroup(name: string): void {
     const id = buildHistoryId('group');
     const members = [...groupStore.pendingGroupMembers, ...splitMembers];
 
-    groupStore.addGroup({ id, name: name.trim(), members });
+    groupStore.addGroup({ id, name: name.trim(), description, members });
     groupStore.clearPendingState();
     groupStore.closeNameDialog();
 
@@ -445,6 +477,14 @@ export function selectGroup(id: string): void {
     applySelectionHighlights(allEntries, true, previousEntries);
 }
 
+export function openGroupDetails(id: string): void {
+    const groupStore = useGroupStore(pinia);
+    const uiStore = useUiStore(pinia);
+    selectGroup(id);
+    groupStore.openDetailsDialog(id);
+    uiStore.closePanel();
+}
+
 export function switchGroupVersion(groupId: string, versionId: string): boolean {
     const groupStore = useGroupStore(pinia);
     const mapStore = useMapStore(pinia);
@@ -456,6 +496,7 @@ export function switchGroupVersion(groupId: string, versionId: string): boolean 
         selectionStore.setSelected([]);
         recomputeFeatureVisibility();
         selectGroup(groupId);
+        recomputeFeatureVisibility();
         mapStore.markLayerUpdated();
     }
     return switched;
@@ -488,6 +529,16 @@ export function createGroupVersion(groupId: string, name: string): boolean {
     }
     mapStore.markLayerUpdated();
     return switchGroupVersion(groupId, cloned.id);
+}
+
+export function renameGroupVersion(groupId: string, versionId: string, name: string): boolean {
+    const groupStore = useGroupStore(pinia);
+    const mapStore = useMapStore(pinia);
+    const renamed = groupStore.renameVersion(groupId, versionId, name);
+    if (renamed) {
+        mapStore.markLayerUpdated();
+    }
+    return renamed;
 }
 
 export function setGroupDefaultVersion(groupId: string, versionId: string): boolean {
