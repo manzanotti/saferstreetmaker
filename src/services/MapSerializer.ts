@@ -186,13 +186,12 @@ export class MapSerializer {
         };
         if (groups && groups.length > 0) {
             result.g = groups.map((group) => {
+                const description = normalizeGroupDescription(group.description);
                 if (!group.versions) {
                     return {
                         i: group.id,
                         n: group.name,
-                        ...(normalizeGroupDescription(group.description)
-                            ? { p: normalizeGroupDescription(group.description) }
-                            : {}),
+                        ...(description ? { p: description } : {}),
                         ...(group.color ? { c: group.color } : {}),
                         m: serializeMembers(group.members ?? [])
                     };
@@ -200,9 +199,7 @@ export class MapSerializer {
                 return {
                     i: group.id,
                     n: group.name,
-                    ...(normalizeGroupDescription(group.description)
-                        ? { p: normalizeGroupDescription(group.description) }
-                        : {}),
+                    ...(description ? { p: description } : {}),
                     ...(group.color ? { c: group.color } : {}),
                     d: group.defaultVersionId,
                     v: group.versions.map((version) => ({
@@ -291,13 +288,12 @@ export class MapSerializer {
         };
         if (data.groups && data.groups.length > 0) {
             fromSerializedResult.g = data.groups.map((group) => {
+                const description = normalizeGroupDescription(group.description);
                 if (!group.versions) {
                     return {
                         i: group.id,
                         n: group.name,
-                        ...(normalizeGroupDescription(group.description)
-                            ? { p: normalizeGroupDescription(group.description) }
-                            : {}),
+                        ...(description ? { p: description } : {}),
                         ...(group.color ? { c: group.color } : {}),
                         m: serializeMembers(group.members ?? [])
                     };
@@ -305,9 +301,7 @@ export class MapSerializer {
                 return {
                     i: group.id,
                     n: group.name,
-                    ...(normalizeGroupDescription(group.description)
-                        ? { p: normalizeGroupDescription(group.description) }
-                        : {}),
+                    ...(description ? { p: description } : {}),
                     ...(group.color ? { c: group.color } : {}),
                     d: group.defaultVersionId,
                     v: group.versions.map((version) => ({

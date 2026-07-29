@@ -496,7 +496,7 @@ export function switchGroupVersion(groupId: string, versionId: string): boolean 
         selectionStore.setSelected([]);
         recomputeFeatureVisibility();
         selectGroup(groupId);
-        recomputeFeatureVisibility();
+        groupLtnFillController.recompute();
         mapStore.markLayerUpdated();
     }
     return switched;

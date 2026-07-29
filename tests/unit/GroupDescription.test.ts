@@ -19,7 +19,7 @@ describe('group description policy', () => {
 
     it('removes active content, unsafe attributes, and unsafe links', () => {
         const result = sanitizeGroupDescription(
-            '<p onclick="alert(1)">Hello<img src="x"><script>alert(1)</script><a href="javascript:alert(1)" style="color:red">bad</a></p>'
+            '<p onclick="alert(1)">Hello<img src="x"><script>alert(1)</script><a href="javascript:alert(1)" target="_blank" rel="noopener">bad</a></p>'
         );
 
         expect(result).toBe('<p>Hello<a>bad</a></p>');
@@ -27,6 +27,8 @@ describe('group description policy', () => {
         expect(result).not.toContain('<img');
         expect(result).not.toContain('<script');
         expect(result).not.toContain('javascript:');
+        expect(result).not.toContain('target=');
+        expect(result).not.toContain('rel=');
         expect(result).not.toContain('style=');
     });
 

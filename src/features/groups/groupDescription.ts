@@ -19,7 +19,7 @@ const ALLOWED_TAGS = [
     'ul'
 ];
 
-const ALLOWED_ATTR = ['href', 'title', 'target', 'rel'];
+const ALLOWED_ATTR = ['href', 'title'];
 const SAFE_URI_REGEXP = /^(?:(?:https?|mailto):|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/i;
 
 export function sanitizeGroupDescription(raw: string | null | undefined): string {

@@ -17,6 +17,7 @@ const emit = defineEmits<{
 const isEditing = ref(false);
 const draft = ref('');
 const renderedDescription = computed(() => sanitizeGroupDescription(props.description));
+const descriptionId = computed(() => `group-description-${encodeURIComponent(props.groupName)}`);
 
 watch(
     () => props.description,
@@ -47,11 +48,9 @@ function saveEditing() {
 <template>
     <div class="group-description mt-2 pl-1">
         <div v-if="isEditing" class="space-y-2">
-            <label :for="`group-description-${groupName}`" class="sr-only">
-                Description for {{ groupName }}
-            </label>
+            <label :for="descriptionId" class="sr-only"> Description for {{ groupName }} </label>
             <textarea
-                :id="`group-description-${groupName}`"
+                :id="descriptionId"
                 v-model="draft"
                 :maxlength="GROUP_DESCRIPTION_MAX_LENGTH"
                 rows="4"
