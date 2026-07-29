@@ -6,6 +6,7 @@ import { finalizeCreateGroup, finalizeRenameGroup } from '../../composables/useG
 const groupStore = useGroupStore();
 
 const inputName = ref('');
+const inputDescription = ref('');
 const inputEl = ref<HTMLInputElement | null>(null);
 
 const isRename = computed(() => groupStore.renameGroupId !== null);
@@ -17,13 +18,16 @@ watch(
     (open) => {
         if (!open) {
             inputName.value = '';
+            inputDescription.value = '';
             return;
         }
         if (isRename.value) {
             const group = groupStore.groups.find((g) => g.id === groupStore.renameGroupId);
             inputName.value = group?.name ?? '';
+            inputDescription.value = '';
         } else {
             inputName.value = '';
+            inputDescription.value = '';
         }
         // Focus after the dialog DOM has been inserted.
         void nextTick(() => inputEl.value?.focus());
@@ -38,7 +42,7 @@ function onSave() {
     if (isRename.value && groupStore.renameGroupId) {
         finalizeRenameGroup(groupStore.renameGroupId, trimmed);
     } else {
-        finalizeCreateGroup(trimmed);
+        finalizeCreateGroup(trimmed, inputDescription.value);
     }
 }
 
@@ -48,7 +52,7 @@ function onCancel() {
 }
 
 function onKeydown(e: KeyboardEvent) {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !(e.target instanceof HTMLTextAreaElement)) {
         onSave();
     } else if (e.key === 'Escape') {
         onCancel();
@@ -61,7 +65,7 @@ function onKeydown(e: KeyboardEvent) {
         v-if="groupStore.nameDialogOpen"
         role="dialog"
         :aria-labelledby="'group-name-dialog-title'"
-        class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] rounded-2xl bg-white shadow-xl border border-gray-100 w-80 flex flex-col overflow-hidden"
+        class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] rounded-2xl bg-white shadow-xl border border-gray-100 w-96 max-w-[calc(100vw-2rem)] max-h-[90vh] flex flex-col overflow-hidden"
         @dblclick.stop
         @keydown="onKeydown"
     >
@@ -83,6 +87,24 @@ function onKeydown(e: KeyboardEvent) {
                     placeholder="Enter group name"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
+            </div>
+            <div v-if="!isRename">
+                <label
+                    for="group-description-input"
+                    class="block text-sm font-medium text-gray-700 mb-1"
+                    >Description</label
+                >
+                <textarea
+                    id="group-description-input"
+                    v-model="inputDescription"
+                    maxlength="500"
+                    rows="4"
+                    placeholder="Optional description"
+                    class="w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                ></textarea>
+                <p class="mt-1 text-right text-xs text-gray-500">
+                    {{ inputDescription.length }}/500
+                </p>
             </div>
         </div>
         <div class="flex justify-end gap-2 px-5 py-4 border-t border-gray-100 shrink-0">

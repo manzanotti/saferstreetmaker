@@ -85,6 +85,20 @@ export class AreaSelectionController {
     };
 
     private readonly onMouseDown = (event: L.LeafletMouseEvent): void => {
+        const target = event.originalEvent.target;
+        const isModifierClick =
+            event.originalEvent.shiftKey ||
+            event.originalEvent.ctrlKey ||
+            event.originalEvent.metaKey;
+        if (
+            isModifierClick &&
+            target instanceof Element &&
+            (target.classList.contains('leaflet-interactive') ||
+                target.classList.contains('leaflet-marker-icon'))
+        ) {
+            return;
+        }
+
         L.DomEvent.stopPropagation(event.originalEvent);
         event.originalEvent.preventDefault();
         this.additiveDrag =

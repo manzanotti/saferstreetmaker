@@ -1,8 +1,10 @@
 import type { Group, GroupMember, GroupVersion } from '../../models/Group';
+import { normalizeGroupDescription } from './groupDescription';
 
 export interface NormalizedGroup {
     id: string;
     name: string;
+    description?: string;
     color?: string;
     defaultVersionId: string;
     versions: GroupVersion[];
@@ -49,6 +51,9 @@ export function normalizeGroup(group: Group): NormalizedGroup {
     return {
         id: group.id,
         name: group.name,
+        ...(normalizeGroupDescription(group.description)
+            ? { description: normalizeGroupDescription(group.description) }
+            : {}),
         ...(group.color ? { color: group.color } : {}),
         defaultVersionId,
         versions,

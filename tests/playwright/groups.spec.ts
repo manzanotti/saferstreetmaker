@@ -52,6 +52,12 @@ async function dragSelectCenter(
     await page.waitForTimeout(200);
 }
 
+async function dragSelectLastModalFilter(page: Page): Promise<void> {
+    const marker = page.locator('.leaflet-filters-pane path.modal-filter-marker').last();
+    await marker.dispatchEvent('click');
+    await page.waitForTimeout(200);
+}
+
 async function placeTwoModalFilters(page: Page, offset = 70, offsetY = 0): Promise<void> {
     await page.locator('#modal-filter-button').click();
     const map = page.locator('.leaflet-container');
@@ -76,6 +82,11 @@ async function openGroupsPanel(page: Page): Promise<void> {
     await page.locator('#groups-button').click();
 }
 
+async function openGroupDetails(page: Page, name: string): Promise<void> {
+    await page.getByRole('button', { name: `Select group ${name}` }).click();
+    await expect(page.getByRole('dialog', { name: 'Group details' })).toBeVisible();
+}
+
 async function createGroup(page: Page, name: string): Promise<void> {
     await page.getByRole('button', { name: 'Add selected features to a group' }).click();
     await page.waitForSelector('#group-name-input');
@@ -84,12 +95,36 @@ async function createGroup(page: Page, name: string): Promise<void> {
     await page.waitForTimeout(300);
 }
 
-async function createGroupVersion(page: Page, name: string): Promise<void> {
-    await page.getByRole('button', { name: 'Create version' }).click();
-    const dialog = page.getByRole('dialog', { name: 'New Group Version' });
-    await dialog.getByLabel('Version name').fill(name);
-    await dialog.getByRole('button', { name: 'Create version' }).click();
+async function createGroupWithDescription(
+    page: Page,
+    name: string,
+    description: string
+): Promise<void> {
+    await page.getByRole('button', { name: 'Add selected features to a group' }).click();
+    await page.waitForSelector('#group-name-input');
+    await page.locator('#group-name-input').fill(name);
+    await page.locator('#group-description-input').fill(description);
+    await page.getByRole('button', { name: 'Save' }).click();
     await page.waitForTimeout(300);
+}
+
+async function createGroupVersion(page: Page, name: string): Promise<void> {
+    await page
+        .getByRole('button', { name: /Select group / })
+        .first()
+        .click();
+    const dialog = page.getByRole('dialog', { name: 'Group details' });
+    await dialog.getByRole('button', { name: 'Create version' }).click();
+    await dialog.getByLabel('New version').fill(name);
+    await dialog.getByLabel('Versions').getByRole('button', { name: 'Save' }).click();
+    await page.waitForTimeout(300);
+}
+
+async function expectSelectedVersion(page: Page, name: string): Promise<void> {
+    await expect(page.getByRole('button', { name: `Select version ${name}` })).toHaveAttribute(
+        'aria-pressed',
+        'true'
+    );
 }
 
 async function drawNamedLtnCell(page: Page, name: string): Promise<void> {
@@ -169,6 +204,35 @@ test.describe('Groups — Create group', () => {
         await expect(page.locator('text=(2)')).toBeVisible();
     });
 
+    test('creates, sanitizes, renders, and edits a group description', async ({ page }) => {
+        await placeTwoModalFilters(page);
+        await selectBothFilters(page);
+        await createGroupWithDescription(
+            page,
+            'School Zone',
+            '<p><strong>Slow down</strong> <a href="javascript:alert(1)">here</a><script>alert(1)</script></p>'
+        );
+
+        await openGroupsPanel(page);
+        await openGroupDetails(page, 'School Zone');
+        const description = page
+            .getByRole('dialog', { name: 'Group details' })
+            .locator('.group-description-content');
+        await expect(description).toContainText('Slow down');
+        await expect(description.locator('strong')).toHaveText('Slow down');
+        await expect(description.locator('script')).toHaveCount(0);
+        await expect(description.locator('a')).not.toHaveAttribute('href');
+
+        const dialog = page.getByRole('dialog', { name: 'Group details' });
+        const editor = dialog.getByLabel('Description');
+        await expect(editor).toHaveAttribute('maxlength', '500');
+        await editor.fill('<p>Updated notes</p>');
+        await dialog.getByRole('button', { name: 'Save' }).click();
+        await openGroupsPanel(page);
+        await openGroupDetails(page, 'School Zone');
+        await expect(page.locator('.group-description-content')).toContainText('Updated notes');
+    });
+
     test('Groups panel shows empty state message when no groups', async ({ page }) => {
         await openGroupsPanel(page);
         await expect(page.getByText('No groups yet')).toBeVisible();
@@ -226,12 +290,15 @@ test.describe('Groups — Rename', () => {
         await createGroup(page, 'Old Name');
 
         await openGroupsPanel(page);
-        await page.getByRole('button', { name: 'Rename group Old Name' }).click();
-        await page.waitForSelector('#group-name-input');
-        await page.locator('#group-name-input').fill('New Name');
-        await page.getByRole('button', { name: 'Save' }).click();
+        await openGroupDetails(page, 'Old Name');
+        await page.getByLabel('Group name').fill('New Name');
+        await page
+            .getByRole('dialog', { name: 'Group details' })
+            .getByRole('button', { name: 'Save' })
+            .click();
         await page.waitForTimeout(300);
 
+        await openGroupsPanel(page);
         await expect(page.getByRole('button', { name: /Select group New Name/ })).toBeVisible();
         await expect(page.getByRole('button', { name: /Select group Old Name/ })).not.toBeVisible();
     });
@@ -328,6 +395,7 @@ test.describe('Groups — Select and zoom', () => {
         await page.getByRole('button', { name: /Select group Escape Group/ }).click();
         await expect(page.locator('.leaflet-filters-pane path[stroke="#3b82f6"]')).toHaveCount(2);
 
+        await page.keyboard.press('Escape');
         await page.keyboard.press('Escape');
 
         await expect(page.locator('.leaflet-filters-pane path[stroke="#3b82f6"]')).toHaveCount(0);
@@ -533,11 +601,12 @@ test.describe('Groups — add features to an existing group', () => {
         // Group-first: from the panel, choose "Add features to group" (this
         // activates area selection targeting the group).
         await openGroupsPanel(page);
+        await openGroupDetails(page, 'Zone');
         await page.getByRole('button', { name: 'Add features to group Zone' }).click();
         await page.waitForTimeout(200);
 
         // Selecting the third filter now offers an "Add to Zone" confirmation.
-        await dragRegion(page, 200, 0);
+        await dragSelectLastModalFilter(page);
         await expect(page.getByText('1 feature selected')).toBeVisible();
         await page.getByRole('button', { name: 'Add selected features to group Zone' }).click();
         await page.waitForTimeout(300);
@@ -559,14 +628,15 @@ test.describe('Groups — add features to an existing group', () => {
 
         // Group-first: enter add mode for the group.
         await openGroupsPanel(page);
+        await openGroupDetails(page, 'Zone');
         await page.getByRole('button', { name: 'Add features to group Zone' }).click();
         await page.waitForTimeout(200);
 
         // Click (not drag) the third filter. It must be selected, NOT deleted.
-        const map = page.locator('.leaflet-container');
-        const box = await map.boundingBox();
-        if (!box) throw new Error('Map bounding box not found');
-        await page.mouse.click(box.x + box.width / 2 + 200, box.y + box.height / 2);
+        const marker = page.locator('.leaflet-filters-pane path.modal-filter-marker').last();
+        const markerBox = await marker.boundingBox();
+        if (!markerBox) throw new Error('Modal filter marker not found');
+        await marker.dispatchEvent('click');
         await page.waitForTimeout(200);
 
         // The filter still exists (was not deleted) and is offered for adding.
@@ -615,10 +685,17 @@ test.describe('Groups — Delete group with elements', () => {
         await createGroup(page, 'Empty Group');
 
         await openGroupsPanel(page);
+        await openGroupDetails(page, 'Empty Group');
         await page
             .getByRole('button', { name: 'Remove all elements from group Empty Group' })
             .click();
-        await page.getByRole('button', { name: 'Keep empty' }).click();
+        await page.getByRole('button', { name: 'Keep empty', exact: true }).click();
+        await page
+            .getByRole('dialog', { name: 'Group details' })
+            .getByRole('button', { name: 'Close group details' })
+            .click();
+
+        await openGroupsPanel(page);
         await page.getByRole('button', { name: 'Delete group Empty Group' }).click();
 
         await expect(
@@ -690,7 +767,10 @@ test.describe('Groups — Delete group with elements', () => {
         expect(await getLayerFeatureCount(page, 'Hello Cleveland', 'ModalFilters')).toBe(0);
 
         // Close the Groups panel so the undo button is accessible.
-        await page.getByRole('button', { name: 'Close groups panel' }).click();
+        const finalCloseGroupsButton = page.getByRole('button', { name: 'Close groups panel' });
+        if (await finalCloseGroupsButton.isVisible()) {
+            await finalCloseGroupsButton.click();
+        }
         await page.waitForTimeout(100);
 
         // Undo.
@@ -715,9 +795,7 @@ test.describe('Groups — Delete version', () => {
         await expect(page.locator('.leaflet-filters-pane path[stroke="#3b82f6"]')).toHaveCount(2);
         await openGroupsPanel(page);
         await createGroupVersion(page, 'Alternative');
-        await expect(
-            page.getByLabel('Version for group Versioned Group').locator('option:checked')
-        ).toHaveText('Alternative');
+        await expectSelectedVersion(page, 'Alternative');
         await expect(page.locator('.leaflet-filters-pane path[stroke="#3b82f6"]')).toHaveCount(2);
     });
 
@@ -726,7 +804,7 @@ test.describe('Groups — Delete version', () => {
     }) => {
         expect(await getLayerFeatureCount(page, 'Hello Cleveland', 'ModalFilters')).toBe(4);
 
-        await page.getByRole('button', { name: 'Delete version' }).click();
+        await page.getByRole('button', { name: 'Delete version Alternative' }).click();
 
         await expect(page.getByText('Delete version Alternative?')).toBeVisible();
         await expect(page.getByRole('button', { name: 'Delete version only' })).toBeVisible();
@@ -737,19 +815,23 @@ test.describe('Groups — Delete version', () => {
         await page.waitForTimeout(300);
 
         expect(await getLayerFeatureCount(page, 'Hello Cleveland', 'ModalFilters')).toBe(4);
-        await expect(page.getByLabel('Version for group Versioned Group')).not.toBeVisible();
+        await expect(
+            page.getByRole('button', { name: 'Select version Alternative' })
+        ).not.toBeVisible();
         await expect(page.locator('.leaflet-filters-pane path[stroke="#3b82f6"]')).toHaveCount(0);
     });
 
     test('deleting a version with its elements removes its features and clears highlights', async ({
         page
     }) => {
-        await page.getByRole('button', { name: 'Delete version' }).click();
+        await page.getByRole('button', { name: 'Delete version Alternative' }).click();
         await page.getByRole('button', { name: 'Delete version + elements' }).click();
         await page.waitForTimeout(300);
 
         expect(await getLayerFeatureCount(page, 'Hello Cleveland', 'ModalFilters')).toBe(2);
-        await expect(page.getByLabel('Version for group Versioned Group')).not.toBeVisible();
+        await expect(
+            page.getByRole('button', { name: 'Select version Alternative' })
+        ).not.toBeVisible();
         await expect(page.locator('.leaflet-filters-pane path[stroke="#3b82f6"]')).toHaveCount(0);
     });
 
@@ -757,10 +839,12 @@ test.describe('Groups — Delete version', () => {
         await page
             .getByRole('button', { name: 'Remove all elements from group Versioned Group' })
             .click();
-        await page.getByRole('button', { name: 'Keep empty' }).click();
-        await page.getByRole('button', { name: 'Delete version' }).click();
+        await page.getByRole('button', { name: 'Keep empty', exact: true }).click();
+        await page.getByRole('button', { name: 'Delete version Alternative' }).click();
 
-        await expect(page.getByLabel('Version for group Versioned Group')).not.toBeVisible();
+        await expect(
+            page.getByRole('button', { name: 'Select version Alternative' })
+        ).not.toBeVisible();
         await expect(page.getByRole('button', { name: 'Delete version only' })).not.toBeVisible();
         await expect(
             page.getByRole('button', { name: 'Delete version + elements' })
@@ -776,12 +860,16 @@ test.describe('Groups — Version-specific LTN cells', () => {
         await createGroup(page, 'Versioned LTN');
         await openGroupsPanel(page);
         await createGroupVersion(page, 'Alternative');
+        await openGroupsPanel(page);
     });
 
     test('hides the cell title and excludes the cell from selection in other versions', async ({
         page
     }) => {
-        await page.getByRole('button', { name: 'Close groups panel' }).click();
+        const closeGroupsButton = page.getByRole('button', { name: 'Close groups panel' });
+        if (await closeGroupsButton.isVisible()) {
+            await closeGroupsButton.click();
+        }
         await drawNamedLtnCell(page, 'New cell');
         await expect(page.getByText('New cell', { exact: true })).toBeVisible();
 
@@ -793,7 +881,8 @@ test.describe('Groups — Version-specific LTN cells', () => {
         await page.getByRole('button', { name: 'Save group changes' }).click();
 
         await openGroupsPanel(page);
-        await page.getByLabel('Version for group Versioned LTN').selectOption({ label: 'Default' });
+        await openGroupDetails(page, 'Versioned LTN');
+        await page.getByRole('button', { name: 'Select version Default' }).click();
         await page.waitForTimeout(300);
 
         const cellPath = page.locator('.leaflet-ltns-pane path.ltn-cell.leaflet-interactive');
@@ -802,7 +891,10 @@ test.describe('Groups — Version-specific LTN cells', () => {
         await expect(cellPath).toHaveCSS('pointer-events', 'none');
         await expect(page.getByText('New cell', { exact: true })).not.toBeVisible();
 
-        await page.getByRole('button', { name: 'Close groups panel' }).click();
+        const finalCloseGroupsButton = page.getByRole('button', { name: 'Close groups panel' });
+        if (await finalCloseGroupsButton.isVisible()) {
+            await finalCloseGroupsButton.click();
+        }
         await page.locator('#select-area-button').click();
         await dragSelectCenter(page, 55);
 
@@ -829,6 +921,7 @@ test.describe('Groups — Remove all elements', () => {
         await createGroup(page, 'Remove Members');
 
         await openGroupsPanel(page);
+        await openGroupDetails(page, 'Remove Members');
         await page
             .getByRole('button', { name: 'Remove all elements from group Remove Members' })
             .click();
@@ -847,14 +940,16 @@ test.describe('Groups — Remove all elements', () => {
         await createGroup(page, 'Keep Empty');
 
         await openGroupsPanel(page);
+        await openGroupDetails(page, 'Keep Empty');
         await page
             .getByRole('button', { name: 'Remove all elements from group Keep Empty' })
             .click();
         await page.waitForTimeout(200);
 
-        await page.getByRole('button', { name: 'Keep empty' }).click();
+        await page.getByRole('button', { name: 'Keep empty', exact: true }).click();
         await page.waitForTimeout(200);
 
+        await openGroupsPanel(page);
         await expect(page.getByRole('button', { name: /Select group Keep Empty/ })).toBeVisible();
         await expect(page.locator('text=(0)')).toBeVisible();
     });
@@ -865,6 +960,7 @@ test.describe('Groups — Remove all elements', () => {
         await createGroup(page, 'Gone Group');
 
         await openGroupsPanel(page);
+        await openGroupDetails(page, 'Gone Group');
         await page
             .getByRole('button', { name: 'Remove all elements from group Gone Group' })
             .click();

@@ -121,6 +121,50 @@ describe('groupStore', () => {
         });
     });
 
+    describe('setDescription()', () => {
+        it('sanitizes and stores a changed description', () => {
+            const store = useGroupStore();
+            store.addGroup(makeGroup('g1', 'Alpha'));
+
+            expect(store.setDescription('g1', '<p onclick="bad()">Hello</p>')).toBe(true);
+            expect(store.groups[0].description).toBe('<p>Hello</p>');
+        });
+
+        it('reports false and does not update when the effective value is unchanged', () => {
+            const store = useGroupStore();
+            store.addGroup({ ...makeGroup('g1', 'Alpha'), description: '<p>Hello</p>' });
+
+            expect(store.setDescription('g1', '<p onclick="bad()">Hello</p>')).toBe(false);
+            expect(store.groups[0].description).toBe('<p>Hello</p>');
+        });
+    });
+
+    describe('details dialog state and metadata', () => {
+        it('opens details for an existing group and clears it when the group is removed', () => {
+            const store = useGroupStore();
+            store.setGroups([makeGroup('g1', 'Alpha')]);
+
+            store.openDetailsDialog('g1');
+            expect(store.detailsGroupId).toBe('g1');
+
+            store.removeGroup('g1');
+            expect(store.detailsGroupId).toBeNull();
+        });
+
+        it('updates metadata as one normalized mutation and rejects blank names', () => {
+            const store = useGroupStore();
+            store.addGroup(makeGroup('g1', 'Alpha'));
+
+            expect(store.setMetadata('g1', '  Beta  ', '#123456', '<p>Hello</p>')).toBe(true);
+            expect(store.groups[0]).toMatchObject({
+                name: 'Beta',
+                color: '#123456',
+                description: '<p>Hello</p>'
+            });
+            expect(store.setMetadata('g1', '   ', '#ffffff', '')).toBe(false);
+        });
+    });
+
     // ── removeGroup ───────────────────────────────────────────────────────────
 
     describe('removeGroup()', () => {
