@@ -14,10 +14,16 @@ import {
     buildToolbarButton,
     buildLegendEntry,
     buildHistoryId,
-    getFeatureHistoryId
+    getFeatureHistoryId,
+    buildFeatureActionPopup,
+    setFeatureActionPopupContent,
+    buildFeatureDescriptionPopup,
+    closeFeatureHoverPopups
 } from './layerUtils';
 import { useSelectionStore } from '../../stores/selectionStore';
-import { selectFeature } from '../useAreaSelection';
+import { executeAreaDelete, executeCopy, selectFeature } from '../useAreaSelection';
+import { useSettingsStore } from '../../stores/settingsStore';
+import { addFeatureToGroup, openGroupDetails, removeFeatureFromGroup } from '../useGroups';
 import type { IMapLayer } from './IMapLayer';
 
 export interface PointLayerConfig {
@@ -49,7 +55,7 @@ export function getPointEventLatLng(event: {
  * Shared click handler for point-marker features. While an area selection is
  * active (including the "add to group" flow), clicking a point adds it to the
  * current selection instead of deleting it — so points can be gathered the
- * same way polylines/polygons are. Otherwise it deletes the point as before.
+ * same way polylines/polygons are. Otherwise it opens the feature popup.
  */
 export function handlePointFeatureClick(
     event: L.LeafletMouseEvent,
@@ -73,16 +79,55 @@ export function handlePointFeatureClick(
     const mapStore = useMapStore(pinia);
     const latLng = getPointEventLatLng(event);
     const historyId = getFeatureHistoryId(event.target);
-    geoJsonLayer.removeLayer(event.target as unknown as L.Layer);
-    mapStore.markLayerUpdated({
-        kind: 'point-delete',
-        layerId,
-        payload: {
-            lat: latLng?.lat ?? null,
-            lng: latLng?.lng ?? null,
-            historyId
-        }
+    const map = mapStore.map;
+    if (!map || !historyId) {
+        return;
+    }
+
+    const member = { layerId, historyId };
+    closeFeatureHoverPopups(map);
+    if (useSettingsStore(pinia).readOnly) {
+        const descriptionPopup = buildFeatureDescriptionPopup(
+            { minWidth: 30, keepInView: true },
+            member
+        );
+        descriptionPopup?.setLatLng(latLng ?? map.getCenter()).openOn(map);
+        return;
+    }
+
+    const popup = buildFeatureActionPopup({
+        map,
+        popupOptions: { minWidth: 30, keepInView: true },
+        member,
+        onDelete: () => {
+            selectFeature(event.target as unknown as L.Layer, layerId, false);
+            executeAreaDelete();
+        },
+        onCopy: () => {
+            selectFeature(event.target as unknown as L.Layer, layerId, false);
+            executeCopy();
+        },
+        onOpenGroup: openGroupDetails,
+        onRemoveFromGroup: (groupId) => removeFeatureFromGroup(groupId, member),
+        onAddToGroup: (groupId) => addFeatureToGroup(groupId, member)
     });
+    setFeatureActionPopupContent(popup, {
+        map,
+        popupOptions: { minWidth: 30, keepInView: true },
+        member,
+        onDelete: () => {
+            selectFeature(event.target as unknown as L.Layer, layerId, false);
+            executeAreaDelete();
+        },
+        onCopy: () => {
+            selectFeature(event.target as unknown as L.Layer, layerId, false);
+            executeCopy();
+        },
+        onOpenGroup: openGroupDetails,
+        onRemoveFromGroup: (groupId) => removeFeatureFromGroup(groupId, member),
+        onAddToGroup: (groupId) => addFeatureToGroup(groupId, member)
+    });
+    popup.setLatLng(latLng ?? map.getCenter()).openOn(map);
 }
 
 export function createPointLayer(config: PointLayerConfig, map: L.Map): IMapLayer {
@@ -101,6 +146,28 @@ export function createPointLayer(config: PointLayerConfig, map: L.Map): IMapLaye
             feature.properties.historyId = nextHistoryId;
             (marker as any).feature = feature;
         }
+
+        let hoverPopup: L.Popup | null = null;
+
+        marker.on('mouseover', () => {
+            const markerMap = useMapStore(pinia).map;
+            if (!markerMap) {
+                return;
+            }
+
+            closeFeatureHoverPopups(markerMap);
+
+            const descriptionPopup = buildFeatureDescriptionPopup(
+                { minWidth: 30, keepInView: true },
+                { layerId: config.id, historyId: nextHistoryId }
+            );
+            hoverPopup = descriptionPopup;
+            descriptionPopup?.setLatLng(latlng).addTo(markerMap);
+        });
+        marker.on('mouseout', () => {
+            hoverPopup?.remove();
+            hoverPopup = null;
+        });
 
         return { marker, historyId: nextHistoryId };
     };

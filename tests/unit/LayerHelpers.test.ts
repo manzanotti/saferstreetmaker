@@ -12,8 +12,13 @@ import {
     buildToolbarButton,
     buildLegendEntry,
     buildDeletePopup,
+    buildFeatureActionPopup,
+    buildFeatureDescriptionPopup,
+    buildFeatureGroupMembershipContent,
     getFeatureHistoryId
 } from '../../src/composables/layers/layerUtils';
+import { useGroupStore } from '../../src/stores/groupStore';
+import { pinia } from '../../src/stores';
 
 function makeMapEl() {
     const el = document.createElement('div');
@@ -38,6 +43,7 @@ beforeEach(() => {
     document.getElementById('map')?.remove();
     document.querySelector('.leaflet-mouse-marker')?.remove();
     vi.clearAllMocks();
+    useGroupStore(pinia).setGroups([]);
 });
 
 describe('setMapCursor', () => {
@@ -318,5 +324,130 @@ describe('buildDeletePopup', () => {
 
         expect(onDelete).toHaveBeenCalledOnce();
         expect(map.closePopup).toHaveBeenCalledOnce();
+    });
+});
+
+describe('feature popups', () => {
+    const member = { layerId: 'ModalFilters', historyId: 'filter-1' };
+
+    function getPopupContent(popup: any): HTMLElement {
+        return popup.setContent.mock.calls[0][0] as HTMLElement;
+    }
+
+    it('renders every available group description in a description popup', () => {
+        useGroupStore(pinia).setGroups([
+            {
+                id: 'g1',
+                name: 'Town centre',
+                description: '<p>Slow <strong>traffic</strong></p>',
+                members: [member]
+            },
+            {
+                id: 'g2',
+                name: 'School route',
+                description: '<p>Protect crossings</p>',
+                members: [member]
+            },
+            { id: 'g3', name: 'No notes', members: [member] }
+        ]);
+
+        const popup = buildFeatureDescriptionPopup({ minWidth: 30 }, member) as any;
+        const content = getPopupContent(popup);
+
+        expect(content.textContent).toContain('Town centre');
+        expect(content.textContent).toContain('Slow traffic');
+        expect(content.textContent).toContain('School route');
+        expect(content.textContent).toContain('Protect crossings');
+        expect(content.textContent).toContain('No notes');
+        expect(content.querySelectorAll('.feature-popup-group-description')).toHaveLength(3);
+        expect(content.querySelectorAll('.feature-popup-description')).toHaveLength(2);
+        expect(popup.options.autoClose).toBe(false);
+    });
+
+    it('renders group version counts and action controls', () => {
+        useGroupStore(pinia).setGroups([
+            {
+                id: 'g1',
+                name: 'Town centre',
+                versions: [
+                    { id: 'v1', name: 'Current', members: [member] },
+                    { id: 'v2', name: 'Alternative', members: [member] }
+                ]
+            }
+        ]);
+        const map = { closePopup: vi.fn() } as any;
+        const onCopy = vi.fn();
+        const onDelete = vi.fn();
+        const onOpenGroup = vi.fn();
+        const onRemoveFromGroup = vi.fn();
+
+        const popup = buildFeatureActionPopup({
+            map,
+            popupOptions: { minWidth: 30 },
+            member,
+            onCopy,
+            onDelete,
+            onOpenGroup,
+            onRemoveFromGroup
+        }) as any;
+        const content = getPopupContent(popup);
+
+        expect(content.querySelector('.group-link')?.textContent).toBe('Town centre (2 versions)');
+        expect(content.children[0].classList.contains('popup-buttons')).toBe(true);
+        expect(content.children[1].classList.contains('feature-popup-groups')).toBe(true);
+        expect(content.querySelector('.remove-feature-button')).not.toBeNull();
+        expect(content.querySelector('.copy-button')).not.toBeNull();
+        expect(content.querySelector('.delete-button')).not.toBeNull();
+
+        (content.querySelector('.group-link') as HTMLElement).click();
+        (content.querySelector('.remove-feature-button') as HTMLElement).click();
+        (content.querySelector('.copy-button') as HTMLElement).click();
+        (content.querySelector('ul.popup-buttons > li > .delete-button') as HTMLElement).click();
+
+        expect(onOpenGroup).toHaveBeenCalledWith('g1');
+        expect(onRemoveFromGroup).toHaveBeenCalledWith('g1');
+        expect(onCopy).toHaveBeenCalledOnce();
+        expect(onDelete).toHaveBeenCalledOnce();
+        expect(map.closePopup).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not build a description popup for an ungrouped feature', () => {
+        const popup = buildFeatureDescriptionPopup({ minWidth: 30 }, member);
+
+        expect(popup).toBeNull();
+    });
+});
+
+describe('buildFeatureGroupMembershipContent', () => {
+    const member = { layerId: 'ModalFilters', historyId: 'filter-1' };
+
+    it('shows None and alphabetizes the add-to-group options', () => {
+        useGroupStore(pinia).setGroups([
+            { id: 'g2', name: 'Zebra Zone', members: [] },
+            { id: 'g1', name: 'Alpha Zone', members: [] }
+        ]);
+        const onAddToGroup = vi.fn();
+        const content = buildFeatureGroupMembershipContent(
+            member,
+            undefined,
+            undefined,
+            onAddToGroup
+        );
+
+        expect(content.querySelector('.feature-popup-groups strong')?.textContent).toBe('Groups');
+        expect(content.querySelector('.feature-popup-group-none')?.textContent).toBe('None');
+
+        const groupSelect = content.querySelector(
+            '.add-feature-to-group-select'
+        ) as HTMLSelectElement;
+        expect([...groupSelect.options].map((option) => option.textContent)).toEqual([
+            'Add to group…',
+            'Alpha Zone',
+            'Zebra Zone'
+        ]);
+
+        groupSelect.value = 'g1';
+        groupSelect.dispatchEvent(new Event('change'));
+        expect(onAddToGroup).toHaveBeenCalledWith('g1');
     });
 });

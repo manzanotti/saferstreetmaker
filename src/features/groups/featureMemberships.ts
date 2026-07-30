@@ -9,6 +9,14 @@ export interface FeatureMembershipLocation {
     isActive: boolean;
 }
 
+export interface FeatureGroupMembershipSummary {
+    groupId: string;
+    groupName: string;
+    description?: string;
+    versionCount: number;
+    versions: Array<{ id: string; name: string }>;
+}
+
 export function findFeatureMemberships(
     groups: Group[],
     activeVersionIds: Record<string, string>,
@@ -32,4 +40,34 @@ export function findFeatureMemberships(
 
 export function membershipKey(membership: FeatureMembershipLocation): string {
     return `${membership.groupId}:${membership.versionId}`;
+}
+
+export function findFeatureGroupMemberships(
+    groups: Group[],
+    member: GroupMember
+): FeatureGroupMembershipSummary[] {
+    const targetKey = memberKey(member);
+
+    return groups.flatMap((group) => {
+        const versions = getGroupVersions(group);
+        const containingVersions = versions
+            .filter((version) =>
+                version.members.some((versionMember) => memberKey(versionMember) === targetKey)
+            )
+            .map((version) => ({ id: version.id, name: version.name }));
+
+        if (containingVersions.length === 0) {
+            return [];
+        }
+
+        return [
+            {
+                groupId: group.id,
+                groupName: group.name,
+                ...(group.description ? { description: group.description } : {}),
+                versionCount: versions.length,
+                versions: containingVersions
+            }
+        ];
+    });
 }

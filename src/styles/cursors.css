@@ -92,6 +92,11 @@
     cursor: pointer !important;
 }
 
+#map.leaflet-grab,
+#map.leaflet-grab .leaflet-pane {
+    cursor: grab;
+}
+
 #map.bus-gate,
 #map.bus-gate .leaflet-interactive,
 #map.bus-gate .leaflet-marker-icon {
@@ -129,5 +134,5 @@
 #map .leaflet-marker-icon.pedestrian-lights-icon,
 #map .leaflet-marker-icon.zebra-crossing-icon,
 #map .leaflet-interactive.modal-filter-marker {
-    cursor: var(--point-select-cursor) !important;
+    cursor: pointer !important;
 }
