@@ -233,6 +233,7 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
         popupOptions: { minWidth: 30, keepInView: opts.popupKeepInView ?? true },
         member: { layerId, historyId },
         onDelete: () => {
+            selectFeature(polyline as unknown as L.Layer, layerId, false);
             executeAreaDelete();
         },
         onCopy: () => {
@@ -266,7 +267,10 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
             map,
             popupOptions: { minWidth: 30, keepInView: opts.popupKeepInView ?? true },
             member: { layerId, historyId },
-            onDelete: () => executeAreaDelete(),
+            onDelete: () => {
+                selectFeature(polyline as unknown as L.Layer, layerId, false);
+                executeAreaDelete();
+            },
             onCopy: () => {
                 selectFeature(polyline as unknown as L.Layer, layerId, false);
                 executeCopy();
