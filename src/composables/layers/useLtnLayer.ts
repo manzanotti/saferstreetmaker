@@ -140,6 +140,10 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                     return [];
                 }
 
+                if (beforePoint[0] === afterPoint[0] && beforePoint[1] === afterPoint[1]) {
+                    continue;
+                }
+
                 ringChanges.push({
                     type: 'update',
                     ringIndex,
@@ -454,8 +458,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                 mapStore.activeLayerId !== null &&
                 mapStore.activeLayerId !== BUTTON_ID &&
                 _drawingTool !== null &&
-                mapStore.drawLayerId === BUTTON_ID &&
-                mapStore.activeLayerId === BUTTON_ID
+                mapStore.drawLayerId === BUTTON_ID
             ) {
                 disableDrawMode();
             }

@@ -366,6 +366,42 @@ describe('LtnLayer history payloads', () => {
         });
     });
 
+    it('does not emit point updates for unchanged polygon vertices', () => {
+        const layer = createLtnLayer(makeMockMap());
+        const mapStore = useMapStore(pinia);
+
+        layer.loadFromGeoJSON(
+            polygonFeatureCollection([
+                [
+                    [
+                        [0, 0],
+                        [1, 0],
+                        [1, 1],
+                        [0, 1],
+                        [0, 0]
+                    ]
+                ]
+            ]) as any
+        );
+
+        const polygon = layer.getLayer().getLayers()[0] as any;
+        polygon.latlngs = [
+            new L.LatLng(0, 0),
+            new L.LatLng(0, 1),
+            new L.LatLng(1, 1),
+            new L.LatLng(1, 0),
+            new L.LatLng(0, 0)
+        ];
+        polygon.fire('edit');
+
+        expect(mapStore.lastLayerMutation?.payload).toMatchObject({
+            historyId: expect.any(String),
+            beforeCoordinates: expect.any(Array),
+            afterCoordinates: expect.any(Array)
+        });
+        expect(mapStore.lastLayerMutation?.payload).not.toHaveProperty('pointChanges');
+    });
+
     it('recenters the tooltip when an edited polygon changes shape', () => {
         const layer = createLtnLayer(makeMockMap());
 

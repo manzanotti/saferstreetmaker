@@ -16,7 +16,6 @@ import {
     buildHistoryId,
     getFeatureHistoryId,
     buildFeatureActionPopup,
-    setFeatureActionPopupContent,
     buildFeatureDescriptionPopup,
     closeFeatureHoverPopups
 } from './layerUtils';
@@ -96,22 +95,6 @@ export function handlePointFeatureClick(
     }
 
     const popup = buildFeatureActionPopup({
-        map,
-        popupOptions: { minWidth: 30, keepInView: true },
-        member,
-        onDelete: () => {
-            selectFeature(event.target as unknown as L.Layer, layerId, false);
-            executeAreaDelete();
-        },
-        onCopy: () => {
-            selectFeature(event.target as unknown as L.Layer, layerId, false);
-            executeCopy();
-        },
-        onOpenGroup: openGroupDetails,
-        onRemoveFromGroup: (groupId) => removeFeatureFromGroup(groupId, member),
-        onAddToGroup: (groupId) => addFeatureToGroup(groupId, member)
-    });
-    setFeatureActionPopupContent(popup, {
         map,
         popupOptions: { minWidth: 30, keepInView: true },
         member,
