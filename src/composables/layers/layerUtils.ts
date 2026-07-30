@@ -88,6 +88,7 @@ export interface FeatureDescriptionPopupDetails {
     featureName?: string;
     iconSrc?: string;
     text?: string;
+    onOpenGroup?: (groupId: string) => void;
 }
 
 export function getPointSelectCursor(): string {
@@ -435,8 +436,14 @@ export function buildFeatureDescriptionPopup(
         const groupContent = document.createElement('section');
         groupContent.classList.add('feature-popup-group-description');
 
-        const heading = document.createElement('strong');
+        const heading = details?.onOpenGroup
+            ? document.createElement('button')
+            : document.createElement('strong');
         heading.textContent = group.groupName;
+        if (details?.onOpenGroup) {
+            heading.classList.add('group-link');
+            heading.addEventListener('click', () => details.onOpenGroup?.(group.groupId));
+        }
         groupContent.appendChild(heading);
 
         if (group.description) {
@@ -452,13 +459,21 @@ export function buildFeatureDescriptionPopup(
     return popup;
 }
 
-export function addFeatureHoverPopup(map: L.Map, popup: L.Popup, latLng: L.LatLng): void {
+export function addFeatureHoverPopup(
+    map: L.Map,
+    popup: L.Popup,
+    latLng: L.LatLng,
+    onPopupLeave?: () => void
+): void {
     popup.setLatLng(latLng).addTo(map);
 
     const element = popup.getElement();
     if (!element) {
         return;
     }
+
+    L.DomEvent.disableClickPropagation(element);
+    element.addEventListener('mouseleave', () => onPopupLeave?.());
 
     const mapSize = map.getSize();
     const popupWidth = element.offsetWidth;
@@ -512,6 +527,14 @@ export function addFeatureHoverPopup(map: L.Map, popup: L.Popup, latLng: L.LatLn
     }
 
     popup.setLatLng(map.containerPointToLatLng(adjustedAnchor));
+}
+
+export function closeFeatureHoverPopupIfUnhovered(popup: L.Popup, closePopup: () => void): void {
+    window.setTimeout(() => {
+        if (!popup.getElement()?.matches(':hover')) {
+            closePopup();
+        }
+    }, 0);
 }
 
 export function getFeatureHoverLatLng(

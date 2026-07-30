@@ -19,7 +19,8 @@ import {
     buildFeatureDescriptionPopup,
     addFeatureHoverPopup,
     getFeatureHoverLatLng,
-    closeFeatureHoverPopups
+    closeFeatureHoverPopups,
+    closeFeatureHoverPopupIfUnhovered
 } from './layerUtils';
 import { useSelectionStore } from '../../stores/selectionStore';
 import { executeAreaDelete, executeCopy, selectFeature } from '../useAreaSelection';
@@ -135,6 +136,10 @@ export function createPointLayer(config: PointLayerConfig, map: L.Map): IMapLaye
         }
 
         let hoverPopup: L.Popup | null = null;
+        const closeHoverPopup = (): void => {
+            hoverPopup?.remove();
+            hoverPopup = null;
+        };
 
         marker.on('mouseover', (event: L.LeafletMouseEvent) => {
             const markerMap = useMapStore(pinia).map;
@@ -155,13 +160,15 @@ export function createPointLayer(config: PointLayerConfig, map: L.Map): IMapLaye
                 addFeatureHoverPopup(
                     markerMap,
                     descriptionPopup,
-                    getFeatureHoverLatLng(markerMap, latlng, event.latlng)
+                    getFeatureHoverLatLng(markerMap, latlng, event.latlng),
+                    closeHoverPopup
                 );
             }
         });
         marker.on('mouseout', () => {
-            hoverPopup?.remove();
-            hoverPopup = null;
+            if (hoverPopup) {
+                closeFeatureHoverPopupIfUnhovered(hoverPopup, closeHoverPopup);
+            }
         });
 
         return { marker, historyId: nextHistoryId };

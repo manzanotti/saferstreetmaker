@@ -1,5 +1,5 @@
 .leaflet-popup.feature-popup-hover {
-    pointer-events: none;
+    pointer-events: auto;
 }
 @import 'tailwindcss/theme' layer(theme);
 @import 'tailwindcss/preflight' layer(base);

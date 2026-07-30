@@ -16,7 +16,8 @@ import {
     setMouseMarkerCursor,
     buildHistoryId,
     isFeatureEditLayerButtonId,
-    closeFeatureHoverPopups
+    closeFeatureHoverPopups,
+    closeFeatureHoverPopupIfUnhovered
 } from './layerUtils';
 import { useMapStore } from '../../stores/mapStore';
 import { pinia } from '../../stores/index';
@@ -227,6 +228,10 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
     });
 
     let hoverPopup: L.Popup | null = null;
+    const closeHoverPopup = (): void => {
+        hoverPopup?.remove();
+        hoverPopup = null;
+    };
 
     polyline.on('mouseover', (event: L.LeafletMouseEvent) => {
         closeFeatureHoverPopups(map);
@@ -246,7 +251,8 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
             addFeatureHoverPopup(
                 map,
                 descriptionPopup,
-                getFeatureHoverLatLng(map, featureCenter, event.latlng)
+                getFeatureHoverLatLng(map, featureCenter, event.latlng),
+                closeHoverPopup
             );
         }
     });
@@ -255,8 +261,9 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
         if (mapStore.activeLayerId === buttonId) {
             setMouseMarkerCursor(null);
         }
-        hoverPopup?.remove();
-        hoverPopup = null;
+        if (hoverPopup) {
+            closeFeatureHoverPopupIfUnhovered(hoverPopup, closeHoverPopup);
+        }
     });
 
     const popup = buildFeatureActionPopup({
