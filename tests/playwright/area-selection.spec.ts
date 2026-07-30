@@ -993,9 +993,10 @@ test.describe('Area selection — modifier-click additive selection (polyline/po
         // Normal click on the first polyline — popup opens, edit mode
         await paths.first().dispatchEvent('click');
         await page.waitForSelector('.popup-buttons');
-        // Close the popup so it doesn't interfere with the next click
-        await page.keyboard.press('Escape');
-        await page.waitForTimeout(100);
+
+        // Closing an editor intentionally clears its implicit selection, so
+        // enter explicit area-selection mode before adding the second line.
+        await page.locator('#select-area-button').click();
 
         // Shift-click the second polyline — should add to the implicit selection
         await paths.last().dispatchEvent('click', { shiftKey: true });

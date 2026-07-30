@@ -22,7 +22,9 @@ describe('GroupPolylineSplitter', () => {
         const second = { lat: 2, lng: 2 } as L.LatLng;
         const third = { lat: 3, lng: 3 } as L.LatLng;
         const fourth = { lat: 4, lng: 4 } as L.LatLng;
-        const marker = {} as L.Layer;
+        const marker = {
+            feature: { properties: { historyId: 'source-id', name: 'Canal route' } }
+        } as unknown as L.Layer;
         const ids = ['inside-id', 'outside-id'];
         const splitter = new GroupPolylineSplitter({
             getLayer: () => layer,
@@ -48,7 +50,7 @@ describe('GroupPolylineSplitter', () => {
                     [2, 2]
                 ]
             },
-            properties: { historyId: 'inside-id' }
+            properties: { historyId: 'inside-id', name: 'Canal route' }
         });
         expect(loadFromGeoJSON.mock.calls[1][0].features[0]).toMatchObject({
             geometry: {
@@ -57,7 +59,7 @@ describe('GroupPolylineSplitter', () => {
                     [4, 4]
                 ]
             },
-            properties: { historyId: 'outside-id' }
+            properties: { historyId: 'outside-id', name: 'Canal route' }
         });
         expect(members).toEqual([{ layerId: 'Lines', historyId: 'inside-id' }]);
     });

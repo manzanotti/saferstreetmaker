@@ -408,6 +408,10 @@ class Map {
     }
 }
 
+function point(x: number, y: number) {
+    return new Point(x, y);
+}
+
 class TileLayer {
     constructor(_url: string, _opts?: any) {}
     addTo(_map: any) {
@@ -450,5 +454,6 @@ export {
     Control,
     DomUtil,
     Point,
+    point,
     popup
 };

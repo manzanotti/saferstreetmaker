@@ -136,6 +136,28 @@ function sharedPolylineLayerTests(
                 expect(addLayerSpy).toHaveBeenCalledTimes(1);
             });
 
+            it('preserves the polyline name in GeoJSON', () => {
+                layer.loadFromGeoJSON({
+                    features: [
+                        {
+                            geometry: {
+                                type: 'LineString',
+                                coordinates: [
+                                    [-1.9, 52.5],
+                                    [-1.8, 52.6]
+                                ]
+                            },
+                            properties: { historyId: 'line-1', name: 'High Street' }
+                        }
+                    ]
+                });
+
+                expect((layer.toGeoJSON() as any).features[0].properties).toMatchObject({
+                    historyId: 'line-1',
+                    name: 'High Street'
+                });
+            });
+
             it('handles the legacy nested-coordinate format', () => {
                 const legacy = {
                     features: [
@@ -253,6 +275,52 @@ describe('MobilityLanes history payloads', () => {
                     after: [-1.8, 52.6]
                 }
             ]
+        });
+    });
+
+    it('persists name edits with an undoable whole-feature mutation', () => {
+        const mapStore = useMapStore(pinia);
+        const layer = createMobilityLaneLayer(makeMockMap());
+        layer.loadFromGeoJSON({
+            features: [
+                {
+                    geometry: {
+                        type: 'LineString',
+                        coordinates: [
+                            [-1.9, 52.5],
+                            [-1.8, 52.6]
+                        ]
+                    },
+                    properties: { historyId: 'line-1', name: 'Old name' }
+                }
+            ]
+        });
+
+        const line = layer.getLayer().getLayers()[0] as any;
+        const popupContent = line.namePopup.setContent.mock.calls[0][0] as HTMLElement;
+        const nameInput = popupContent.querySelector('.name-editor') as HTMLInputElement;
+        const nameInputRow = popupContent.querySelector('.feature-name-input-row');
+        const nameSaveRow = popupContent.querySelector('.feature-name-save-row');
+        const saveNameButton = popupContent.querySelector('.apply-name-button');
+
+        expect(popupContent.querySelector('.feature-name-editor')?.children).toHaveLength(2);
+        expect(nameInputRow?.contains(nameInput)).toBe(true);
+        expect(nameSaveRow?.contains(saveNameButton)).toBe(true);
+        expect(popupContent.children[1].classList.contains('popup-buttons')).toBe(true);
+
+        nameInput.value = 'New name';
+        popupContent
+            .querySelector('.feature-name-editor')
+            ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+
+        expect((layer.toGeoJSON() as any).features[0].properties.name).toBe('New name');
+        expect(mapStore.lastLayerMutation).toMatchObject({
+            kind: 'polyline-edit',
+            layerId: 'MobilityLanes',
+            payload: {
+                before: { properties: { historyId: 'line-1', name: 'Old name' } },
+                after: { properties: { historyId: 'line-1', name: 'New name' } }
+            }
         });
     });
 });

@@ -13,7 +13,8 @@ function addLine(
     map: L.Map,
     selectForEdit: () => void,
     reinit?: (m: L.Map) => void,
-    historyId?: string
+    historyId?: string,
+    name?: string
 ) {
     addPolylineToLayer({
         points: latLngs,
@@ -31,7 +32,9 @@ function addLine(
         selectForEdit,
         popupKeepInView: false,
         reinitDrawing: reinit,
-        historyId
+        historyId,
+        name,
+        iconSrc: new URL('../../img/bicycle-svgrepo-com.svg', import.meta.url).href
     });
 }
 
@@ -81,8 +84,16 @@ export function createMobilityLaneLayer(map: L.Map): IMapLayer {
     );
 
     layer.loadFromGeoJSON = (geoJson: any) => {
-        loadPolylineGeoJSON(geoJson, (pts, historyId) =>
-            addLine(pts, layer.getLayer(), map, () => layer.selectForEdit(), undefined, historyId)
+        loadPolylineGeoJSON(geoJson, (pts, historyId, name) =>
+            addLine(
+                pts,
+                layer.getLayer(),
+                map,
+                () => layer.selectForEdit(),
+                undefined,
+                historyId,
+                name
+            )
         );
     };
     layer.loadFeature = (feature: any, historyId?: string) => {
@@ -93,7 +104,15 @@ export function createMobilityLaneLayer(map: L.Map): IMapLayer {
             ([lng, lat]: [number, number]) => new L.LatLng(lat, lng)
         );
         const id = historyId ?? buildHistoryId('polyline');
-        addLine(points, layer.getLayer(), map, () => layer.selectForEdit(), undefined, id);
+        addLine(
+            points,
+            layer.getLayer(),
+            map,
+            () => layer.selectForEdit(),
+            undefined,
+            id,
+            feature.properties?.name
+        );
         return id;
     };
 

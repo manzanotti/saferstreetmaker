@@ -18,7 +18,13 @@ export function createZebraCrossingLayer(map: L.Map): IMapLayer {
                     icon: new L.DivIcon({ className: 'zebra-crossing-icon' }),
                     draggable: true,
                     pane: 'filters'
-                } as any).on('click', (e: any) => handlePointFeatureClick(e, 'ZebraCrossing'));
+                } as any).on('click', (e: any) =>
+                    handlePointFeatureClick(
+                        e,
+                        'ZebraCrossing',
+                        new URL('../../img/zebra-crossing-svgrepo-com.svg', import.meta.url).href
+                    )
+                );
                 geoJsonLayer.addLayer(marker);
                 return marker;
             },

@@ -178,3 +178,41 @@ export async function getLayerFeatureCount(
         );
     });
 }
+
+export async function getLayerFeatures(
+    page: Page,
+    mapName: string,
+    layerId: string
+): Promise<Array<{ properties?: Record<string, unknown> }>> {
+    return await withDatabase(page, async (databaseName) => {
+        return await page.evaluate(
+            async ({ name, title, id }) => {
+                return await new Promise<Array<{ properties?: Record<string, unknown> }>>(
+                    (resolve, reject) => {
+                        const openRequest = indexedDB.open(name);
+                        openRequest.onerror = () => reject(openRequest.error);
+                        openRequest.onsuccess = () => {
+                            const db = openRequest.result;
+                            const tx = db.transaction('maps', 'readonly');
+                            const getRequest = tx.objectStore('maps').get(title);
+                            getRequest.onsuccess = () => {
+                                const record = getRequest.result as StoredMapRecord | undefined;
+                                const featureCollection = record?.payload?.l?.[id] as
+                                    | {
+                                          features?: Array<{
+                                              properties?: Record<string, unknown>;
+                                          }>;
+                                      }
+                                    | undefined;
+                                resolve(featureCollection?.features ?? []);
+                            };
+                            getRequest.onerror = () => reject(getRequest.error);
+                            tx.oncomplete = () => db.close();
+                        };
+                    }
+                );
+            },
+            { name: databaseName, title: mapName, id: layerId }
+        );
+    });
+}

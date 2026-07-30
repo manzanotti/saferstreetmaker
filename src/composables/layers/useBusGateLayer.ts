@@ -18,7 +18,13 @@ export function createBusGateLayer(map: L.Map): IMapLayer {
                     icon: new L.DivIcon({ className: 'bus-gate-icon' }),
                     draggable: true,
                     pane: 'filters'
-                } as any).on('click', (e: any) => handlePointFeatureClick(e, 'BusGates'));
+                } as any).on('click', (e: any) =>
+                    handlePointFeatureClick(
+                        e,
+                        'BusGates',
+                        new URL('../../img/double-decker-bus-svgrepo-com.svg', import.meta.url).href
+                    )
+                );
                 geoJsonLayer.addLayer(marker);
                 return marker;
             },
