@@ -362,6 +362,23 @@ describe('feature popups', () => {
         expect(content.querySelectorAll('.feature-popup-group-description')).toHaveLength(3);
         expect(content.querySelectorAll('.feature-popup-description')).toHaveLength(2);
         expect(popup.options.autoClose).toBe(false);
+        expect(popup.options.className).toBe('feature-popup-hover');
+    });
+
+    it('uses a separate class for interactive click description popups', () => {
+        useGroupStore(pinia).setGroups([
+            {
+                id: 'g1',
+                name: 'Town centre',
+                description: '<a href="/details">View details</a>',
+                members: [member]
+            }
+        ]);
+
+        const popup = buildFeatureDescriptionPopup({ minWidth: 30 }, member, 'click') as any;
+
+        expect(popup.options.className).toBe('feature-popup-description');
+        expect(popup.options.className).not.toBe('feature-popup-hover');
     });
 
     it('renders group version counts and action controls', () => {

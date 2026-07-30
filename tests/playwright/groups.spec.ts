@@ -454,6 +454,7 @@ test.describe('Groups — Create group', () => {
 
         const popup = page.locator('.leaflet-popup');
         await expect(popup).toBeVisible();
+        await expect(popup).toHaveClass(/feature-popup-description/);
         await expect(popup.locator('.feature-popup-description')).toContainText(
             'Slow down near school'
         );

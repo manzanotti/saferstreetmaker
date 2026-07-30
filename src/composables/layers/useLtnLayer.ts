@@ -530,7 +530,8 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                 L.DomEvent.stopPropagation(e.originalEvent ?? e);
                 const descriptionPopup = buildFeatureDescriptionPopup(
                     { minWidth: 30, keepInView: true },
-                    { layerId: 'LtnCells', historyId }
+                    { layerId: 'LtnCells', historyId },
+                    'click'
                 );
                 if (descriptionPopup) {
                     descriptionPopup.setLatLng(e.latlng ?? polygon.getBounds().getCenter());

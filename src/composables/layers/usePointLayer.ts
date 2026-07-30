@@ -84,7 +84,8 @@ export function handlePointFeatureClick(event: L.LeafletMouseEvent, layerId: str
     if (useSettingsStore(pinia).readOnly) {
         const descriptionPopup = buildFeatureDescriptionPopup(
             { minWidth: 30, keepInView: true },
-            member
+            member,
+            'click'
         );
         descriptionPopup?.setLatLng(latLng ?? map.getCenter()).openOn(map);
         return;

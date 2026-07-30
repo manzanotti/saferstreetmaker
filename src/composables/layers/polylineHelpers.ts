@@ -283,7 +283,8 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
         if (useSettingsStore(pinia).readOnly) {
             const descriptionPopup = buildFeatureDescriptionPopup(
                 { minWidth: 30, keepInView: true },
-                { layerId, historyId }
+                { layerId, historyId },
+                'click'
             );
             if (descriptionPopup) {
                 descriptionPopup.setLatLng(e.latlng);

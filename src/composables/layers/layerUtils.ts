@@ -361,7 +361,8 @@ export function buildFeatureGroupMembershipContent(
 
 export function buildFeatureDescriptionPopup(
     popupOptions: L.PopupOptions,
-    member: GroupMember
+    member: GroupMember,
+    popupType: 'hover' | 'click' = 'hover'
 ): L.Popup | null {
     const content = document.createElement('div');
     content.classList.add('feature-popup-content');
@@ -375,7 +376,7 @@ export function buildFeatureDescriptionPopup(
     const popup = L.popup({
         ...popupOptions,
         autoClose: false,
-        className: 'feature-popup-hover'
+        className: popupType === 'hover' ? 'feature-popup-hover' : 'feature-popup-description'
     });
 
     groups.forEach((group) => {
