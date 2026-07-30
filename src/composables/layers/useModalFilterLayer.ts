@@ -20,7 +20,7 @@ export function createModalFilterLayer(map: L.Map): IMapLayer {
                     radius: 10,
                     className: 'modal-filter-marker',
                     pane: 'filters'
-                }).on('click', (e) => handlePointFeatureClick(e, 'ModalFilters', geoJsonLayer));
+                }).on('click', (e) => handlePointFeatureClick(e, 'ModalFilters'));
                 geoJsonLayer.addLayer(marker);
                 return marker;
             },

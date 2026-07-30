@@ -30,7 +30,7 @@ function createIconMarkerLayer(
                     icon: new L.DivIcon({ className: iconClass }),
                     draggable: true,
                     pane: 'filters'
-                } as any).on('click', (e: any) => handlePointFeatureClick(e, id, geoJsonLayer));
+                } as any).on('click', (e: any) => handlePointFeatureClick(e, id));
                 geoJsonLayer.addLayer(marker);
                 return marker;
             },

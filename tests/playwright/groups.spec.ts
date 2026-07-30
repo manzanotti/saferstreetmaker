@@ -393,7 +393,7 @@ test.describe('Groups — Create group', () => {
         await expect(popup.locator('.feature-popup-groups')).toContainText('School Zone');
         const popupControls = popup.locator('.ltn-popup-buttons > *');
         await expect(popupControls.nth(0)).toHaveClass(/current-controls/);
-        await expect(popupControls.nth(1)).toHaveClass(/feature-popup-content/);
+        await expect(popupControls.nth(1)).toHaveClass(/feature-popup-group-content/);
         await expect(popupControls.nth(2)).toHaveClass(/colour-actions/);
         await expect(popup.locator('.label-editor')).toHaveCSS('border-top-width', '1px');
         await expect(popup.locator('.label-editor')).toHaveCSS(
@@ -407,7 +407,7 @@ test.describe('Groups — Create group', () => {
         );
         await expect(popup.locator('.label-editor')).toHaveCSS('padding-top', '4px');
         await expect(popup.locator('.label-editor')).toHaveCSS('padding-left', '8px');
-        await expect(popup.locator('.ltn-popup-buttons > .feature-popup-content')).toHaveCSS(
+        await expect(popup.locator('.ltn-popup-buttons > .feature-popup-group-content')).toHaveCSS(
             'margin-top',
             '12px'
         );

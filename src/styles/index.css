@@ -349,7 +349,7 @@ ul.ltn-popup-buttons .colour-actions {
     gap: 0.25em;
 }
 
-ul.ltn-popup-buttons > .feature-popup-content {
+ul.ltn-popup-buttons > li.feature-popup-group-content {
     margin-top: 0.75rem;
 }
 

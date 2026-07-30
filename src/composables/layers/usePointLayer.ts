@@ -56,11 +56,7 @@ export function getPointEventLatLng(event: {
  * current selection instead of deleting it — so points can be gathered the
  * same way polylines/polygons are. Otherwise it opens the feature popup.
  */
-export function handlePointFeatureClick(
-    event: L.LeafletMouseEvent,
-    layerId: string,
-    geoJsonLayer: L.GeoJSON
-): void {
+export function handlePointFeatureClick(event: L.LeafletMouseEvent, layerId: string): void {
     L.DomEvent.stopPropagation(event);
 
     const selectionStore = useSelectionStore(pinia);

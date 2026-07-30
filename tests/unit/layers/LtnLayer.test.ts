@@ -590,6 +590,32 @@ describe('LtnLayer feature clicks', () => {
         expect(focusSpy).toHaveBeenCalled();
     });
 
+    it('keeps LTN popup controls valid by placing group content in a list item', () => {
+        const map = makeMockMap();
+        const layer = createLtnLayer(map);
+
+        layer.loadFromGeoJSON(
+            polygonFeatureCollection([
+                [
+                    [
+                        [0, 0],
+                        [1, 0],
+                        [1, 1],
+                        [0, 1],
+                        [0, 0]
+                    ]
+                ]
+            ]) as any
+        );
+
+        const polygon = layer.getLayer().getLayers()[0] as any;
+        const popupContent = polygon.__ltnPopup.setContent.mock.calls[0][0] as HTMLElement;
+        const controlList = popupContent.querySelector('.ltn-popup-buttons') as HTMLUListElement;
+
+        expect([...controlList.children].every((child) => child.tagName === 'LI')).toBe(true);
+        expect(controlList.querySelector('.feature-popup-group-content')).not.toBeNull();
+    });
+
     it('saves the title and closes the popup when Enter is pressed in the title input', () => {
         const map = makeMockMap();
         const layer = createLtnLayer(map);

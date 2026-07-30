@@ -750,10 +750,12 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         const popupContent = document.createElement('div');
         popupContent.classList.add('feature-popup-content');
         const refreshGroupContent = () => {
-            controlList.querySelectorAll('.feature-popup-content').forEach((groupContent) => {
+            controlList.querySelectorAll('.feature-popup-group-content').forEach((groupContent) => {
                 groupContent.remove();
             });
-            controlList.insertBefore(
+            const groupContentItem = document.createElement('li');
+            groupContentItem.classList.add('feature-popup-group-content');
+            groupContentItem.appendChild(
                 buildFeatureGroupMembershipContent(
                     { layerId: 'LtnCells', historyId: polygon.properties.historyId },
                     openGroupDetails,
@@ -767,9 +769,9 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                             layerId: 'LtnCells',
                             historyId: polygon.properties.historyId
                         })
-                ),
-                colourActions
+                )
             );
+            controlList.insertBefore(groupContentItem, colourActions);
         };
         popupContent.appendChild(controlList);
         refreshGroupContent();
