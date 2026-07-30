@@ -105,7 +105,7 @@ function onAddToGroupSelect(event: Event) {
         </button>
         <button
             v-if="
-                featureCount > 1 &&
+                featureCount > 0 &&
                 !groupStore.addToGroupId &&
                 !groupStore.nameDialogOpen &&
                 !groupStore.splitDialogOpen

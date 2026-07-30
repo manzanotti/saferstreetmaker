@@ -74,6 +74,7 @@ export class SelectionHighlighter {
                 const originalStyle = this.originalStyles.get(marker as object);
                 if (originalStyle) {
                     pointMarker.setStyle(originalStyle);
+                    (pointMarker as L.Layer & { syncGroupStyle?: () => void }).syncGroupStyle?.();
                     this.originalStyles.delete(marker as object);
                 }
             } else {

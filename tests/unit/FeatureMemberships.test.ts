@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { findFeatureMemberships } from '../../src/features/groups/featureMemberships';
+import {
+    findFeatureGroupMemberships,
+    findFeatureMemberships
+} from '../../src/features/groups/featureMemberships';
 
 describe('findFeatureMemberships', () => {
     it('lists every group and version containing the feature and marks active versions', () => {
@@ -48,5 +51,59 @@ describe('findFeatureMemberships', () => {
                 isActive: true
             }
         ]);
+    });
+});
+
+describe('findFeatureGroupMemberships', () => {
+    it('returns one summary per group with all containing versions', () => {
+        const member = { layerId: 'MobilityLanes', historyId: 'line-1' };
+
+        expect(
+            findFeatureGroupMemberships(
+                [
+                    {
+                        id: 'g1',
+                        name: 'Town centre',
+                        description: '<p>Slow down</p>',
+                        versions: [
+                            { id: 'v1', name: 'Current', members: [member] },
+                            { id: 'v2', name: 'Alternative', members: [{ ...member }] }
+                        ]
+                    },
+                    {
+                        id: 'g2',
+                        name: 'School route',
+                        members: [{ ...member }]
+                    }
+                ],
+                member
+            )
+        ).toEqual([
+            {
+                groupId: 'g1',
+                groupName: 'Town centre',
+                description: '<p>Slow down</p>',
+                versionCount: 2,
+                versions: [
+                    { id: 'v1', name: 'Current' },
+                    { id: 'v2', name: 'Alternative' }
+                ]
+            },
+            {
+                groupId: 'g2',
+                groupName: 'School route',
+                versionCount: 1,
+                versions: [{ id: 'g2:default', name: 'Default' }]
+            }
+        ]);
+    });
+
+    it('ignores groups that do not contain the feature', () => {
+        expect(
+            findFeatureGroupMemberships([{ id: 'g1', name: 'Other', members: [] }], {
+                layerId: 'ModalFilters',
+                historyId: 'missing'
+            })
+        ).toEqual([]);
     });
 });

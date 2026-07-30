@@ -35,6 +35,7 @@ import {
     saveGroupSelection,
     applyGroupColor,
     applyGroupDescription,
+    removeFeatureFromGroup,
     recomputeFeatureVisibility,
     switchGroupVersion
 } from '../../src/composables/useGroups';
@@ -290,6 +291,55 @@ describe('useGroups', () => {
             const markLayerUpdated = vi.spyOn(mapStore, 'markLayerUpdated');
 
             expect(applyGroupDescription('g1', '<p onclick="bad()">Notes</p>')).toBe(false);
+            expect(markLayerUpdated).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('removeFeatureFromGroup()', () => {
+        it('removes the feature from every version in the selected group', () => {
+            const member = { layerId: 'MobilityLanes', historyId: 'line-1' };
+            const otherMember = { layerId: 'MobilityLanes', historyId: 'line-2' };
+            const mapStore = useMapStore(pinia);
+            const markLayerUpdated = vi.spyOn(mapStore, 'markLayerUpdated');
+
+            useGroupStore(pinia).setGroups([
+                {
+                    id: 'g1',
+                    name: 'Town centre',
+                    defaultVersionId: 'v1',
+                    versions: [
+                        { id: 'v1', name: 'Current', members: [member, otherMember] },
+                        { id: 'v2', name: 'Alternative', members: [{ ...member }] }
+                    ]
+                },
+                { id: 'g2', name: 'School route', members: [{ ...member }] }
+            ]);
+
+            expect(removeFeatureFromGroup('g1', member)).toBe(true);
+            expect(useGroupStore(pinia).groups).toEqual([
+                {
+                    id: 'g1',
+                    name: 'Town centre',
+                    defaultVersionId: 'v1',
+                    versions: [
+                        { id: 'v1', name: 'Current', members: [otherMember] },
+                        { id: 'v2', name: 'Alternative', members: [] }
+                    ],
+                    members: [otherMember]
+                },
+                { id: 'g2', name: 'School route', members: [{ ...member }] }
+            ]);
+            expect(markLayerUpdated).toHaveBeenCalledTimes(1);
+        });
+
+        it('does not checkpoint when the group or feature membership is absent', () => {
+            const markLayerUpdated = vi.spyOn(useMapStore(pinia), 'markLayerUpdated');
+            expect(
+                removeFeatureFromGroup('missing', {
+                    layerId: 'ModalFilters',
+                    historyId: 'missing'
+                })
+            ).toBe(false);
             expect(markLayerUpdated).not.toHaveBeenCalled();
         });
     });

@@ -7,16 +7,21 @@
  */
 import * as L from 'leaflet';
 import {
-    buildDeletePopup,
+    buildFeatureActionPopup,
+    setFeatureActionPopupContent,
+    buildFeatureDescriptionPopup,
     removeMapCursor,
     setMouseMarkerCursor,
     buildHistoryId,
-    isFeatureEditLayerButtonId
+    isFeatureEditLayerButtonId,
+    closeFeatureHoverPopups
 } from './layerUtils';
 import { useMapStore } from '../../stores/mapStore';
 import { pinia } from '../../stores/index';
 import { selectFeature, executeAreaDelete, executeCopy } from '../useAreaSelection';
 import { useSelectionStore } from '../../stores/selectionStore';
+import { useSettingsStore } from '../../stores/settingsStore';
+import { addFeatureToGroup, openGroupDetails, removeFeatureFromGroup } from '../useGroups';
 
 export interface PolylineOptions {
     color: string;
@@ -196,9 +201,22 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
         lastCommittedFeature = nextFeature;
     });
 
+    let hoverPopup: L.Popup | null = null;
+
     polyline.on('mouseover', () => {
+        closeFeatureHoverPopups(map);
         if (mapStore.activeLayerId === buttonId) {
             setMouseMarkerCursor('pointer');
+        }
+
+        const descriptionPopup = buildFeatureDescriptionPopup(
+            { minWidth: 30, keepInView: true },
+            { layerId, historyId }
+        );
+        if (descriptionPopup) {
+            descriptionPopup.setLatLng(polyline.getBounds().getCenter());
+            hoverPopup = descriptionPopup;
+            descriptionPopup.addTo(map);
         }
     });
 
@@ -206,20 +224,27 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
         if (mapStore.activeLayerId === buttonId) {
             setMouseMarkerCursor(null);
         }
+        hoverPopup?.remove();
+        hoverPopup = null;
     });
 
-    const popup = buildDeletePopup(
+    const popup = buildFeatureActionPopup({
         map,
-        { minWidth: 30, keepInView: opts.popupKeepInView ?? true },
-        () => {
+        popupOptions: { minWidth: 30, keepInView: opts.popupKeepInView ?? true },
+        member: { layerId, historyId },
+        onDelete: () => {
+            selectFeature(polyline as unknown as L.Layer, layerId, false);
             executeAreaDelete();
         },
-        () => {
+        onCopy: () => {
             // Populate the selection with this entire feature, then copy it.
             selectFeature(polyline as unknown as L.Layer, layerId, false);
             executeCopy();
-        }
-    );
+        },
+        onOpenGroup: openGroupDetails,
+        onRemoveFromGroup: (groupId) => removeFeatureFromGroup(groupId, { layerId, historyId }),
+        onAddToGroup: (groupId) => addFeatureToGroup(groupId, { layerId, historyId })
+    });
 
     polyline.on('click', (e: any) => {
         // Let an explicitly armed draw tool own the click instead of forcing
@@ -236,6 +261,37 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
         }
 
         L.DomEvent.stopPropagation(e.originalEvent ?? e);
+        closeFeatureHoverPopups(map);
+
+        setFeatureActionPopupContent(popup, {
+            map,
+            popupOptions: { minWidth: 30, keepInView: opts.popupKeepInView ?? true },
+            member: { layerId, historyId },
+            onDelete: () => {
+                selectFeature(polyline as unknown as L.Layer, layerId, false);
+                executeAreaDelete();
+            },
+            onCopy: () => {
+                selectFeature(polyline as unknown as L.Layer, layerId, false);
+                executeCopy();
+            },
+            onOpenGroup: openGroupDetails,
+            onRemoveFromGroup: (groupId) => removeFeatureFromGroup(groupId, { layerId, historyId }),
+            onAddToGroup: (groupId) => addFeatureToGroup(groupId, { layerId, historyId })
+        });
+
+        if (useSettingsStore(pinia).readOnly) {
+            const descriptionPopup = buildFeatureDescriptionPopup(
+                { minWidth: 30, keepInView: true },
+                { layerId, historyId },
+                'click'
+            );
+            if (descriptionPopup) {
+                descriptionPopup.setLatLng(e.latlng);
+                map.openPopup(descriptionPopup);
+            }
+            return;
+        }
 
         const isModifierClick =
             (e.originalEvent?.shiftKey || e.originalEvent?.ctrlKey || e.originalEvent?.metaKey) ??

@@ -8,14 +8,18 @@ import {
 } from '../../composables/useFeatureDeletion';
 
 const deletionStore = useFeatureDeletionStore();
-const firstMembership = useTemplateRef<HTMLInputElement>('firstMembership');
+const dialog = useTemplateRef<HTMLDivElement>('dialog');
 const selectedGroupName = computed(() => deletionStore.selectedMembership?.groupName ?? 'group');
 
 watch(
     () => deletionStore.pending,
     (pending) => {
         if (pending) {
-            void nextTick(() => firstMembership.value?.focus());
+            void nextTick(() =>
+                dialog.value
+                    ?.querySelector<HTMLInputElement>('input[name="feature-deletion-membership"]')
+                    ?.focus()
+            );
         }
     }
 );
@@ -34,6 +38,7 @@ function onKeydown(event: KeyboardEvent) {
 <template>
     <div
         v-if="deletionStore.pending"
+        ref="dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby="feature-deletion-title"
@@ -53,12 +58,11 @@ function onKeydown(event: KeyboardEvent) {
             <legend class="sr-only">Group versions containing this line</legend>
             <div class="divide-y divide-gray-100 rounded-md border border-gray-200">
                 <label
-                    v-for="(membership, index) in deletionStore.pending.memberships"
+                    v-for="membership in deletionStore.pending.memberships"
                     :key="membershipKey(membership)"
                     class="flex cursor-pointer items-start gap-3 px-3 py-2.5 hover:bg-gray-50"
                 >
                     <input
-                        :ref="index === 0 ? 'firstMembership' : undefined"
                         type="radio"
                         name="feature-deletion-membership"
                         :value="membershipKey(membership)"

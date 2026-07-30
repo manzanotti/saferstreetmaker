@@ -47,6 +47,23 @@ describe('SelectionHighlighter', () => {
         expect(setStyle).toHaveBeenLastCalledWith({ color: 'green', weight: 7 });
     });
 
+    it('resyncs group styling after restoring a selected feature style', () => {
+        const setStyle = vi.fn();
+        const syncGroupStyle = vi.fn();
+        const marker = {
+            getLatLng: () => ({ lat: 1, lng: 2 }),
+            options: { color: 'green', weight: 7 },
+            setStyle,
+            syncGroupStyle
+        } as unknown as L.Layer;
+        const highlighter = new SelectionHighlighter({} as L.Map);
+
+        highlighter.add([selected(marker)]);
+        highlighter.clear([selected(marker)]);
+
+        expect(syncGroupStyle).toHaveBeenCalledOnce();
+    });
+
     it('replaces the previous marker highlight', () => {
         const previousElement = document.createElement('div');
         const nextElement = document.createElement('div');

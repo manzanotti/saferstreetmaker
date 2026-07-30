@@ -25,6 +25,11 @@ async function clickMap(page: Page, offsetX = 0, offsetY = 0) {
     await page.waitForTimeout(100);
 }
 
+async function deleteOpenFeaturePopup(page: Page) {
+    await page.locator('.popup-buttons .delete-button').first().dispatchEvent('click');
+    await page.waitForTimeout(100);
+}
+
 async function waitForHistoryButtons(page: Page, expected: { canUndo: boolean; canRedo: boolean }) {
     if (expected.canUndo) {
         await expect(page.locator('#undo-button')).toBeEnabled();
@@ -554,7 +559,7 @@ test.describe('Layer: Modal Filter (point, primary button)', () => {
         // Use dispatchEvent to reliably trigger the Leaflet click handler.
         await page.waitForSelector('.leaflet-filters-pane path');
         await page.locator('.leaflet-filters-pane path').first().dispatchEvent('click');
-        await page.waitForTimeout(100);
+        await deleteOpenFeaturePopup(page);
         expect(await getLayerFeatureCount(page, 'ModalFilters')).toBe(0);
     });
 
@@ -576,7 +581,7 @@ test.describe('Layer: Modal Filter (point, primary button)', () => {
         await page.waitForTimeout(150);
         expect(await getLayerFeatureCount(page, 'ModalFilters')).toBe(0);
 
-        await expect(page.locator('#redo-button')).toBeEnabled();
+        await waitForHistoryButtons(page, { canUndo: false, canRedo: true });
 
         await page.locator('#redo-button').click();
         await page.waitForTimeout(150);
@@ -690,6 +695,7 @@ test.describe('Layer: Modal Filter (point, primary button)', () => {
         await page.locator('#modal-filter-button').click();
         await page.waitForSelector('.leaflet-filters-pane path');
         await page.locator('.leaflet-filters-pane path').first().dispatchEvent('click');
+        await deleteOpenFeaturePopup(page);
         await page.waitForTimeout(100);
         expect(await getLayerFeatureCount(page, 'ModalFilters')).toBe(0);
 
@@ -757,6 +763,7 @@ test.describe('Layer: Bus Gate (point, submenu button)', () => {
         await page.locator('#bus-gate-button').click(); // deactivate
         await page.waitForSelector('.leaflet-marker-icon.bus-gate-icon');
         await page.locator('.leaflet-marker-icon.bus-gate-icon').first().dispatchEvent('click');
+        await deleteOpenFeaturePopup(page);
         await page.waitForTimeout(100);
         expect(await getLayerFeatureCount(page, 'BusGates')).toBe(0);
     });
@@ -773,7 +780,7 @@ test.describe('Layer: Bus Gate (point, submenu button)', () => {
         await page.waitForTimeout(150);
         expect(await getLayerFeatureCount(page, 'BusGates')).toBe(0);
 
-        await expect(page.locator('#redo-button')).toBeEnabled();
+        await waitForHistoryButtons(page, { canUndo: false, canRedo: true });
         await page.locator('#redo-button').click();
         await page.waitForTimeout(150);
         expect(await getLayerFeatureCount(page, 'BusGates')).toBe(1);
@@ -789,6 +796,7 @@ test.describe('Layer: Bus Gate (point, submenu button)', () => {
         await page.locator('#bus-gate-button').click(); // deactivate
         await page.waitForSelector('.leaflet-marker-icon.bus-gate-icon');
         await page.locator('.leaflet-marker-icon.bus-gate-icon').first().dispatchEvent('click');
+        await deleteOpenFeaturePopup(page);
         await page.waitForTimeout(100);
         expect(await getLayerFeatureCount(page, 'BusGates')).toBe(0);
 
@@ -833,6 +841,7 @@ test.describe('Layer: Traffic Lights (point, primary button)', () => {
             .locator('.leaflet-marker-icon.traffic-lights-icon')
             .first()
             .dispatchEvent('click');
+        await deleteOpenFeaturePopup(page);
         await page.waitForTimeout(100);
         expect(await getLayerFeatureCount(page, 'TrafficLights')).toBe(0);
     });
@@ -855,7 +864,7 @@ test.describe('Layer: Traffic Lights (point, primary button)', () => {
         await page.waitForTimeout(150);
         expect(await getLayerFeatureCount(page, 'TrafficLights')).toBe(0);
 
-        await expect(page.locator('#redo-button')).toBeEnabled();
+        await waitForHistoryButtons(page, { canUndo: false, canRedo: true });
         await page.locator('#redo-button').click();
         await page.waitForTimeout(150);
         expect(await getLayerFeatureCount(page, 'TrafficLights')).toBe(1);
@@ -873,6 +882,7 @@ test.describe('Layer: Traffic Lights (point, primary button)', () => {
             .locator('.leaflet-marker-icon.traffic-lights-icon')
             .first()
             .dispatchEvent('click');
+        await deleteOpenFeaturePopup(page);
         await page.waitForTimeout(100);
         expect(await getLayerFeatureCount(page, 'TrafficLights')).toBe(0);
 
@@ -919,7 +929,7 @@ test.describe('Layer: Pedestrian Lights (point, submenu button)', () => {
         await page.waitForTimeout(150);
         expect(await getLayerFeatureCount(page, 'PedestrianLights')).toBe(0);
 
-        await expect(page.locator('#redo-button')).toBeEnabled();
+        await waitForHistoryButtons(page, { canUndo: false, canRedo: true });
         await page.locator('#redo-button').click();
         await page.waitForTimeout(150);
         expect(await getLayerFeatureCount(page, 'PedestrianLights')).toBe(1);
@@ -938,6 +948,7 @@ test.describe('Layer: Pedestrian Lights (point, submenu button)', () => {
             .locator('.leaflet-marker-icon.pedestrian-lights-icon')
             .first()
             .dispatchEvent('click');
+        await deleteOpenFeaturePopup(page);
         await page.waitForTimeout(100);
         expect(await getLayerFeatureCount(page, 'PedestrianLights')).toBe(0);
 
@@ -982,7 +993,7 @@ test.describe('Layer: Zebra Crossing (point, submenu button)', () => {
         await page.waitForTimeout(150);
         expect(await getLayerFeatureCount(page, 'ZebraCrossing')).toBe(0);
 
-        await expect(page.locator('#redo-button')).toBeEnabled();
+        await waitForHistoryButtons(page, { canUndo: false, canRedo: true });
         await page.locator('#redo-button').click();
         await page.waitForTimeout(150);
         expect(await getLayerFeatureCount(page, 'ZebraCrossing')).toBe(1);
@@ -1001,6 +1012,7 @@ test.describe('Layer: Zebra Crossing (point, submenu button)', () => {
             .locator('.leaflet-marker-icon.zebra-crossing-icon')
             .first()
             .dispatchEvent('click');
+        await deleteOpenFeaturePopup(page);
         await page.waitForTimeout(100);
         expect(await getLayerFeatureCount(page, 'ZebraCrossing')).toBe(0);
 
@@ -1076,7 +1088,7 @@ test.describe('Layer: Mobility Lane (polyline)', () => {
         await path.first().dispatchEvent('click');
         await page.waitForTimeout(200);
 
-        const point = await moveToMapOffset(page, 0, -140);
+        const point = await moveToMapOffset(page, 0, 180);
         const cursor = await getCursorAtPagePoint(page, point.x, point.y);
         expect(cursor).toBe('grab');
     });
@@ -1103,7 +1115,7 @@ test.describe('Layer: Mobility Lane (polyline)', () => {
 
         expect(await page.locator('.leaflet-editing-icon').count()).toBeGreaterThan(0);
 
-        await clickMap(page, 0, -140);
+        await clickMap(page, 0, 180);
         expect(await getLayerFeatureCount(page, 'MobilityLanes')).toBe(1);
     });
 
@@ -1167,7 +1179,7 @@ test.describe('Layer: Mobility Lane (polyline)', () => {
         await page.waitForTimeout(150);
         expect(await getLayerFeatureCount(page, 'MobilityLanes')).toBe(0);
 
-        await expect(page.locator('#redo-button')).toBeEnabled();
+        await waitForHistoryButtons(page, { canUndo: false, canRedo: true });
 
         await page.locator('#redo-button').click();
         await page.waitForTimeout(150);
@@ -1224,7 +1236,7 @@ test.describe('Layer: Car-Free Street (polyline)', () => {
         await page.waitForTimeout(150);
         expect(await getLayerFeatureCount(page, 'CarFreeStreets')).toBe(0);
 
-        await expect(page.locator('#redo-button')).toBeEnabled();
+        await waitForHistoryButtons(page, { canUndo: false, canRedo: true });
         await page.locator('#redo-button').click();
         await page.waitForTimeout(150);
         expect(await getLayerFeatureCount(page, 'CarFreeStreets')).toBeGreaterThanOrEqual(1);
@@ -1277,7 +1289,7 @@ test.describe('Layer: School Street (polyline)', () => {
         await page.waitForTimeout(150);
         expect(await getLayerFeatureCount(page, 'SchoolStreet')).toBe(0);
 
-        await expect(page.locator('#redo-button')).toBeEnabled();
+        await waitForHistoryButtons(page, { canUndo: false, canRedo: true });
         await page.locator('#redo-button').click();
         await page.waitForTimeout(150);
         expect(await getLayerFeatureCount(page, 'SchoolStreet')).toBeGreaterThanOrEqual(1);
@@ -1333,7 +1345,7 @@ test.describe('Layer: One-Way Street (polyline)', () => {
         await page.waitForTimeout(150);
         expect(await getLayerFeatureCount(page, 'OneWayStreets')).toBe(0);
 
-        await expect(page.locator('#redo-button')).toBeEnabled();
+        await waitForHistoryButtons(page, { canUndo: false, canRedo: true });
         await page.locator('#redo-button').click();
         await page.waitForTimeout(150);
         expect(await getLayerFeatureCount(page, 'OneWayStreets')).toBeGreaterThanOrEqual(1);
@@ -1392,7 +1404,7 @@ test.describe('Layer: Tram Line (polyline)', () => {
         await page.waitForTimeout(150);
         expect(await getLayerFeatureCount(page, 'TramLines')).toBe(0);
 
-        await expect(page.locator('#redo-button')).toBeEnabled();
+        await waitForHistoryButtons(page, { canUndo: false, canRedo: true });
         await page.locator('#redo-button').click();
         await page.waitForTimeout(150);
         expect(await getLayerFeatureCount(page, 'TramLines')).toBeGreaterThanOrEqual(1);
@@ -1564,7 +1576,7 @@ test.describe('Layer: LTN Cell (polygon)', () => {
         await hoverSvgPathStroke(page, polygon);
         expect(await getInlineCursor(polygon)).toBe('crosshair');
 
-        const point = await moveToMapOffset(page, 0, -140);
+        const point = await moveToMapOffset(page, 0, 180);
         expect(await getCursorAtPagePoint(page, point.x, point.y)).toBe('grab');
     });
 
@@ -1600,7 +1612,7 @@ test.describe('Layer: LTN Cell (polygon)', () => {
         await expect(page.locator('.popup-buttons')).toHaveCount(1);
         expect(await page.locator('.leaflet-editing-icon').count()).toBeGreaterThan(0);
 
-        await clickMap(page, 0, -140);
+        await page.locator('.leaflet-popup-close-button').click();
         await expect(page.locator('.popup-buttons')).toHaveCount(0);
         expect(await page.locator('.leaflet-editing-icon').count()).toBeGreaterThan(0);
 
@@ -1623,7 +1635,7 @@ test.describe('Layer: LTN Cell (polygon)', () => {
         await page.waitForTimeout(150);
         expect(await getLayerFeatureCount(page, 'LtnCells')).toBe(0);
 
-        await expect(page.locator('#redo-button')).toBeEnabled();
+        await waitForHistoryButtons(page, { canUndo: false, canRedo: true });
 
         await page.locator('#redo-button').click();
         await page.waitForTimeout(150);

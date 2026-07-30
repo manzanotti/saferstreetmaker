@@ -129,6 +129,37 @@ export function applyGroupDetails(
     return true;
 }
 
+export function removeFeatureFromGroup(groupId: string, member: GroupMember): boolean {
+    const groupStore = useGroupStore(pinia);
+    const group = groupStore.groups.find((item) => item.id === groupId);
+    if (!group) {
+        return false;
+    }
+
+    const versionIds = getGroupVersions(group).map((version) => version.id);
+    const removed = groupStore.removeMemberFromVersions(groupId, versionIds, member);
+    if (!removed) {
+        return false;
+    }
+
+    recomputeFeatureVisibility();
+    useMapStore(pinia).markLayerUpdated();
+    return true;
+}
+
+export function addFeatureToGroup(groupId: string, member: GroupMember): boolean {
+    const groupStore = useGroupStore(pinia);
+    const group = groupStore.groups.find((item) => item.id === groupId);
+    if (!group) {
+        return false;
+    }
+
+    groupStore.addMembersToGroup(groupId, [member]);
+    recomputeFeatureVisibility();
+    useMapStore(pinia).markLayerUpdated();
+    return true;
+}
+
 // ── Selection → membership helpers ───────────────────────────────────────
 
 /**

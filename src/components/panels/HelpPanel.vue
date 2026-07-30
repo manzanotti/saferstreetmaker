@@ -347,7 +347,7 @@ function close() {
                             </p>
                             <h2>Creating and opening groups</h2>
                             <p class="mb-8">
-                                To create a group, use the Area Selection tool to select two or more
+                                To create a group, use the Area Selection tool to select one or more
                                 features, then choose
                                 <strong>Add selected features to a group</strong>. Give the group a
                                 name when prompted. You can open the Groups panel with the Groups

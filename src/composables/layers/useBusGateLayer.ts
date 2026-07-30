@@ -18,9 +18,7 @@ export function createBusGateLayer(map: L.Map): IMapLayer {
                     icon: new L.DivIcon({ className: 'bus-gate-icon' }),
                     draggable: true,
                     pane: 'filters'
-                } as any).on('click', (e: any) =>
-                    handlePointFeatureClick(e, 'BusGates', geoJsonLayer)
-                );
+                } as any).on('click', (e: any) => handlePointFeatureClick(e, 'BusGates'));
                 geoJsonLayer.addLayer(marker);
                 return marker;
             },

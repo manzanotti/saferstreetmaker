@@ -12,13 +12,22 @@ import {
     isPointFeatureElement,
     setMouseMarkerCursor,
     buildHistoryId,
-    isFeatureEditLayerButtonId
+    buildFeatureDescriptionPopup,
+    buildFeatureGroupMembershipContent,
+    isFeatureEditLayerButtonId,
+    closeFeatureHoverPopups
 } from './layerUtils';
 import type { IMapLayer } from './IMapLayer';
 import { type EditablePolylineLayer } from './usePolylineLayer';
 import { selectFeature, executeCopy, clearFeatureHighlight } from '../useAreaSelection';
 import { useSelectionStore } from '../../stores/selectionStore';
-import { recomputeFeatureVisibility } from '../useGroups';
+import {
+    addFeatureToGroup,
+    openGroupDetails,
+    recomputeFeatureVisibility,
+    removeFeatureFromGroup
+} from '../useGroups';
+import { useSettingsStore } from '../../stores/settingsStore';
 import { isFeatureGroupHidden } from '../../features/groups/featureVisibility';
 
 const COLOUR = '#cc00cc';
@@ -446,10 +455,10 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
 
         polygon.on('mousedown', () => {
             if (
-                selectionMode === 'draw' &&
+                mapStore.activeLayerId !== null &&
+                mapStore.activeLayerId !== BUTTON_ID &&
                 _drawingTool !== null &&
-                mapStore.drawLayerId === BUTTON_ID &&
-                mapStore.activeLayerId === BUTTON_ID
+                mapStore.drawLayerId === BUTTON_ID
             ) {
                 disableDrawMode();
             }
@@ -463,7 +472,30 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             );
         });
 
+        let hoverPopup: L.Popup | null = null;
+
+        polygon.on('mouseover', () => {
+            if (map.hasLayer(popup)) {
+                return;
+            }
+
+            closeFeatureHoverPopups(map);
+
+            const descriptionPopup = buildFeatureDescriptionPopup(
+                { minWidth: 30, keepInView: true },
+                { layerId: 'LtnCells', historyId }
+            );
+            if (descriptionPopup) {
+                descriptionPopup.setLatLng(polygon.getBounds().getCenter());
+                hoverPopup = descriptionPopup;
+                descriptionPopup.addTo(map);
+            }
+        });
+
         polygon.on('mouseout', (e: any) => {
+            hoverPopup?.remove();
+            hoverPopup = null;
+
             if (selectionMode !== 'edit' || mapStore.activeLayerId !== BUTTON_ID) {
                 return;
             }
@@ -477,6 +509,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
 
         polygon.bindTooltip(label, { permanent: true, direction: 'center' });
         (polygon as any).syncGroupVisibility = () => syncTooltipVisibility(polygon);
+        (polygon as any).syncGroupStyle = () => recomputeFeatureVisibility();
         syncPolygonTooltip(polygon, label);
 
         // Leaflet can re-open permanent tooltips when the parent layer is attached to the map.
@@ -485,13 +518,28 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             syncTooltipVisibility(polygon);
         });
 
-        const { popup, labelEl, colorEl } = createLtnPopup(polygon, label);
+        const { popup, labelEl, colorEl, refreshGroupContent } = createLtnPopup(polygon, label);
         // Expose the popup + label input on the polygon so the draw-created
         // handler can open it to prompt for a title immediately after drawing.
         (polygon as any).__ltnPopup = popup;
         (polygon as any).__ltnLabelEl = labelEl;
 
         polygon.on('click', (e: any) => {
+            closeFeatureHoverPopups(map);
+            if (useSettingsStore(pinia).readOnly) {
+                L.DomEvent.stopPropagation(e.originalEvent ?? e);
+                const descriptionPopup = buildFeatureDescriptionPopup(
+                    { minWidth: 30, keepInView: true },
+                    { layerId: 'LtnCells', historyId },
+                    'click'
+                );
+                if (descriptionPopup) {
+                    descriptionPopup.setLatLng(e.latlng ?? polygon.getBounds().getCenter());
+                    map.openPopup(descriptionPopup);
+                }
+                return;
+            }
+
             const isModifierClick =
                 (e.originalEvent?.shiftKey ||
                     e.originalEvent?.ctrlKey ||
@@ -562,6 +610,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                 map.off('popupopen', focusPopupLabel);
                 labelEl.focus();
             };
+            refreshGroupContent();
             map.on('popupopen', focusPopupLabel);
             map.openPopup(popup);
             labelEl.focus();
@@ -576,8 +625,17 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
     const createLtnPopup = (
         polygon: any,
         initialLabel: string
-    ): { popup: L.Popup; labelEl: HTMLInputElement; colorEl: HTMLInputElement } => {
-        const popup = L.popup({ minWidth: 30, keepInView: true });
+    ): {
+        popup: L.Popup;
+        labelEl: HTMLInputElement;
+        colorEl: HTMLInputElement;
+        refreshGroupContent: () => void;
+    } => {
+        const popup = L.popup({
+            minWidth: 30,
+            keepInView: true,
+            className: 'feature-popup-editor'
+        });
         const controlList = document.createElement('ul');
         controlList.classList.add('popup-buttons', 'ltn-popup-buttons');
         const currentControls = document.createElement('li');
@@ -690,8 +748,36 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             applyChanges();
         });
 
-        popup.setContent(controlList);
-        return { popup, labelEl, colorEl };
+        const popupContent = document.createElement('div');
+        popupContent.classList.add('feature-popup-content');
+        const refreshGroupContent = () => {
+            controlList.querySelectorAll('.feature-popup-group-content').forEach((groupContent) => {
+                groupContent.remove();
+            });
+            const groupContentItem = document.createElement('li');
+            groupContentItem.classList.add('feature-popup-group-content');
+            groupContentItem.appendChild(
+                buildFeatureGroupMembershipContent(
+                    { layerId: 'LtnCells', historyId: polygon.properties.historyId },
+                    openGroupDetails,
+                    (groupId) =>
+                        removeFeatureFromGroup(groupId, {
+                            layerId: 'LtnCells',
+                            historyId: polygon.properties.historyId
+                        }),
+                    (groupId) =>
+                        addFeatureToGroup(groupId, {
+                            layerId: 'LtnCells',
+                            historyId: polygon.properties.historyId
+                        })
+                )
+            );
+            controlList.insertBefore(groupContentItem, colourActions);
+        };
+        popupContent.appendChild(controlList);
+        refreshGroupContent();
+        popup.setContent(popupContent);
+        return { popup, labelEl, colorEl, refreshGroupContent };
     };
 
     // ── draw:created handler ─────────────────────────────────────────────────

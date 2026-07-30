@@ -150,6 +150,25 @@ async function drawNamedLtnCell(page: Page, name: string): Promise<void> {
     await page.waitForTimeout(300);
 }
 
+async function drawNamedMobilityLane(page: Page, name: string): Promise<void> {
+    await page.locator('#mobility-lane-button').click();
+    const map = page.locator('.leaflet-container');
+    const box = await map.boundingBox();
+    if (!box) throw new Error('Map bounding box not found');
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+    await page.waitForTimeout(200);
+    await page.mouse.click(cx - 60, cy);
+    await page.waitForTimeout(200);
+    await page.mouse.click(cx + 60, cy);
+    await page.waitForTimeout(200);
+    await page.mouse.dblclick(cx + 60, cy + 60);
+    const labelInput = page.locator('.leaflet-popup .label-editor');
+    await expect(labelInput).toHaveCount(0);
+    await page.locator('#mobility-lane-button').click();
+    await page.waitForTimeout(300);
+}
+
 // ---------------------------------------------------------------------------
 // Test suites
 // ---------------------------------------------------------------------------
@@ -159,16 +178,14 @@ test.describe('Groups — Group button visibility', () => {
         await setupPage(page, context);
     });
 
-    test('Group button is NOT visible when fewer than 2 features are selected', async ({
-        page
-    }) => {
+    test('Group button is visible when one feature is selected', async ({ page }) => {
         await placeModalFilter(page);
         await page.locator('#select-area-button').click();
         await dragSelectCenter(page);
         await expect(page.getByText('1 feature selected')).toBeVisible();
         await expect(
             page.getByRole('button', { name: 'Add selected features to a group' })
-        ).not.toBeVisible();
+        ).toBeVisible();
     });
 
     test('Group button IS visible when 2 or more features are selected', async ({ page }) => {
@@ -231,6 +248,217 @@ test.describe('Groups — Create group', () => {
         await openGroupsPanel(page);
         await openGroupDetails(page, 'School Zone');
         await expect(page.locator('.group-description-content')).toContainText('Updated notes');
+    });
+
+    test('feature hover popup renders the descriptions of its groups', async ({ page }) => {
+        await placeTwoModalFilters(page);
+        await selectBothFilters(page);
+        await createGroupWithDescription(page, 'School Zone', '<p>Slow down near school</p>');
+
+        const marker = page.locator('.leaflet-filters-pane path.modal-filter-marker').first();
+        await marker.dispatchEvent('mouseover');
+
+        const popup = page.locator('.leaflet-popup');
+        await expect(popup).toBeVisible();
+        await expect(popup.locator('.feature-popup-group-description')).toContainText(
+            'School Zone'
+        );
+        await expect(popup.locator('.feature-popup-description')).toContainText(
+            'Slow down near school'
+        );
+    });
+
+    test('polygon hover popup renders the descriptions of its groups', async ({ page }) => {
+        await drawNamedLtnCell(page, 'School cell');
+
+        await page.locator('#select-area-button').click();
+        const polygon = page
+            .locator('.leaflet-ltns-pane path.ltn-cell.leaflet-interactive')
+            .first();
+        await polygon.dispatchEvent('click', { shiftKey: true });
+        await expect(page.getByText('1 feature selected')).toBeVisible();
+        await createGroupWithDescription(page, 'School Zone', '<p>Slow down near school</p>');
+
+        await polygon.dispatchEvent('mouseover');
+
+        const popup = page.locator('.leaflet-popup');
+        await expect(popup).toBeVisible();
+        await expect(popup.locator('.feature-popup-group-description')).toContainText(
+            'School Zone'
+        );
+        await expect(popup.locator('.feature-popup-description')).toContainText(
+            'Slow down near school'
+        );
+    });
+
+    test('polygon hover popup closes when the pointer leaves the polygon', async ({ page }) => {
+        await drawNamedLtnCell(page, 'School cell');
+
+        await page.locator('#select-area-button').click();
+        const polygon = page
+            .locator('.leaflet-ltns-pane path.ltn-cell.leaflet-interactive')
+            .first();
+        await polygon.dispatchEvent('click', { shiftKey: true });
+        await expect(page.getByText('1 feature selected')).toBeVisible();
+        await createGroupWithDescription(page, 'School Zone', '<p>Slow down near school</p>');
+
+        await polygon.dispatchEvent('mouseover');
+        await expect(page.locator('.leaflet-popup')).toBeVisible();
+
+        await polygon.dispatchEvent('mouseout');
+        await expect(page.locator('.leaflet-popup')).toHaveCount(0);
+    });
+
+    test('polyline hover popup shows while its editor is open', async ({ page }) => {
+        await placeModalFilter(page, 110);
+        await drawNamedMobilityLane(page, 'Mobility lane');
+
+        await page.locator('#select-area-button').click();
+        await dragSelectCenter(page, 160);
+        await expect(page.getByText('2 features selected')).toBeVisible();
+        await createGroupWithDescription(page, 'School Zone', '<p>Slow down near school</p>');
+
+        const polyline = page
+            .locator('.leaflet-overlay-pane path.mobility-lane.leaflet-interactive')
+            .first();
+        await page.locator('#mobility-lane-button').click();
+        await polyline.dispatchEvent('click');
+        await expect(page.locator('.leaflet-popup')).toBeVisible();
+
+        const marker = page.locator('.leaflet-filters-pane path.modal-filter-marker').first();
+        await marker.hover();
+        await expect(page.locator('.leaflet-popup.feature-popup-hover')).toBeVisible();
+    });
+
+    test('polyline hover popup shows while its editor is open on the same feature', async ({
+        page
+    }) => {
+        await drawNamedMobilityLane(page, 'Mobility lane');
+
+        await page.locator('#select-area-button').click();
+        const polyline = page
+            .locator('.leaflet-overlay-pane path.mobility-lane.leaflet-interactive')
+            .first();
+        await polyline.dispatchEvent('click', { shiftKey: true });
+        await expect(page.getByText('1 feature selected')).toBeVisible();
+        await createGroupWithDescription(page, 'School Zone', '<p>Slow down near school</p>');
+
+        await page.locator('#mobility-lane-button').click();
+        await polyline.dispatchEvent('click');
+        await expect(page.locator('.leaflet-popup')).toBeVisible();
+
+        await polyline.dispatchEvent('mouseover');
+        await expect(page.locator('.leaflet-popup.feature-popup-hover')).toBeVisible();
+    });
+
+    test('polygon hover popup shows while a polyline editor is open', async ({ page }) => {
+        await drawNamedLtnCell(page, 'School cell');
+
+        await page.locator('#select-area-button').click();
+        const polygon = page
+            .locator('.leaflet-ltns-pane path.ltn-cell.leaflet-interactive')
+            .first();
+        await polygon.dispatchEvent('click', { shiftKey: true });
+        await expect(page.getByText('1 feature selected')).toBeVisible();
+        await createGroupWithDescription(page, 'School Zone', '<p>Slow down near school</p>');
+
+        await drawNamedMobilityLane(page, 'Mobility lane');
+        const polyline = page
+            .locator('.leaflet-overlay-pane path.mobility-lane.leaflet-interactive')
+            .first();
+        await page.locator('#mobility-lane-button').click();
+        await polyline.dispatchEvent('click');
+        await expect(page.locator('.leaflet-popup')).toBeVisible();
+
+        await polygon.dispatchEvent('mouseover');
+        await expect(page.locator('.leaflet-popup.feature-popup-hover')).toBeVisible();
+    });
+
+    test('polygon click popup lists its groups', async ({ page }) => {
+        await drawNamedLtnCell(page, 'School cell');
+
+        await page.locator('#select-area-button').click();
+        const polygon = page
+            .locator('.leaflet-ltns-pane path.ltn-cell.leaflet-interactive')
+            .first();
+        await polygon.dispatchEvent('click', { shiftKey: true });
+        await expect(page.getByText('1 feature selected')).toBeVisible();
+        await createGroupWithDescription(page, 'School Zone', '<p>Slow down near school</p>');
+
+        await page.locator('#ltn-button').click();
+        await polygon.dispatchEvent('click');
+
+        const popup = page.locator('.leaflet-popup');
+        await expect(popup).toBeVisible();
+        await expect(popup.locator('.feature-popup-groups')).toContainText('School Zone');
+        const popupControls = popup.locator('.ltn-popup-buttons > *');
+        await expect(popupControls.nth(0)).toHaveClass(/current-controls/);
+        await expect(popupControls.nth(1)).toHaveClass(/feature-popup-group-content/);
+        await expect(popupControls.nth(2)).toHaveClass(/colour-actions/);
+        await expect(popup.locator('.label-editor')).toHaveCSS('border-top-width', '1px');
+        await expect(popup.locator('.label-editor')).toHaveCSS(
+            'border-top-color',
+            'rgb(209, 213, 219)'
+        );
+        await expect(popup.locator('.colour-swatch')).toHaveCSS('border-top-width', '1px');
+        await expect(popup.locator('.colour-swatch')).toHaveCSS(
+            'border-top-color',
+            'rgb(209, 213, 219)'
+        );
+        await expect(popup.locator('.label-editor')).toHaveCSS('padding-top', '4px');
+        await expect(popup.locator('.label-editor')).toHaveCSS('padding-left', '8px');
+        await expect(popup.locator('.ltn-popup-buttons > .feature-popup-group-content')).toHaveCSS(
+            'margin-top',
+            '12px'
+        );
+    });
+
+    test('ungrouped feature editor uses selection mode to add to a group', async ({ page }) => {
+        await placeModalFilter(page, -120);
+        await page.locator('#select-area-button').click();
+        await dragSelectCenter(page, 80, -120);
+        await expect(page.getByText('1 feature selected')).toBeVisible();
+        await createGroup(page, 'Alpha Zone');
+
+        await drawNamedLtnCell(page, 'School cell');
+        await page.locator('#ltn-button').click();
+        const polygon = page
+            .locator('.leaflet-ltns-pane path.ltn-cell.leaflet-interactive')
+            .first();
+        await polygon.dispatchEvent('click');
+
+        const popup = page.locator('.leaflet-popup');
+        await expect(popup.locator('.feature-popup-groups')).toContainText('None');
+        const groupSelect = popup.locator('.add-feature-to-group-select');
+        await expect(groupSelect).toBeVisible();
+        await expect(groupSelect.locator('option')).toHaveText(['Add to group…', 'Alpha Zone']);
+
+        await groupSelect.selectOption({ label: 'Alpha Zone' });
+        await expect(popup.locator('.feature-popup-groups')).toContainText('Alpha Zone');
+        await expect(popup.locator('.feature-popup-group-none')).toHaveCount(0);
+    });
+
+    test('read-only feature click renders the description popup without actions', async ({
+        page
+    }) => {
+        await placeTwoModalFilters(page);
+        await selectBothFilters(page);
+        await createGroupWithDescription(page, 'School Zone', '<p>Slow down near school</p>');
+
+        await page.locator('#settings-button').click();
+        await page.locator('#read-only').check();
+        await page.getByRole('button', { name: 'Save' }).click();
+
+        const marker = page.locator('.leaflet-filters-pane path.modal-filter-marker').first();
+        await marker.dispatchEvent('click');
+
+        const popup = page.locator('.leaflet-popup');
+        await expect(popup).toBeVisible();
+        await expect(popup).toHaveClass(/feature-popup-description/);
+        await expect(popup.locator('.feature-popup-description')).toContainText(
+            'Slow down near school'
+        );
+        await expect(popup.locator('.popup-buttons')).toHaveCount(0);
     });
 
     test('Groups panel shows empty state message when no groups', async ({ page }) => {

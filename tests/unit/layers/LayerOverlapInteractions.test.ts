@@ -69,7 +69,7 @@ describe('Layer overlap interactions', () => {
         expect(mobilityLayer.getLayer().getLayers()).toHaveLength(1);
     });
 
-    it('removes point marker when clicked even if a polygon exists underneath', () => {
+    it('keeps point marker when clicked even if a polygon exists underneath', () => {
         const mapStore = useMapStore(pinia);
         const markUpdatedSpy = vi.spyOn(mapStore, 'markLayerUpdated');
 
@@ -106,12 +106,12 @@ describe('Layer overlap interactions', () => {
 
         triggerLayerClick(marker);
 
-        expect(modalFilterLayer.getLayer().getLayers()).toHaveLength(0);
+        expect(modalFilterLayer.getLayer().getLayers()).toHaveLength(1);
         expect(ltnLayer.getLayer().getLayers()).toHaveLength(1);
-        expect(markUpdatedSpy).toHaveBeenCalled();
+        expect(markUpdatedSpy).not.toHaveBeenCalled();
     });
 
-    it('removes point marker when clicked even if a polyline exists underneath', () => {
+    it('keeps point marker when clicked even if a polyline exists underneath', () => {
         const mapStore = useMapStore(pinia);
         const markUpdatedSpy = vi.spyOn(mapStore, 'markLayerUpdated');
 
@@ -142,9 +142,9 @@ describe('Layer overlap interactions', () => {
 
         triggerLayerClick(marker);
 
-        expect(busGateLayer.getLayer().getLayers()).toHaveLength(0);
+        expect(busGateLayer.getLayer().getLayers()).toHaveLength(1);
         expect(mobilityLayer.getLayer().getLayers()).toHaveLength(1);
-        expect(markUpdatedSpy).toHaveBeenCalled();
+        expect(markUpdatedSpy).not.toHaveBeenCalled();
     });
 
     it('does not switch to LTN edit mode when a point layer is active', () => {
