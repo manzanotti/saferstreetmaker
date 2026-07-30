@@ -23,7 +23,7 @@
         "leaflet-arrowheads": "^1.4.0",
         "leaflet-geometryutil": "^0.10.3",
         "lz-string": "^1.5.0",
-        "prettier": "^3.9.4",
+        "prettier": "^3.9.6",
         "typescript": "^6.0.3",
         "vite": "^8.1.5",
         "vite-plugin-externals": "^0.6.2",
