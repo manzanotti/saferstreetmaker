@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 vi.mock('leaflet', () => import('./__mocks__/leaflet'));
 
+import * as L from 'leaflet';
 import {
     setMapCursor,
     removeMapCursor,
@@ -14,6 +15,8 @@ import {
     buildDeletePopup,
     buildFeatureActionPopup,
     buildFeatureDescriptionPopup,
+    addFeatureHoverPopup,
+    getFeatureHoverLatLng,
     buildFeatureGroupMembershipContent,
     getFeatureHistoryId
 } from '../../src/composables/layers/layerUtils';
@@ -334,6 +337,14 @@ describe('feature popups', () => {
         return popup.setContent.mock.calls[0][0] as HTMLElement;
     }
 
+    it('does not build a popup for an unnamed feature without groups', () => {
+        const popup = buildFeatureDescriptionPopup({ minWidth: 30 }, member, 'hover', {
+            iconSrc: '/icons/modal.svg'
+        });
+
+        expect(popup).toBeNull();
+    });
+
     it('renders every available group description in a description popup', () => {
         useGroupStore(pinia).setGroups([
             {
@@ -362,6 +373,7 @@ describe('feature popups', () => {
         expect(content.querySelectorAll('.feature-popup-group-description')).toHaveLength(3);
         expect(content.querySelectorAll('.feature-popup-description')).toHaveLength(2);
         expect(popup.options.autoClose).toBe(false);
+        expect(popup.options.autoPan).toBe(false);
         expect(popup.options.className).toBe('feature-popup-hover');
     });
 
@@ -377,8 +389,135 @@ describe('feature popups', () => {
 
         const popup = buildFeatureDescriptionPopup({ minWidth: 30 }, member, 'click') as any;
 
+        expect(popup.options.autoPan).toBe(true);
         expect(popup.options.className).toBe('feature-popup-description');
         expect(popup.options.className).not.toBe('feature-popup-hover');
+    });
+
+    it('orders toolbar icon, feature name, and group content', () => {
+        useGroupStore(pinia).setGroups([
+            {
+                id: 'g1',
+                name: 'Town centre',
+                description: '<p>Slow traffic</p>',
+                members: [member]
+            }
+        ]);
+
+        const popup = buildFeatureDescriptionPopup({ minWidth: 30 }, member, 'hover', {
+            featureName: 'Main crossing',
+            iconSrc: '/icons/modal.svg'
+        }) as any;
+        const content = getPopupContent(popup);
+
+        expect(content.children[0].classList.contains('feature-popup-feature-icon')).toBe(true);
+        expect((content.children[0] as HTMLImageElement).alt).toBe('Modal filter');
+        expect(content.children[1].classList.contains('feature-popup-feature-name')).toBe(true);
+        expect(content.children[1].textContent).toBe('Main crossing');
+        expect(content.children[2].classList.contains('feature-popup-group-description')).toBe(
+            true
+        );
+        expect(content.children[2].textContent).toContain('Town centre');
+    });
+
+    it('renders toolbar-style text in the popup', () => {
+        const popup = buildFeatureDescriptionPopup({ minWidth: 30 }, member, 'hover', {
+            featureName: 'Cell',
+            text: 'LTN'
+        }) as any;
+        const text = getPopupContent(popup).children[0];
+
+        expect(text.tagName).toBe('SPAN');
+        expect(text.classList.contains('feature-popup-feature-text')).toBe(true);
+        expect(text.classList.contains('text-xl')).toBe(true);
+        expect(text.classList.contains('font-bold')).toBe(true);
+        expect(text.textContent).toBe('LTN');
+    });
+
+    it('keeps hover popups near the feature while clamping them to the viewport', () => {
+        const popupElement = document.createElement('div');
+        Object.defineProperties(popupElement, {
+            offsetWidth: { value: 100 },
+            offsetHeight: { value: 80 }
+        });
+
+        const popup = {
+            setLatLng: vi.fn().mockReturnThis(),
+            addTo: vi.fn().mockReturnThis(),
+            getElement: () => popupElement
+        } as any;
+        const featureLatLng = new L.LatLng(5, 5);
+        const map = {
+            getSize: () => ({ x: 400, y: 300 }),
+            latLngToContainerPoint: () => new L.Point(390, 290),
+            containerPointToLatLng: (point: L.Point) => point
+        } as any;
+
+        addFeatureHoverPopup(map, popup, featureLatLng);
+
+        expect(popup.setLatLng).toHaveBeenCalledTimes(2);
+        expect(popup.setLatLng).toHaveBeenNthCalledWith(1, featureLatLng);
+        expect(popup.setLatLng.mock.calls[1][0]).toMatchObject({ x: 338, y: 288 });
+    });
+
+    it('shifts an overlapping hover popup away from the legend', () => {
+        const mapContainer = document.createElement('div');
+        const legend = document.createElement('div');
+        legend.classList.add('legend');
+        mapContainer.appendChild(legend);
+        Object.defineProperties(mapContainer, {
+            getBoundingClientRect: {
+                value: () => ({ left: 0, top: 0, right: 400, bottom: 300 })
+            }
+        });
+        Object.defineProperties(legend, {
+            getBoundingClientRect: {
+                value: () => ({ left: 280, top: 0, right: 400, bottom: 100 })
+            }
+        });
+
+        const popupElement = document.createElement('div');
+        Object.defineProperties(popupElement, {
+            offsetWidth: { value: 100 },
+            offsetHeight: { value: 80 },
+            getBoundingClientRect: {
+                value: () => ({ left: 300, top: 20, right: 400, bottom: 100 })
+            }
+        });
+
+        const popup = {
+            setLatLng: vi.fn().mockReturnThis(),
+            addTo: vi.fn().mockReturnThis(),
+            getElement: () => popupElement
+        } as any;
+        const map = {
+            getContainer: () => mapContainer,
+            getSize: () => ({ x: 400, y: 300 }),
+            latLngToContainerPoint: () => new L.Point(390, 100),
+            containerPointToLatLng: (point: L.Point) => point
+        } as any;
+
+        addFeatureHoverPopup(map, popup, new L.LatLng(5, 5));
+
+        expect(popup.setLatLng.mock.calls.at(-1)?.[0]).toMatchObject({ x: 218, y: 100 });
+    });
+
+    it('uses the initial hover point only when the feature centre is outside the viewport', () => {
+        const featureCenter = new L.LatLng(5, 5);
+        const initialHoverLatLng = new L.LatLng(6, 6);
+        const visibleMap = {
+            getBounds: () => new L.LatLngBounds(new L.LatLng(0, 0), new L.LatLng(10, 10))
+        } as any;
+        const offscreenMap = {
+            getBounds: () => new L.LatLngBounds(new L.LatLng(0, 0), new L.LatLng(4, 4))
+        } as any;
+
+        expect(getFeatureHoverLatLng(visibleMap, featureCenter, initialHoverLatLng)).toBe(
+            featureCenter
+        );
+        expect(getFeatureHoverLatLng(offscreenMap, featureCenter, initialHoverLatLng)).toBe(
+            initialHoverLatLng
+        );
     });
 
     it('renders group version counts and action controls', () => {

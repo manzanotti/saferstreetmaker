@@ -23,16 +23,22 @@ export class GroupPolylineSplitter {
             const selectedLatLngs = new Set<L.LatLng>(split.selectedLatLngs);
             const insideRuns = this.buildInsideRuns(split, selectedLatLngs);
             const remainingRuns = this.buildRemainingRuns(split, selectedLatLngs);
+            const sourceProperties =
+                (
+                    split.marker as L.Layer & {
+                        feature?: { properties?: GeoJSON.GeoJsonProperties };
+                    }
+                ).feature?.properties ?? {};
 
             layer.getLayer().removeLayer(split.marker);
 
             for (const run of insideRuns) {
-                const historyId = this.createLine(layer, run);
+                const historyId = this.createLine(layer, run, sourceProperties);
                 newMembers.push({ layerId: split.layerId, historyId });
             }
 
             for (const run of remainingRuns) {
-                this.createLine(layer, run);
+                this.createLine(layer, run, sourceProperties);
             }
         }
 
@@ -61,7 +67,11 @@ export class GroupPolylineSplitter {
         return runs.filter((run) => run.length >= 2);
     }
 
-    private createLine(layer: IMapLayer, run: L.LatLng[]): string {
+    private createLine(
+        layer: IMapLayer,
+        run: L.LatLng[],
+        sourceProperties: GeoJSON.GeoJsonProperties
+    ): string {
         const historyId = this.options.createHistoryId();
         const feature: GeoJSON.Feature<GeoJSON.LineString> = {
             type: 'Feature',
@@ -69,7 +79,7 @@ export class GroupPolylineSplitter {
                 type: 'LineString',
                 coordinates: run.map((latLng) => [latLng.lng, latLng.lat])
             },
-            properties: { historyId }
+            properties: { ...sourceProperties, historyId }
         };
         layer.loadFromGeoJSON({
             type: 'FeatureCollection',

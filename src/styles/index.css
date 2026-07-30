@@ -194,6 +194,52 @@ a {
     gap: 0.75rem;
 }
 
+.feature-popup-feature-icon {
+    display: block;
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    flex: 0 0 auto;
+}
+
+.feature-popup-feature-name {
+    font-weight: 600;
+}
+
+.feature-name-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.feature-name-input-row,
+.feature-name-save-row {
+    display: flex;
+}
+
+.feature-name-editor label {
+    display: grid;
+    flex: 1;
+    gap: 0.25rem;
+    font-weight: 600;
+}
+
+.feature-name-editor .name-editor {
+    min-width: 0;
+    border: 1px solid #d1d5db;
+    border-radius: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    font-weight: 400;
+}
+
+.feature-name-editor .apply-name-button {
+    border-radius: 0.25rem;
+    background: #166534;
+    color: #fff;
+    padding: 0.3rem 0.65rem;
+}
+
 .feature-popup-groups > strong {
     display: block;
     margin-bottom: 0.25rem;

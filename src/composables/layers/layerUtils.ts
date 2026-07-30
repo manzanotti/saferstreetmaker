@@ -70,6 +70,26 @@ const FEATURE_EDIT_LAYER_BUTTON_IDS = new Set([
     'ltn'
 ]);
 
+const FEATURE_TYPE_NAMES: Record<string, string> = {
+    ModalFilters: 'Modal filter',
+    BusGates: 'Bus gate',
+    TrafficLights: 'Traffic light',
+    PedestrianLights: 'Pedestrian light',
+    ZebraCrossing: 'Zebra crossing',
+    MobilityLanes: 'Mobility lane',
+    TramLines: 'Tram line',
+    CarFreeStreets: 'Car-free street',
+    SchoolStreet: 'School street',
+    OneWayStreets: 'One-way street',
+    LtnCells: 'LTN cell'
+};
+
+export interface FeatureDescriptionPopupDetails {
+    featureName?: string;
+    iconSrc?: string;
+    text?: string;
+}
+
 export function getPointSelectCursor(): string {
     const mapElement = document.getElementById('map');
     const cursor = mapElement
@@ -362,22 +382,54 @@ export function buildFeatureGroupMembershipContent(
 export function buildFeatureDescriptionPopup(
     popupOptions: L.PopupOptions,
     member: GroupMember,
-    popupType: 'hover' | 'click' = 'hover'
+    popupType: 'hover' | 'click' = 'hover',
+    details?: FeatureDescriptionPopupDetails
 ): L.Popup | null {
     const content = document.createElement('div');
     content.classList.add('feature-popup-content');
     content.classList.add('feature-popup-hover-content');
     const groups = findFeatureGroupMemberships(useGroupStore(pinia).groups, member);
 
-    if (groups.length === 0) {
+    const featureTypeName = FEATURE_TYPE_NAMES[member.layerId] ?? member.layerId;
+    if (groups.length === 0 && !details?.featureName) {
         return null;
     }
 
     const popup = L.popup({
         ...popupOptions,
         autoClose: false,
+        autoPan: popupType !== 'hover',
         className: popupType === 'hover' ? 'feature-popup-hover' : 'feature-popup-description'
     });
+
+    if (groups.length > 0 || details?.featureName) {
+        if (details?.iconSrc) {
+            const featureIcon = document.createElement('img');
+            featureIcon.classList.add('feature-popup-feature-icon');
+            featureIcon.src = details.iconSrc;
+            featureIcon.alt = featureTypeName;
+            content.appendChild(featureIcon);
+        } else if (details?.text) {
+            const featureText = document.createElement('span');
+            featureText.classList.add(
+                'feature-popup-feature-text',
+                'text-xl',
+                'font-bold',
+                'leading-none',
+                'text-gray-700'
+            );
+            featureText.textContent = details.text;
+            featureText.setAttribute('aria-hidden', 'true');
+            content.appendChild(featureText);
+        }
+    }
+
+    if (details?.featureName) {
+        const name = document.createElement('div');
+        name.classList.add('feature-popup-feature-name');
+        name.textContent = details.featureName;
+        content.appendChild(name);
+    }
 
     groups.forEach((group) => {
         const groupContent = document.createElement('section');
@@ -400,6 +452,76 @@ export function buildFeatureDescriptionPopup(
     return popup;
 }
 
+export function addFeatureHoverPopup(map: L.Map, popup: L.Popup, latLng: L.LatLng): void {
+    popup.setLatLng(latLng).addTo(map);
+
+    const element = popup.getElement();
+    if (!element) {
+        return;
+    }
+
+    const mapSize = map.getSize();
+    const popupWidth = element.offsetWidth;
+    const popupHeight = element.offsetHeight;
+    const anchor = map.latLngToContainerPoint(latLng);
+    const padding = 12;
+    const minX = padding + popupWidth / 2;
+    const maxX = Math.max(minX, mapSize.x - padding - popupWidth / 2);
+    const minY = padding + popupHeight;
+    const maxY = Math.max(minY, mapSize.y - padding);
+    const adjustedAnchor = L.point(
+        Math.min(Math.max(anchor.x, minX), maxX),
+        Math.min(Math.max(anchor.y, minY), maxY)
+    );
+
+    if (adjustedAnchor.x !== anchor.x || adjustedAnchor.y !== anchor.y) {
+        popup.setLatLng(map.containerPointToLatLng(adjustedAnchor));
+    }
+
+    const mapContainer = map.getContainer?.();
+    if (!mapContainer) {
+        return;
+    }
+
+    const legend = mapContainer.querySelector<HTMLElement>('.legend');
+    if (!legend) {
+        return;
+    }
+
+    const mapRect = mapContainer.getBoundingClientRect();
+    const popupRect = element.getBoundingClientRect();
+    const legendRect = legend.getBoundingClientRect();
+    const overlapsLegend =
+        popupRect.left < legendRect.right &&
+        popupRect.right > legendRect.left &&
+        popupRect.top < legendRect.bottom &&
+        popupRect.bottom > legendRect.top;
+
+    if (!overlapsLegend) {
+        return;
+    }
+
+    const legendLeft = legendRect.left - mapRect.left;
+    const shiftedLeftAnchor = legendLeft - padding - popupWidth / 2;
+    if (shiftedLeftAnchor >= minX) {
+        adjustedAnchor.x = Math.min(adjustedAnchor.x, shiftedLeftAnchor);
+    } else {
+        const legendBottom = legendRect.bottom - mapRect.top;
+        const shiftedBelowAnchor = legendBottom + padding + popupHeight;
+        adjustedAnchor.y = Math.min(Math.max(adjustedAnchor.y, shiftedBelowAnchor), maxY);
+    }
+
+    popup.setLatLng(map.containerPointToLatLng(adjustedAnchor));
+}
+
+export function getFeatureHoverLatLng(
+    map: L.Map,
+    featureCenter: L.LatLng,
+    initialHoverLatLng: L.LatLng
+): L.LatLng {
+    return map.getBounds().contains(featureCenter) ? featureCenter : initialHoverLatLng;
+}
+
 export function closeFeatureHoverPopups(map: L.Map): void {
     if (typeof map.eachLayer !== 'function') {
         return;
@@ -418,6 +540,8 @@ export interface FeatureActionPopupOptions {
     member: GroupMember;
     onDelete: () => void;
     onCopy?: () => void;
+    name?: string;
+    onRename?: (name: string) => void;
     onOpenGroup?: (groupId: string) => void;
     onRemoveFromGroup?: (groupId: string) => void;
     onAddToGroup?: (groupId: string) => void;
@@ -450,7 +574,43 @@ export function setFeatureActionPopupContent(
             opts.map.closePopup(popup);
         })
     );
-    content.prepend(controlList);
+
+    if (opts.onRename) {
+        const nameForm = document.createElement('form');
+        nameForm.classList.add('feature-name-editor');
+
+        const nameInputRow = document.createElement('div');
+        nameInputRow.classList.add('feature-name-input-row');
+
+        const nameLabel = document.createElement('label');
+        nameLabel.textContent = 'Name';
+
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.value = opts.name ?? '';
+        nameInput.classList.add('name-editor');
+        nameLabel.appendChild(nameInput);
+        nameInputRow.appendChild(nameLabel);
+
+        const nameSaveRow = document.createElement('div');
+        nameSaveRow.classList.add('feature-name-save-row');
+        const saveNameButton = document.createElement('button');
+        saveNameButton.type = 'submit';
+        saveNameButton.classList.add('apply-name-button');
+        saveNameButton.textContent = 'Save name';
+        nameSaveRow.appendChild(saveNameButton);
+
+        nameForm.append(nameInputRow, nameSaveRow);
+        nameForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            opts.onRename?.(nameInput.value);
+            opts.map.closePopup(popup);
+        });
+        content.prepend(nameForm, controlList);
+    } else {
+        content.prepend(controlList);
+    }
+
     popup.setContent(content);
 }
 

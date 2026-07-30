@@ -13,6 +13,8 @@ import {
     setMouseMarkerCursor,
     buildHistoryId,
     buildFeatureDescriptionPopup,
+    addFeatureHoverPopup,
+    getFeatureHoverLatLng,
     buildFeatureGroupMembershipContent,
     isFeatureEditLayerButtonId,
     closeFeatureHoverPopups
@@ -474,7 +476,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
 
         let hoverPopup: L.Popup | null = null;
 
-        polygon.on('mouseover', () => {
+        polygon.on('mouseover', (event: L.LeafletMouseEvent) => {
             if (map.hasLayer(popup)) {
                 return;
             }
@@ -483,12 +485,18 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
 
             const descriptionPopup = buildFeatureDescriptionPopup(
                 { minWidth: 30, keepInView: true },
-                { layerId: 'LtnCells', historyId }
+                { layerId: 'LtnCells', historyId },
+                'hover',
+                { featureName: polygon.properties.label ?? '', text: 'LTN' }
             );
             if (descriptionPopup) {
-                descriptionPopup.setLatLng(polygon.getBounds().getCenter());
+                const featureCenter = polygon.getBounds().getCenter();
                 hoverPopup = descriptionPopup;
-                descriptionPopup.addTo(map);
+                addFeatureHoverPopup(
+                    map,
+                    descriptionPopup,
+                    getFeatureHoverLatLng(map, featureCenter, event.latlng)
+                );
             }
         });
 
@@ -531,7 +539,8 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                 const descriptionPopup = buildFeatureDescriptionPopup(
                     { minWidth: 30, keepInView: true },
                     { layerId: 'LtnCells', historyId },
-                    'click'
+                    'click',
+                    { featureName: polygon.properties.label ?? '', text: 'LTN' }
                 );
                 if (descriptionPopup) {
                     descriptionPopup.setLatLng(e.latlng ?? polygon.getBounds().getCenter());
@@ -932,9 +941,9 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             _visible = v;
         },
         iconHtml: (() => {
-            const i = document.createElement('i');
-            i.style.backgroundColor = COLOUR;
-            return i.outerHTML;
+            const icon = document.createElement('i');
+            icon.style.backgroundColor = COLOUR;
+            return icon.outerHTML;
         })(),
 
         getToolbarButton() {

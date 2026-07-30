@@ -326,9 +326,20 @@ class Point {
 }
 
 function popup(options?: any) {
+    const handlers: Record<string, Function[]> = {};
     return {
         options,
         _latlng: null as any,
+        on(event: string, fn: Function) {
+            (handlers[event] ??= []).push(fn);
+            return this;
+        },
+        fire(event: string) {
+            for (const handler of handlers[event] ?? []) {
+                handler();
+            }
+            return this;
+        },
         setContent: vi.fn().mockReturnThis(),
         setLatLng: vi.fn().mockReturnThis()
     };
@@ -408,6 +419,10 @@ class Map {
     }
 }
 
+function point(x: number, y: number) {
+    return new Point(x, y);
+}
+
 class TileLayer {
     constructor(_url: string, _opts?: any) {}
     addTo(_map: any) {
@@ -450,5 +465,6 @@ export {
     Control,
     DomUtil,
     Point,
+    point,
     popup
 };

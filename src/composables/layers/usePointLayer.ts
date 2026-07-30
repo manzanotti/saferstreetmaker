@@ -17,6 +17,8 @@ import {
     getFeatureHistoryId,
     buildFeatureActionPopup,
     buildFeatureDescriptionPopup,
+    addFeatureHoverPopup,
+    getFeatureHoverLatLng,
     closeFeatureHoverPopups
 } from './layerUtils';
 import { useSelectionStore } from '../../stores/selectionStore';
@@ -56,7 +58,11 @@ export function getPointEventLatLng(event: {
  * current selection instead of deleting it — so points can be gathered the
  * same way polylines/polygons are. Otherwise it opens the feature popup.
  */
-export function handlePointFeatureClick(event: L.LeafletMouseEvent, layerId: string): void {
+export function handlePointFeatureClick(
+    event: L.LeafletMouseEvent,
+    layerId: string,
+    iconSrc?: string
+): void {
     L.DomEvent.stopPropagation(event);
 
     const selectionStore = useSelectionStore(pinia);
@@ -85,7 +91,8 @@ export function handlePointFeatureClick(event: L.LeafletMouseEvent, layerId: str
         const descriptionPopup = buildFeatureDescriptionPopup(
             { minWidth: 30, keepInView: true },
             member,
-            'click'
+            'click',
+            { iconSrc }
         );
         descriptionPopup?.setLatLng(latLng ?? map.getCenter()).openOn(map);
         return;
@@ -129,7 +136,7 @@ export function createPointLayer(config: PointLayerConfig, map: L.Map): IMapLaye
 
         let hoverPopup: L.Popup | null = null;
 
-        marker.on('mouseover', () => {
+        marker.on('mouseover', (event: L.LeafletMouseEvent) => {
             const markerMap = useMapStore(pinia).map;
             if (!markerMap) {
                 return;
@@ -139,10 +146,18 @@ export function createPointLayer(config: PointLayerConfig, map: L.Map): IMapLaye
 
             const descriptionPopup = buildFeatureDescriptionPopup(
                 { minWidth: 30, keepInView: true },
-                { layerId: config.id, historyId: nextHistoryId }
+                { layerId: config.id, historyId: nextHistoryId },
+                'hover',
+                { iconSrc: config.iconSrc }
             );
             hoverPopup = descriptionPopup;
-            descriptionPopup?.setLatLng(latlng).addTo(markerMap);
+            if (descriptionPopup) {
+                addFeatureHoverPopup(
+                    markerMap,
+                    descriptionPopup,
+                    getFeatureHoverLatLng(markerMap, latlng, event.latlng)
+                );
+            }
         });
         marker.on('mouseout', () => {
             hoverPopup?.remove();

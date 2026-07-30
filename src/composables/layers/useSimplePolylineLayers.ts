@@ -25,7 +25,12 @@ interface SimplePolylineConfig {
 function createSimplePolylineLayer(cfg: SimplePolylineConfig, map: L.Map): IMapLayer {
     let layer: EditablePolylineLayer;
 
-    const addLine = (latLngs: L.LatLng[], geoJsonLayer: L.GeoJSON, historyId?: string) => {
+    const addLine = (
+        latLngs: L.LatLng[],
+        geoJsonLayer: L.GeoJSON,
+        historyId?: string,
+        name?: string
+    ) => {
         addPolylineToLayer({
             points: latLngs,
             geoJsonLayer,
@@ -41,6 +46,8 @@ function createSimplePolylineLayer(cfg: SimplePolylineConfig, map: L.Map): IMapL
             buttonId: cfg.buttonId,
             selectForEdit: () => layer.selectForEdit(),
             historyId,
+            name,
+            iconSrc: cfg.iconSrc,
             arrowheads: cfg.arrowheads
         });
     };
@@ -80,7 +87,9 @@ function createSimplePolylineLayer(cfg: SimplePolylineConfig, map: L.Map): IMapL
     );
 
     layer.loadFromGeoJSON = (geoJson: any) => {
-        loadPolylineGeoJSON(geoJson, (pts, historyId) => addLine(pts, layer.getLayer(), historyId));
+        loadPolylineGeoJSON(geoJson, (pts, historyId, name) =>
+            addLine(pts, layer.getLayer(), historyId, name)
+        );
     };
     layer.loadFeature = (feature: any, historyId?: string) => {
         if (feature?.geometry?.type !== 'LineString') {
@@ -90,7 +99,7 @@ function createSimplePolylineLayer(cfg: SimplePolylineConfig, map: L.Map): IMapL
             ([lng, lat]: [number, number]) => new L.LatLng(lat, lng)
         );
         const id = historyId ?? buildHistoryId('polyline');
-        addLine(points, layer.getLayer(), id);
+        addLine(points, layer.getLayer(), id, feature.properties?.name);
         return id;
     };
 

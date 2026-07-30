@@ -10,6 +10,8 @@ import {
     buildFeatureActionPopup,
     setFeatureActionPopupContent,
     buildFeatureDescriptionPopup,
+    addFeatureHoverPopup,
+    getFeatureHoverLatLng,
     removeMapCursor,
     setMouseMarkerCursor,
     buildHistoryId,
@@ -50,6 +52,8 @@ export interface AddPolylineOpts {
     /** Extra config for arrowheads plugin */
     arrowheads?: object;
     historyId?: string;
+    name?: string;
+    iconSrc?: string;
 }
 
 function getFeatureCoordinates(feature: any): number[][] {
@@ -167,16 +171,37 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
     }
 
     const historyId = opts.historyId ?? buildHistoryId('polyline');
+    let name = opts.name ?? '';
 
     const buildPolylineHistoryFeature = () => {
         const feature = polyline.toGeoJSON() as any;
-        feature.properties = feature.properties ?? {};
-        feature.properties.historyId = historyId;
+        feature.properties = {
+            ...(feature.properties ?? {}),
+            historyId,
+            name
+        };
         return feature;
     };
 
     polyline.feature = buildPolylineHistoryFeature();
     let lastCommittedFeature = buildPolylineHistoryFeature();
+
+    const renamePolyline = (nextName: string) => {
+        if (nextName === name) {
+            return;
+        }
+
+        const before = lastCommittedFeature;
+        name = nextName;
+        const after = buildPolylineHistoryFeature();
+        polyline.feature = after;
+        lastCommittedFeature = after;
+        mapStore.markLayerUpdated({
+            kind: `${mutationKind}-edit`,
+            layerId,
+            payload: { before, after }
+        });
+    };
 
     polyline.on('edit', () => {
         const nextFeature = buildPolylineHistoryFeature();
@@ -203,7 +228,7 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
 
     let hoverPopup: L.Popup | null = null;
 
-    polyline.on('mouseover', () => {
+    polyline.on('mouseover', (event: L.LeafletMouseEvent) => {
         closeFeatureHoverPopups(map);
         if (mapStore.activeLayerId === buttonId) {
             setMouseMarkerCursor('pointer');
@@ -211,12 +236,18 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
 
         const descriptionPopup = buildFeatureDescriptionPopup(
             { minWidth: 30, keepInView: true },
-            { layerId, historyId }
+            { layerId, historyId },
+            'hover',
+            { featureName: name, iconSrc: opts.iconSrc }
         );
         if (descriptionPopup) {
-            descriptionPopup.setLatLng(polyline.getBounds().getCenter());
+            const featureCenter = polyline.getBounds().getCenter();
             hoverPopup = descriptionPopup;
-            descriptionPopup.addTo(map);
+            addFeatureHoverPopup(
+                map,
+                descriptionPopup,
+                getFeatureHoverLatLng(map, featureCenter, event.latlng)
+            );
         }
     });
 
@@ -230,8 +261,14 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
 
     const popup = buildFeatureActionPopup({
         map,
-        popupOptions: { minWidth: 30, keepInView: opts.popupKeepInView ?? true },
+        popupOptions: {
+            minWidth: 30,
+            keepInView: opts.popupKeepInView ?? true,
+            className: 'feature-popup-editor'
+        },
         member: { layerId, historyId },
+        name,
+        onRename: renamePolyline,
         onDelete: () => {
             selectFeature(polyline as unknown as L.Layer, layerId, false);
             executeAreaDelete();
@@ -244,6 +281,12 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
         onOpenGroup: openGroupDetails,
         onRemoveFromGroup: (groupId) => removeFeatureFromGroup(groupId, { layerId, historyId }),
         onAddToGroup: (groupId) => addFeatureToGroup(groupId, { layerId, historyId })
+    });
+
+    popup.on('remove', () => {
+        if (mapStore.activeLayerId === buttonId) {
+            mapStore.setDrawLayer(null);
+        }
     });
 
     polyline.on('click', (e: any) => {
@@ -265,8 +308,14 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
 
         setFeatureActionPopupContent(popup, {
             map,
-            popupOptions: { minWidth: 30, keepInView: opts.popupKeepInView ?? true },
+            popupOptions: {
+                minWidth: 30,
+                keepInView: opts.popupKeepInView ?? true,
+                className: 'feature-popup-editor'
+            },
             member: { layerId, historyId },
+            name,
+            onRename: renamePolyline,
             onDelete: () => {
                 selectFeature(polyline as unknown as L.Layer, layerId, false);
                 executeAreaDelete();
@@ -284,7 +333,8 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
             const descriptionPopup = buildFeatureDescriptionPopup(
                 { minWidth: 30, keepInView: true },
                 { layerId, historyId },
-                'click'
+                'click',
+                { featureName: name, iconSrc: opts.iconSrc }
             );
             if (descriptionPopup) {
                 descriptionPopup.setLatLng(e.latlng);
@@ -338,7 +388,7 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
  */
 export function loadPolylineGeoJSON(
     geoJson: any,
-    addFn: (points: L.LatLng[], historyId?: string) => void
+    addFn: (points: L.LatLng[], historyId?: string, name?: string) => void
 ): void {
     if (!geoJson?.features) {
         return;
@@ -349,6 +399,6 @@ export function loadPolylineGeoJSON(
         // Legacy: coordinates wrapped in an extra array
         const coords = raw.length === 1 ? raw[0] : raw;
         coords.forEach((c: number[]) => points.push(new L.LatLng(c[1], c[0])));
-        addFn(points, feature.properties?.historyId);
+        addFn(points, feature.properties?.historyId, feature.properties?.name);
     });
 }

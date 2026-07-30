@@ -1,6 +1,7 @@
 import { test, expect, Page } from '@playwright/test';
 import {
     addFreshStorageInitScript,
+    getLayerFeatures,
     getLayerFeatureCount as getIndexedDbLayerFeatureCount,
     waitForFreshStorage
 } from './indexedDbHelpers';
@@ -1047,6 +1048,43 @@ test.describe('Layer: Mobility Lane (polyline)', () => {
         expect(count).toBeGreaterThanOrEqual(1);
     });
 
+    test('editing a mobility lane persists its name', async ({ page }) => {
+        await page.locator('#mobility-lane-button').click();
+        await drawPolyline(page);
+        await page.locator('#mobility-lane-button').click();
+
+        const path = page.locator('.leaflet-overlay-pane path.mobility-lane.leaflet-interactive');
+        await path.first().dispatchEvent('click');
+
+        const nameInput = page.locator('.leaflet-popup .name-editor');
+        await expect(nameInput).toBeVisible();
+        await nameInput.fill('Canal route');
+        await page.getByRole('button', { name: 'Save name' }).click();
+        await page.waitForTimeout(500);
+
+        const features = await getLayerFeatures(page, 'Hello Cleveland', 'MobilityLanes');
+        expect(features[0]?.properties?.name).toBe('Canal route');
+    });
+
+    test('closing the mobility lane editor deselects the polyline', async ({ page }) => {
+        await page.locator('#mobility-lane-button').click();
+        await drawPolyline(page);
+        await page.locator('#mobility-lane-button').click();
+
+        const path = page.locator('.leaflet-overlay-pane path.mobility-lane.leaflet-interactive');
+        await path.first().dispatchEvent('click');
+        await expect(page.locator('.popup-buttons')).toBeVisible();
+        await page
+            .locator('.leaflet-popup.feature-popup-editor .leaflet-popup-close-button')
+            .dispatchEvent('click');
+
+        await expect(page.locator('#mobility-lane-button')).toHaveAttribute(
+            'aria-pressed',
+            'false'
+        );
+        await expect(page.locator('.leaflet-editing-icon')).toHaveCount(0);
+    });
+
     test('deleting a drawn mobility lane removes it from storage', async ({ page }) => {
         await page.locator('#mobility-lane-button').click();
         await drawPolyline(page);
@@ -1612,7 +1650,9 @@ test.describe('Layer: LTN Cell (polygon)', () => {
         await expect(page.locator('.popup-buttons')).toHaveCount(1);
         expect(await page.locator('.leaflet-editing-icon').count()).toBeGreaterThan(0);
 
-        await page.locator('.leaflet-popup-close-button').click();
+        await page
+            .locator('.leaflet-popup.feature-popup-editor .leaflet-popup-close-button')
+            .click();
         await expect(page.locator('.popup-buttons')).toHaveCount(0);
         expect(await page.locator('.leaflet-editing-icon').count()).toBeGreaterThan(0);
 
@@ -2098,9 +2138,16 @@ test.describe('Layer exclusivity', () => {
         // The naming popup must be closed before clicking to place a filter.
         await expect(page.locator('.popup-buttons')).toHaveCount(0);
 
-        // The popup should now be closed. Clicking inside the LTN cell should
-        // place a modal filter, not open the LTN popup.
-        await clickMap(page, 0, 0);
+        // The popup should now be closed. Clicking the rendered polygon center
+        // should place a modal filter, not open the LTN popup.
+        const polygon = page.locator('.leaflet-ltns-pane path.ltn-cell.leaflet-interactive');
+        const polygonBox = await polygon.first().boundingBox();
+        if (!polygonBox) throw new Error('LTN polygon bounding box not found');
+        await page.mouse.click(
+            polygonBox.x + polygonBox.width / 2,
+            polygonBox.y + polygonBox.height / 2
+        );
+        await page.waitForTimeout(100);
 
         await expect(page.locator('#modal-filter-button')).toHaveAttribute('aria-pressed', 'true');
         await expect(page.locator('#ltn-button')).toHaveAttribute('aria-pressed', 'false');
