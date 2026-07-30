@@ -283,8 +283,8 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
         onAddToGroup: (groupId) => addFeatureToGroup(groupId, { layerId, historyId })
     });
 
-    map.on('popupclose', (event: L.PopupEvent) => {
-        if (event.popup === popup && mapStore.activeLayerId === buttonId) {
+    popup.on('remove', () => {
+        if (mapStore.activeLayerId === buttonId) {
             mapStore.setDrawLayer(null);
         }
     });
@@ -376,7 +376,6 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
     });
 
     geoJsonLayer.addLayer(polyline);
-    polyline.namePopup = popup;
 
     if (opts.reinitDrawing) {
         opts.reinitDrawing(map);

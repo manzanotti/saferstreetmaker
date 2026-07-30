@@ -326,9 +326,20 @@ class Point {
 }
 
 function popup(options?: any) {
+    const handlers: Record<string, Function[]> = {};
     return {
         options,
         _latlng: null as any,
+        on(event: string, fn: Function) {
+            (handlers[event] ??= []).push(fn);
+            return this;
+        },
+        fire(event: string) {
+            for (const handler of handlers[event] ?? []) {
+                handler();
+            }
+            return this;
+        },
         setContent: vi.fn().mockReturnThis(),
         setLatLng: vi.fn().mockReturnThis()
     };

@@ -281,6 +281,7 @@ describe('MobilityLanes history payloads', () => {
     it('persists name edits with an undoable whole-feature mutation', () => {
         const mapStore = useMapStore(pinia);
         const layer = createMobilityLaneLayer(makeMockMap());
+        const popupFactory = vi.spyOn(L, 'popup');
         layer.loadFromGeoJSON({
             features: [
                 {
@@ -297,7 +298,8 @@ describe('MobilityLanes history payloads', () => {
         });
 
         const line = layer.getLayer().getLayers()[0] as any;
-        const popupContent = line.namePopup.setContent.mock.calls[0][0] as HTMLElement;
+        const popup = popupFactory.mock.results[0].value as any;
+        const popupContent = popup.setContent.mock.calls[0][0] as HTMLElement;
         const nameInput = popupContent.querySelector('.name-editor') as HTMLInputElement;
         const nameInputRow = popupContent.querySelector('.feature-name-input-row');
         const nameSaveRow = popupContent.querySelector('.feature-name-save-row');

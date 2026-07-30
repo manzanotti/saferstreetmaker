@@ -607,7 +607,6 @@ export function setFeatureActionPopupContent(
             opts.map.closePopup(popup);
         });
         content.prepend(nameForm, controlList);
-        (popup as L.Popup & { nameInput?: HTMLInputElement }).nameInput = nameInput;
     } else {
         content.prepend(controlList);
     }
