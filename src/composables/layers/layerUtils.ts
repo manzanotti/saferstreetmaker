@@ -441,6 +441,7 @@ export function buildFeatureDescriptionPopup(
             : document.createElement('strong');
         heading.textContent = group.groupName;
         if (details?.onOpenGroup) {
+            (heading as HTMLButtonElement).type = 'button';
             heading.classList.add('group-link');
             heading.addEventListener('click', () => details.onOpenGroup?.(group.groupId));
         }
@@ -529,12 +530,42 @@ export function addFeatureHoverPopup(
     popup.setLatLng(map.containerPointToLatLng(adjustedAnchor));
 }
 
-export function closeFeatureHoverPopupIfUnhovered(popup: L.Popup, closePopup: () => void): void {
-    window.setTimeout(() => {
-        if (!popup.getElement()?.matches(':hover')) {
-            closePopup();
+export interface FeatureHoverPopupController {
+    set(popup: L.Popup): void;
+    close(popup: L.Popup): void;
+    scheduleClose(): void;
+}
+
+export function createFeatureHoverPopupController(): FeatureHoverPopupController {
+    let activePopup: L.Popup | null = null;
+
+    const close = (popup: L.Popup): void => {
+        if (activePopup !== popup) {
+            return;
         }
-    }, 0);
+
+        popup.remove();
+        activePopup = null;
+    };
+
+    return {
+        set(popup) {
+            activePopup = popup;
+        },
+        close,
+        scheduleClose() {
+            const popup = activePopup;
+            if (!popup) {
+                return;
+            }
+
+            window.setTimeout(() => {
+                if (activePopup === popup && !popup.getElement()?.matches(':hover')) {
+                    close(popup);
+                }
+            }, 0);
+        }
+    };
 }
 
 export function getFeatureHoverLatLng(

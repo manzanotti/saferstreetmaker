@@ -1,4 +1,8 @@
 .leaflet-popup.feature-popup-hover {
+    pointer-events: none;
+}
+
+.leaflet-popup.feature-popup-hover .leaflet-popup-content {
     pointer-events: auto;
 }
 @import 'tailwindcss/theme' layer(theme);

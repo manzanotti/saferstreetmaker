@@ -18,7 +18,7 @@ import {
     buildFeatureGroupMembershipContent,
     isFeatureEditLayerButtonId,
     closeFeatureHoverPopups,
-    closeFeatureHoverPopupIfUnhovered
+    createFeatureHoverPopupController
 } from './layerUtils';
 import type { IMapLayer } from './IMapLayer';
 import { type EditablePolylineLayer } from './usePolylineLayer';
@@ -475,11 +475,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             );
         });
 
-        let hoverPopup: L.Popup | null = null;
-        const closeHoverPopup = (): void => {
-            hoverPopup?.remove();
-            hoverPopup = null;
-        };
+        const hoverPopupController = createFeatureHoverPopupController();
 
         polygon.on('mouseover', (event: L.LeafletMouseEvent) => {
             if (map.hasLayer(popup)) {
@@ -500,20 +496,18 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             );
             if (descriptionPopup) {
                 const featureCenter = polygon.getBounds().getCenter();
-                hoverPopup = descriptionPopup;
+                hoverPopupController.set(descriptionPopup);
                 addFeatureHoverPopup(
                     map,
                     descriptionPopup,
                     getFeatureHoverLatLng(map, featureCenter, event.latlng),
-                    closeHoverPopup
+                    () => hoverPopupController.close(descriptionPopup)
                 );
             }
         });
 
         polygon.on('mouseout', (e: any) => {
-            if (hoverPopup) {
-                closeFeatureHoverPopupIfUnhovered(hoverPopup, closeHoverPopup);
-            }
+            hoverPopupController.scheduleClose();
 
             if (selectionMode !== 'edit' || mapStore.activeLayerId !== BUTTON_ID) {
                 return;

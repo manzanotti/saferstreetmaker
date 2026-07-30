@@ -16,6 +16,7 @@ import {
     buildFeatureActionPopup,
     buildFeatureDescriptionPopup,
     addFeatureHoverPopup,
+    createFeatureHoverPopupController,
     getFeatureHoverLatLng,
     buildFeatureGroupMembershipContent,
     getFeatureHistoryId
@@ -394,6 +395,23 @@ describe('feature popups', () => {
         expect(popup.options.className).not.toBe('feature-popup-hover');
     });
 
+    it('renders interactive group headings as non-submit buttons', () => {
+        useGroupStore(pinia).setGroups([
+            {
+                id: 'g1',
+                name: 'Town centre',
+                members: [member]
+            }
+        ]);
+
+        const popup = buildFeatureDescriptionPopup({ minWidth: 30 }, member, 'hover', {
+            onOpenGroup: vi.fn()
+        }) as any;
+        const heading = getPopupContent(popup).querySelector('.group-link') as HTMLButtonElement;
+
+        expect(heading.type).toBe('button');
+    });
+
     it('orders toolbar icon, feature name, and group content', () => {
         useGroupStore(pinia).setGroups([
             {
@@ -500,6 +518,31 @@ describe('feature popups', () => {
         addFeatureHoverPopup(map, popup, new L.LatLng(5, 5));
 
         expect(popup.setLatLng.mock.calls.at(-1)?.[0]).toMatchObject({ x: 218, y: 100 });
+    });
+
+    it('does not close a newer popup from a stale scheduled close', () => {
+        vi.useFakeTimers();
+        try {
+            const firstPopup = {
+                getElement: () => null,
+                remove: vi.fn()
+            } as unknown as L.Popup;
+            const secondPopup = {
+                getElement: () => null,
+                remove: vi.fn()
+            } as unknown as L.Popup;
+            const controller = createFeatureHoverPopupController();
+
+            controller.set(firstPopup);
+            controller.scheduleClose();
+            controller.set(secondPopup);
+            vi.runAllTimers();
+
+            expect(firstPopup.remove).not.toHaveBeenCalled();
+            expect(secondPopup.remove).not.toHaveBeenCalled();
+        } finally {
+            vi.useRealTimers();
+        }
     });
 
     it('uses the initial hover point only when the feature centre is outside the viewport', () => {
