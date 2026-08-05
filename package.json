@@ -13,7 +13,7 @@
     "devDependencies": {
         "@playwright/test": "^1.61.1",
         "@tailwindcss/vite": "^4.3.2",
-        "@types/leaflet": "^1.9.21",
+        "@types/leaflet": "^1.9.22",
         "@types/lz-string": "^1.5.0",
         "@types/node": "^26.1.1",
         "@vitejs/plugin-vue": "^6.0.8",
