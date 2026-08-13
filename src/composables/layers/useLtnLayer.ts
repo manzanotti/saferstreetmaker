@@ -37,7 +37,6 @@ import { isFeatureGroupHidden } from '../../features/groups/featureVisibility';
 const COLOUR = '#cc00cc';
 const BUTTON_ID = 'ltn';
 const CURSOR_CSS = 'ltn-cell';
-const METADATA_SAVE_DELAY = 250;
 
 export function createLtnLayer(map: L.Map): EditablePolylineLayer {
     const mapStore = useMapStore(pinia);
@@ -713,15 +712,9 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         );
         currentControlsContent.appendChild(deleteControl);
 
-        let metadataSaveTimer: number | null = null;
         let metadataBeforeFeature: any = null;
 
         const flushMetadataChanges = (): void => {
-            if (metadataSaveTimer !== null) {
-                window.clearTimeout(metadataSaveTimer);
-                metadataSaveTimer = null;
-            }
-
             if (!metadataBeforeFeature) {
                 return;
             }
@@ -751,17 +744,21 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             const nextFeature = getPolygonHistoryFeature(polygon);
             (polygon as any)['historyFeature'] = nextFeature;
             recomputeFeatureVisibility();
-
-            if (metadataSaveTimer !== null) {
-                window.clearTimeout(metadataSaveTimer);
-            }
-            metadataSaveTimer = window.setTimeout(flushMetadataChanges, METADATA_SAVE_DELAY);
         };
 
         labelEl.addEventListener('input', saveMetadataChanges);
         colorEl.addEventListener('input', saveMetadataChanges);
         labelEl.addEventListener('change', flushMetadataChanges);
         colorEl.addEventListener('change', flushMetadataChanges);
+        labelEl.addEventListener('keydown', (event: KeyboardEvent) => {
+            if (event.key !== 'Enter') {
+                return;
+            }
+
+            event.preventDefault();
+            flushMetadataChanges();
+            map.closePopup(popup);
+        });
 
         const popupContent = document.createElement('div');
         popupContent.classList.add('feature-popup-content');
