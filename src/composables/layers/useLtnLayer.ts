@@ -26,6 +26,7 @@ import { selectFeature, executeCopy, clearFeatureHighlight } from '../useAreaSel
 import { useSelectionStore } from '../../stores/selectionStore';
 import {
     addFeatureToGroup,
+    createGroupFromFeature,
     openGroupDetails,
     recomputeFeatureVisibility,
     removeFeatureFromGroup
@@ -710,19 +711,10 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         );
         currentControlsContent.appendChild(deleteControl);
 
-        const colourActions = document.createElement('li');
-        colourActions.classList.add('colour-actions');
-        const applyColourButton = document.createElement('button');
-        applyColourButton.type = 'button';
-        applyColourButton.classList.add('apply-changes-button');
-        applyColourButton.textContent = 'Apply';
-        applyColourButton.setAttribute('aria-label', 'Apply LTN cell changes');
-
-        const applyChanges = () => {
+        const saveMetadataChanges = (): void => {
             const currentLabel = polygon['properties'].label ?? '';
             const currentColor = polygon.options.color ?? COLOUR;
             if (labelEl.value === currentLabel && colorEl.value === currentColor) {
-                map.closePopup(popup);
                 return;
             }
 
@@ -739,33 +731,10 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             });
             (polygon as any)['historyFeature'] = nextFeature;
             recomputeFeatureVisibility();
-            map.closePopup(popup);
         };
 
-        applyColourButton.addEventListener('click', applyChanges);
-        colourActions.appendChild(applyColourButton);
-
-        const cancelColourButton = document.createElement('button');
-        cancelColourButton.type = 'button';
-        cancelColourButton.classList.add('cancel-colour-button');
-        cancelColourButton.textContent = 'Cancel';
-        cancelColourButton.setAttribute('aria-label', 'Cancel LTN cell changes');
-        cancelColourButton.addEventListener('click', () => {
-            labelEl.value = polygon.properties.label ?? '';
-            colorEl.value = polygon.options.color ?? COLOUR;
-            map.closePopup(popup);
-        });
-        colourActions.appendChild(cancelColourButton);
-        controlList.appendChild(colourActions);
-
-        labelEl.addEventListener('keydown', (event: KeyboardEvent) => {
-            if (event.key !== 'Enter') {
-                return;
-            }
-
-            event.preventDefault();
-            applyChanges();
-        });
+        labelEl.addEventListener('input', saveMetadataChanges);
+        colorEl.addEventListener('input', saveMetadataChanges);
 
         const popupContent = document.createElement('div');
         popupContent.classList.add('feature-popup-content');
@@ -788,10 +757,11 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                         addFeatureToGroup(groupId, {
                             layerId: 'LtnCells',
                             historyId: polygon.properties.historyId
-                        })
+                        }),
+                    (member, onCreated) => createGroupFromFeature(member, onCreated)
                 )
             );
-            controlList.insertBefore(groupContentItem, colourActions);
+            controlList.appendChild(groupContentItem);
         };
         popupContent.appendChild(controlList);
         refreshGroupContent();

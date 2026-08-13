@@ -24,7 +24,12 @@ import { pinia } from '../../stores/index';
 import { selectFeature, executeAreaDelete, executeCopy } from '../useAreaSelection';
 import { useSelectionStore } from '../../stores/selectionStore';
 import { useSettingsStore } from '../../stores/settingsStore';
-import { addFeatureToGroup, openGroupDetails, removeFeatureFromGroup } from '../useGroups';
+import {
+    addFeatureToGroup,
+    createGroupFromFeature,
+    openGroupDetails,
+    removeFeatureFromGroup
+} from '../useGroups';
 
 export interface PolylineOptions {
     color: string;
@@ -281,7 +286,8 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
         },
         onOpenGroup: openGroupDetails,
         onRemoveFromGroup: (groupId) => removeFeatureFromGroup(groupId, { layerId, historyId }),
-        onAddToGroup: (groupId) => addFeatureToGroup(groupId, { layerId, historyId })
+        onAddToGroup: (groupId) => addFeatureToGroup(groupId, { layerId, historyId }),
+        onCreateNewGroup: createGroupFromFeature
     });
 
     popup.on('remove', () => {
@@ -327,7 +333,8 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
             },
             onOpenGroup: openGroupDetails,
             onRemoveFromGroup: (groupId) => removeFeatureFromGroup(groupId, { layerId, historyId }),
-            onAddToGroup: (groupId) => addFeatureToGroup(groupId, { layerId, historyId })
+            onAddToGroup: (groupId) => addFeatureToGroup(groupId, { layerId, historyId }),
+            onCreateNewGroup: createGroupFromFeature
         });
 
         if (useSettingsStore(pinia).readOnly) {

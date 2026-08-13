@@ -620,17 +620,19 @@ describe('feature popups', () => {
 describe('buildFeatureGroupMembershipContent', () => {
     const member = { layerId: 'ModalFilters', historyId: 'filter-1' };
 
-    it('shows None and alphabetizes the add-to-group options', () => {
+    it('shows the create option before alphabetized existing groups', () => {
         useGroupStore(pinia).setGroups([
             { id: 'g2', name: 'Zebra Zone', members: [] },
             { id: 'g1', name: 'Alpha Zone', members: [] }
         ]);
         const onAddToGroup = vi.fn();
+        const onCreateNewGroup = vi.fn();
         const content = buildFeatureGroupMembershipContent(
             member,
             undefined,
             undefined,
-            onAddToGroup
+            onAddToGroup,
+            onCreateNewGroup
         );
 
         expect(content.querySelector('.feature-popup-groups strong')?.textContent).toBe('Groups');
@@ -641,9 +643,14 @@ describe('buildFeatureGroupMembershipContent', () => {
         ) as HTMLSelectElement;
         expect([...groupSelect.options].map((option) => option.textContent)).toEqual([
             'Add to group…',
+            'Create new group…',
             'Alpha Zone',
             'Zebra Zone'
         ]);
+
+        groupSelect.value = '__create-new-group__';
+        groupSelect.dispatchEvent(new Event('change'));
+        expect(onCreateNewGroup).toHaveBeenCalledWith(member, expect.any(Function));
 
         groupSelect.value = 'g1';
         groupSelect.dispatchEvent(new Event('change'));

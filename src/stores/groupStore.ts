@@ -36,6 +36,7 @@ export const useGroupStore = defineStore('group', () => {
 
     /** Members to add when the next group is created (computed before opening nameDialog). */
     const pendingGroupMembers = ref<GroupMember[]>([]);
+    const pendingGroupCreatedCallback = shallowRef<((groupId: string) => void) | null>(null);
 
     /**
      * When non-null, the area-selection flow is targeting an existing group:
@@ -495,6 +496,16 @@ export const useGroupStore = defineStore('group', () => {
         pendingGroupMembers.value = members;
     }
 
+    function setPendingGroupCreatedCallback(callback: ((groupId: string) => void) | null) {
+        pendingGroupCreatedCallback.value = callback;
+    }
+
+    function consumePendingGroupCreatedCallback() {
+        const callback = pendingGroupCreatedCallback.value;
+        pendingGroupCreatedCallback.value = null;
+        return callback;
+    }
+
     function setAddToGroupId(id: string | null) {
         addToGroupId.value = id;
     }
@@ -516,6 +527,7 @@ export const useGroupStore = defineStore('group', () => {
     function clearPendingState() {
         pendingGroupMembers.value = [];
         pendingSplits.value = [];
+        pendingGroupCreatedCallback.value = null;
         renameGroupId.value = null;
         addToGroupId.value = null;
         pendingEmptyGroupDeletionId.value = null;
@@ -531,6 +543,7 @@ export const useGroupStore = defineStore('group', () => {
         pendingSplits,
         splitDialogOpen,
         pendingGroupMembers,
+        pendingGroupCreatedCallback,
         addToGroupId,
         pendingEmptyGroupDeletionId,
         detailsGroupId,
@@ -560,6 +573,8 @@ export const useGroupStore = defineStore('group', () => {
         approveSplitDialog,
         closeSplitDialog,
         setPendingGroupMembers,
+        setPendingGroupCreatedCallback,
+        consumePendingGroupCreatedCallback,
         setAddToGroupId,
         setPendingEmptyGroupDeletion,
         openDetailsDialog,

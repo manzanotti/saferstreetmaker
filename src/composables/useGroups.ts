@@ -245,6 +245,19 @@ export function createGroupFromSelection(): void {
     }
 }
 
+export function createGroupFromFeature(
+    member: GroupMember,
+    onCreated?: (groupId: string) => void,
+    includeMember = true
+): void {
+    const groupStore = useGroupStore(pinia);
+
+    groupStore.setPendingGroupMembers(includeMember ? [member] : []);
+    groupStore.setAddToGroupId(null);
+    groupStore.setPendingGroupCreatedCallback(onCreated ?? null);
+    groupStore.openNameDialog();
+}
+
 /**
  * Group-first entry point: begin adding features to an existing group. Marks
  * the group as the add target and activates area-selection so the user can
@@ -410,6 +423,7 @@ export function finalizeCreateGroup(name: string, description = ''): void {
     const members = [...groupStore.pendingGroupMembers, ...splitMembers];
 
     groupStore.addGroup({ id, name: name.trim(), description, members });
+    groupStore.consumePendingGroupCreatedCallback()?.(id);
     groupStore.clearPendingState();
     groupStore.closeNameDialog();
 

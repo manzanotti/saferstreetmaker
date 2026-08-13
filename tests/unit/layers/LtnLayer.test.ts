@@ -616,7 +616,7 @@ describe('LtnLayer feature clicks', () => {
         expect(controlList.querySelector('.feature-popup-group-content')).not.toBeNull();
     });
 
-    it('saves the title and closes the popup when Enter is pressed in the title input', () => {
+    it('saves the title immediately while editing the title input', () => {
         const map = makeMockMap();
         const layer = createLtnLayer(map);
 
@@ -636,7 +636,6 @@ describe('LtnLayer feature clicks', () => {
 
         const polygon = layer.getLayer().getLayers()[0] as any;
         polygon.editing = { disable: vi.fn(), enable: vi.fn() };
-        const mapClosePopupSpy = vi.spyOn(map, 'closePopup');
         const mapOpenPopupSpy = vi.spyOn(map, 'openPopup');
 
         polygon.fire('click', {
@@ -649,11 +648,10 @@ describe('LtnLayer feature clicks', () => {
         const input = content.querySelector('.label-editor') as HTMLInputElement;
 
         input.value = 'Updated LTN';
-        expect(polygon.properties.label).toBe('LTN 1');
-        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        input.dispatchEvent(new Event('input', { bubbles: true }));
 
         expect(polygon.properties.label).toBe('Updated LTN');
-        expect(mapClosePopupSpy).toHaveBeenCalledWith(popup);
+        expect(mapOpenPopupSpy).toHaveBeenCalledWith(popup);
     });
 
     it('changes the cell colour from the popup swatch and records the edit', () => {
@@ -685,10 +683,6 @@ describe('LtnLayer feature clicks', () => {
 
         colorInput.value = '#00aa00';
         colorInput.dispatchEvent(new Event('input', { bubbles: true }));
-        expect(polygon.options.color).toBe('#cc00cc');
-
-        const applyButton = content.querySelector('.apply-changes-button') as HTMLButtonElement;
-        applyButton.click();
 
         expect(polygon.options.color).toBe('#00aa00');
         expect(mapStore.lastLayerMutation?.kind).toBe('polygon-edit');
@@ -698,7 +692,7 @@ describe('LtnLayer feature clicks', () => {
         });
     });
 
-    it('cancels a pending cell colour change from the popup', () => {
+    it('does not render Apply or Cancel buttons in the popup', () => {
         const map = makeMockMap();
         const layer = createLtnLayer(map);
 
@@ -718,15 +712,9 @@ describe('LtnLayer feature clicks', () => {
 
         const polygon = layer.getLayer().getLayers()[0] as any;
         const content = polygon.__ltnPopup.setContent.mock.calls[0][0] as HTMLElement;
-        const colorInput = content.querySelector('.colour-swatch') as HTMLInputElement;
-        const cancelButton = content.querySelector('.cancel-colour-button') as HTMLButtonElement;
 
-        colorInput.value = '#00aa00';
-        colorInput.dispatchEvent(new Event('input', { bubbles: true }));
-        cancelButton.click();
-
-        expect(polygon.options.color).toBe('#cc00cc');
-        expect(colorInput.value).toBe('#cc00cc');
+        expect(content.querySelector('.apply-changes-button')).toBeNull();
+        expect(content.querySelector('.cancel-colour-button')).toBeNull();
     });
 
     it('switches selection to a polygon while another editable layer is active', () => {

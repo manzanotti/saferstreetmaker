@@ -1621,10 +1621,12 @@ test.describe('Layer: LTN Cell (polygon)', () => {
         await page.locator('#ltn-button').click();
         await drawPolygon(page);
 
-        // Drawing opens the naming popup focused on the title. Confirm the name
-        // with Enter to close it, then clicking the polygon switches to edit mode.
+        // Drawing opens the naming popup focused on the title. Close it, then
+        // clicking the polygon switches to edit mode.
         await expect(page.locator('.label-editor')).toBeVisible();
-        await page.keyboard.press('Enter');
+        await page
+            .locator('.leaflet-popup.feature-popup-editor:visible .leaflet-popup-close-button')
+            .click();
         await expect(page.locator('.popup-buttons')).toHaveCount(0);
 
         const polygon = page.locator('.leaflet-ltns-pane path.ltn-cell.leaflet-interactive');
@@ -1690,7 +1692,6 @@ test.describe('Layer: LTN Cell (polygon)', () => {
 
         const nextColour = '#00aa55';
         await page.locator('.colour-swatch').fill(nextColour);
-        await page.locator('.apply-changes-button').click();
         await expect(polygon).toHaveAttribute('stroke', nextColour);
         await waitForHistoryButtons(page, { canUndo: true, canRedo: false });
 
@@ -1998,7 +1999,6 @@ test.describe('Layer: LTN Cell (polygon)', () => {
         await page.waitForTimeout(200);
 
         await page.locator('.label-editor').fill('Zone A');
-        await page.locator('.apply-changes-button').click();
         await page.waitForTimeout(300);
 
         await page.locator('#undo-button').click();
