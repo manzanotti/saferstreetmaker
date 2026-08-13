@@ -17,7 +17,8 @@ import {
     getFeatureHoverLatLng,
     buildFeatureGroupMembershipContent,
     isFeatureEditLayerButtonId,
-    closeFeatureHoverPopups
+    closeFeatureHoverPopups,
+    createFeatureHoverPopupController
 } from './layerUtils';
 import type { IMapLayer } from './IMapLayer';
 import { type EditablePolylineLayer } from './usePolylineLayer';
@@ -474,7 +475,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             );
         });
 
-        let hoverPopup: L.Popup | null = null;
+        const hoverPopupController = createFeatureHoverPopupController();
 
         polygon.on('mouseover', (event: L.LeafletMouseEvent) => {
             if (map.hasLayer(popup)) {
@@ -487,22 +488,26 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                 { minWidth: 30, keepInView: true },
                 { layerId: 'LtnCells', historyId },
                 'hover',
-                { featureName: polygon.properties.label ?? '', text: 'LTN' }
+                {
+                    featureName: polygon.properties.label ?? '',
+                    text: 'LTN',
+                    onOpenGroup: openGroupDetails
+                }
             );
             if (descriptionPopup) {
                 const featureCenter = polygon.getBounds().getCenter();
-                hoverPopup = descriptionPopup;
+                hoverPopupController.set(descriptionPopup);
                 addFeatureHoverPopup(
                     map,
                     descriptionPopup,
-                    getFeatureHoverLatLng(map, featureCenter, event.latlng)
+                    getFeatureHoverLatLng(map, featureCenter, event.latlng),
+                    () => hoverPopupController.close(descriptionPopup)
                 );
             }
         });
 
         polygon.on('mouseout', (e: any) => {
-            hoverPopup?.remove();
-            hoverPopup = null;
+            hoverPopupController.scheduleClose();
 
             if (selectionMode !== 'edit' || mapStore.activeLayerId !== BUTTON_ID) {
                 return;
@@ -540,7 +545,11 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                     { minWidth: 30, keepInView: true },
                     { layerId: 'LtnCells', historyId },
                     'click',
-                    { featureName: polygon.properties.label ?? '', text: 'LTN' }
+                    {
+                        featureName: polygon.properties.label ?? '',
+                        text: 'LTN',
+                        onOpenGroup: openGroupDetails
+                    }
                 );
                 if (descriptionPopup) {
                     descriptionPopup.setLatLng(e.latlng ?? polygon.getBounds().getCenter());
@@ -610,6 +619,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                 e.originalEvent.clientY
             );
             e.target.editing.enable();
+            recomputeFeatureVisibility();
             popup.setLatLng(e.target.getBounds().getCenter());
             const focusPopupLabel = (event: L.PopupEvent): void => {
                 if (event.popup !== popup) {
@@ -886,6 +896,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                 disableDrawMode();
                 closeDrawPopup();
                 geoJsonLayer.eachLayer((l: any) => l.editing?.disable());
+                recomputeFeatureVisibility();
                 map.off('mousemove', syncMouseMarkerCursor as L.LeafletEventHandlerFn);
                 if (cursorSyncFrameId !== null) {
                     cancelAnimationFrame(cursorSyncFrameId);

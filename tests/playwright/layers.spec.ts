@@ -697,18 +697,15 @@ test.describe('Layer: Modal Filter (point, primary button)', () => {
         await page.waitForSelector('.leaflet-filters-pane path');
         await page.locator('.leaflet-filters-pane path').first().dispatchEvent('click');
         await deleteOpenFeaturePopup(page);
-        await page.waitForTimeout(100);
-        expect(await getLayerFeatureCount(page, 'ModalFilters')).toBe(0);
+        await expect.poll(() => getLayerFeatureCount(page, 'ModalFilters')).toBe(0);
 
         await waitForHistoryButtons(page, { canUndo: true, canRedo: false });
 
         await page.locator('#undo-button').click();
-        await page.waitForTimeout(150);
-        expect(await getLayerFeatureCount(page, 'ModalFilters')).toBe(1);
+        await expect.poll(() => getLayerFeatureCount(page, 'ModalFilters')).toBe(1);
 
         await page.locator('#redo-button').click();
-        await page.waitForTimeout(150);
-        expect(await getLayerFeatureCount(page, 'ModalFilters')).toBe(0);
+        await expect.poll(() => getLayerFeatureCount(page, 'ModalFilters')).toBe(0);
     });
 
     test('history persists when reopening the same stored map in a new page', async ({

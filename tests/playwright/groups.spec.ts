@@ -289,6 +289,12 @@ test.describe('Groups — Create group', () => {
         await expect(popup.locator('.feature-popup-description')).toContainText(
             'Slow down near school'
         );
+
+        await popup.hover();
+        await expect(popup).toBeVisible();
+        await popup.getByRole('button', { name: 'School Zone' }).click();
+        await expect(page.getByRole('dialog', { name: 'Group details' })).toBeVisible();
+        await expect(page.locator('.leaflet-popup.feature-popup-editor')).toHaveCount(0);
     });
 
     test('polygon hover popup closes when the pointer leaves the polygon', async ({ page }) => {
@@ -411,6 +417,41 @@ test.describe('Groups — Create group', () => {
             'margin-top',
             '12px'
         );
+    });
+
+    test('keeps a grouped LTN outline colour after leaving edit mode', async ({ page }) => {
+        await drawNamedLtnCell(page, 'School cell');
+
+        await page.locator('#select-area-button').click();
+        const polygon = page.locator('.leaflet-ltns-pane path.ltn-cell.leaflet-interactive');
+        await polygon.dispatchEvent('click', { shiftKey: true });
+        await expect(page.getByText('1 feature selected')).toBeVisible();
+        await createGroup(page, 'School Zone');
+        await openGroupsPanel(page);
+        await openGroupDetails(page, 'School Zone');
+        await page.locator('#group-details-colour').fill('#0088aa');
+        await page
+            .getByRole('dialog', { name: 'Group details' })
+            .getByRole('button', {
+                name: 'Save',
+                exact: true
+            })
+            .last()
+            .click();
+        await page.waitForTimeout(150);
+
+        const groupedStroke = await polygon.getAttribute('stroke');
+        expect(groupedStroke).toBeTruthy();
+        expect(groupedStroke).not.toBe('#cc00cc');
+
+        await page.locator('#ltn-button').click();
+        await polygon.dispatchEvent('click');
+        await expect(page.locator('.popup-buttons')).toHaveCount(1);
+        await expect(polygon).toHaveAttribute('stroke', groupedStroke!);
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(150);
+
+        await expect(polygon).toHaveAttribute('stroke', groupedStroke!);
     });
 
     test('ungrouped feature editor uses selection mode to add to a group', async ({ page }) => {
