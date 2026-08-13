@@ -281,11 +281,12 @@ export function buildFeatureGroupMembershipContent(
     member: GroupMember,
     onOpenGroup?: (groupId: string) => void,
     onRemoveFromGroup?: (groupId: string) => void,
-    onAddToGroup?: (groupId: string) => void
+    onAddToGroup?: (groupId: string) => void,
+    onCreateNewGroup?: (member: GroupMember, onCreated?: (groupId: string) => void) => void
 ): HTMLDivElement {
     const content = document.createElement('div');
     content.classList.add('feature-popup-content');
-    const renderGroups = () => {
+    const renderGroups = (selectedGroupId?: string) => {
         const groupStore = useGroupStore(pinia);
         const groups = findFeatureGroupMemberships(groupStore.groups, member);
         const groupsContent = document.createElement('section');
@@ -346,6 +347,13 @@ export function buildFeatureGroupMembershipContent(
             placeholder.textContent = 'Add to group…';
             groupSelect.appendChild(placeholder);
 
+            if (onCreateNewGroup) {
+                const createOption = document.createElement('option');
+                createOption.value = '__create-new-group__';
+                createOption.textContent = 'Create new group…';
+                groupSelect.appendChild(createOption);
+            }
+
             [...groupStore.groups]
                 .sort((left, right) => left.name.localeCompare(right.name))
                 .forEach((group) => {
@@ -355,11 +363,19 @@ export function buildFeatureGroupMembershipContent(
                     groupSelect.appendChild(option);
                 });
 
+            if (selectedGroupId) {
+                groupSelect.value = selectedGroupId;
+            }
+
             groupSelect.addEventListener('change', () => {
                 if (!groupSelect.value) {
                     return;
                 }
-                onAddToGroup(groupSelect.value);
+                if (groupSelect.value === '__create-new-group__') {
+                    onCreateNewGroup?.(member, (groupId) => renderGroups(groupId));
+                } else {
+                    onAddToGroup(groupSelect.value);
+                }
                 renderGroups();
             });
 
@@ -599,6 +615,7 @@ export interface FeatureActionPopupOptions {
     onOpenGroup?: (groupId: string) => void;
     onRemoveFromGroup?: (groupId: string) => void;
     onAddToGroup?: (groupId: string) => void;
+    onCreateNewGroup?: (member: GroupMember, onCreated?: (groupId: string) => void) => void;
 }
 
 export function setFeatureActionPopupContent(
@@ -609,7 +626,8 @@ export function setFeatureActionPopupContent(
         opts.member,
         opts.onOpenGroup,
         opts.onRemoveFromGroup,
-        opts.onAddToGroup
+        opts.onAddToGroup,
+        opts.onCreateNewGroup
     );
     const controlList = document.createElement('ul');
     controlList.classList.add('popup-buttons');

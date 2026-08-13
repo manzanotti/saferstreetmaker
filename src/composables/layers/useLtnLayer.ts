@@ -26,6 +26,7 @@ import { selectFeature, executeCopy, clearFeatureHighlight } from '../useAreaSel
 import { useSelectionStore } from '../../stores/selectionStore';
 import {
     addFeatureToGroup,
+    createGroupFromFeature,
     openGroupDetails,
     recomputeFeatureVisibility,
     removeFeatureFromGroup
@@ -693,6 +694,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             'delete-button',
             'Delete selected feature',
             () => {
+                flushMetadataChanges();
                 geoJsonLayer.removeLayer(polygon);
                 mapStore.markLayerUpdated({
                     kind: 'polygon-delete',
@@ -710,61 +712,52 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         );
         currentControlsContent.appendChild(deleteControl);
 
-        const colourActions = document.createElement('li');
-        colourActions.classList.add('colour-actions');
-        const applyColourButton = document.createElement('button');
-        applyColourButton.type = 'button';
-        applyColourButton.classList.add('apply-changes-button');
-        applyColourButton.textContent = 'Apply';
-        applyColourButton.setAttribute('aria-label', 'Apply LTN cell changes');
+        let metadataBeforeFeature: any = null;
 
-        const applyChanges = () => {
+        const flushMetadataChanges = (): void => {
+            if (!metadataBeforeFeature) {
+                return;
+            }
+
+            const nextFeature = getPolygonHistoryFeature(polygon);
+            mapStore.markLayerUpdated({
+                kind: 'polygon-edit',
+                layerId: 'LtnCells',
+                payload: getPolygonMutationPayload(metadataBeforeFeature, nextFeature)
+            });
+            metadataBeforeFeature = null;
+        };
+
+        const saveMetadataChanges = (): void => {
             const currentLabel = polygon['properties'].label ?? '';
             const currentColor = polygon.options.color ?? COLOUR;
             if (labelEl.value === currentLabel && colorEl.value === currentColor) {
-                map.closePopup(popup);
                 return;
             }
 
             const previousFeature =
                 (polygon as any)['historyFeature'] ?? getPolygonHistoryFeature(polygon);
+            metadataBeforeFeature ??= previousFeature;
             polygon['properties'].label = labelEl.value;
             syncPolygonTooltip(polygon, labelEl.value);
             polygon.setStyle({ color: colorEl.value });
             const nextFeature = getPolygonHistoryFeature(polygon);
-            mapStore.markLayerUpdated({
-                kind: 'polygon-edit',
-                layerId: 'LtnCells',
-                payload: getPolygonMutationPayload(previousFeature, nextFeature)
-            });
             (polygon as any)['historyFeature'] = nextFeature;
             recomputeFeatureVisibility();
-            map.closePopup(popup);
         };
 
-        applyColourButton.addEventListener('click', applyChanges);
-        colourActions.appendChild(applyColourButton);
-
-        const cancelColourButton = document.createElement('button');
-        cancelColourButton.type = 'button';
-        cancelColourButton.classList.add('cancel-colour-button');
-        cancelColourButton.textContent = 'Cancel';
-        cancelColourButton.setAttribute('aria-label', 'Cancel LTN cell changes');
-        cancelColourButton.addEventListener('click', () => {
-            labelEl.value = polygon.properties.label ?? '';
-            colorEl.value = polygon.options.color ?? COLOUR;
-            map.closePopup(popup);
-        });
-        colourActions.appendChild(cancelColourButton);
-        controlList.appendChild(colourActions);
-
+        labelEl.addEventListener('input', saveMetadataChanges);
+        colorEl.addEventListener('input', saveMetadataChanges);
+        labelEl.addEventListener('change', flushMetadataChanges);
+        colorEl.addEventListener('change', flushMetadataChanges);
         labelEl.addEventListener('keydown', (event: KeyboardEvent) => {
             if (event.key !== 'Enter') {
                 return;
             }
 
             event.preventDefault();
-            applyChanges();
+            flushMetadataChanges();
+            map.closePopup(popup);
         });
 
         const popupContent = document.createElement('div');
@@ -779,19 +772,27 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                 buildFeatureGroupMembershipContent(
                     { layerId: 'LtnCells', historyId: polygon.properties.historyId },
                     openGroupDetails,
-                    (groupId) =>
-                        removeFeatureFromGroup(groupId, {
+                    (groupId) => {
+                        flushMetadataChanges();
+                        return removeFeatureFromGroup(groupId, {
                             layerId: 'LtnCells',
                             historyId: polygon.properties.historyId
-                        }),
-                    (groupId) =>
-                        addFeatureToGroup(groupId, {
+                        });
+                    },
+                    (groupId) => {
+                        flushMetadataChanges();
+                        return addFeatureToGroup(groupId, {
                             layerId: 'LtnCells',
                             historyId: polygon.properties.historyId
-                        })
+                        });
+                    },
+                    (member, onCreated) => {
+                        flushMetadataChanges();
+                        createGroupFromFeature(member, onCreated);
+                    }
                 )
             );
-            controlList.insertBefore(groupContentItem, colourActions);
+            controlList.appendChild(groupContentItem);
         };
         popupContent.appendChild(controlList);
         refreshGroupContent();

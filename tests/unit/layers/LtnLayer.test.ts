@@ -616,9 +616,53 @@ describe('LtnLayer feature clicks', () => {
         expect(controlList.querySelector('.feature-popup-group-content')).not.toBeNull();
     });
 
-    it('saves the title and closes the popup when Enter is pressed in the title input', () => {
+    it('saves the title when the title input loses focus', () => {
         const map = makeMockMap();
         const layer = createLtnLayer(map);
+        const mapStore = useMapStore(pinia);
+
+        layer.loadFromGeoJSON(
+            polygonFeatureCollection([
+                [
+                    [
+                        [0, 0],
+                        [1, 0],
+                        [1, 1],
+                        [0, 1],
+                        [0, 0]
+                    ]
+                ]
+            ]) as any
+        );
+
+        const polygon = layer.getLayer().getLayers()[0] as any;
+        polygon.editing = { disable: vi.fn(), enable: vi.fn() };
+        const mapOpenPopupSpy = vi.spyOn(map, 'openPopup');
+
+        polygon.fire('click', {
+            originalEvent: { clientX: 0, clientY: 0 },
+            target: polygon
+        });
+
+        const popup = mapOpenPopupSpy.mock.calls[0][0] as any;
+        const content = popup.setContent.mock.calls[0][0] as HTMLElement;
+        const input = content.querySelector('.label-editor') as HTMLInputElement;
+
+        mapStore.clearLastLayerMutation();
+        input.value = 'Updated LTN';
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+
+        expect(polygon.properties.label).toBe('Updated LTN');
+        expect(mapStore.lastLayerMutation).toBeNull();
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        expect(mapStore.lastLayerMutation?.kind).toBe('polygon-edit');
+        expect(mapOpenPopupSpy).toHaveBeenCalledWith(popup);
+    });
+
+    it('saves and closes the popup when Enter is pressed in the title input', () => {
+        const map = makeMockMap();
+        const layer = createLtnLayer(map);
+        const mapStore = useMapStore(pinia);
 
         layer.loadFromGeoJSON(
             polygonFeatureCollection([
@@ -645,14 +689,14 @@ describe('LtnLayer feature clicks', () => {
         });
 
         const popup = mapOpenPopupSpy.mock.calls[0][0] as any;
-        const content = popup.setContent.mock.calls[0][0] as HTMLElement;
-        const input = content.querySelector('.label-editor') as HTMLInputElement;
-
-        input.value = 'Updated LTN';
-        expect(polygon.properties.label).toBe('LTN 1');
+        const input = popup.setContent.mock.calls[0][0].querySelector(
+            '.label-editor'
+        ) as HTMLInputElement;
+        input.value = 'Updated with Enter';
+        input.dispatchEvent(new Event('input', { bubbles: true }));
         input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
 
-        expect(polygon.properties.label).toBe('Updated LTN');
+        expect(mapStore.lastLayerMutation?.kind).toBe('polygon-edit');
         expect(mapClosePopupSpy).toHaveBeenCalledWith(popup);
     });
 
@@ -683,14 +727,15 @@ describe('LtnLayer feature clicks', () => {
         expect(colorInput.type).toBe('color');
         expect(colorInput.value).toBe('#cc00cc');
 
+        const initialUpdateCount = mapStore.layerUpdateCount;
+        colorInput.value = '#00aa11';
+        colorInput.dispatchEvent(new Event('input', { bubbles: true }));
         colorInput.value = '#00aa00';
         colorInput.dispatchEvent(new Event('input', { bubbles: true }));
-        expect(polygon.options.color).toBe('#cc00cc');
-
-        const applyButton = content.querySelector('.apply-changes-button') as HTMLButtonElement;
-        applyButton.click();
+        colorInput.dispatchEvent(new Event('change', { bubbles: true }));
 
         expect(polygon.options.color).toBe('#00aa00');
+        expect(mapStore.layerUpdateCount).toBe(initialUpdateCount + 1);
         expect(mapStore.lastLayerMutation?.kind).toBe('polygon-edit');
         expect(mapStore.lastLayerMutation?.payload).toMatchObject({
             beforeColor: '#cc00cc',
@@ -698,7 +743,7 @@ describe('LtnLayer feature clicks', () => {
         });
     });
 
-    it('cancels a pending cell colour change from the popup', () => {
+    it('does not render Apply or Cancel buttons in the popup', () => {
         const map = makeMockMap();
         const layer = createLtnLayer(map);
 
@@ -718,15 +763,9 @@ describe('LtnLayer feature clicks', () => {
 
         const polygon = layer.getLayer().getLayers()[0] as any;
         const content = polygon.__ltnPopup.setContent.mock.calls[0][0] as HTMLElement;
-        const colorInput = content.querySelector('.colour-swatch') as HTMLInputElement;
-        const cancelButton = content.querySelector('.cancel-colour-button') as HTMLButtonElement;
 
-        colorInput.value = '#00aa00';
-        colorInput.dispatchEvent(new Event('input', { bubbles: true }));
-        cancelButton.click();
-
-        expect(polygon.options.color).toBe('#cc00cc');
-        expect(colorInput.value).toBe('#cc00cc');
+        expect(content.querySelector('.apply-changes-button')).toBeNull();
+        expect(content.querySelector('.cancel-colour-button')).toBeNull();
     });
 
     it('switches selection to a polygon while another editable layer is active', () => {

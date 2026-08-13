@@ -25,7 +25,12 @@ import {
 import { useSelectionStore } from '../../stores/selectionStore';
 import { executeAreaDelete, executeCopy, selectFeature } from '../useAreaSelection';
 import { useSettingsStore } from '../../stores/settingsStore';
-import { addFeatureToGroup, openGroupDetails, removeFeatureFromGroup } from '../useGroups';
+import {
+    addFeatureToGroup,
+    createGroupFromFeature,
+    openGroupDetails,
+    removeFeatureFromGroup
+} from '../useGroups';
 import type { IMapLayer } from './IMapLayer';
 
 export interface PointLayerConfig {
@@ -113,7 +118,8 @@ export function handlePointFeatureClick(
         },
         onOpenGroup: openGroupDetails,
         onRemoveFromGroup: (groupId) => removeFeatureFromGroup(groupId, member),
-        onAddToGroup: (groupId) => addFeatureToGroup(groupId, member)
+        onAddToGroup: (groupId) => addFeatureToGroup(groupId, member),
+        onCreateNewGroup: createGroupFromFeature
     });
     popup.setLatLng(latLng ?? map.getCenter()).openOn(map);
 }

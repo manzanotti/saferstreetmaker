@@ -400,7 +400,7 @@ test.describe('Groups — Create group', () => {
         const popupControls = popup.locator('.ltn-popup-buttons > *');
         await expect(popupControls.nth(0)).toHaveClass(/current-controls/);
         await expect(popupControls.nth(1)).toHaveClass(/feature-popup-group-content/);
-        await expect(popupControls.nth(2)).toHaveClass(/colour-actions/);
+        await expect(popupControls).toHaveCount(2);
         await expect(popup.locator('.label-editor')).toHaveCSS('border-top-width', '1px');
         await expect(popup.locator('.label-editor')).toHaveCSS(
             'border-top-color',
@@ -472,10 +472,56 @@ test.describe('Groups — Create group', () => {
         await expect(popup.locator('.feature-popup-groups')).toContainText('None');
         const groupSelect = popup.locator('.add-feature-to-group-select');
         await expect(groupSelect).toBeVisible();
-        await expect(groupSelect.locator('option')).toHaveText(['Add to group…', 'Alpha Zone']);
+        await expect(groupSelect.locator('option')).toHaveText([
+            'Add to group…',
+            'Create new group…',
+            'Alpha Zone'
+        ]);
 
         await groupSelect.selectOption({ label: 'Alpha Zone' });
         await expect(popup.locator('.feature-popup-groups')).toContainText('Alpha Zone');
+        await expect(popup.locator('.feature-popup-group-none')).toHaveCount(0);
+    });
+
+    test('adds a newly created LTN group immediately from the LTN popup', async ({ page }) => {
+        await drawNamedLtnCell(page, 'Immediate group cell');
+        await page.locator('#ltn-button').click();
+        const polygon = page
+            .locator('.leaflet-ltns-pane path.ltn-cell.leaflet-interactive')
+            .first();
+        await polygon.dispatchEvent('click');
+
+        const popup = page.locator('.leaflet-popup');
+        const groupSelect = popup.locator('.add-feature-to-group-select');
+        await groupSelect.selectOption({ label: 'Create new group…' });
+        await page.getByLabel('Group name').fill('Immediate LTN Group');
+        await page.getByRole('button', { name: 'Save' }).click();
+
+        await expect(groupSelect.locator('option:checked')).toHaveText('Immediate LTN Group');
+        await expect(popup.locator('.feature-popup-groups')).toContainText('Immediate LTN Group');
+        await expect(popup.locator('.feature-popup-group-none')).toHaveCount(0);
+        await expect(popup.getByRole('button', { name: 'Apply LTN cell changes' })).toHaveCount(0);
+        await expect(popup.getByRole('button', { name: 'Cancel LTN cell changes' })).toHaveCount(0);
+    });
+
+    test('creates a group from the selected feature popup', async ({ page }) => {
+        await placeModalFilter(page);
+
+        const marker = page.locator('.leaflet-filters-pane path.modal-filter-marker').first();
+        await marker.dispatchEvent('click');
+        const popup = page.locator('.leaflet-popup');
+        const groupSelect = popup.locator('.add-feature-to-group-select');
+
+        await expect(groupSelect.locator('option')).toHaveText([
+            'Add to group…',
+            'Create new group…'
+        ]);
+        await groupSelect.selectOption({ label: 'Create new group…' });
+        await page.getByLabel('Group name').fill('Single Feature Group');
+        await page.getByRole('button', { name: 'Save' }).click();
+
+        await expect(groupSelect.locator('option:checked')).toHaveText('Single Feature Group');
+        await expect(popup.locator('.feature-popup-groups')).toContainText('Single Feature Group');
         await expect(popup.locator('.feature-popup-group-none')).toHaveCount(0);
     });
 
