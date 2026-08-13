@@ -681,10 +681,17 @@ describe('LtnLayer feature clicks', () => {
         expect(colorInput.type).toBe('color');
         expect(colorInput.value).toBe('#cc00cc');
 
+        const initialUpdateCount = mapStore.layerUpdateCount;
+        vi.useFakeTimers();
+        colorInput.value = '#00aa11';
+        colorInput.dispatchEvent(new Event('input', { bubbles: true }));
         colorInput.value = '#00aa00';
         colorInput.dispatchEvent(new Event('input', { bubbles: true }));
+        vi.advanceTimersByTime(250);
+        vi.useRealTimers();
 
         expect(polygon.options.color).toBe('#00aa00');
+        expect(mapStore.layerUpdateCount).toBe(initialUpdateCount + 1);
         expect(mapStore.lastLayerMutation?.kind).toBe('polygon-edit');
         expect(mapStore.lastLayerMutation?.payload).toMatchObject({
             beforeColor: '#cc00cc',

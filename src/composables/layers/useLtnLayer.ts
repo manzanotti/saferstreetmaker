@@ -37,6 +37,7 @@ import { isFeatureGroupHidden } from '../../features/groups/featureVisibility';
 const COLOUR = '#cc00cc';
 const BUTTON_ID = 'ltn';
 const CURSOR_CSS = 'ltn-cell';
+const METADATA_SAVE_DELAY = 250;
 
 export function createLtnLayer(map: L.Map): EditablePolylineLayer {
     const mapStore = useMapStore(pinia);
@@ -694,6 +695,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             'delete-button',
             'Delete selected feature',
             () => {
+                flushMetadataChanges();
                 geoJsonLayer.removeLayer(polygon);
                 mapStore.markLayerUpdated({
                     kind: 'polygon-delete',
@@ -711,6 +713,28 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         );
         currentControlsContent.appendChild(deleteControl);
 
+        let metadataSaveTimer: number | null = null;
+        let metadataBeforeFeature: any = null;
+
+        const flushMetadataChanges = (): void => {
+            if (metadataSaveTimer !== null) {
+                window.clearTimeout(metadataSaveTimer);
+                metadataSaveTimer = null;
+            }
+
+            if (!metadataBeforeFeature) {
+                return;
+            }
+
+            const nextFeature = getPolygonHistoryFeature(polygon);
+            mapStore.markLayerUpdated({
+                kind: 'polygon-edit',
+                layerId: 'LtnCells',
+                payload: getPolygonMutationPayload(metadataBeforeFeature, nextFeature)
+            });
+            metadataBeforeFeature = null;
+        };
+
         const saveMetadataChanges = (): void => {
             const currentLabel = polygon['properties'].label ?? '';
             const currentColor = polygon.options.color ?? COLOUR;
@@ -720,21 +744,24 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
 
             const previousFeature =
                 (polygon as any)['historyFeature'] ?? getPolygonHistoryFeature(polygon);
+            metadataBeforeFeature ??= previousFeature;
             polygon['properties'].label = labelEl.value;
             syncPolygonTooltip(polygon, labelEl.value);
             polygon.setStyle({ color: colorEl.value });
             const nextFeature = getPolygonHistoryFeature(polygon);
-            mapStore.markLayerUpdated({
-                kind: 'polygon-edit',
-                layerId: 'LtnCells',
-                payload: getPolygonMutationPayload(previousFeature, nextFeature)
-            });
             (polygon as any)['historyFeature'] = nextFeature;
             recomputeFeatureVisibility();
+
+            if (metadataSaveTimer !== null) {
+                window.clearTimeout(metadataSaveTimer);
+            }
+            metadataSaveTimer = window.setTimeout(flushMetadataChanges, METADATA_SAVE_DELAY);
         };
 
         labelEl.addEventListener('input', saveMetadataChanges);
         colorEl.addEventListener('input', saveMetadataChanges);
+        labelEl.addEventListener('change', flushMetadataChanges);
+        colorEl.addEventListener('change', flushMetadataChanges);
 
         const popupContent = document.createElement('div');
         popupContent.classList.add('feature-popup-content');
@@ -748,17 +775,24 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                 buildFeatureGroupMembershipContent(
                     { layerId: 'LtnCells', historyId: polygon.properties.historyId },
                     openGroupDetails,
-                    (groupId) =>
-                        removeFeatureFromGroup(groupId, {
+                    (groupId) => {
+                        flushMetadataChanges();
+                        return removeFeatureFromGroup(groupId, {
                             layerId: 'LtnCells',
                             historyId: polygon.properties.historyId
-                        }),
-                    (groupId) =>
-                        addFeatureToGroup(groupId, {
+                        });
+                    },
+                    (groupId) => {
+                        flushMetadataChanges();
+                        return addFeatureToGroup(groupId, {
                             layerId: 'LtnCells',
                             historyId: polygon.properties.historyId
-                        }),
-                    (member, onCreated) => createGroupFromFeature(member, onCreated)
+                        });
+                    },
+                    (member, onCreated) => {
+                        flushMetadataChanges();
+                        createGroupFromFeature(member, onCreated);
+                    }
                 )
             );
             controlList.appendChild(groupContentItem);
