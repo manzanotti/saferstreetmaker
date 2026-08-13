@@ -1,6 +1,12 @@
 import { defineStore } from 'pinia';
 import { ref, shallowRef } from 'vue';
-import type { Group, GroupMember, GroupVersion, PartialPolylineSplit } from '../models/Group';
+import type {
+    Group,
+    GroupMember,
+    GroupPhase,
+    GroupVersion,
+    PartialPolylineSplit
+} from '../models/Group';
 import {
     getActiveVersion,
     getDefaultVersionId,
@@ -47,6 +53,12 @@ export const useGroupStore = defineStore('group', () => {
     const addToGroupId = ref<string | null>(null);
     const pendingEmptyGroupDeletionId = ref<string | null>(null);
     const detailsGroupId = ref<string | null>(null);
+    const phasesDialogOpen = ref(false);
+    const phaseGroupId = ref<string | null>(null);
+    const phaseVersionId = ref<string | null>(null);
+    const phaseDraftMembers = ref<GroupMember[]>([]);
+    const phaseDraftActive = ref(false);
+    const focusedPhaseId = ref<string | null>(null);
 
     // ── Group mutations ───────────────────────────────────────────────────────
 
@@ -442,6 +454,58 @@ export const useGroupStore = defineStore('group', () => {
         return versions.find((version) => version.id === versionId) ?? null;
     }
 
+    function replaceVersionPhases(
+        groupId: string,
+        versionId: string,
+        phases: GroupPhase[]
+    ): boolean {
+        const group = groups.value.find((item) => item.id === groupId);
+        if (!group || !getGroupVersions(group).some((version) => version.id === versionId)) {
+            return false;
+        }
+
+        groups.value = groups.value.map((item) =>
+            item.id === groupId
+                ? {
+                      ...item,
+                      versions: getGroupVersions(item).map((version) =>
+                          version.id === versionId
+                              ? {
+                                    ...version,
+                                    phases: phases.map((phase) => ({
+                                        id: phase.id,
+                                        members: phase.members.map((member) => ({ ...member }))
+                                    }))
+                                }
+                              : version
+                      )
+                  }
+                : item
+        );
+        return true;
+    }
+
+    function reorderVersionPhases(groupId: string, versionId: string, phaseIds: string[]): boolean {
+        const group = groups.value.find((item) => item.id === groupId);
+        const version = group
+            ? getGroupVersions(group).find((item) => item.id === versionId)
+            : undefined;
+        if (!version || phaseIds.length !== (version.phases ?? []).length) {
+            return false;
+        }
+
+        const phasesById = new Map((version.phases ?? []).map((phase) => [phase.id, phase]));
+        if (phaseIds.some((phaseId) => !phasesById.has(phaseId))) {
+            return false;
+        }
+
+        return replaceVersionPhases(
+            groupId,
+            versionId,
+            phaseIds.map((phaseId) => phasesById.get(phaseId)!)
+        );
+    }
+
     // ── Visibility ────────────────────────────────────────────────────────────
 
     function toggleHidden(id: string) {
@@ -524,6 +588,32 @@ export const useGroupStore = defineStore('group', () => {
         detailsGroupId.value = null;
     }
 
+    function openPhasesDialog(groupId: string, versionId: string, draftMembers: GroupMember[]) {
+        phasesDialogOpen.value = true;
+        phaseGroupId.value = groupId;
+        phaseVersionId.value = versionId;
+        phaseDraftMembers.value = draftMembers.map((member) => ({ ...member }));
+        phaseDraftActive.value = true;
+        focusedPhaseId.value = null;
+    }
+
+    function closePhasesDialog() {
+        phasesDialogOpen.value = false;
+        phaseGroupId.value = null;
+        phaseVersionId.value = null;
+        phaseDraftMembers.value = [];
+        phaseDraftActive.value = false;
+        focusedPhaseId.value = null;
+    }
+
+    function setPhaseDraftMembers(members: GroupMember[]) {
+        phaseDraftMembers.value = members.map((member) => ({ ...member }));
+    }
+
+    function setFocusedPhase(id: string | null) {
+        focusedPhaseId.value = id;
+    }
+
     function clearPendingState() {
         pendingGroupMembers.value = [];
         pendingSplits.value = [];
@@ -547,6 +637,12 @@ export const useGroupStore = defineStore('group', () => {
         addToGroupId,
         pendingEmptyGroupDeletionId,
         detailsGroupId,
+        phasesDialogOpen,
+        phaseGroupId,
+        phaseVersionId,
+        phaseDraftMembers,
+        phaseDraftActive,
+        focusedPhaseId,
         setGroups,
         addGroup,
         renameGroup,
@@ -565,6 +661,8 @@ export const useGroupStore = defineStore('group', () => {
         renameVersion,
         setDefaultVersion,
         removeVersion,
+        replaceVersionPhases,
+        reorderVersionPhases,
         toggleHidden,
         setAllHidden,
         openNameDialog,
@@ -579,6 +677,10 @@ export const useGroupStore = defineStore('group', () => {
         setPendingEmptyGroupDeletion,
         openDetailsDialog,
         closeDetailsDialog,
+        openPhasesDialog,
+        closePhasesDialog,
+        setPhaseDraftMembers,
+        setFocusedPhase,
         clearPendingState
     };
 });

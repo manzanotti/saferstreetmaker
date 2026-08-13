@@ -5,6 +5,7 @@ import GroupNameDialog from './components/panels/GroupNameDialog.vue';
 import PartialPolylineDialog from './components/panels/PartialPolylineDialog.vue';
 import FeatureDeletionDialog from './components/panels/FeatureDeletionDialog.vue';
 import GroupDetailsDialog from './components/panels/GroupDetailsDialog.vue';
+import GroupPhasesDialog from './components/panels/GroupPhasesDialog.vue';
 </script>
 
 <template>
@@ -13,6 +14,7 @@ import GroupDetailsDialog from './components/panels/GroupDetailsDialog.vue';
     <ErrorPanel />
     <GroupNameDialog />
     <GroupDetailsDialog />
+    <GroupPhasesDialog />
     <PartialPolylineDialog />
     <FeatureDeletionDialog />
 </template>

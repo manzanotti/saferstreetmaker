@@ -1,4 +1,4 @@
-import type { Group, GroupMember, GroupVersion } from '../../models/Group';
+import type { Group, GroupMember, GroupPhase, GroupVersion } from '../../models/Group';
 import { normalizeGroupDescription } from './groupDescription';
 
 export interface NormalizedGroup {
@@ -9,6 +9,32 @@ export interface NormalizedGroup {
     defaultVersionId: string;
     versions: GroupVersion[];
     members: GroupMember[];
+}
+
+function uniqueMembers(members: GroupMember[]): GroupMember[] {
+    return Array.from(
+        new Map(members.map((member) => [memberKey(member), { ...member }])).values()
+    );
+}
+
+export function normalizePhases(phases: GroupPhase[] | undefined): GroupPhase[] {
+    return (phases ?? []).map((phase) => ({
+        id: phase.id,
+        members: uniqueMembers(phase.members ?? [])
+    }));
+}
+
+export function getPhasedMemberKeys(version: GroupVersion): Set<string> {
+    return new Set(
+        normalizePhases(version.phases).flatMap((phase) => phase.members.map(memberKey))
+    );
+}
+
+export function getNewPhaseDraftMembers(version: GroupVersion): GroupMember[] {
+    const phasedMemberKeys = getPhasedMemberKeys(version);
+    return version.members
+        .filter((member) => !phasedMemberKeys.has(memberKey(member)))
+        .map((member) => ({ ...member }));
 }
 
 export function getGroupVersions(group: Group): GroupVersion[] {
@@ -42,7 +68,8 @@ export function normalizeGroup(group: Group): NormalizedGroup {
     const versions = getGroupVersions(group).map((version) => ({
         id: version.id,
         name: version.name,
-        members: version.members.map((member) => ({ ...member }))
+        members: version.members.map((member) => ({ ...member })),
+        ...(version.phases !== undefined ? { phases: normalizePhases(version.phases) } : {})
     }));
     const defaultVersionId = versions.some((version) => version.id === group.defaultVersionId)
         ? group.defaultVersionId!

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Group } from '../../src/models/Group';
 import {
+    getNewPhaseDraftMembers,
     getActiveVersion,
     getDefaultVersionId,
     hasVersionName,
@@ -43,6 +44,30 @@ describe('group version helpers', () => {
         expect(getDefaultVersionId(group)).toBe('v1');
         expect(getActiveVersion(group, 'v2').id).toBe('v2');
         expect(getActiveVersion(group, 'missing').id).toBe('v1');
+    });
+
+    it('starts the first phase with all members and later phases with unassigned members', () => {
+        const members = [
+            { layerId: 'ModalFilters', historyId: 'feature-1' },
+            { layerId: 'ModalFilters', historyId: 'feature-2' },
+            { layerId: 'ModalFilters', historyId: 'feature-3' }
+        ];
+        const version = {
+            id: 'v1',
+            name: 'Base',
+            members,
+            phases: [{ id: 'phase-1', members: [members[0]] }]
+        };
+
+        expect(getNewPhaseDraftMembers({ ...version, phases: [] })).toEqual(members);
+        expect(getNewPhaseDraftMembers(version)).toEqual([members[1], members[2]]);
+    });
+
+    it('normalizes missing phases without changing legacy group membership', () => {
+        const normalized = normalizeGroup(legacyGroup);
+
+        expect(normalized.versions[0].phases).toBeUndefined();
+        expect(normalized.versions[0].members).toEqual(legacyGroup.members);
     });
 
     it('compares version names case-insensitively while allowing the current name', () => {

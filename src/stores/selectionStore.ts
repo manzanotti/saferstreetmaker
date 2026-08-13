@@ -27,6 +27,7 @@ function selectedFeatureKey(marker: SelectedMarker): string | null {
 export const useSelectionStore = defineStore('selection', () => {
     const isActive = ref(false);
     const isGroupSelection = ref(false);
+    const isPhaseEditing = ref(false);
     const selectedGroupId = ref<string | null>(null);
     // shallowRef: Leaflet Layer objects must not be wrapped in Vue Proxy.
     const selected = shallowRef<SelectedMarker[]>([]);
@@ -47,12 +48,14 @@ export const useSelectionStore = defineStore('selection', () => {
         selected.value = [];
         lastAreaBounds.value = null;
         isGroupSelection.value = false;
+        isPhaseEditing.value = false;
         selectedGroupId.value = null;
     }
 
     function setSelected(markers: SelectedMarker[]) {
         selected.value = markers;
         isGroupSelection.value = false;
+        isPhaseEditing.value = false;
         selectedGroupId.value = null;
     }
 
@@ -66,6 +69,10 @@ export const useSelectionStore = defineStore('selection', () => {
     function markGroupSelection(groupId: string) {
         isGroupSelection.value = true;
         selectedGroupId.value = groupId;
+    }
+
+    function setPhaseEditing(editing: boolean) {
+        isPhaseEditing.value = editing;
     }
 
     function setLastAreaBounds(bounds: L.LatLngBounds | null) {
@@ -158,6 +165,7 @@ export const useSelectionStore = defineStore('selection', () => {
     return {
         isActive,
         isGroupSelection,
+        isPhaseEditing,
         selectedGroupId,
         selected,
         clipboard,
@@ -168,6 +176,7 @@ export const useSelectionStore = defineStore('selection', () => {
         setSelected,
         clear,
         markGroupSelection,
+        setPhaseEditing,
         setLastAreaBounds,
         mergeSelected,
         removeSelectedFeature,

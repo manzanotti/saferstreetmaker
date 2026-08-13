@@ -20,6 +20,7 @@ describe('groupStore', () => {
         useGroupStore(pinia).clearPendingState();
         useGroupStore(pinia).closeNameDialog();
         useGroupStore(pinia).closeSplitDialog();
+        useGroupStore(pinia).closePhasesDialog();
     });
 
     // ── setGroups ─────────────────────────────────────────────────────────────
@@ -100,6 +101,29 @@ describe('groupStore', () => {
             expect(removed?.id).toBe('v1');
             expect(store.groups[0].defaultVersionId).toBe('v2');
             expect(store.groups[0].versions?.map((version) => version.id)).toEqual(['v2', 'v3']);
+        });
+
+        it('replaces and reorders version phases', () => {
+            const store = useGroupStore();
+            store.setGroups([
+                {
+                    id: 'g1',
+                    name: 'Alpha',
+                    versions: [{ id: 'v1', name: 'First', members: [] }]
+                }
+            ]);
+            const phases = [
+                { id: 'phase-1', members: [{ layerId: 'ModalFilters', historyId: 'one' }] },
+                { id: 'phase-2', members: [{ layerId: 'ModalFilters', historyId: 'two' }] }
+            ];
+
+            expect(store.replaceVersionPhases('g1', 'v1', phases)).toBe(true);
+            expect(store.groups[0].versions?.[0].phases).toEqual(phases);
+            expect(store.reorderVersionPhases('g1', 'v1', ['phase-2', 'phase-1'])).toBe(true);
+            expect(store.groups[0].versions?.[0].phases?.map((phase) => phase.id)).toEqual([
+                'phase-2',
+                'phase-1'
+            ]);
         });
     });
 

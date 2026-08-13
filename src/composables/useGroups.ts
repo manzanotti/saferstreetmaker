@@ -18,6 +18,7 @@ import { useGroupStore } from '../stores/groupStore';
 import { useUiStore } from '../stores/uiStore';
 import {
     getActiveVersion,
+    getNewPhaseDraftMembers,
     getGroupVersions,
     hasVersionName
 } from '../features/groups/groupVersions';
@@ -36,6 +37,7 @@ import { analyzeSelectionMembership } from '../features/groups/groupMembership';
 import { GroupPolylineSplitter } from '../features/groups/GroupPolylineSplitter';
 import { normalizeGroupColour } from '../features/groups/groupColours';
 import { GroupLtnFillController } from '../features/groups/GroupLtnFillController';
+import { PhaseHighlighter } from '../features/groups/PhaseHighlighter';
 
 function findMarkerByHistoryId(layerId: string, historyId: string): L.Layer | null {
     const mapStore = useMapStore(pinia);
@@ -73,6 +75,10 @@ const groupPolylineSplitter = new GroupPolylineSplitter({
     getLayer: (layerId) => useMapStore(pinia).layers.find((layer) => layer.id === layerId),
     createHistoryId: () => buildHistoryId('polyline')
 });
+
+const phaseHighlighter = new PhaseHighlighter((member) =>
+    findMarkerByHistoryId(member.layerId, member.historyId)
+);
 
 export function recomputeFeatureVisibility(): void {
     groupVisibilityController.recompute();
@@ -545,6 +551,207 @@ export function switchGroupVersion(groupId: string, versionId: string): boolean 
         mapStore.markLayerUpdated();
     }
     return switched;
+}
+
+function buildEntriesForMembers(members: GroupMember[]): SelectedMarker[] {
+    const entries: SelectedMarker[] = [];
+    for (const member of members) {
+        const marker = findMarkerByHistoryId(member.layerId, member.historyId);
+        if (marker) {
+            entries.push(...buildFeatureSelectionEntries(marker, member.layerId));
+        }
+    }
+    return entries;
+}
+
+export function openGroupPhases(groupId: string, versionId: string): boolean {
+    const groupStore = useGroupStore(pinia);
+    const group = groupStore.groups.find((item) => item.id === groupId);
+    const version = group ? getGroupVersions(group).find((item) => item.id === versionId) : null;
+    if (!group || !version) {
+        return false;
+    }
+
+    const selectionStore = useSelectionStore(pinia);
+    const uiStore = useUiStore(pinia);
+    const mapStore = useMapStore(pinia);
+    if (groupStore.activeVersionIds[groupId] !== versionId) {
+        groupStore.setActiveVersion(groupId, versionId);
+        recomputeFeatureVisibility();
+        mapStore.markLayerUpdated();
+    }
+    groupStore.openPhasesDialog(groupId, versionId, []);
+    groupStore.closeDetailsDialog();
+    uiStore.closePanel();
+    if (version.phases && version.phases.length > 0) {
+        selectionStore.deactivate();
+        phaseHighlighter.clear(version.members);
+        groupStore.phaseDraftActive = false;
+    } else {
+        const draftMembers = getNewPhaseDraftMembers(version);
+        const entries = buildEntriesForMembers(draftMembers);
+        selectionStore.setSelected(entries);
+        selectionStore.markGroupSelection(groupId);
+        selectionStore.setPhaseEditing(true);
+        applySelectionHighlights(entries, true, []);
+        phaseHighlighter.dim(
+            version.members,
+            new Set(draftMembers.map((member) => `${member.layerId}:${member.historyId}`))
+        );
+    }
+    return true;
+}
+
+export function startNewGroupPhase(): boolean {
+    const groupStore = useGroupStore(pinia);
+    const group = groupStore.phaseGroupId
+        ? groupStore.groups.find((item) => item.id === groupStore.phaseGroupId)
+        : null;
+    const version =
+        group && groupStore.phaseVersionId
+            ? getGroupVersions(group).find((item) => item.id === groupStore.phaseVersionId)
+            : null;
+    if (!group || !version) {
+        return false;
+    }
+    const selectionStore = useSelectionStore(pinia);
+    const draftMembers = getNewPhaseDraftMembers(version);
+    const entries = buildEntriesForMembers(draftMembers);
+    selectionStore.setSelected(entries);
+    selectionStore.markGroupSelection(group.id);
+    selectionStore.setPhaseEditing(true);
+    applySelectionHighlights(entries, true, []);
+    groupStore.openPhasesDialog(group.id, version.id, draftMembers);
+    phaseHighlighter.dim(
+        version.members,
+        new Set(draftMembers.map((member) => `${member.layerId}:${member.historyId}`))
+    );
+    return true;
+}
+
+export function refreshGroupPhasePresentation(): void {
+    const groupStore = useGroupStore(pinia);
+    const selectionStore = useSelectionStore(pinia);
+    const group = groupStore.phaseGroupId
+        ? groupStore.groups.find((item) => item.id === groupStore.phaseGroupId)
+        : null;
+    const version =
+        group && groupStore.phaseVersionId
+            ? getGroupVersions(group).find((item) => item.id === groupStore.phaseVersionId)
+            : null;
+    if (!version || !groupStore.phaseDraftActive) {
+        return;
+    }
+    const selectedKeys = new Set(
+        selectionStore.selected.map((entry) => `${entry.layerId}:${entry.historyId}`)
+    );
+    phaseHighlighter.dim(version.members, selectedKeys);
+}
+
+export function focusGroupPhase(phaseId: string | null): boolean {
+    const groupStore = useGroupStore(pinia);
+    const group = groupStore.phaseGroupId
+        ? groupStore.groups.find((item) => item.id === groupStore.phaseGroupId)
+        : null;
+    const version =
+        group && groupStore.phaseVersionId
+            ? getGroupVersions(group).find((item) => item.id === groupStore.phaseVersionId)
+            : null;
+    const phase = version?.phases?.find((item) => item.id === phaseId);
+    if (!group || !version || !phase) {
+        return false;
+    }
+    groupStore.setFocusedPhase(phaseId);
+    phaseHighlighter.dim(
+        version.members,
+        new Set(phase.members.map((member) => `${member.layerId}:${member.historyId}`))
+    );
+    return true;
+}
+
+export function saveGroupPhase(): boolean {
+    const groupStore = useGroupStore(pinia);
+    const group = groupStore.phaseGroupId
+        ? groupStore.groups.find((item) => item.id === groupStore.phaseGroupId)
+        : null;
+    const version =
+        group && groupStore.phaseVersionId
+            ? getGroupVersions(group).find((item) => item.id === groupStore.phaseVersionId)
+            : null;
+    const selectionStore = useSelectionStore(pinia);
+    const selectedMembers = Array.from(
+        new Map(
+            selectionStore.selected
+                .filter(
+                    (entry): entry is SelectedMarker & { historyId: string } =>
+                        entry.historyId !== null
+                )
+                .map((entry) => [
+                    `${entry.layerId}:${entry.historyId}`,
+                    { layerId: entry.layerId, historyId: entry.historyId }
+                ])
+        ).values()
+    );
+    if (!group || !version || selectedMembers.length === 0) {
+        return false;
+    }
+
+    const draftKeys = new Set(
+        selectedMembers.map((member) => `${member.layerId}:${member.historyId}`)
+    );
+    const phases = (version.phases ?? []).map((phase) => ({
+        ...phase,
+        members: phase.members.filter(
+            (member) => !draftKeys.has(`${member.layerId}:${member.historyId}`)
+        )
+    }));
+    phases.push({
+        id: buildHistoryId('phase'),
+        members: selectedMembers
+    });
+    if (!groupStore.replaceVersionPhases(group.id, version.id, phases)) {
+        return false;
+    }
+    useMapStore(pinia).markLayerUpdated();
+    phaseHighlighter.clear(version.members);
+    applySelectionHighlights([], true, selectionStore.selected);
+    selectionStore.deactivate();
+    groupStore.phaseDraftActive = false;
+    return true;
+}
+
+export function reorderGroupPhases(phaseIds: string[]): boolean {
+    const groupStore = useGroupStore(pinia);
+    if (!groupStore.phaseGroupId || !groupStore.phaseVersionId) {
+        return false;
+    }
+    const reordered = groupStore.reorderVersionPhases(
+        groupStore.phaseGroupId,
+        groupStore.phaseVersionId,
+        phaseIds
+    );
+    if (reordered) {
+        useMapStore(pinia).markLayerUpdated();
+    }
+    return reordered;
+}
+
+export function closeGroupPhases(): void {
+    const groupStore = useGroupStore(pinia);
+    const selectionStore = useSelectionStore(pinia);
+    const group = groupStore.phaseGroupId
+        ? groupStore.groups.find((item) => item.id === groupStore.phaseGroupId)
+        : null;
+    const version =
+        group && groupStore.phaseVersionId
+            ? getGroupVersions(group).find((item) => item.id === groupStore.phaseVersionId)
+            : null;
+    if (version) {
+        phaseHighlighter.clear(version.members);
+    }
+    applySelectionHighlights([], true, selectionStore.selected);
+    selectionStore.deactivate();
+    groupStore.closePhasesDialog();
 }
 
 export function createGroupVersion(groupId: string, name: string): boolean {

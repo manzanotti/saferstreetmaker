@@ -93,6 +93,11 @@ export function selectFeature(
         return;
     }
 
+    if (selectionStore.isPhaseEditing && selectionStore.isGroupSelection) {
+        additive = true;
+        toggle = true;
+    }
+
     if (additive) {
         const previousEntries = selectionStore.selected;
         if (
@@ -104,6 +109,16 @@ export function selectFeature(
             if (!skipActivate && !selectionStore.isActive) {
                 selectionStore.activate();
             }
+            applySelectionHighlights(selectionStore.selected, true, previousEntries);
+            return;
+        }
+
+        if (
+            selectionStore.isPhaseEditing &&
+            (selectionStore.isGroupSelection || selectionStore.isActive) &&
+            selectionStore.isFeatureFullySelected(entries)
+        ) {
+            selectionStore.removeSelectedFeature(marker, entries[0]);
             applySelectionHighlights(selectionStore.selected, true, previousEntries);
             return;
         }

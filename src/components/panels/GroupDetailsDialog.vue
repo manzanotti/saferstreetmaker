@@ -9,6 +9,7 @@ import {
     deleteGroup,
     deleteGroupVersion,
     deleteGroupWithElements,
+    openGroupPhases,
     removeAllGroupElements,
     renameGroupVersion,
     setGroupDefaultVersion,
@@ -216,6 +217,12 @@ function setDefault(versionId: string) {
     }
 }
 
+function openPhases(versionId: string) {
+    if (group.value) {
+        openGroupPhases(group.value.id, versionId);
+    }
+}
+
 function requestDeleteVersion(versionId: string) {
     if (!group.value || versions.value.length <= 1) {
         return;
@@ -398,6 +405,14 @@ function confirmDeleteGroup(deleteElements: boolean) {
                                         versionMemberCounts[version.id] === 1 ? '' : 's'
                                     }})
                                 </span>
+                                <button
+                                    type="button"
+                                    :aria-label="`Phases for version ${version.name}`"
+                                    class="shrink-0 rounded border border-green-200 px-2 py-1 text-xs text-green-700 hover:bg-green-50"
+                                    @click="openPhases(version.id)"
+                                >
+                                    Phases
+                                </button>
                                 <button
                                     type="button"
                                     :aria-label="`Set ${version.name} as default version`"

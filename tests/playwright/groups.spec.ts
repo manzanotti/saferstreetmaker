@@ -1167,6 +1167,42 @@ test.describe('Groups — Delete version', () => {
     });
 });
 
+test.describe('Groups — Phases', () => {
+    test.beforeEach(async ({ page, context }) => {
+        await setupPage(page, context);
+    });
+
+    test('creates the first phase and initializes an additional phase from unassigned features', async ({
+        page
+    }) => {
+        await placeTwoModalFilters(page);
+        await selectBothFilters(page);
+        await createGroup(page, 'Phased Group');
+
+        await openGroupsPanel(page);
+        await openGroupDetails(page, 'Phased Group');
+        await page.getByRole('button', { name: 'Phases for version Default' }).click();
+
+        await expect(page.getByText('Create Phase 1')).toBeVisible();
+        await expect(
+            page.getByRole('dialog', { name: /Phased Group \/ Default phases/ })
+        ).toBeVisible();
+        await page
+            .locator('.leaflet-filters-pane path.modal-filter-marker')
+            .first()
+            .dispatchEvent('click');
+        await page.getByRole('button', { name: 'Save phase' }).click();
+
+        await expect(page.getByRole('button', { name: 'Focus Phase 1' })).toBeVisible();
+        await expect(page.getByText('1 feature')).toBeVisible();
+
+        await page.getByRole('button', { name: 'New phase' }).click();
+        await expect(page.getByText('Create Phase 2')).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Save phase' })).toBeEnabled();
+        await page.getByRole('button', { name: 'Cancel' }).click();
+    });
+});
+
 test.describe('Groups — Version-specific LTN cells', () => {
     test.beforeEach(async ({ page, context }) => {
         await setupPage(page, context);

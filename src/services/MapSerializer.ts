@@ -10,7 +10,7 @@
 import LZString from 'lz-string';
 import type { IMapLayer } from '../composables/layers/IMapLayer';
 import type { Settings } from '../models/Settings';
-import type { Group, GroupVersion } from '../models/Group';
+import type { Group, GroupPhase, GroupVersion } from '../models/Group';
 import { normalizeGroupDescription } from '../features/groups/groupDescription';
 
 /**
@@ -70,11 +70,19 @@ interface CompactGroup {
         i: string;
         n: string;
         m: Array<[string, string]>;
+        p?: Array<{ i: string; m: Array<[string, string]> }>;
     }>;
 }
 
 function serializeMembers(members: GroupVersion['members']): Array<[string, string]> {
     return members.map((member) => [member.layerId, member.historyId]);
+}
+
+function serializePhases(phases: GroupPhase[] | undefined): GroupPhase[] {
+    return (phases ?? []).map((phase) => ({
+        id: phase.id,
+        members: phase.members.map((member) => ({ ...member }))
+    }));
 }
 
 function serializeGroup(group: Group): Group {
@@ -97,7 +105,8 @@ function serializeGroup(group: Group): Group {
         versions: group.versions.map((version) => ({
             id: version.id,
             name: version.name,
-            members: version.members.map((member) => ({ ...member }))
+            members: version.members.map((member) => ({ ...member })),
+            ...(version.phases !== undefined ? { phases: serializePhases(version.phases) } : {})
         }))
     };
 }
@@ -205,7 +214,15 @@ export class MapSerializer {
                     v: group.versions.map((version) => ({
                         i: version.id,
                         n: version.name,
-                        m: serializeMembers(version.members)
+                        m: serializeMembers(version.members),
+                        ...(version.phases && version.phases.length > 0
+                            ? {
+                                  p: version.phases.map((phase) => ({
+                                      i: phase.id,
+                                      m: serializeMembers(phase.members)
+                                  }))
+                              }
+                            : {})
                     }))
                 };
             });
@@ -239,7 +256,15 @@ export class MapSerializer {
                           versions: group.v.map((version) => ({
                               id: version.i,
                               name: version.n,
-                              members: deserializeCompactMembers(version.m)
+                              members: deserializeCompactMembers(version.m),
+                              ...(version.p
+                                  ? {
+                                        phases: version.p.map((phase) => ({
+                                            id: phase.i,
+                                            members: deserializeCompactMembers(phase.m)
+                                        }))
+                                    }
+                                  : {})
                           }))
                       }
                     : {
@@ -307,7 +332,15 @@ export class MapSerializer {
                     v: group.versions.map((version) => ({
                         i: version.id,
                         n: version.name,
-                        m: serializeMembers(version.members)
+                        m: serializeMembers(version.members),
+                        ...(version.phases && version.phases.length > 0
+                            ? {
+                                  p: version.phases.map((phase) => ({
+                                      i: phase.id,
+                                      m: serializeMembers(phase.members)
+                                  }))
+                              }
+                            : {})
                     }))
                 };
             });

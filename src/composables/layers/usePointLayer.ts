@@ -76,7 +76,7 @@ export function handlePointFeatureClick(
         event.originalEvent?.shiftKey ||
         event.originalEvent?.ctrlKey ||
         event.originalEvent?.metaKey;
-    if (selectionStore.isActive || isModifierClick) {
+    if (selectionStore.isActive || selectionStore.isPhaseEditing || isModifierClick) {
         // Modifier-click toggles this point in the selection. A normal click
         // while selection mode is active adds it to the selection.
         selectFeature(event.target as unknown as L.Layer, layerId, true, false, isModifierClick);
