@@ -24,6 +24,7 @@ import type { IMapLayer } from './IMapLayer';
 import { type EditablePolylineLayer } from './usePolylineLayer';
 import { selectFeature, executeCopy, clearFeatureHighlight } from '../useAreaSelection';
 import { useSelectionStore } from '../../stores/selectionStore';
+import { useGroupStore } from '../../stores/groupStore';
 import {
     addFeatureToGroup,
     createGroupFromFeature,
@@ -55,6 +56,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
     let pendingCursorEvent: L.LeafletMouseEvent | null = null;
     let cursorSyncFrameId: number | null = null;
     let lastCursorStyledElement: HTMLElement | SVGElement | null = null;
+    let editablePolygon: any = null;
 
     const enableDrawMode = (): void => {
         _drawingTool = new L.Draw.Polygon(map, { color: COLOUR });
@@ -564,13 +566,35 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                     e.originalEvent?.ctrlKey ||
                     e.originalEvent?.metaKey) ??
                 false;
+            const selectionStore = useSelectionStore(pinia);
+            const groupStore = useGroupStore(pinia);
+            const isPhaseSelection = groupStore.phaseDraftActive;
+            const isGroupEditing =
+                selectionStore.isGroupSelection && selectionStore.selectedGroupId !== null;
 
             if (
-                isModifierClick &&
-                (useSelectionStore(pinia).isActive || useSelectionStore(pinia).isGroupSelection)
+                isPhaseSelection ||
+                (isModifierClick && (selectionStore.isActive || selectionStore.isGroupSelection))
             ) {
                 L.DomEvent.stopPropagation(e.originalEvent ?? e);
-                selectFeature(polygon as unknown as L.Layer, 'LtnCells', true, false, true);
+                if (isPhaseSelection) {
+                    if (groupStore.phaseGroupId) {
+                        selectionStore.markGroupSelection(groupStore.phaseGroupId);
+                    }
+                    selectionStore.setPhaseEditing(true);
+                }
+                selectFeature(
+                    polygon as unknown as L.Layer,
+                    'LtnCells',
+                    true,
+                    isPhaseSelection,
+                    true
+                );
+                return;
+            }
+
+            if (isGroupEditing) {
+                selectFeature(polygon as unknown as L.Layer, 'LtnCells', true, true, true);
                 return;
             }
 
@@ -602,12 +626,9 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             // selection immediately.
             selectFeature(polygon as unknown as L.Layer, 'LtnCells', false, true);
 
-            // Disable editing on all other polygons in this layer first.
-            geoJsonLayer.eachLayer((l: any) => {
-                if (l !== e.target) {
-                    l.editing?.disable();
-                }
-            });
+            if (editablePolygon && editablePolygon !== e.target) {
+                editablePolygon.editing?.disable();
+            }
             map.closePopup();
             // Switch to this layer for editing (deselects any active point/polyline layer).
             selectForEdit();
@@ -620,6 +641,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                 e.originalEvent.clientY
             );
             e.target.editing.enable();
+            editablePolygon = e.target;
             recomputeFeatureVisibility();
             popup.setLatLng(e.target.getBounds().getCenter());
             const focusPopupLabel = (event: L.PopupEvent): void => {
@@ -860,6 +882,9 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
 
     // Close the naming popup if the cell it belongs to is removed (undo/delete).
     geoJsonLayer.on('layerremove', (e: any) => {
+        if (e.layer === editablePolygon) {
+            editablePolygon = null;
+        }
         if (_drawPopup && e.layer?.__ltnPopup === _drawPopup) {
             closeDrawPopup();
         }
@@ -896,7 +921,8 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                 _selected = false;
                 disableDrawMode();
                 closeDrawPopup();
-                geoJsonLayer.eachLayer((l: any) => l.editing?.disable());
+                editablePolygon?.editing?.disable();
+                editablePolygon = null;
                 recomputeFeatureVisibility();
                 map.off('mousemove', syncMouseMarkerCursor as L.LeafletEventHandlerFn);
                 if (cursorSyncFrameId !== null) {

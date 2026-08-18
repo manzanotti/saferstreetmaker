@@ -49,17 +49,21 @@ export class MapPersistenceCoordinator {
             await this.options.saveMap();
 
             const activeHistoryTitle = this.options.getActiveHistoryTitle();
+            const beforeHistorySnapshot = beforeSnapshot
+                ? snapshotForHistory(beforeSnapshot)
+                : null;
+            const afterHistorySnapshot = snapshotForHistory(afterSnapshot);
             if (
                 options?.recordHistory !== false &&
                 !this.options.isHistorySuppressed() &&
                 activeHistoryTitle &&
-                beforeSnapshot &&
-                !snapshotsEqualForHistory(beforeSnapshot, afterSnapshot)
+                beforeHistorySnapshot &&
+                !snapshotsEqualForHistory(beforeHistorySnapshot, afterHistorySnapshot)
             ) {
                 await this.options.recordCheckpoint(
                     activeHistoryTitle,
-                    snapshotForHistory(beforeSnapshot),
-                    snapshotForHistory(afterSnapshot),
+                    beforeHistorySnapshot,
+                    afterHistorySnapshot,
                     mutation
                 );
                 await this.options.syncHistoryStatus();

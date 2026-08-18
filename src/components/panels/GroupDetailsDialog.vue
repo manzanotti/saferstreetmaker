@@ -1,16 +1,20 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
 import { useGroupStore } from '../../stores/groupStore';
+import { useSelectionStore } from '../../stores/selectionStore';
 import { useUiStore } from '../../stores/uiStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 import {
     applyGroupDetails,
-    beginAddToGroup,
+    clearGroupSelection,
     createGroupVersion,
     deleteGroup,
     deleteGroupVersion,
     deleteGroupWithElements,
-    removeAllGroupElements,
+    fitGroupFeatures,
+    openGroupPhases,
     renameGroupVersion,
+    saveGroupSelectionWhileEditing,
     setGroupDefaultVersion,
     switchGroupVersion
 } from '../../composables/useGroups';
@@ -26,7 +30,9 @@ import {
 import { DEFAULT_GROUP_COLOUR } from '../../features/groups/groupColours';
 
 const groupStore = useGroupStore();
+const selectionStore = useSelectionStore();
 const uiStore = useUiStore();
+const settingsStore = useSettingsStore();
 const group = computed(() =>
     groupStore.groups.find((item) => item.id === groupStore.detailsGroupId)
 );
@@ -48,18 +54,51 @@ const versionEditorOpen = ref(false);
 const pendingVersionDelete = ref<{ id: string; name: string; memberCount: number } | null>(null);
 const pendingGroupDelete = ref(false);
 const nameInput = ref<HTMLInputElement | null>(null);
+const dialog = useTemplateRef<HTMLDivElement>('dialog');
+let groupEditReady = false;
+let detailsDirty = false;
+let resizeObserver: ResizeObserver | null = null;
+let detailsPersistenceTimer: ReturnType<typeof setTimeout> | null = null;
 
 const isOpen = computed(() => groupStore.detailsGroupId !== null && Boolean(group.value));
-const pendingEmptyGroupDeletion = computed(() =>
-    Boolean(group.value && groupStore.pendingEmptyGroupDeletionId === group.value.id)
-);
 const renderedDescription = computed(() => sanitizeGroupDescription(description.value));
+
+function fitFeaturesAboveDialog() {
+    fitGroupFeatures(dialog.value?.offsetHeight ?? 0);
+}
+
+watch(
+    isOpen,
+    (open) => {
+        resizeObserver?.disconnect();
+        resizeObserver = null;
+        if (!open) {
+            return;
+        }
+        void nextTick(() => {
+            if (!dialog.value) {
+                return;
+            }
+            fitFeaturesAboveDialog();
+            resizeObserver = new ResizeObserver(fitFeaturesAboveDialog);
+            resizeObserver.observe(dialog.value);
+        });
+    },
+    { immediate: true }
+);
+
+onBeforeUnmount(() => {
+    resizeObserver?.disconnect();
+    if (detailsPersistenceTimer) {
+        clearTimeout(detailsPersistenceTimer);
+    }
+});
 
 watch(
     () => uiStore.activePanel,
     (activePanel) => {
         if (activePanel === 'groups') {
-            groupStore.closeDetailsDialog();
+            close();
         }
     }
 );
@@ -69,9 +108,13 @@ watch(
     (id) => {
         const nextGroup = groupStore.groups.find((item) => item.id === id);
         if (!nextGroup) {
+            groupEditReady = false;
+            detailsDirty = false;
             resetDraft();
             return;
         }
+        groupEditReady = false;
+        detailsDirty = false;
         name.value = nextGroup.name;
         color.value = nextGroup.color ?? DEFAULT_GROUP_COLOUR;
         description.value = nextGroup.description ?? '';
@@ -79,7 +122,10 @@ watch(
         syncVersionNames(getGroupVersions(nextGroup));
         pendingVersionDelete.value = null;
         pendingGroupDelete.value = false;
-        void nextTick(() => nameInput.value?.focus());
+        void nextTick(() => {
+            nameInput.value?.focus();
+            groupEditReady = true;
+        });
     },
     { immediate: true }
 );
@@ -107,20 +153,38 @@ function syncVersionNames(nextVersions: ReturnType<typeof getGroupVersions>) {
 }
 
 function close() {
-    groupStore.setPendingEmptyGroupDeletion(null);
+    persistDetails();
     groupStore.closeDetailsDialog();
+    clearGroupSelection();
 }
 
-function onSave() {
-    if (!group.value || !name.value.trim()) {
+function persistDetails() {
+    if (detailsPersistenceTimer) {
+        clearTimeout(detailsPersistenceTimer);
+        detailsPersistenceTimer = null;
+    }
+    if (
+        !settingsStore.readOnly &&
+        groupEditReady &&
+        detailsDirty &&
+        group.value &&
+        groupStore.detailsGroupId === group.value.id &&
+        name.value.trim()
+    ) {
+        applyGroupDetails(group.value.id, name.value, color.value, description.value);
+        detailsDirty = false;
+    }
+}
+
+function scheduleDetailsPersistence() {
+    if (settingsStore.readOnly || !groupEditReady) {
         return;
     }
-    applyGroupDetails(group.value.id, name.value, color.value, description.value);
-    close();
-}
-
-function onCancel() {
-    close();
+    detailsDirty = true;
+    if (detailsPersistenceTimer) {
+        clearTimeout(detailsPersistenceTimer);
+    }
+    detailsPersistenceTimer = setTimeout(persistDetails, 300);
 }
 
 function onKeydown(event: KeyboardEvent) {
@@ -129,34 +193,30 @@ function onKeydown(event: KeyboardEvent) {
     }
 }
 
-function onAddFeatures() {
-    if (!group.value) {
-        return;
-    }
-    beginAddToGroup(group.value.id);
-    close();
-}
+watch([name, color, description], scheduleDetailsPersistence, { flush: 'sync' });
 
-function onRemoveMembers() {
-    if (!group.value) {
-        return;
-    }
-    removeAllGroupElements(group.value.id);
-    groupStore.setPendingEmptyGroupDeletion(group.value.id);
-}
-
-function confirmEmptyGroup(deleteIt: boolean) {
-    if (deleteIt && group.value) {
-        deleteGroup(group.value.id);
-        close();
-    }
-    groupStore.setPendingEmptyGroupDeletion(null);
-}
+watch(
+    () => selectionStore.selected,
+    () => {
+        if (
+            group.value &&
+            !settingsStore.readOnly &&
+            groupStore.detailsGroupId === group.value.id &&
+            groupEditReady &&
+            selectionStore.isGroupSelection &&
+            selectionStore.selectedGroupId === group.value.id
+        ) {
+            saveGroupSelectionWhileEditing();
+        }
+    },
+    { deep: true, flush: 'sync' }
+);
 
 function selectVersion(versionId: string) {
     if (!group.value) {
         return;
     }
+    persistDetails();
     switchGroupVersion(group.value.id, versionId);
 }
 
@@ -216,6 +276,13 @@ function setDefault(versionId: string) {
     }
 }
 
+function openPhases(versionId: string) {
+    if (group.value) {
+        persistDetails();
+        openGroupPhases(group.value.id, versionId);
+    }
+}
+
 function requestDeleteVersion(versionId: string) {
     if (!group.value || versions.value.length <= 1) {
         return;
@@ -259,17 +326,28 @@ function confirmDeleteGroup(deleteElements: boolean) {
 <template>
     <div
         v-if="isOpen && group"
+        ref="dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby="group-details-dialog-title"
-        class="fixed top-1/2 left-1/2 z-[9999] flex max-h-[90vh] w-[min(42rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-xl"
+        class="fixed bottom-0 left-1/2 z-9999 flex max-h-[90vh] w-[min(42rem,calc(100vw-2rem))] -translate-x-1/2 flex-col overflow-hidden rounded-t-2xl border border-gray-100 bg-white shadow-xl"
         @dblclick.stop
         @keydown="onKeydown"
     >
         <div class="flex items-center justify-between border-b border-gray-100 px-5 py-3">
-            <h2 id="group-details-dialog-title" class="text-base font-semibold text-gray-800">
-                Group details
-            </h2>
+            <div class="flex items-center gap-2">
+                <h2 id="group-details-dialog-title" class="text-base font-semibold text-gray-800">
+                    Group details
+                </h2>
+                <button
+                    v-if="!pendingGroupDelete && !settingsStore.readOnly"
+                    type="button"
+                    class="delete-button flex h-8 w-8 items-center justify-center rounded-lg border border-gray-100 bg-slate-50 hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+                    :aria-label="`Delete group ${group.name}`"
+                    :title="`Delete group ${group.name}`"
+                    @click="requestDeleteGroup"
+                ></button>
+            </div>
             <button
                 type="button"
                 aria-label="Close group details"
@@ -294,6 +372,7 @@ function confirmDeleteGroup(deleteElements: boolean) {
                         ref="nameInput"
                         v-model="name"
                         type="text"
+                        :disabled="settingsStore.readOnly"
                         class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                     />
                 </div>
@@ -308,6 +387,7 @@ function confirmDeleteGroup(deleteElements: boolean) {
                         id="group-details-colour"
                         v-model="color"
                         type="color"
+                        :disabled="settingsStore.readOnly"
                         class="group-colour-swatch h-10 w-14 cursor-pointer rounded border border-gray-200 p-1"
                         aria-label="Choose group colour"
                     />
@@ -330,6 +410,7 @@ function confirmDeleteGroup(deleteElements: boolean) {
                     id="group-details-description"
                     v-model="description"
                     :maxlength="GROUP_DESCRIPTION_MAX_LENGTH"
+                    :disabled="settingsStore.readOnly"
                     rows="4"
                     placeholder="Optional description"
                     class="w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -347,6 +428,7 @@ function confirmDeleteGroup(deleteElements: boolean) {
                         Versions
                     </h3>
                     <button
+                        v-if="!settingsStore.readOnly"
                         type="button"
                         class="rounded border border-gray-200 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
                         aria-label="Create version"
@@ -376,6 +458,7 @@ function confirmDeleteGroup(deleteElements: boolean) {
                                 <input
                                     v-model="versionNames[version.id]"
                                     type="text"
+                                    :disabled="settingsStore.readOnly"
                                     :aria-label="`Version name ${version.name}`"
                                     class="min-w-0 flex-1 rounded border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500"
                                     @click.stop
@@ -399,6 +482,16 @@ function confirmDeleteGroup(deleteElements: boolean) {
                                     }})
                                 </span>
                                 <button
+                                    v-if="!settingsStore.readOnly"
+                                    type="button"
+                                    :aria-label="`Phases for version ${version.name}`"
+                                    class="shrink-0 rounded border border-green-200 px-2 py-1 text-xs text-green-700 hover:bg-green-50"
+                                    @click="openPhases(version.id)"
+                                >
+                                    Phases ({{ version.phases?.length ?? 0 }})
+                                </button>
+                                <button
+                                    v-if="!settingsStore.readOnly"
                                     type="button"
                                     :aria-label="`Set ${version.name} as default version`"
                                     class="shrink-0 rounded border px-2 py-1 text-xs"
@@ -416,7 +509,7 @@ function confirmDeleteGroup(deleteElements: boolean) {
                                     }}
                                 </button>
                                 <button
-                                    v-if="versions.length > 1"
+                                    v-if="versions.length > 1 && !settingsStore.readOnly"
                                     type="button"
                                     :aria-label="`Delete version ${version.name}`"
                                     class="shrink-0 rounded border border-red-100 px-2 py-1 text-xs text-red-600 hover:bg-red-50"
@@ -506,54 +599,6 @@ function confirmDeleteGroup(deleteElements: boolean) {
                 </div>
             </section>
 
-            <section class="border-t border-gray-100 pt-3" aria-labelledby="group-features-title">
-                <h3 id="group-features-title" class="mb-2 text-sm font-semibold text-gray-800">
-                    Features
-                </h3>
-                <div
-                    v-if="pendingEmptyGroupDeletion"
-                    class="mb-3 space-y-2 rounded border border-red-100 bg-red-50 p-3 text-xs text-gray-700"
-                >
-                    <p>
-                        <strong>{{ group.name }}</strong> is now empty. Delete the group too?
-                    </p>
-                    <div class="flex gap-2">
-                        <button
-                            type="button"
-                            class="rounded bg-red-600 px-2 py-1 text-white"
-                            @click="confirmEmptyGroup(true)"
-                        >
-                            Delete
-                        </button>
-                        <button
-                            type="button"
-                            class="rounded border border-gray-200 bg-white px-2 py-1"
-                            @click="confirmEmptyGroup(false)"
-                        >
-                            Keep empty
-                        </button>
-                    </div>
-                </div>
-                <div class="flex flex-wrap gap-2">
-                    <button
-                        type="button"
-                        class="rounded bg-green-700 px-3 py-2 text-xs font-medium text-white hover:bg-green-800"
-                        :aria-label="`Add features to group ${group.name}`"
-                        @click="onAddFeatures"
-                    >
-                        Add features
-                    </button>
-                    <button
-                        type="button"
-                        class="rounded border border-gray-200 px-3 py-2 text-xs text-gray-700 hover:bg-gray-50"
-                        :aria-label="`Remove all elements from group ${group.name}`"
-                        @click="onRemoveMembers"
-                    >
-                        Remove all
-                    </button>
-                </div>
-            </section>
-
             <section v-if="pendingGroupDelete" class="border-t border-red-100 pt-3">
                 <div
                     class="space-y-2 rounded border border-red-100 bg-red-50 p-3 text-xs text-gray-700"
@@ -587,33 +632,6 @@ function confirmDeleteGroup(deleteElements: boolean) {
                     </div>
                 </div>
             </section>
-        </div>
-
-        <div class="flex items-center gap-2 border-t border-gray-100 px-5 py-3">
-            <button
-                v-if="!pendingGroupDelete"
-                type="button"
-                class="mr-auto rounded border border-red-200 px-3 py-1.5 text-xs text-red-700 hover:bg-red-50"
-                :aria-label="`Delete group ${group.name}`"
-                @click="requestDeleteGroup"
-            >
-                Delete group
-            </button>
-            <button
-                type="button"
-                class="rounded-lg border border-gray-200 bg-slate-50 px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-slate-100"
-                @click="onCancel"
-            >
-                Cancel
-            </button>
-            <button
-                type="button"
-                :disabled="!name.trim()"
-                class="rounded-lg bg-green-700 px-4 py-1.5 text-sm font-medium text-white hover:bg-green-800 disabled:opacity-40"
-                @click="onSave"
-            >
-                Save
-            </button>
         </div>
     </div>
 </template>

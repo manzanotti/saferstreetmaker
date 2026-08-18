@@ -5,10 +5,16 @@ export interface GroupMember {
     historyId: string;
 }
 
+export interface GroupPhase {
+    id: string;
+    members: GroupMember[];
+}
+
 export interface GroupVersion {
     id: string;
     name: string;
     members: GroupMember[];
+    phases?: GroupPhase[];
 }
 
 export interface Group {

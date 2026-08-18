@@ -43,6 +43,32 @@ const groups: Group[] = [
     }
 ];
 
+const phasedGroup: Group = {
+    id: 'group-phased',
+    name: 'Phased Route',
+    defaultVersionId: 'version-1',
+    versions: [
+        {
+            id: 'version-1',
+            name: 'Delivery plan',
+            members: [
+                { layerId: 'ModalFilters', historyId: 'hist-1' },
+                { layerId: 'ModalFilters', historyId: 'hist-2' }
+            ],
+            phases: [
+                {
+                    id: 'phase-1',
+                    members: [{ layerId: 'ModalFilters', historyId: 'hist-1' }]
+                },
+                {
+                    id: 'phase-2',
+                    members: [{ layerId: 'ModalFilters', historyId: 'hist-2' }]
+                }
+            ]
+        }
+    ]
+};
+
 describe('MapSerializer — groups', () => {
     const serializer = new MapSerializer();
     const layers = new Map([['ModalFilters', makeLayer('ModalFilters')]]);
@@ -124,5 +150,17 @@ describe('MapSerializer — groups', () => {
         expect(restored?.groups![0].description).toBe(
             '<p><strong>Slow down</strong> near the school.</p>'
         );
+    });
+
+    it('round-trips ordered version phases through JSON and compact storage', () => {
+        const json = serializer.toJSON(makeSettings(), layers, [phasedGroup]);
+        expect(json.groups?.[0].versions?.[0].phases).toEqual(phasedGroup.versions?.[0].phases);
+
+        const compact = serializer.toCompactStoredMap(makeSettings(), layers, [phasedGroup]);
+        expect(compact.g?.[0].v?.[0].p).toEqual([
+            { i: 'phase-1', m: [['ModalFilters', 'hist-1']] },
+            { i: 'phase-2', m: [['ModalFilters', 'hist-2']] }
+        ]);
+        expect(serializer.fromCompactStoredMap(compact).groups?.[0]).toEqual(phasedGroup);
     });
 });

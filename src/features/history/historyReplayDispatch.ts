@@ -4,6 +4,7 @@ import { normaliseFeatureMutationPayload } from './mutationPayload';
 
 export type HistoryReplayAction =
     | { kind: 'feature'; mutation: LayerMutationEvent }
+    | { kind: 'phase'; mutation: LayerMutationEvent }
     | { kind: 'settings'; payload?: unknown }
     | { kind: 'snapshot' };
 
@@ -53,6 +54,17 @@ export function dispatchHistoryReplay(replay: HistoryReplayEntry): HistoryReplay
 
     if (mutationKind === 'settings-apply') {
         return { kind: 'settings', payload: mutationPayload };
+    }
+
+    if (mutationKind === 'phase-update' && mutationLayerId === 'groups') {
+        return {
+            kind: 'phase',
+            mutation: {
+                kind: mutationKind,
+                layerId: mutationLayerId,
+                payload: mutationPayload
+            }
+        };
     }
 
     return { kind: 'snapshot' };

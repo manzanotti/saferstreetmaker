@@ -1592,6 +1592,22 @@ test.describe('Layer: LTN Cell (polygon)', () => {
 
         // Only one popup open at a time
         await expect(page.locator('.popup-buttons')).toHaveCount(1);
+        await expect
+            .poll(() =>
+                page.evaluate(() => {
+                    const app = (document.getElementById('app') as any).__vue_app__;
+                    const mapStore = app?.config?.globalProperties?.$pinia?._s?.get('map');
+                    const layer = mapStore.layers.find((item: any) => item.id === 'LtnCells');
+                    let editableCount = 0;
+                    layer.getLayer().eachLayer((polygon: any) => {
+                        if (polygon.editing?.enabled?.()) {
+                            editableCount++;
+                        }
+                    });
+                    return editableCount;
+                })
+            )
+            .toBe(1);
     });
 
     test('editing an LTN polygon uses pointer inside, crosshair on edges, and grab elsewhere', async ({

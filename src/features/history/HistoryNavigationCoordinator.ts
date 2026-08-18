@@ -10,17 +10,27 @@ export interface HistoryNavigationCoordinatorOptions {
 
 export class HistoryNavigationCoordinator {
     private readonly options: HistoryNavigationCoordinatorOptions;
+    private navigationTail: Promise<void> = Promise.resolve();
 
     constructor(options: HistoryNavigationCoordinatorOptions) {
         this.options = options;
     }
 
     async undo(): Promise<boolean> {
-        return await this.navigate('undo');
+        return await this.enqueueNavigation('undo');
     }
 
     async redo(): Promise<boolean> {
-        return await this.navigate('redo');
+        return await this.enqueueNavigation('redo');
+    }
+
+    private enqueueNavigation(direction: 'undo' | 'redo'): Promise<boolean> {
+        const navigation = this.navigationTail.then(() => this.navigate(direction));
+        this.navigationTail = navigation.then(
+            () => undefined,
+            () => undefined
+        );
+        return navigation;
     }
 
     private async navigate(direction: 'undo' | 'redo'): Promise<boolean> {

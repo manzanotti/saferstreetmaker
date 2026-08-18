@@ -1,3 +1,5 @@
+import type { GroupPhase } from './Group';
+
 export type LayerMutationKind =
     | 'point-add'
     | 'point-delete'
@@ -9,7 +11,22 @@ export type LayerMutationKind =
     | 'polyline-edit'
     | 'polygon-add'
     | 'polygon-delete'
-    | 'polygon-edit';
+    | 'polygon-edit'
+    | 'phase-update';
+
+export interface PhaseMutationPayload {
+    groupId: string;
+    versionId: string;
+    phaseId: string | null;
+    before: GroupPhase[];
+    after: GroupPhase[];
+}
+
+export interface PhaseMutationEvent {
+    kind: 'phase-update';
+    layerId: 'groups';
+    payload: PhaseMutationPayload;
+}
 
 export interface LayerMutationEvent {
     kind: LayerMutationKind;

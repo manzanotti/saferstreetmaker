@@ -5,24 +5,11 @@ import { useGroupStore } from '../stores/groupStore';
 import { useMapStore } from '../stores/mapStore';
 import { useSelectionStore } from '../stores/selectionStore';
 import { getGroupVersions } from '../features/groups/groupVersions';
-import { getFeatureHistoryId } from './layers/layerUtils';
+import { findLayerFeatureByHistoryId } from './layers/layerUtils';
 import { applySelectionHighlights } from './useAreaSelection';
 import { recomputeFeatureVisibility } from './useGroups';
 
 export type FeatureDeletionScope = 'version' | 'group' | 'everything';
-
-function findFeature(layerId: string, historyId: string): L.Layer | null {
-    const layer = useMapStore(pinia)
-        .layers.find((item) => item.id === layerId)
-        ?.getLayer();
-    let found: L.Layer | null = null;
-    layer?.eachLayer((marker) => {
-        if (getFeatureHistoryId(marker) === historyId) {
-            found = marker;
-        }
-    });
-    return found;
-}
 
 export function confirmFeatureDeletion(scope: FeatureDeletionScope): boolean {
     const deletionStore = useFeatureDeletionStore(pinia);
@@ -57,7 +44,11 @@ export function confirmFeatureDeletion(scope: FeatureDeletionScope): boolean {
                 member
             );
         }
-        const marker = findFeature(request.layerId, request.historyId);
+        const marker = findLayerFeatureByHistoryId(
+            useMapStore(pinia).layers,
+            request.layerId,
+            request.historyId
+        );
         const layer = useMapStore(pinia).layers.find((item) => item.id === request.layerId);
         if (marker && layer) {
             layer.getLayer().removeLayer(marker);
@@ -68,7 +59,11 @@ export function confirmFeatureDeletion(scope: FeatureDeletionScope): boolean {
     const selectionStore = useSelectionStore(pinia);
     applySelectionHighlights([], true, selectionStore.selected);
     selectionStore.deactivate();
-    findFeature(request.layerId, request.historyId)?.editing?.disable?.();
+    findLayerFeatureByHistoryId(
+        useMapStore(pinia).layers,
+        request.layerId,
+        request.historyId
+    )?.editing?.disable?.();
     deletionStore.close();
     useMapStore(pinia).markLayerUpdated();
     return true;

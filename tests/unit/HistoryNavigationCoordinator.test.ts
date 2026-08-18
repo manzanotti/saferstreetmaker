@@ -73,4 +73,33 @@ describe('HistoryNavigationCoordinator', () => {
         expect(state.options.revealMutationArea).not.toHaveBeenCalled();
         expect(state.options.syncHistoryStatus).toHaveBeenCalledOnce();
     });
+
+    it('serializes rapid navigation requests until the current replay completes', async () => {
+        let completeFirstReplay: (() => void) | undefined;
+        const firstReplay = new Promise<void>((resolve) => {
+            completeFirstReplay = resolve;
+        });
+        const state = createCoordinator({
+            applyReplay: vi
+                .fn()
+                .mockImplementationOnce(async () => {
+                    await firstReplay;
+                    return true;
+                })
+                .mockResolvedValueOnce(true)
+        });
+
+        const undo = state.coordinator.undo();
+        const redo = state.coordinator.redo();
+        await Promise.resolve();
+
+        expect(state.options.undoJournal.undoEntry).toHaveBeenCalledOnce();
+        expect(state.options.undoJournal.redoEntry).not.toHaveBeenCalled();
+
+        completeFirstReplay?.();
+
+        await expect(undo).resolves.toBe(true);
+        await expect(redo).resolves.toBe(true);
+        expect(state.options.undoJournal.redoEntry).toHaveBeenCalledOnce();
+    });
 });

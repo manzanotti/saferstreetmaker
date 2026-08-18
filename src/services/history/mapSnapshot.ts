@@ -18,11 +18,11 @@ export function normaliseSnapshotForHistory(snapshot: SerializedMap | null): unk
         return null;
     }
 
-    const settingsWithoutView = snapshotForHistory(snapshot).settings;
+    const { centre: _centre, zoom: _zoom, ...settingsWithoutView } = snapshot.settings ?? {};
 
     return {
         title: snapshot.title,
-        settings: settingsWithoutView,
+        settings: snapshot.settings ? settingsWithoutView : undefined,
         layers: snapshot.layers,
         groups: snapshot.groups
     };
