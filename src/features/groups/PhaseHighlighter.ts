@@ -1,5 +1,6 @@
 import type * as L from 'leaflet';
 import type { GroupMember } from '../../models/Group';
+import { memberKey } from './groupVersions';
 
 type StyledLayer = L.Layer & {
     getElement?: () => HTMLElement | undefined;
@@ -22,7 +23,7 @@ export class PhaseHighlighter {
     dim(members: GroupMember[], focusedMemberKeys: Set<string>): void {
         this.clear(members);
         for (const member of members) {
-            if (focusedMemberKeys.has(`${member.layerId}:${member.historyId}`)) {
+            if (focusedMemberKeys.has(memberKey(member))) {
                 continue;
             }
             const marker = this.findMarker(member);

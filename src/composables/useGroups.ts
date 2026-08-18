@@ -18,6 +18,7 @@ import { useGroupStore } from '../stores/groupStore';
 import { useUiStore } from '../stores/uiStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import {
+    featureKey,
     getActiveVersion,
     getNewPhaseDraftMembers,
     getGroupVersions,
@@ -27,6 +28,7 @@ import { GroupVersionFeatureCloner } from '../features/groups/GroupVersionFeatur
 import { pinia } from '../stores/index';
 import {
     buildHistoryId,
+    findLayerFeatureByHistoryId,
     getFeatureHistoryId,
     removeMapCursor,
     setMapCursor
@@ -48,18 +50,7 @@ import { PhaseHighlighter } from '../features/groups/PhaseHighlighter';
 import { applyPhaseSelectionDelta } from '../features/groups/phaseMembership';
 
 function findMarkerByHistoryId(layerId: string, historyId: string): L.Layer | null {
-    const mapStore = useMapStore(pinia);
-    const layerDef = mapStore.layers.find((l) => l.id === layerId);
-    if (!layerDef) {
-        return null;
-    }
-    let found: L.Layer | null = null;
-    layerDef.getLayer().eachLayer((m) => {
-        if (getFeatureHistoryId(m) === historyId) {
-            found = m as L.Layer;
-        }
-    });
-    return found;
+    return findLayerFeatureByHistoryId(useMapStore(pinia).layers, layerId, historyId);
 }
 
 const groupVisibilityController = new GroupVisibilityController({
@@ -236,12 +227,12 @@ function splitRemovedSharedVersionMembers(groupId: string, nextMembers: GroupMem
     }
 
     const nextMemberKeys = new Set(
-        nextMembers.map((member) => `${member.layerId}:${member.historyId}`)
+        nextMembers.map((member) => featureKey(member.layerId, member.historyId))
     );
     const removedMemberKeys = new Set(
         activeVersion.members
-            .filter((member) => !nextMemberKeys.has(`${member.layerId}:${member.historyId}`))
-            .map((member) => `${member.layerId}:${member.historyId}`)
+            .filter((member) => !nextMemberKeys.has(featureKey(member.layerId, member.historyId)))
+            .map((member) => featureKey(member.layerId, member.historyId))
     );
     if (removedMemberKeys.size === 0) {
         return;
@@ -265,7 +256,7 @@ function splitRemovedSharedVersionMembers(groupId: string, nextMembers: GroupMem
             continue;
         }
         for (const member of version.members) {
-            if (!removedMemberKeys.has(`${member.layerId}:${member.historyId}`)) {
+            if (!removedMemberKeys.has(featureKey(member.layerId, member.historyId))) {
                 continue;
             }
             const clonedMember = cloner.clone({ ...version, members: [member] }).members[0];
@@ -793,14 +784,15 @@ export function refreshGroupPhasePresentation(): void {
         return;
     }
     const versionMemberKeys = new Set(
-        version.members.map((member) => `${member.layerId}:${member.historyId}`)
+        version.members.map((member) => featureKey(member.layerId, member.historyId))
     );
     const selectedVersionEntries = selectionStore.selected.filter(
         (entry) =>
-            entry.historyId !== null && versionMemberKeys.has(`${entry.layerId}:${entry.historyId}`)
+            entry.historyId !== null &&
+            versionMemberKeys.has(featureKey(entry.layerId, entry.historyId))
     );
     const selectedKeys = new Set(
-        selectedVersionEntries.map((entry) => `${entry.layerId}:${entry.historyId}`)
+        selectedVersionEntries.map((entry) => featureKey(entry.layerId, entry.historyId!))
     );
     const editingId = groupStore.phaseEditingId;
     if (editingId) {
@@ -812,7 +804,7 @@ export function refreshGroupPhasePresentation(): void {
                             entry.historyId !== null
                     )
                     .map((entry) => [
-                        `${entry.layerId}:${entry.historyId}`,
+                        featureKey(entry.layerId, entry.historyId),
                         { layerId: entry.layerId, historyId: entry.historyId }
                     ])
             ).values()
@@ -830,7 +822,7 @@ export function refreshGroupPhasePresentation(): void {
                           previousPhaseSelectionKeys
                       )
                     : phase.members.filter(
-                          (member) => !addedKeys.has(`${member.layerId}:${member.historyId}`)
+                          (member) => !addedKeys.has(featureKey(member.layerId, member.historyId))
                       )
         }));
         const editedPhase = phases.find((phase) => phase.id === editingId);
@@ -840,8 +832,11 @@ export function refreshGroupPhasePresentation(): void {
                 phase.members.length !== previousMembers.length ||
                 phase.members.some(
                     (member, memberIndex) =>
-                        `${member.layerId}:${member.historyId}` !==
-                        `${previousMembers[memberIndex]?.layerId}:${previousMembers[memberIndex]?.historyId}`
+                        featureKey(member.layerId, member.historyId) !==
+                        featureKey(
+                            previousMembers[memberIndex]?.layerId ?? '',
+                            previousMembers[memberIndex]?.historyId ?? ''
+                        )
                 )
             );
         });
@@ -891,7 +886,7 @@ export function focusGroupPhase(phaseId: string | null): boolean {
     selectionStore.setPhaseEditing(true);
     applySelectionHighlights(entries, true, previousEntries);
     previousPhaseSelectionKeys = new Set(
-        entries.map((entry) => `${entry.layerId}:${entry.historyId}`)
+        entries.map((entry) => featureKey(entry.layerId, entry.historyId ?? ''))
     );
     groupStore.phaseDraftActive = true;
     groupStore.phaseEditingId = phaseId;
@@ -899,7 +894,7 @@ export function focusGroupPhase(phaseId: string | null): boolean {
     groupStore.setFocusedPhase(phaseId);
     phaseHighlighter.dim(
         version.members,
-        new Set(phase.members.map((member) => `${member.layerId}:${member.historyId}`))
+        new Set(phase.members.map((member) => featureKey(member.layerId, member.historyId)))
     );
     return true;
 }
@@ -1075,14 +1070,14 @@ export function deleteGroupVersion(
         const remainingMembers = new Set(
             groupStore.groups.flatMap((group) =>
                 getGroupVersions(group).flatMap((remainingVersion) =>
-                    remainingVersion.members.map(
-                        (member) => `${member.layerId}:${member.historyId}`
+                    remainingVersion.members.map((member) =>
+                        featureKey(member.layerId, member.historyId)
                     )
                 )
             )
         );
         for (const member of version.members) {
-            if (remainingMembers.has(`${member.layerId}:${member.historyId}`)) {
+            if (remainingMembers.has(featureKey(member.layerId, member.historyId))) {
                 continue;
             }
             const marker = findMarkerByHistoryId(member.layerId, member.historyId);
@@ -1122,7 +1117,7 @@ export function deleteGroupWithElements(id: string): void {
     // Remove each member feature from its layer.
     const seen = new Set<string>();
     for (const member of members) {
-        const key = `${member.layerId}:${member.historyId}`;
+        const key = featureKey(member.layerId, member.historyId);
         if (seen.has(key)) {
             continue;
         }
@@ -1215,7 +1210,7 @@ export function pruneDanglingGroupMembers(): boolean {
         layer.getLayer().eachLayer((m) => {
             const historyId = getFeatureHistoryId(m);
             if (historyId) {
-                existing.add(`${layer.id}:${historyId}`);
+                existing.add(featureKey(layer.id, historyId));
             }
         });
     }
@@ -1225,7 +1220,7 @@ export function pruneDanglingGroupMembers(): boolean {
         const versions = getGroupVersions(group).map((version) => ({
             ...version,
             members: version.members.filter((member) =>
-                existing.has(`${member.layerId}:${member.historyId}`)
+                existing.has(featureKey(member.layerId, member.historyId))
             )
         }));
         const kept =

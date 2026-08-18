@@ -105,8 +105,12 @@ export function normalizeGroups(groups: Group[] | undefined): NormalizedGroup[] 
     return (groups ?? []).map(normalizeGroup);
 }
 
+export function featureKey(layerId: string, historyId: string): string {
+    return `${layerId}:${historyId}`;
+}
+
 export function memberKey(member: GroupMember): string {
-    return `${member.layerId}:${member.historyId}`;
+    return featureKey(member.layerId, member.historyId);
 }
 
 export function hasVersionName(group: Group, name: string, excludedVersionId?: string): boolean {

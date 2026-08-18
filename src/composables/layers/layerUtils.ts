@@ -16,6 +16,7 @@ import { findFeatureGroupMemberships } from '../../features/groups/featureMember
 import { useGroupStore } from '../../stores/groupStore';
 import { pinia } from '../../stores/index';
 import type { GroupMember } from '../../models/Group';
+import type { IMapLayer } from './IMapLayer';
 
 // ---------------------------------------------------------------------------
 // Cursor helpers
@@ -51,6 +52,21 @@ export function getFeatureHistoryId(marker: unknown): string | null {
     } | null;
     const id = layer?.feature?.properties?.historyId ?? layer?.properties?.historyId;
     return typeof id === 'string' && id !== '' ? id : null;
+}
+
+export function findLayerFeatureByHistoryId(
+    layers: IMapLayer[],
+    layerId: string,
+    historyId: string
+): L.Layer | null {
+    const layer = layers.find((item) => item.id === layerId)?.getLayer();
+    let found: L.Layer | null = null;
+    layer?.eachLayer((feature) => {
+        if (getFeatureHistoryId(feature) === historyId) {
+            found = feature;
+        }
+    });
+    return found;
 }
 
 const POINT_FEATURE_CLASSES = [

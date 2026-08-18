@@ -33,6 +33,19 @@ function withMembers(version: GroupVersion, members: GroupMember[]): GroupVersio
     };
 }
 
+function normalizeStoredGroup(group: Group): Group {
+    if (group.versions) {
+        return normalizeGroup(group);
+    }
+
+    const description = normalizeGroupDescription(group.description);
+    return {
+        ...group,
+        ...(description ? { description } : { description: undefined }),
+        members: [...(group.members ?? [])]
+    };
+}
+
 export const useGroupStore = defineStore('group', () => {
     /** Groups — part of the persisted map payload and included in undo snapshots. */
     const groups = ref<Group[]>([]);
@@ -76,18 +89,7 @@ export const useGroupStore = defineStore('group', () => {
     // ── Group mutations ───────────────────────────────────────────────────────
 
     function setGroups(newGroups: Group[], preserveActiveVersions = false) {
-        const normalizedGroups = newGroups.map((group) =>
-            group.versions
-                ? normalizeGroup(group)
-                : {
-                      ...group,
-                      ...(() => {
-                          const description = normalizeGroupDescription(group.description);
-                          return description ? { description } : { description: undefined };
-                      })(),
-                      members: [...(group.members ?? [])]
-                  }
-        );
+        const normalizedGroups = newGroups.map(normalizeStoredGroup);
         const projectedGroups = normalizedGroups.map((group) => {
             if (!preserveActiveVersions) {
                 return group;
@@ -140,16 +142,7 @@ export const useGroupStore = defineStore('group', () => {
     }
 
     function addGroup(group: Group) {
-        const normalizedGroup = group.versions
-            ? normalizeGroup(group)
-            : {
-                  ...group,
-                  ...(() => {
-                      const description = normalizeGroupDescription(group.description);
-                      return description ? { description } : { description: undefined };
-                  })(),
-                  members: [...(group.members ?? [])]
-              };
+        const normalizedGroup = normalizeStoredGroup(group);
         groups.value = [...groups.value, normalizedGroup];
         const defaultVersionId = getDefaultVersionId(normalizedGroup);
         activeVersionIds.value = {
@@ -246,9 +239,7 @@ export const useGroupStore = defineStore('group', () => {
                 return g;
             }
             const activeVersion = getActiveVersion(g, activeVersionIds.value[id]);
-            const existingKeys = new Set(
-                activeVersion.members.map((m) => `${m.layerId}:${m.historyId}`)
-            );
+            const existingKeys = new Set(activeVersion.members.map(memberKey));
             const toAdd = uniqueMembers(members).filter((m) => !existingKeys.has(memberKey(m)));
             return {
                 ...g,

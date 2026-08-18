@@ -56,6 +56,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
     let pendingCursorEvent: L.LeafletMouseEvent | null = null;
     let cursorSyncFrameId: number | null = null;
     let lastCursorStyledElement: HTMLElement | SVGElement | null = null;
+    let editablePolygon: any = null;
 
     const enableDrawMode = (): void => {
         _drawingTool = new L.Draw.Polygon(map, { color: COLOUR });
@@ -625,12 +626,9 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             // selection immediately.
             selectFeature(polygon as unknown as L.Layer, 'LtnCells', false, true);
 
-            // Disable editing on all other polygons in this layer first.
-            geoJsonLayer.eachLayer((l: any) => {
-                if (l !== e.target) {
-                    l.editing?.disable();
-                }
-            });
+            if (editablePolygon && editablePolygon !== e.target) {
+                editablePolygon.editing?.disable();
+            }
             map.closePopup();
             // Switch to this layer for editing (deselects any active point/polyline layer).
             selectForEdit();
@@ -643,6 +641,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                 e.originalEvent.clientY
             );
             e.target.editing.enable();
+            editablePolygon = e.target;
             recomputeFeatureVisibility();
             popup.setLatLng(e.target.getBounds().getCenter());
             const focusPopupLabel = (event: L.PopupEvent): void => {
@@ -883,6 +882,9 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
 
     // Close the naming popup if the cell it belongs to is removed (undo/delete).
     geoJsonLayer.on('layerremove', (e: any) => {
+        if (e.layer === editablePolygon) {
+            editablePolygon = null;
+        }
         if (_drawPopup && e.layer?.__ltnPopup === _drawPopup) {
             closeDrawPopup();
         }
@@ -919,7 +921,8 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                 _selected = false;
                 disableDrawMode();
                 closeDrawPopup();
-                geoJsonLayer.eachLayer((l: any) => l.editing?.disable());
+                editablePolygon?.editing?.disable();
+                editablePolygon = null;
                 recomputeFeatureVisibility();
                 map.off('mousemove', syncMouseMarkerCursor as L.LeafletEventHandlerFn);
                 if (cursorSyncFrameId !== null) {

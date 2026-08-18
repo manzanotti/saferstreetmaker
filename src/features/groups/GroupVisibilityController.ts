@@ -1,6 +1,6 @@
 import type * as L from 'leaflet';
 import type { Group, GroupMember } from '../../models/Group';
-import { getActiveVersion, getGroupVersions } from './groupVersions';
+import { getActiveVersion, getGroupVersions, memberKey } from './groupVersions';
 import { setFeatureGroupHidden } from './featureVisibility';
 
 interface GroupVisibilityControllerOptions {
@@ -40,7 +40,7 @@ export class GroupVisibilityController {
             const activeVersion = getActiveVersion(group, activeVersionIds[group.id]);
             const activeMemberKeys = new Set<string>();
             for (const member of activeVersion.members) {
-                const key = `${member.layerId}:${member.historyId}`;
+                const key = memberKey(member);
                 activeMemberKeys.add(key);
                 const groupIds = memberToGroupIds.get(key) ?? new Set<string>();
                 groupIds.add(group.id);
@@ -52,7 +52,7 @@ export class GroupVisibilityController {
                     continue;
                 }
                 for (const member of version.members) {
-                    const key = `${member.layerId}:${member.historyId}`;
+                    const key = memberKey(member);
                     if (activeMemberKeys.has(key)) {
                         continue;
                     }
