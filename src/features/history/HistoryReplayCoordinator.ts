@@ -55,6 +55,9 @@ export class HistoryReplayCoordinator {
         if (action.kind === 'settings') {
             return await this.applySettingsMutationReplay(replay, action.payload);
         }
+        if (action.kind === 'phase') {
+            return await this.applySnapshot(replay.snapshot);
+        }
         return await this.applySnapshot(replay.snapshot);
     }
 

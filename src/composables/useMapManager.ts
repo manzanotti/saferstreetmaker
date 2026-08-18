@@ -21,7 +21,8 @@ import { useGroupStore } from '../stores/groupStore';
 import {
     pruneDanglingGroupMembers,
     recomputeFeatureVisibility,
-    resetGroupVisibility
+    resetGroupVisibility,
+    showReplayedGroupPhases
 } from './useGroups';
 import { pinia } from '../stores/index';
 import { HistoryLifecycleCoordinator } from '../features/history/HistoryLifecycleCoordinator';
@@ -29,6 +30,7 @@ import { MutationAreaRevealer } from '../features/history/MutationAreaRevealer';
 import { HistoryNavigationCoordinator } from '../features/history/HistoryNavigationCoordinator';
 import { createSettingsMutationPayload } from '../features/history/settingsMutationReplay';
 import { HistoryReplayCoordinator } from '../features/history/HistoryReplayCoordinator';
+import { getPhaseReplayContext } from '../features/history/phaseReplay';
 import { MapLayerController } from '../features/map/MapLayerController';
 import { MapSnapshotBuilder } from '../features/map/MapSnapshotBuilder';
 import { MapStateCoordinator } from '../features/map/MapStateCoordinator';
@@ -325,7 +327,27 @@ export function setupMapManager(fileManager: FileManager): MapManager {
     const historyNavigationCoordinator = new HistoryNavigationCoordinator({
         undoJournal,
         getActiveHistoryTitle: () => historyLifecycleCoordinator.getActiveHistoryTitle(),
-        applyReplay: (replay) => historyReplayCoordinator.apply(replay),
+        applyReplay: async (replay) => {
+            const groupStore = useGroupStore(pinia);
+            const preferredPhase =
+                groupStore.phaseGroupId && groupStore.phaseVersionId
+                    ? {
+                          groupId: groupStore.phaseGroupId,
+                          versionId: groupStore.phaseVersionId,
+                          phaseId: groupStore.phaseEditingId ?? groupStore.focusedPhaseId
+                      }
+                    : null;
+            const phaseReplayContext = getPhaseReplayContext(replay, preferredPhase);
+            const applied = await historyReplayCoordinator.apply(replay);
+            if (applied && phaseReplayContext) {
+                showReplayedGroupPhases(
+                    phaseReplayContext.groupId,
+                    phaseReplayContext.versionId,
+                    phaseReplayContext.phaseId
+                );
+            }
+            return applied;
+        },
         revealMutationArea: (payload) => mutationAreaRevealer.reveal(payload),
         syncHistoryStatus
     });

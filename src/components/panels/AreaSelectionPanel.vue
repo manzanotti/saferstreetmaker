@@ -58,6 +58,8 @@ function onAddToGroupSelect(event: Event) {
     <div
         v-if="
             selectionStore.isActive &&
+            !groupStore.detailsGroupId &&
+            !groupStore.phaseDraftActive &&
             (featureCount > 0 || selectionStore.hasClipboard || selectionStore.isGroupSelection)
         "
         class="rounded-2xl bg-white/[0.94] shadow-xl border border-white/60 flex items-center gap-2 px-3 py-2"

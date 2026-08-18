@@ -57,6 +57,21 @@ describe('history replay dispatch', () => {
         });
     });
 
+    it('dispatches phase mutations separately from generic snapshots', () => {
+        const payload = {
+            groupId: 'group-1',
+            versionId: 'version-1',
+            phaseId: 'phase-1',
+            before: [],
+            after: [{ id: 'phase-1', members: [] }]
+        };
+
+        expect(dispatchHistoryReplay(makeReplay('phase-update', 'groups', payload))).toEqual({
+            kind: 'phase',
+            mutation: { kind: 'phase-update', layerId: 'groups', payload }
+        });
+    });
+
     it('falls back to snapshot replay for unknown or incomplete mutations', () => {
         expect(dispatchHistoryReplay(makeReplay('unknown', 'layer'))).toEqual({
             kind: 'snapshot'

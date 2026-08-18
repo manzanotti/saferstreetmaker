@@ -56,8 +56,9 @@ export const useGroupStore = defineStore('group', () => {
     const phasesDialogOpen = ref(false);
     const phaseGroupId = ref<string | null>(null);
     const phaseVersionId = ref<string | null>(null);
-    const phaseDraftMembers = ref<GroupMember[]>([]);
     const phaseDraftActive = ref(false);
+    const phaseEditingId = ref<string | null>(null);
+    const pendingEmptyPhaseDeletionId = ref<string | null>(null);
     const focusedPhaseId = ref<string | null>(null);
 
     // ── Group mutations ───────────────────────────────────────────────────────
@@ -102,6 +103,17 @@ export const useGroupStore = defineStore('group', () => {
                     : getDefaultVersionId(group);
         }
         activeVersionIds.value = nextActive;
+        if (pendingEmptyGroupDeletionId.value) {
+            const pendingGroup = projectedGroups.find(
+                (group) => group.id === pendingEmptyGroupDeletionId.value
+            );
+            if (
+                !pendingGroup ||
+                getActiveVersion(pendingGroup, nextActive[pendingGroup.id]).members.length > 0
+            ) {
+                pendingEmptyGroupDeletionId.value = null;
+            }
+        }
     }
 
     function addGroup(group: Group) {
@@ -588,12 +600,13 @@ export const useGroupStore = defineStore('group', () => {
         detailsGroupId.value = null;
     }
 
-    function openPhasesDialog(groupId: string, versionId: string, draftMembers: GroupMember[]) {
+    function openPhasesDialog(groupId: string, versionId: string) {
         phasesDialogOpen.value = true;
         phaseGroupId.value = groupId;
         phaseVersionId.value = versionId;
-        phaseDraftMembers.value = draftMembers.map((member) => ({ ...member }));
         phaseDraftActive.value = true;
+        phaseEditingId.value = null;
+        pendingEmptyPhaseDeletionId.value = null;
         focusedPhaseId.value = null;
     }
 
@@ -601,13 +614,10 @@ export const useGroupStore = defineStore('group', () => {
         phasesDialogOpen.value = false;
         phaseGroupId.value = null;
         phaseVersionId.value = null;
-        phaseDraftMembers.value = [];
         phaseDraftActive.value = false;
+        phaseEditingId.value = null;
+        pendingEmptyPhaseDeletionId.value = null;
         focusedPhaseId.value = null;
-    }
-
-    function setPhaseDraftMembers(members: GroupMember[]) {
-        phaseDraftMembers.value = members.map((member) => ({ ...member }));
     }
 
     function setFocusedPhase(id: string | null) {
@@ -622,6 +632,8 @@ export const useGroupStore = defineStore('group', () => {
         addToGroupId.value = null;
         pendingEmptyGroupDeletionId.value = null;
         detailsGroupId.value = null;
+        phaseEditingId.value = null;
+        pendingEmptyPhaseDeletionId.value = null;
     }
 
     return {
@@ -640,8 +652,9 @@ export const useGroupStore = defineStore('group', () => {
         phasesDialogOpen,
         phaseGroupId,
         phaseVersionId,
-        phaseDraftMembers,
         phaseDraftActive,
+        phaseEditingId,
+        pendingEmptyPhaseDeletionId,
         focusedPhaseId,
         setGroups,
         addGroup,
@@ -679,7 +692,6 @@ export const useGroupStore = defineStore('group', () => {
         closeDetailsDialog,
         openPhasesDialog,
         closePhasesDialog,
-        setPhaseDraftMembers,
         setFocusedPhase,
         clearPendingState
     };

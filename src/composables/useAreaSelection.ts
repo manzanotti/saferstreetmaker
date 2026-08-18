@@ -93,7 +93,12 @@ export function selectFeature(
         return;
     }
 
-    if (selectionStore.isPhaseEditing && selectionStore.isGroupSelection) {
+    const groupStore = useGroupStore(pinia);
+    if (groupStore.phaseDraftActive) {
+        if (groupStore.phaseGroupId) {
+            selectionStore.markGroupSelection(groupStore.phaseGroupId);
+        }
+        selectionStore.setPhaseEditing(true);
         additive = true;
         toggle = true;
     }

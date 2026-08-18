@@ -33,11 +33,14 @@ import {
     beginAddToGroup,
     addSelectionToGroup,
     saveGroupSelection,
+    saveGroupSelectionWhileEditing,
     applyGroupColor,
     applyGroupDescription,
+    applyGroupDetails,
     removeFeatureFromGroup,
     recomputeFeatureVisibility,
-    switchGroupVersion
+    switchGroupVersion,
+    openGroupDetails
 } from '../../src/composables/useGroups';
 import type { IMapLayer } from '../../src/composables/layers/IMapLayer';
 
@@ -295,6 +298,41 @@ describe('useGroups', () => {
         });
     });
 
+    describe('applyGroupDetails()', () => {
+        it('updates normalized metadata in one checkpoint', () => {
+            const groupStore = useGroupStore(pinia);
+            groupStore.addGroup({
+                id: 'g1',
+                name: 'Old name',
+                color: '#00ff00',
+                description: 'Old description',
+                members: []
+            });
+            const markSpy = vi.spyOn(useMapStore(pinia), 'markLayerUpdated');
+
+            expect(applyGroupDetails('g1', '  New name  ', '#ABC', '<p>New description</p>')).toBe(
+                true
+            );
+
+            expect(groupStore.groups[0]).toMatchObject({
+                name: 'New name',
+                color: '#aabbcc',
+                description: '<p>New description</p>'
+            });
+            expect(markSpy).toHaveBeenCalledOnce();
+        });
+
+        it('does not checkpoint unchanged or invalid metadata', () => {
+            const groupStore = useGroupStore(pinia);
+            groupStore.addGroup({ id: 'g1', name: 'Group', color: '#00ff00', members: [] });
+            const markSpy = vi.spyOn(useMapStore(pinia), 'markLayerUpdated');
+
+            expect(applyGroupDetails('g1', 'Group', '#00ff00', '')).toBe(false);
+            expect(applyGroupDetails('missing', 'Group', '#00ff00', '')).toBe(false);
+            expect(markSpy).not.toHaveBeenCalled();
+        });
+    });
+
     describe('removeFeatureFromGroup()', () => {
         it('removes the feature from every version in the selected group', () => {
             const member = { layerId: 'MobilityLanes', historyId: 'line-1' };
@@ -545,6 +583,79 @@ describe('useGroups', () => {
         ]);
         expect(selectionStore.isActive).toBe(false);
         expect(markSpy).toHaveBeenCalledOnce();
+    });
+
+    it('saves a modified group selection while keeping group editing active', () => {
+        const layer = makePointLayer('ModalFilters');
+        const marker = makePointMarker('hist-1');
+        layer.getLayer().addLayer(marker as any);
+        useMapStore(pinia).setLayers([layer]);
+
+        const groupStore = useGroupStore(pinia);
+        groupStore.addGroup({
+            id: 'g1',
+            name: 'G',
+            members: [
+                { layerId: 'ModalFilters', historyId: 'hist-1' },
+                { layerId: 'ModalFilters', historyId: 'hist-2' }
+            ]
+        });
+        const selectionStore = useSelectionStore(pinia);
+        selectionStore.setSelected([makeSelected('ModalFilters', 'hist-1', marker)]);
+        selectionStore.markGroupSelection('g1');
+
+        saveGroupSelectionWhileEditing();
+
+        expect(groupStore.groups[0].members).toEqual([
+            { layerId: 'ModalFilters', historyId: 'hist-1' }
+        ]);
+        expect(selectionStore.isGroupSelection).toBe(true);
+        expect(selectionStore.selectedGroupId).toBe('g1');
+    });
+
+    it('switches versions without persisting the transient cleared selection', () => {
+        const layer = makePointLayer('ModalFilters');
+        const firstMarker = makePointMarker('first-feature');
+        const secondMarker = makePointMarker('second-feature');
+        layer.getLayer().addLayer(firstMarker as any);
+        layer.getLayer().addLayer(secondMarker as any);
+        useMapStore(pinia).setLayers([layer]);
+
+        const groupStore = useGroupStore(pinia);
+        groupStore.setGroups([
+            {
+                id: 'g1',
+                name: 'Versioned group',
+                defaultVersionId: 'v1',
+                versions: [
+                    {
+                        id: 'v1',
+                        name: 'First',
+                        members: [{ layerId: 'ModalFilters', historyId: 'first-feature' }]
+                    },
+                    {
+                        id: 'v2',
+                        name: 'Second',
+                        members: [{ layerId: 'ModalFilters', historyId: 'second-feature' }]
+                    }
+                ]
+            }
+        ]);
+        openGroupDetails('g1');
+
+        expect(switchGroupVersion('g1', 'v2')).toBe(true);
+
+        const versions = groupStore.groups[0].versions ?? [];
+        expect(versions.find((version) => version.id === 'v1')?.members).toEqual([
+            { layerId: 'ModalFilters', historyId: 'first-feature' }
+        ]);
+        expect(versions.find((version) => version.id === 'v2')?.members).toEqual([
+            { layerId: 'ModalFilters', historyId: 'second-feature' }
+        ]);
+        expect(groupStore.detailsGroupId).toBe('g1');
+        expect(useSelectionStore(pinia).selected.map((entry) => entry.historyId)).toEqual([
+            'second-feature'
+        ]);
     });
 
     it('asks whether to delete a group when saving removes its final member', () => {

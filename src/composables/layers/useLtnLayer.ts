@@ -24,6 +24,7 @@ import type { IMapLayer } from './IMapLayer';
 import { type EditablePolylineLayer } from './usePolylineLayer';
 import { selectFeature, executeCopy, clearFeatureHighlight } from '../useAreaSelection';
 import { useSelectionStore } from '../../stores/selectionStore';
+import { useGroupStore } from '../../stores/groupStore';
 import {
     addFeatureToGroup,
     createGroupFromFeature,
@@ -564,13 +565,35 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                     e.originalEvent?.ctrlKey ||
                     e.originalEvent?.metaKey) ??
                 false;
+            const selectionStore = useSelectionStore(pinia);
+            const groupStore = useGroupStore(pinia);
+            const isPhaseSelection = groupStore.phaseDraftActive;
+            const isGroupEditing =
+                selectionStore.isGroupSelection && selectionStore.selectedGroupId !== null;
 
             if (
-                isModifierClick &&
-                (useSelectionStore(pinia).isActive || useSelectionStore(pinia).isGroupSelection)
+                isPhaseSelection ||
+                (isModifierClick && (selectionStore.isActive || selectionStore.isGroupSelection))
             ) {
                 L.DomEvent.stopPropagation(e.originalEvent ?? e);
-                selectFeature(polygon as unknown as L.Layer, 'LtnCells', true, false, true);
+                if (isPhaseSelection) {
+                    if (groupStore.phaseGroupId) {
+                        selectionStore.markGroupSelection(groupStore.phaseGroupId);
+                    }
+                    selectionStore.setPhaseEditing(true);
+                }
+                selectFeature(
+                    polygon as unknown as L.Layer,
+                    'LtnCells',
+                    true,
+                    isPhaseSelection,
+                    true
+                );
+                return;
+            }
+
+            if (isGroupEditing) {
+                selectFeature(polygon as unknown as L.Layer, 'LtnCells', true, true, true);
                 return;
             }
 

@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, useTemplateRef, watch } from 'vue';
 import { useGroupStore } from '../../stores/groupStore';
 import { useSelectionStore } from '../../stores/selectionStore';
 import {
     closeGroupPhases,
+    confirmEmptyGroupPhaseDeletion,
+    fitGroupPhaseFeatures,
     focusGroupPhase,
     refreshGroupPhasePresentation,
     reorderGroupPhases,
-    saveGroupPhase,
     startNewGroupPhase
 } from '../../composables/useGroups';
 import { getGroupVersions } from '../../features/groups/groupVersions';
@@ -24,8 +25,40 @@ const version = computed(() => {
     );
 });
 const phases = computed(() => version.value?.phases ?? []);
+const editingPhaseNumber = computed(() => {
+    const index = phases.value.findIndex((phase) => phase.id === groupStore.phaseEditingId);
+    return index >= 0 ? index + 1 : null;
+});
 const isOpen = computed(() => groupStore.phasesDialogOpen && Boolean(group.value && version.value));
+const dialog = useTemplateRef<HTMLDivElement>('dialog');
 const draggedPhaseId = { value: null as string | null };
+let resizeObserver: ResizeObserver | null = null;
+
+function fitFeaturesAboveDialog() {
+    fitGroupPhaseFeatures(dialog.value?.offsetHeight ?? 0);
+}
+
+watch(
+    isOpen,
+    (open) => {
+        resizeObserver?.disconnect();
+        resizeObserver = null;
+        if (!open) {
+            return;
+        }
+        void nextTick(() => {
+            if (!dialog.value) {
+                return;
+            }
+            fitFeaturesAboveDialog();
+            resizeObserver = new ResizeObserver(fitFeaturesAboveDialog);
+            resizeObserver.observe(dialog.value);
+        });
+    },
+    { immediate: true }
+);
+
+onBeforeUnmount(() => resizeObserver?.disconnect());
 
 watch(
     () => selectionStore.selected,
@@ -37,8 +70,8 @@ function beginNewPhase() {
     startNewGroupPhase();
 }
 
-function save() {
-    saveGroupPhase();
+function confirmEmptyPhase(deletePhase: boolean) {
+    confirmEmptyGroupPhaseDeletion(deletePhase);
 }
 
 function focus(phaseId: string) {
@@ -70,10 +103,11 @@ function drop(phaseId: string) {
 <template>
     <div
         v-if="isOpen"
+        ref="dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby="group-phases-dialog-title"
-        class="fixed top-1/2 left-1/2 z-[10000] flex max-h-[80vh] w-[min(32rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xl"
+        class="fixed bottom-0 left-1/2 z-[10000] flex max-h-[40vh] w-[min(40rem,calc(100vw-2rem))] -translate-x-1/2 flex-col overflow-hidden rounded-t-lg border border-gray-200 bg-white shadow-2xl"
     >
         <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3">
             <div>
@@ -100,7 +134,11 @@ function drop(phaseId: string) {
                 class="rounded-lg border border-green-200 bg-green-50 p-3"
             >
                 <p class="text-sm font-medium text-green-900">
-                    Create Phase {{ phases.length + 1 }}
+                    {{
+                        editingPhaseNumber
+                            ? `Edit Phase ${editingPhaseNumber}`
+                            : `Create Phase ${phases.length + 1}`
+                    }}
                 </p>
                 <p class="mt-1 text-xs text-green-800">
                     {{
@@ -109,22 +147,27 @@ function drop(phaseId: string) {
                             : 'Select at least one feature.'
                     }}
                 </p>
-                <div class="mt-3 flex justify-end gap-2">
-                    <button
-                        type="button"
-                        class="rounded border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700"
-                        @click="closeGroupPhases"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        type="button"
-                        :disabled="selectionStore.selected.length === 0"
-                        class="rounded bg-green-700 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40"
-                        @click="save"
-                    >
-                        Save phase
-                    </button>
+                <div
+                    v-if="groupStore.pendingEmptyPhaseDeletionId"
+                    class="mt-3 space-y-2 rounded border border-red-100 bg-red-50 p-3 text-xs text-gray-700"
+                >
+                    <p>This phase has no features. Delete the phase?</p>
+                    <div class="flex gap-2">
+                        <button
+                            type="button"
+                            class="rounded bg-red-600 px-2 py-1 text-white"
+                            @click="confirmEmptyPhase(true)"
+                        >
+                            Delete phase
+                        </button>
+                        <button
+                            type="button"
+                            class="rounded border border-gray-200 bg-white px-2 py-1"
+                            @click="confirmEmptyPhase(false)"
+                        >
+                            Keep editing
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -154,7 +197,7 @@ function drop(phaseId: string) {
                     <button
                         type="button"
                         class="min-w-0 flex-1 text-left text-sm font-medium text-gray-700"
-                        :aria-label="`Focus Phase ${index + 1}`"
+                        :aria-label="`Edit Phase ${index + 1}`"
                         @click="focus(phase.id)"
                     >
                         Phase {{ index + 1 }}
@@ -170,7 +213,6 @@ function drop(phaseId: string) {
 
         <div class="flex justify-end gap-2 border-t border-gray-100 px-4 py-3">
             <button
-                v-if="!groupStore.phaseDraftActive"
                 type="button"
                 class="rounded bg-green-700 px-3 py-1.5 text-xs font-medium text-white"
                 @click="beginNewPhase"

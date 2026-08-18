@@ -23,6 +23,7 @@ import { useMapStore } from '../../stores/mapStore';
 import { pinia } from '../../stores/index';
 import { selectFeature, executeAreaDelete, executeCopy } from '../useAreaSelection';
 import { useSelectionStore } from '../../stores/selectionStore';
+import { useGroupStore } from '../../stores/groupStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import {
     addFeatureToGroup,
@@ -354,6 +355,16 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
         const isModifierClick =
             (e.originalEvent?.shiftKey || e.originalEvent?.ctrlKey || e.originalEvent?.metaKey) ??
             false;
+
+        const selectionStore = useSelectionStore(pinia);
+        const groupStore = useGroupStore(pinia);
+        const isGroupEditing =
+            selectionStore.isGroupSelection && selectionStore.selectedGroupId !== null;
+
+        if (groupStore.phaseDraftActive || isGroupEditing) {
+            selectFeature(polyline as unknown as L.Layer, layerId, true, true, true);
+            return;
+        }
 
         if (isModifierClick) {
             // Additive selection: merge this feature into the current selection

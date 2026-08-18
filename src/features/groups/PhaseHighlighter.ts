@@ -4,6 +4,7 @@ import type { GroupMember } from '../../models/Group';
 type StyledLayer = L.Layer & {
     getElement?: () => HTMLElement | undefined;
     setStyle?: (style: L.PathOptions) => void;
+    syncGroupStyle?: () => void;
     options?: L.PathOptions & L.LayerOptions;
 };
 
@@ -41,11 +42,13 @@ export class PhaseHighlighter {
                             ? styled.options.fillOpacity * 0.28
                             : 0.28
                 });
-            }
-            const element = styled.getElement?.();
-            if (element) {
-                this.originalElementOpacity.set(marker as object, element.style.opacity);
-                element.style.opacity = '0.28';
+                styled.syncGroupStyle?.();
+            } else {
+                const element = styled.getElement?.();
+                if (element) {
+                    this.originalElementOpacity.set(marker as object, element.style.opacity);
+                    element.style.opacity = '0.28';
+                }
             }
         }
     }
@@ -60,13 +63,15 @@ export class PhaseHighlighter {
             const pathStyle = this.originalPathStyles.get(marker as object);
             if (pathStyle && typeof styled.setStyle === 'function') {
                 styled.setStyle(pathStyle);
+                styled.syncGroupStyle?.();
                 this.originalPathStyles.delete(marker as object);
-            }
-            const element = styled.getElement?.();
-            const originalOpacity = this.originalElementOpacity.get(marker as object);
-            if (element && originalOpacity !== undefined) {
-                element.style.opacity = originalOpacity;
-                this.originalElementOpacity.delete(marker as object);
+            } else {
+                const element = styled.getElement?.();
+                const originalOpacity = this.originalElementOpacity.get(marker as object);
+                if (element && originalOpacity !== undefined) {
+                    element.style.opacity = originalOpacity;
+                    this.originalElementOpacity.delete(marker as object);
+                }
             }
         }
     }

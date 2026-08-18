@@ -42,6 +42,16 @@ describe('groupStore', () => {
             store.setGroups([]);
             expect(store.groups).toHaveLength(0);
         });
+
+        it('clears a pending empty-group deletion when restored members make it invalid', () => {
+            const store = useGroupStore();
+            store.setGroups([makeGroup('g1', 'Group 1')]);
+            store.setPendingEmptyGroupDeletion('g1');
+
+            store.setGroups([makeGroup('g1', 'Group 1', ['restored-member'])]);
+
+            expect(store.pendingEmptyGroupDeletionId).toBeNull();
+        });
     });
 
     // ── addGroup ──────────────────────────────────────────────────────────────

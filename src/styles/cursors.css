@@ -136,3 +136,13 @@
 #map .leaflet-interactive.modal-filter-marker {
     cursor: pointer !important;
 }
+
+#map.group-edit,
+#map.group-edit .leaflet-pane {
+    cursor: grab;
+}
+
+#map.group-edit .leaflet-interactive,
+#map.group-edit .leaflet-marker-icon {
+    cursor: crosshair !important;
+}

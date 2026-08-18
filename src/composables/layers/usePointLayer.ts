@@ -23,6 +23,7 @@ import {
     createFeatureHoverPopupController
 } from './layerUtils';
 import { useSelectionStore } from '../../stores/selectionStore';
+import { useGroupStore } from '../../stores/groupStore';
 import { executeAreaDelete, executeCopy, selectFeature } from '../useAreaSelection';
 import { useSettingsStore } from '../../stores/settingsStore';
 import {
@@ -72,14 +73,30 @@ export function handlePointFeatureClick(
     L.DomEvent.stopPropagation(event);
 
     const selectionStore = useSelectionStore(pinia);
+    const groupStore = useGroupStore(pinia);
+    const isPhaseSelection = groupStore.phaseDraftActive;
+    const isGroupEditing =
+        selectionStore.isGroupSelection && selectionStore.selectedGroupId !== null;
     const isModifierClick =
         event.originalEvent?.shiftKey ||
         event.originalEvent?.ctrlKey ||
         event.originalEvent?.metaKey;
-    if (selectionStore.isActive || selectionStore.isPhaseEditing || isModifierClick) {
+    if (
+        selectionStore.isActive ||
+        selectionStore.isPhaseEditing ||
+        isPhaseSelection ||
+        isGroupEditing ||
+        isModifierClick
+    ) {
         // Modifier-click toggles this point in the selection. A normal click
         // while selection mode is active adds it to the selection.
-        selectFeature(event.target as unknown as L.Layer, layerId, true, false, isModifierClick);
+        selectFeature(
+            event.target as unknown as L.Layer,
+            layerId,
+            true,
+            isPhaseSelection || isGroupEditing,
+            isModifierClick || isPhaseSelection || isGroupEditing
+        );
         return;
     }
 

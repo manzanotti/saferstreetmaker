@@ -7,6 +7,7 @@ import * as L from 'leaflet';
 import { pinia } from '../../src/stores/index';
 import { useSelectionStore, type SelectedMarker } from '../../src/stores/selectionStore';
 import { useMapStore } from '../../src/stores/mapStore';
+import { useGroupStore } from '../../src/stores/groupStore';
 import {
     executeAreaDelete,
     executeCopy,
@@ -1129,6 +1130,7 @@ describe('selectFeature', () => {
         setActivePinia(pinia);
         useMapStore(pinia).setLayers([]);
         useSelectionStore(pinia).deactivate();
+        useGroupStore(pinia).closePhasesDialog();
     });
 
     it('sets the selection to the feature vertices (non-additive)', () => {
@@ -1219,6 +1221,28 @@ describe('selectFeature', () => {
         selectFeature(polyline, 'MobilityLanes', true, false, true);
 
         expect(selectionStore.selected).toHaveLength(0);
+    });
+
+    it('uses a plain additive click to toggle membership during an active phase draft', () => {
+        const vertex = { lat: 1, lng: 1 } as unknown as L.LatLng;
+        const polyline = {
+            getLatLngs: () => [vertex],
+            properties: { historyId: 'line-1' }
+        } as unknown as L.Layer;
+        const selectionStore = useSelectionStore(pinia);
+        const groupStore = useGroupStore(pinia);
+        selectionStore.setSelected([
+            { layerId: 'MobilityLanes', historyId: 'line-1', latLng: vertex, marker: polyline }
+        ]);
+        groupStore.phaseDraftActive = true;
+        groupStore.phaseGroupId = 'group-1';
+
+        selectFeature(polyline, 'MobilityLanes', true);
+
+        expect(selectionStore.selected).toHaveLength(0);
+        expect(selectionStore.isPhaseEditing).toBe(true);
+        expect(selectionStore.isGroupSelection).toBe(true);
+        expect(selectionStore.selectedGroupId).toBe('group-1');
     });
 
     it('removes an already-selected feature on an additive click', () => {
