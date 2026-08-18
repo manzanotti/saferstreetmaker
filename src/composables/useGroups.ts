@@ -611,6 +611,9 @@ export function openGroupDetails(id: string): void {
     const groupStore = useGroupStore(pinia);
     const uiStore = useUiStore(pinia);
     const selectionStore = useSelectionStore(pinia);
+    if (groupStore.phasesDialogOpen) {
+        closeGroupPhases();
+    }
     selectGroup(id);
     if (selectionStore.selectedGroupId !== id) {
         selectionStore.setSelected([]);

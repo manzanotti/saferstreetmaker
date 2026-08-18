@@ -24,6 +24,17 @@ export function normalizePhases(phases: GroupPhase[] | undefined): GroupPhase[] 
     }));
 }
 
+export function reconcilePhases(
+    phases: GroupPhase[] | undefined,
+    versionMembers: GroupMember[]
+): GroupPhase[] {
+    const versionMemberKeys = new Set(versionMembers.map(memberKey));
+    return normalizePhases(phases).map((phase) => ({
+        ...phase,
+        members: phase.members.filter((member) => versionMemberKeys.has(memberKey(member)))
+    }));
+}
+
 export function getPhasedMemberKeys(version: GroupVersion): Set<string> {
     return new Set(
         normalizePhases(version.phases).flatMap((phase) => phase.members.map(memberKey))
@@ -69,7 +80,9 @@ export function normalizeGroup(group: Group): NormalizedGroup {
         id: version.id,
         name: version.name,
         members: version.members.map((member) => ({ ...member })),
-        ...(version.phases !== undefined ? { phases: normalizePhases(version.phases) } : {})
+        ...(version.phases !== undefined
+            ? { phases: reconcilePhases(version.phases, version.members) }
+            : {})
     }));
     const defaultVersionId = versions.some((version) => version.id === group.defaultVersionId)
         ? group.defaultVersionId!

@@ -13,12 +13,24 @@ import {
     getGroupVersions,
     hasVersionName,
     memberKey,
-    normalizeGroup
+    normalizeGroup,
+    reconcilePhases
 } from '../features/groups/groupVersions';
 import { normalizeGroupDescription } from '../features/groups/groupDescription';
 
 function uniqueMembers(members: GroupMember[]): GroupMember[] {
     return Array.from(new Map(members.map((member) => [memberKey(member), member])).values());
+}
+
+function withMembers(version: GroupVersion, members: GroupMember[]): GroupVersion {
+    const nextMembers = uniqueMembers(members).map((member) => ({ ...member }));
+    return {
+        ...version,
+        members: nextMembers,
+        ...(version.phases !== undefined
+            ? { phases: reconcilePhases(version.phases, nextMembers) }
+            : {})
+    };
 }
 
 export const useGroupStore = defineStore('group', () => {
@@ -223,6 +235,9 @@ export const useGroupStore = defineStore('group', () => {
         if (detailsGroupId.value === id) {
             detailsGroupId.value = null;
         }
+        if (phaseGroupId.value === id) {
+            closePhasesDialog();
+        }
     }
 
     function addMembersToGroup(id: string, members: GroupMember[]) {
@@ -261,7 +276,7 @@ export const useGroupStore = defineStore('group', () => {
                       ...item,
                       versions: getGroupVersions(item).map((version) =>
                           version.id === activeVersion.id
-                              ? { ...version, members: nextMembers }
+                              ? withMembers(version, nextMembers)
                               : version
                       ),
                       members: [...nextMembers]
@@ -295,13 +310,25 @@ export const useGroupStore = defineStore('group', () => {
                 memberKey(member) === currentKey ? { ...replacementMember } : member
             )
         );
+        const nextPhases = version.phases?.map((phase) => ({
+            ...phase,
+            members: phase.members.map((member) =>
+                memberKey(member) === currentKey ? { ...replacementMember } : member
+            )
+        }));
         groups.value = groups.value.map((item) =>
             item.id === groupId
                 ? {
                       ...item,
                       versions: getGroupVersions(item).map((itemVersion) =>
                           itemVersion.id === versionId
-                              ? { ...itemVersion, members: nextMembers }
+                              ? withMembers(
+                                    {
+                                        ...itemVersion,
+                                        ...(nextPhases ? { phases: nextPhases } : {})
+                                    },
+                                    nextMembers
+                                )
                               : itemVersion
                       ),
                       members:
@@ -338,10 +365,10 @@ export const useGroupStore = defineStore('group', () => {
 
         const nextVersions = versions.map((version) =>
             targetVersionIds.has(version.id)
-                ? {
-                      ...version,
-                      members: version.members.filter((item) => memberKey(item) !== targetKey)
-                  }
+                ? withMembers(
+                      version,
+                      version.members.filter((item) => memberKey(item) !== targetKey)
+                  )
                 : version
         );
         const activeVersionId = activeVersionIds.value[groupId];
@@ -369,7 +396,7 @@ export const useGroupStore = defineStore('group', () => {
             return {
                 ...g,
                 versions: getGroupVersions(g).map((version) =>
-                    version.id === activeVersion.id ? { ...version, members: [] } : version
+                    version.id === activeVersion.id ? withMembers(version, []) : version
                 ),
                 members: []
             };
@@ -405,7 +432,7 @@ export const useGroupStore = defineStore('group', () => {
             item.id === groupId
                 ? {
                       ...item,
-                      versions: [...getGroupVersions(item), version],
+                      versions: [...getGroupVersions(item), withMembers(version, version.members)],
                       defaultVersionId
                   }
                 : item
@@ -474,6 +501,9 @@ export const useGroupStore = defineStore('group', () => {
         if (activeVersionIds.value[groupId] === versionId) {
             activeVersionIds.value = { ...activeVersionIds.value, [groupId]: nextDefault };
         }
+        if (phaseGroupId.value === groupId && phaseVersionId.value === versionId) {
+            closePhasesDialog();
+        }
         return versions.find((version) => version.id === versionId) ?? null;
     }
 
@@ -495,10 +525,7 @@ export const useGroupStore = defineStore('group', () => {
                           version.id === versionId
                               ? {
                                     ...version,
-                                    phases: phases.map((phase) => ({
-                                        id: phase.id,
-                                        members: phase.members.map((member) => ({ ...member }))
-                                    }))
+                                    phases: reconcilePhases(phases, version.members)
                                 }
                               : version
                       )
@@ -640,6 +667,8 @@ export const useGroupStore = defineStore('group', () => {
     }
 
     function clearPendingState() {
+        nameDialogOpen.value = false;
+        splitDialogOpen.value = false;
         pendingGroupMembers.value = [];
         pendingSplits.value = [];
         pendingGroupCreatedCallback.value = null;
@@ -647,8 +676,7 @@ export const useGroupStore = defineStore('group', () => {
         addToGroupId.value = null;
         pendingEmptyGroupDeletionId.value = null;
         detailsGroupId.value = null;
-        phaseEditingId.value = null;
-        pendingEmptyPhaseDeletionId.value = null;
+        closePhasesDialog();
     }
 
     return {

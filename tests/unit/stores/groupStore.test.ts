@@ -53,6 +53,29 @@ describe('groupStore', () => {
             expect(store.pendingEmptyGroupDeletionId).toBeNull();
         });
 
+        it('removes phase members that are absent from replacement group data', () => {
+            const store = useGroupStore();
+            const kept = { layerId: 'ModalFilters', historyId: 'kept' };
+            const dangling = { layerId: 'ModalFilters', historyId: 'dangling' };
+
+            store.setGroups([
+                {
+                    id: 'g1',
+                    name: 'Group 1',
+                    versions: [
+                        {
+                            id: 'v1',
+                            name: 'First',
+                            members: [kept],
+                            phases: [{ id: 'phase-1', members: [kept, dangling] }]
+                        }
+                    ]
+                }
+            ]);
+
+            expect(store.groups[0].versions?.[0].phases?.[0].members).toEqual([kept]);
+        });
+
         it('closes phase editing when the replacement groups omit its group', () => {
             const store = useGroupStore();
             store.setGroups([
@@ -159,16 +182,24 @@ describe('groupStore', () => {
 
         it('replaces and reorders version phases', () => {
             const store = useGroupStore();
+            const firstMember = { layerId: 'ModalFilters', historyId: 'one' };
+            const secondMember = { layerId: 'ModalFilters', historyId: 'two' };
             store.setGroups([
                 {
                     id: 'g1',
                     name: 'Alpha',
-                    versions: [{ id: 'v1', name: 'First', members: [] }]
+                    versions: [
+                        {
+                            id: 'v1',
+                            name: 'First',
+                            members: [firstMember, secondMember]
+                        }
+                    ]
                 }
             ]);
             const phases = [
-                { id: 'phase-1', members: [{ layerId: 'ModalFilters', historyId: 'one' }] },
-                { id: 'phase-2', members: [{ layerId: 'ModalFilters', historyId: 'two' }] }
+                { id: 'phase-1', members: [firstMember] },
+                { id: 'phase-2', members: [secondMember] }
             ];
 
             expect(store.replaceVersionPhases('g1', 'v1', phases)).toBe(true);
@@ -356,6 +387,29 @@ describe('groupStore', () => {
                 { id: 'v2', name: 'Alternative', members: [member] }
             ]);
         });
+
+        it('removes phase members omitted from the active version replacement', () => {
+            const store = useGroupStore();
+            const kept = { layerId: 'ModalFilters', historyId: 'kept' };
+            const removed = { layerId: 'ModalFilters', historyId: 'removed' };
+            store.setGroups([
+                {
+                    id: 'g1',
+                    name: 'Phased',
+                    versions: [
+                        {
+                            id: 'v1',
+                            name: 'First',
+                            members: [kept, removed],
+                            phases: [{ id: 'phase-1', members: [kept, removed] }]
+                        }
+                    ]
+                }
+            ]);
+
+            expect(store.replaceActiveVersionMembers('g1', [kept])).toBe(true);
+            expect(store.groups[0].versions?.[0].phases?.[0].members).toEqual([kept]);
+        });
     });
 
     describe('removeMemberFromVersions()', () => {
@@ -380,6 +434,37 @@ describe('groupStore', () => {
                 { id: 'v2', name: 'Alternative', members: [member] }
             ]);
             expect(store.groups[0].members).toEqual([]);
+        });
+
+        it('removes the member from phases in every targeted version', () => {
+            const store = useGroupStore();
+            const member = { layerId: 'ModalFilters', historyId: 'member' };
+            store.setGroups([
+                {
+                    id: 'g1',
+                    name: 'Phased',
+                    versions: [
+                        {
+                            id: 'v1',
+                            name: 'First',
+                            members: [member],
+                            phases: [{ id: 'phase-1', members: [member] }]
+                        },
+                        {
+                            id: 'v2',
+                            name: 'Second',
+                            members: [{ ...member }],
+                            phases: [{ id: 'phase-2', members: [{ ...member }] }]
+                        }
+                    ]
+                }
+            ]);
+
+            expect(store.removeMemberFromVersions('g1', ['v1', 'v2'], member)).toBe(true);
+            expect(store.groups[0].versions?.flatMap((version) => version.phases ?? [])).toEqual([
+                { id: 'phase-1', members: [] },
+                { id: 'phase-2', members: [] }
+            ]);
         });
     });
 
@@ -408,6 +493,29 @@ describe('groupStore', () => {
             ]);
             expect(store.groups[0].members).toEqual([sharedMember]);
         });
+
+        it('replaces the same member in that version phases', () => {
+            const store = useGroupStore();
+            const original = { layerId: 'LtnCells', historyId: 'original' };
+            const replacement = { layerId: 'LtnCells', historyId: 'replacement' };
+            store.setGroups([
+                {
+                    id: 'g1',
+                    name: 'Phased',
+                    versions: [
+                        {
+                            id: 'v1',
+                            name: 'First',
+                            members: [original],
+                            phases: [{ id: 'phase-1', members: [original] }]
+                        }
+                    ]
+                }
+            ]);
+
+            expect(store.replaceVersionMember('g1', 'v1', original, replacement)).toBe(true);
+            expect(store.groups[0].versions?.[0].phases?.[0].members).toEqual([replacement]);
+        });
     });
 
     // ── clearGroupMembers ─────────────────────────────────────────────────────
@@ -418,6 +526,29 @@ describe('groupStore', () => {
             store.setGroups([makeGroup('g1', 'A', ['h1', 'h2'])]);
             store.clearGroupMembers('g1');
             expect(store.groups[0].members).toHaveLength(0);
+        });
+
+        it('clears phases in the active version', () => {
+            const store = useGroupStore();
+            const member = { layerId: 'ModalFilters', historyId: 'member' };
+            store.setGroups([
+                {
+                    id: 'g1',
+                    name: 'Phased',
+                    versions: [
+                        {
+                            id: 'v1',
+                            name: 'First',
+                            members: [member],
+                            phases: [{ id: 'phase-1', members: [member] }]
+                        }
+                    ]
+                }
+            ]);
+
+            store.clearGroupMembers('g1');
+
+            expect(store.groups[0].versions?.[0].phases?.[0].members).toEqual([]);
         });
     });
 
@@ -503,6 +634,75 @@ describe('groupStore', () => {
             expect(store.pendingGroupMembers).toHaveLength(1);
             store.clearPendingState();
             expect(store.pendingGroupMembers).toHaveLength(0);
+        });
+
+        it('clears all phase dialog ownership state', () => {
+            const store = useGroupStore();
+            store.setGroups([
+                {
+                    id: 'g1',
+                    name: 'Group',
+                    versions: [{ id: 'v1', name: 'First', members: [] }]
+                }
+            ]);
+            store.openPhasesDialog('g1', 'v1');
+
+            store.clearPendingState();
+
+            expect(store.phasesDialogOpen).toBe(false);
+            expect(store.phaseGroupId).toBeNull();
+            expect(store.phaseVersionId).toBeNull();
+            expect(store.phaseDraftActive).toBe(false);
+        });
+
+        it('closes pending name and split dialogs', () => {
+            const store = useGroupStore();
+            store.openNameDialog();
+            store.openSplitDialog([]);
+
+            store.clearPendingState();
+
+            expect(store.nameDialogOpen).toBe(false);
+            expect(store.splitDialogOpen).toBe(false);
+        });
+    });
+
+    describe('phase dialog ownership', () => {
+        it('closes phase editing when its group is removed', () => {
+            const store = useGroupStore();
+            store.setGroups([
+                {
+                    id: 'g1',
+                    name: 'Group',
+                    versions: [{ id: 'v1', name: 'First', members: [] }]
+                }
+            ]);
+            store.openPhasesDialog('g1', 'v1');
+
+            store.removeGroup('g1');
+
+            expect(store.phasesDialogOpen).toBe(false);
+            expect(store.phaseGroupId).toBeNull();
+        });
+
+        it('closes phase editing when its version is removed', () => {
+            const store = useGroupStore();
+            store.setGroups([
+                {
+                    id: 'g1',
+                    name: 'Group',
+                    versions: [
+                        { id: 'v1', name: 'First', members: [] },
+                        { id: 'v2', name: 'Second', members: [] }
+                    ]
+                }
+            ]);
+            store.openPhasesDialog('g1', 'v2');
+
+            store.removeVersion('g1', 'v2');
+
+            expect(store.phasesDialogOpen).toBe(false);
+            expect(store.phaseVersionId).toBeNull();
         });
     });
 });
