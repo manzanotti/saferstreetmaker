@@ -2692,7 +2692,7 @@ __metadata:
     lz-string: ^1.5.0
     pinia: ^4.0.2
     prettier: ^3.9.6
-    tailwindcss: ^4.3.2
+    tailwindcss: ^4.3.3
     typescript: ^6.0.3
     vite: ^8.1.5
     vite-plugin-externals: ^0.6.2
@@ -2858,17 +2858,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tailwindcss@npm:4.3.3":
+"tailwindcss@npm:4.3.3, tailwindcss@npm:^4.3.3":
   version: 4.3.3
   resolution: "tailwindcss@npm:4.3.3"
   checksum: 26ed481f922a700e9f7b48de29d7d6ad07d1457a475d14391f9fca676b72e1aded478a60640e4104e8b04508659af0141f6ffbb14fe482eac7d418c511c7fa08
-  languageName: node
-  linkType: hard
-
-"tailwindcss@npm:^4.3.2":
-  version: 4.3.2
-  resolution: "tailwindcss@npm:4.3.2"
-  checksum: 705bcf3952a6dbc472cd1d941eb311d84dff51b496f4efd9aff701745175b23fbe9cc4ac79d95a889783696944169bb9270d056a3c868efe0a4567bc93725d7e
   languageName: node
   linkType: hard
 
