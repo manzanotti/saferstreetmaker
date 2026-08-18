@@ -74,6 +74,7 @@ export function handlePointFeatureClick(
 
     const selectionStore = useSelectionStore(pinia);
     const groupStore = useGroupStore(pinia);
+    const readOnly = useSettingsStore(pinia).readOnly;
     const isPhaseSelection = groupStore.phaseDraftActive;
     const isGroupEditing =
         selectionStore.isGroupSelection && selectionStore.selectedGroupId !== null;
@@ -82,11 +83,12 @@ export function handlePointFeatureClick(
         event.originalEvent?.ctrlKey ||
         event.originalEvent?.metaKey;
     if (
-        selectionStore.isActive ||
-        selectionStore.isPhaseEditing ||
-        isPhaseSelection ||
-        isGroupEditing ||
-        isModifierClick
+        !readOnly &&
+        (selectionStore.isActive ||
+            selectionStore.isPhaseEditing ||
+            isPhaseSelection ||
+            isGroupEditing ||
+            isModifierClick)
     ) {
         // Modifier-click toggles this point in the selection. A normal click
         // while selection mode is active adds it to the selection.
@@ -110,7 +112,7 @@ export function handlePointFeatureClick(
 
     const member = { layerId, historyId };
     closeFeatureHoverPopups(map);
-    if (useSettingsStore(pinia).readOnly) {
+    if (readOnly) {
         const descriptionPopup = buildFeatureDescriptionPopup(
             { minWidth: 30, keepInView: true },
             member,

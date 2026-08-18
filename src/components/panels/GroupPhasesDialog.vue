@@ -98,6 +98,18 @@ function drop(phaseId: string) {
     ids.splice(targetIndex, 0, sourceId);
     reorderGroupPhases(ids);
 }
+
+function move(phaseId: string, offset: number) {
+    const ids = phases.value.map((phase) => phase.id);
+    const sourceIndex = ids.indexOf(phaseId);
+    const targetIndex = sourceIndex + offset;
+    if (sourceIndex < 0 || targetIndex < 0 || targetIndex >= ids.length) {
+        return;
+    }
+    ids.splice(sourceIndex, 1);
+    ids.splice(targetIndex, 0, phaseId);
+    reorderGroupPhases(ids);
+}
 </script>
 
 <template>
@@ -105,9 +117,8 @@ function drop(phaseId: string) {
         v-if="isOpen"
         ref="dialog"
         role="dialog"
-        aria-modal="true"
         aria-labelledby="group-phases-dialog-title"
-        class="fixed bottom-0 left-1/2 z-[10000] flex max-h-[40vh] w-[min(40rem,calc(100vw-2rem))] -translate-x-1/2 flex-col overflow-hidden rounded-t-lg border border-gray-200 bg-white shadow-2xl"
+        class="fixed bottom-0 left-1/2 z-10000 flex max-h-[40vh] w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 flex-col overflow-hidden rounded-t-lg border border-gray-200 bg-white shadow-2xl"
     >
         <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3">
             <div>
@@ -192,12 +203,15 @@ function drop(phaseId: string) {
                     @dragstart="dragStart(phase.id)"
                     @dragover.prevent
                     @drop="drop(phase.id)"
+                    @keydown.up.prevent="move(phase.id, -1)"
+                    @keydown.down.prevent="move(phase.id, 1)"
                 >
                     <span class="cursor-grab text-gray-400" aria-hidden="true">&#8942;&#8942;</span>
                     <button
                         type="button"
                         class="min-w-0 flex-1 text-left text-sm font-medium text-gray-700"
                         :aria-label="`Edit Phase ${index + 1}`"
+                        aria-keyshortcuts="ArrowUp ArrowDown"
                         @click="focus(phase.id)"
                     >
                         Phase {{ index + 1 }}

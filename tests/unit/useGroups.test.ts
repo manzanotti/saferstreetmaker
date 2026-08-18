@@ -14,6 +14,7 @@ import { useMapStore } from '../../src/stores/mapStore';
 import { useUiStore } from '../../src/stores/uiStore';
 import { useSelectionStore, type SelectedMarker } from '../../src/stores/selectionStore';
 import { useFeatureDeletionStore } from '../../src/stores/featureDeletionStore';
+import { useSettingsStore } from '../../src/stores/settingsStore';
 import { confirmFeatureDeletion } from '../../src/composables/useFeatureDeletion';
 import {
     createGroupFromSelection,
@@ -40,7 +41,12 @@ import {
     removeFeatureFromGroup,
     recomputeFeatureVisibility,
     switchGroupVersion,
-    openGroupDetails
+    openGroupDetails,
+    openGroupPhases,
+    focusGroupPhase,
+    refreshGroupPhasePresentation,
+    startNewGroupPhase,
+    reorderGroupPhases
 } from '../../src/composables/useGroups';
 import type { IMapLayer } from '../../src/composables/layers/IMapLayer';
 
@@ -141,6 +147,82 @@ describe('useGroups', () => {
         useFeatureDeletionStore(pinia).close();
         useSelectionStore(pinia).deactivate();
         useMapStore(pinia).setLayers([]);
+        useSettingsStore(pinia).readOnly = false;
+    });
+
+    describe('phase editing safeguards', () => {
+        it('does not persist selected features outside the phase version', () => {
+            const layer = makePointLayer('ModalFilters');
+            const memberMarker = makePointMarker('member');
+            const unrelatedMarker = makePointMarker('unrelated');
+            layer.getLayer().addLayer(memberMarker as any);
+            layer.getLayer().addLayer(unrelatedMarker as any);
+            useMapStore(pinia).setLayers([layer]);
+
+            const groupStore = useGroupStore(pinia);
+            groupStore.setGroups([
+                {
+                    id: 'g1',
+                    name: 'Group',
+                    versions: [
+                        {
+                            id: 'v1',
+                            name: 'Default',
+                            members: [{ layerId: 'ModalFilters', historyId: 'member' }],
+                            phases: [
+                                {
+                                    id: 'phase-1',
+                                    members: [{ layerId: 'ModalFilters', historyId: 'member' }]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]);
+            groupStore.openPhasesDialog('g1', 'v1');
+            expect(focusGroupPhase('phase-1')).toBe(true);
+            useSelectionStore(pinia).setSelected([
+                makeSelected('ModalFilters', 'member', memberMarker),
+                makeSelected('ModalFilters', 'unrelated', unrelatedMarker)
+            ]);
+
+            refreshGroupPhasePresentation();
+
+            expect(groupStore.groups[0].versions?.[0].phases?.[0].members).toEqual([
+                { layerId: 'ModalFilters', historyId: 'member' }
+            ]);
+        });
+
+        it('blocks phase creation, opening, and reordering in read-only mode', () => {
+            const groupStore = useGroupStore(pinia);
+            groupStore.setGroups([
+                {
+                    id: 'g1',
+                    name: 'Group',
+                    versions: [
+                        {
+                            id: 'v1',
+                            name: 'Default',
+                            members: [{ layerId: 'ModalFilters', historyId: 'member' }],
+                            phases: [
+                                { id: 'phase-1', members: [] },
+                                { id: 'phase-2', members: [] }
+                            ]
+                        }
+                    ]
+                }
+            ]);
+            useSettingsStore(pinia).readOnly = true;
+
+            expect(openGroupPhases('g1', 'v1')).toBe(false);
+            groupStore.openPhasesDialog('g1', 'v1');
+            expect(startNewGroupPhase()).toBe(false);
+            expect(reorderGroupPhases(['phase-2', 'phase-1'])).toBe(false);
+            expect(groupStore.groups[0].versions?.[0].phases?.map((phase) => phase.id)).toEqual([
+                'phase-1',
+                'phase-2'
+            ]);
+        });
     });
 
     describe('confirmFeatureDeletion()', () => {

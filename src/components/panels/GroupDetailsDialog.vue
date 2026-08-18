@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 
 import { useGroupStore } from '../../stores/groupStore';
 import { useSelectionStore } from '../../stores/selectionStore';
 import { useUiStore } from '../../stores/uiStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 import {
     applyGroupDetails,
     clearGroupSelection,
@@ -31,6 +32,7 @@ import { DEFAULT_GROUP_COLOUR } from '../../features/groups/groupColours';
 const groupStore = useGroupStore();
 const selectionStore = useSelectionStore();
 const uiStore = useUiStore();
+const settingsStore = useSettingsStore();
 const group = computed(() =>
     groupStore.groups.find((item) => item.id === groupStore.detailsGroupId)
 );
@@ -54,7 +56,9 @@ const pendingGroupDelete = ref(false);
 const nameInput = ref<HTMLInputElement | null>(null);
 const dialog = useTemplateRef<HTMLDivElement>('dialog');
 let groupEditReady = false;
+let detailsDirty = false;
 let resizeObserver: ResizeObserver | null = null;
+let detailsPersistenceTimer: ReturnType<typeof setTimeout> | null = null;
 
 const isOpen = computed(() => groupStore.detailsGroupId !== null && Boolean(group.value));
 const renderedDescription = computed(() => sanitizeGroupDescription(description.value));
@@ -83,13 +87,18 @@ watch(
     { immediate: true }
 );
 
-onBeforeUnmount(() => resizeObserver?.disconnect());
+onBeforeUnmount(() => {
+    resizeObserver?.disconnect();
+    if (detailsPersistenceTimer) {
+        clearTimeout(detailsPersistenceTimer);
+    }
+});
 
 watch(
     () => uiStore.activePanel,
     (activePanel) => {
         if (activePanel === 'groups') {
-            groupStore.closeDetailsDialog();
+            close();
         }
     }
 );
@@ -100,10 +109,12 @@ watch(
         const nextGroup = groupStore.groups.find((item) => item.id === id);
         if (!nextGroup) {
             groupEditReady = false;
+            detailsDirty = false;
             resetDraft();
             return;
         }
         groupEditReady = false;
+        detailsDirty = false;
         name.value = nextGroup.name;
         color.value = nextGroup.color ?? DEFAULT_GROUP_COLOUR;
         description.value = nextGroup.description ?? '';
@@ -142,8 +153,38 @@ function syncVersionNames(nextVersions: ReturnType<typeof getGroupVersions>) {
 }
 
 function close() {
+    persistDetails();
     groupStore.closeDetailsDialog();
     clearGroupSelection();
+}
+
+function persistDetails() {
+    if (detailsPersistenceTimer) {
+        clearTimeout(detailsPersistenceTimer);
+        detailsPersistenceTimer = null;
+    }
+    if (
+        !settingsStore.readOnly &&
+        groupEditReady &&
+        detailsDirty &&
+        group.value &&
+        groupStore.detailsGroupId === group.value.id &&
+        name.value.trim()
+    ) {
+        applyGroupDetails(group.value.id, name.value, color.value, description.value);
+        detailsDirty = false;
+    }
+}
+
+function scheduleDetailsPersistence() {
+    if (settingsStore.readOnly || !groupEditReady) {
+        return;
+    }
+    detailsDirty = true;
+    if (detailsPersistenceTimer) {
+        clearTimeout(detailsPersistenceTimer);
+    }
+    detailsPersistenceTimer = setTimeout(persistDetails, 300);
 }
 
 function onKeydown(event: KeyboardEvent) {
@@ -152,21 +193,14 @@ function onKeydown(event: KeyboardEvent) {
     }
 }
 
-watch(
-    [name, color, description],
-    () => {
-        if (group.value && groupStore.detailsGroupId === group.value.id && name.value.trim()) {
-            applyGroupDetails(group.value.id, name.value, color.value, description.value);
-        }
-    },
-    { flush: 'sync' }
-);
+watch([name, color, description], scheduleDetailsPersistence, { flush: 'sync' });
 
 watch(
     () => selectionStore.selected,
     () => {
         if (
             group.value &&
+            !settingsStore.readOnly &&
             groupStore.detailsGroupId === group.value.id &&
             groupEditReady &&
             selectionStore.isGroupSelection &&
@@ -182,6 +216,7 @@ function selectVersion(versionId: string) {
     if (!group.value) {
         return;
     }
+    persistDetails();
     switchGroupVersion(group.value.id, versionId);
 }
 
@@ -243,6 +278,7 @@ function setDefault(versionId: string) {
 
 function openPhases(versionId: string) {
     if (group.value) {
+        persistDetails();
         openGroupPhases(group.value.id, versionId);
     }
 }
@@ -304,7 +340,7 @@ function confirmDeleteGroup(deleteElements: boolean) {
                     Group details
                 </h2>
                 <button
-                    v-if="!pendingGroupDelete"
+                    v-if="!pendingGroupDelete && !settingsStore.readOnly"
                     type="button"
                     class="delete-button flex h-8 w-8 items-center justify-center rounded-lg border border-gray-100 bg-slate-50 hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
                     :aria-label="`Delete group ${group.name}`"
@@ -336,6 +372,7 @@ function confirmDeleteGroup(deleteElements: boolean) {
                         ref="nameInput"
                         v-model="name"
                         type="text"
+                        :disabled="settingsStore.readOnly"
                         class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                     />
                 </div>
@@ -350,6 +387,7 @@ function confirmDeleteGroup(deleteElements: boolean) {
                         id="group-details-colour"
                         v-model="color"
                         type="color"
+                        :disabled="settingsStore.readOnly"
                         class="group-colour-swatch h-10 w-14 cursor-pointer rounded border border-gray-200 p-1"
                         aria-label="Choose group colour"
                     />
@@ -372,6 +410,7 @@ function confirmDeleteGroup(deleteElements: boolean) {
                     id="group-details-description"
                     v-model="description"
                     :maxlength="GROUP_DESCRIPTION_MAX_LENGTH"
+                    :disabled="settingsStore.readOnly"
                     rows="4"
                     placeholder="Optional description"
                     class="w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -389,6 +428,7 @@ function confirmDeleteGroup(deleteElements: boolean) {
                         Versions
                     </h3>
                     <button
+                        v-if="!settingsStore.readOnly"
                         type="button"
                         class="rounded border border-gray-200 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
                         aria-label="Create version"
@@ -418,6 +458,7 @@ function confirmDeleteGroup(deleteElements: boolean) {
                                 <input
                                     v-model="versionNames[version.id]"
                                     type="text"
+                                    :disabled="settingsStore.readOnly"
                                     :aria-label="`Version name ${version.name}`"
                                     class="min-w-0 flex-1 rounded border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500"
                                     @click.stop
@@ -441,6 +482,7 @@ function confirmDeleteGroup(deleteElements: boolean) {
                                     }})
                                 </span>
                                 <button
+                                    v-if="!settingsStore.readOnly"
                                     type="button"
                                     :aria-label="`Phases for version ${version.name}`"
                                     class="shrink-0 rounded border border-green-200 px-2 py-1 text-xs text-green-700 hover:bg-green-50"
@@ -449,6 +491,7 @@ function confirmDeleteGroup(deleteElements: boolean) {
                                     Phases ({{ version.phases?.length ?? 0 }})
                                 </button>
                                 <button
+                                    v-if="!settingsStore.readOnly"
                                     type="button"
                                     :aria-label="`Set ${version.name} as default version`"
                                     class="shrink-0 rounded border px-2 py-1 text-xs"
@@ -466,7 +509,7 @@ function confirmDeleteGroup(deleteElements: boolean) {
                                     }}
                                 </button>
                                 <button
-                                    v-if="versions.length > 1"
+                                    v-if="versions.length > 1 && !settingsStore.readOnly"
                                     type="button"
                                     :aria-label="`Delete version ${version.name}`"
                                     class="shrink-0 rounded border border-red-100 px-2 py-1 text-xs text-red-600 hover:bg-red-50"

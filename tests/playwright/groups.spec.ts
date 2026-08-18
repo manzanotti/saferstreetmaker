@@ -367,6 +367,37 @@ test.describe('Groups — Create group', () => {
         ).toBeVisible();
     });
 
+    test('opening the Groups panel fully closes group editing', async ({ page }) => {
+        await placeTwoModalFilters(page);
+        await page.locator('#select-area-button').click();
+        await page
+            .locator('.leaflet-filters-pane path.modal-filter-marker')
+            .first()
+            .dispatchEvent('click');
+        await createGroup(page, 'Panel Close Group');
+
+        await openGroupsPanel(page);
+        await openGroupDetails(page, 'Panel Close Group');
+        await page.locator('#groups-button').click();
+
+        await expect(page.getByRole('dialog', { name: 'Group details' })).toHaveCount(0);
+        await expect(page.locator('.leaflet-filters-pane path[stroke="#3b82f6"]')).toHaveCount(0);
+        const ungroupedMarker = page
+            .locator('.leaflet-filters-pane path.modal-filter-marker')
+            .last();
+        await ungroupedMarker.dispatchEvent('click');
+        await expect(page.locator('.leaflet-popup')).toBeVisible();
+
+        await page.keyboard.press('Escape');
+        await openGroupsPanel(page);
+        await openGroupDetails(page, 'Panel Close Group');
+        await expect(
+            page.getByRole('dialog', { name: 'Group details' }).getByText('(1 feature)', {
+                exact: true
+            })
+        ).toBeVisible();
+    });
+
     test('removing the final member offers to delete the empty group', async ({ page }) => {
         await placeModalFilter(page);
         await page.locator('#select-area-button').click();
@@ -756,6 +787,34 @@ test.describe('Groups — Create group', () => {
         await expect(popup.locator('.popup-buttons')).toHaveCount(0);
     });
 
+    test('read-only group details cannot edit metadata, membership, or phases', async ({
+        page
+    }) => {
+        await placeTwoModalFilters(page);
+        await selectBothFilters(page);
+        await createGroup(page, 'Read-only Group');
+
+        await page.locator('#settings-button').click();
+        await page.locator('#read-only').check();
+        await page.getByRole('button', { name: 'Save' }).click();
+        await openGroupsPanel(page);
+        await openGroupDetails(page, 'Read-only Group');
+
+        const dialog = page.getByRole('dialog', { name: 'Group details' });
+        await expect(dialog.getByLabel('Group name')).toBeDisabled();
+        await expect(dialog.getByLabel('Description')).toBeDisabled();
+        await expect(dialog.getByLabel('Choose group colour')).toBeDisabled();
+        await expect(dialog.getByRole('button', { name: /Phases for version/ })).toHaveCount(0);
+        await expect(dialog.getByRole('button', { name: 'Create version' })).toHaveCount(0);
+
+        await page
+            .locator('.leaflet-filters-pane path.modal-filter-marker')
+            .first()
+            .dispatchEvent('click');
+        await expect(page.locator('.leaflet-popup.feature-popup-description')).toBeVisible();
+        await expect(dialog.getByText('(2 features)', { exact: true })).toBeVisible();
+    });
+
     test('Groups panel shows empty state message when no groups', async ({ page }) => {
         await openGroupsPanel(page);
         await expect(page.getByText('No groups yet')).toBeVisible();
@@ -814,7 +873,9 @@ test.describe('Groups — Rename', () => {
 
         await openGroupsPanel(page);
         await openGroupDetails(page, 'Old Name');
-        await page.getByLabel('Group name').fill('New Name');
+        const nameInput = page.getByLabel('Group name');
+        await nameInput.fill('');
+        await nameInput.pressSequentially('New Name');
         await page
             .getByRole('dialog', { name: 'Group details' })
             .getByRole('button', { name: 'Close group details' })
@@ -823,6 +884,12 @@ test.describe('Groups — Rename', () => {
         await openGroupsPanel(page);
         await expect(page.getByRole('button', { name: /Select group New Name/ })).toBeVisible();
         await expect(page.getByRole('button', { name: /Select group Old Name/ })).not.toBeVisible();
+
+        await page.getByRole('button', { name: 'Close groups panel' }).click();
+        await page.locator('#undo-button').click();
+        await openGroupsPanel(page);
+        await expect(page.getByRole('button', { name: /Select group Old Name/ })).toBeVisible();
+        await expect(page.getByRole('button', { name: /Select group New Name/ })).toHaveCount(0);
     });
 });
 
@@ -1305,9 +1372,15 @@ test.describe('Groups — Phases', () => {
         await expect(
             page.getByRole('dialog', { name: /Phased Group \/ Default phases/ })
         ).toBeVisible();
+        await expect(
+            page.getByRole('dialog', { name: /Phased Group \/ Default phases/ })
+        ).not.toHaveAttribute('aria-modal');
         const phaseDialog = page.getByRole('dialog', {
             name: /Phased Group \/ Default phases/
         });
+        await expect
+            .poll(async () => (await phaseDialog.boundingBox())?.width ?? Number.POSITIVE_INFINITY)
+            .toBeLessThanOrEqual(448);
         await expect
             .poll(async () => {
                 const dialogBox = await phaseDialog.boundingBox();
@@ -1357,6 +1430,23 @@ test.describe('Groups — Phases', () => {
         await page.getByRole('button', { name: 'New phase' }).click();
         await expect(page.getByText('Edit Phase 2', { exact: true })).toBeVisible();
         await expect(page.getByRole('button', { name: 'Edit Phase 2' })).toBeVisible();
+        await expect(page.getByRole('button', { name: /Move Phase/ })).toHaveCount(0);
+        const phaseIdsBeforeMove = await page.evaluate(() => {
+            const app = (document.getElementById('app') as any).__vue_app__;
+            const groupStore = app?.config?.globalProperties?.$pinia?._s?.get('group');
+            return groupStore.groups[0].versions[0].phases.map((phase: any) => phase.id);
+        });
+        await page.getByRole('button', { name: 'Edit Phase 2' }).press('ArrowUp');
+        await expect
+            .poll(() =>
+                page.evaluate(() => {
+                    const app = (document.getElementById('app') as any).__vue_app__;
+                    const groupStore = app?.config?.globalProperties?.$pinia?._s?.get('group');
+                    return groupStore.groups[0].versions[0].phases.map((phase: any) => phase.id);
+                })
+            )
+            .toEqual([...phaseIdsBeforeMove].reverse());
+        await page.waitForTimeout(100);
 
         await page.getByRole('button', { name: 'Close phases' }).click();
         await expect(
@@ -1371,12 +1461,40 @@ test.describe('Groups — Phases', () => {
         );
         await page.getByRole('button', { name: 'Close group details' }).click();
         await page.getByRole('button', { name: 'Undo' }).click();
+        await page.getByRole('button', { name: 'Undo' }).click();
 
         await expect(
             page.getByRole('dialog', { name: /Phased Group \/ Default phases/ })
         ).toBeVisible();
         await expect(page.getByRole('button', { name: 'Edit Phase 1' })).toBeVisible();
         await expect(page.getByRole('button', { name: 'Edit Phase 2' })).toHaveCount(0);
+    });
+
+    test('does not add a feature outside the group version to a phase', async ({ page }) => {
+        await placeTwoModalFilters(page);
+        await selectBothFilters(page);
+        await createGroup(page, 'Bounded Phase Group');
+        await placeModalFilter(page, 180);
+
+        await openGroupsPanel(page);
+        await openGroupDetails(page, 'Bounded Phase Group');
+        await page.getByRole('button', { name: 'Phases for version Default' }).click();
+        const phaseRow = page.getByRole('listitem').filter({ hasText: 'Phase 1' });
+        await expect(phaseRow).toContainText('2 features');
+
+        await page
+            .locator('.leaflet-filters-pane path.modal-filter-marker')
+            .last()
+            .dispatchEvent('click');
+
+        await expect(phaseRow).toContainText('2 features');
+        await page.getByRole('button', { name: 'Close phases' }).click();
+        await openGroupsPanel(page);
+        await openGroupDetails(page, 'Bounded Phase Group');
+        await page.getByRole('button', { name: 'Phases for version Default' }).click();
+        await expect(page.getByRole('listitem').filter({ hasText: 'Phase 1' })).toContainText(
+            '2 features'
+        );
     });
 
     test('edits phase membership and offers to delete a phase made empty', async ({ page }) => {

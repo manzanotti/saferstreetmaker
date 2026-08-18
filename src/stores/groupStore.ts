@@ -93,6 +93,17 @@ export const useGroupStore = defineStore('group', () => {
         ) {
             detailsGroupId.value = null;
         }
+        if (phaseGroupId.value && phaseVersionId.value) {
+            const phaseGroup = projectedGroups.find((group) => group.id === phaseGroupId.value);
+            const phaseVersionExists = phaseGroup
+                ? getGroupVersions(phaseGroup).some(
+                      (version) => version.id === phaseVersionId.value
+                  )
+                : false;
+            if (!phaseVersionExists) {
+                closePhasesDialog();
+            }
+        }
         const nextActive: Record<string, string> = {};
         for (const group of projectedGroups) {
             const currentVersionId = activeVersionIds.value[group.id];
@@ -502,7 +513,11 @@ export const useGroupStore = defineStore('group', () => {
         const version = group
             ? getGroupVersions(group).find((item) => item.id === versionId)
             : undefined;
-        if (!version || phaseIds.length !== (version.phases ?? []).length) {
+        if (
+            !version ||
+            phaseIds.length !== (version.phases ?? []).length ||
+            new Set(phaseIds).size !== phaseIds.length
+        ) {
             return false;
         }
 

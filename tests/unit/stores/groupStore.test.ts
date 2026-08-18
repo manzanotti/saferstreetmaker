@@ -52,6 +52,50 @@ describe('groupStore', () => {
 
             expect(store.pendingEmptyGroupDeletionId).toBeNull();
         });
+
+        it('closes phase editing when the replacement groups omit its group', () => {
+            const store = useGroupStore();
+            store.setGroups([
+                {
+                    id: 'g1',
+                    name: 'Group 1',
+                    versions: [{ id: 'v1', name: 'First', members: [] }]
+                }
+            ]);
+            store.openPhasesDialog('g1', 'v1');
+
+            store.setGroups([]);
+
+            expect(store.phasesDialogOpen).toBe(false);
+            expect(store.phaseGroupId).toBeNull();
+            expect(store.phaseVersionId).toBeNull();
+            expect(store.phaseDraftActive).toBe(false);
+        });
+
+        it('closes phase editing when the replacement group omits its version', () => {
+            const store = useGroupStore();
+            store.setGroups([
+                {
+                    id: 'g1',
+                    name: 'Group 1',
+                    versions: [{ id: 'v1', name: 'First', members: [] }]
+                }
+            ]);
+            store.openPhasesDialog('g1', 'v1');
+
+            store.setGroups([
+                {
+                    id: 'g1',
+                    name: 'Group 1',
+                    versions: [{ id: 'v2', name: 'Second', members: [] }]
+                }
+            ]);
+
+            expect(store.phasesDialogOpen).toBe(false);
+            expect(store.phaseGroupId).toBeNull();
+            expect(store.phaseVersionId).toBeNull();
+            expect(store.phaseDraftActive).toBe(false);
+        });
     });
 
     // ── addGroup ──────────────────────────────────────────────────────────────
@@ -133,6 +177,33 @@ describe('groupStore', () => {
             expect(store.groups[0].versions?.[0].phases?.map((phase) => phase.id)).toEqual([
                 'phase-2',
                 'phase-1'
+            ]);
+        });
+
+        it('rejects duplicate phase ids when reordering', () => {
+            const store = useGroupStore();
+            store.setGroups([
+                {
+                    id: 'g1',
+                    name: 'Alpha',
+                    versions: [
+                        {
+                            id: 'v1',
+                            name: 'First',
+                            members: [],
+                            phases: [
+                                { id: 'phase-1', members: [] },
+                                { id: 'phase-2', members: [] }
+                            ]
+                        }
+                    ]
+                }
+            ]);
+
+            expect(store.reorderVersionPhases('g1', 'v1', ['phase-1', 'phase-1'])).toBe(false);
+            expect(store.groups[0].versions?.[0].phases?.map((phase) => phase.id)).toEqual([
+                'phase-1',
+                'phase-2'
             ]);
         });
     });

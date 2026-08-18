@@ -16,6 +16,7 @@ import { useMapStore } from '../stores/mapStore';
 import { useSelectionStore } from '../stores/selectionStore';
 import { useGroupStore } from '../stores/groupStore';
 import { useUiStore } from '../stores/uiStore';
+import { useSettingsStore } from '../stores/settingsStore';
 import {
     getActiveVersion,
     getNewPhaseDraftMembers,
@@ -685,6 +686,9 @@ export function fitGroupPhaseFeatures(bottomPadding: number): boolean {
 }
 
 export function openGroupPhases(groupId: string, versionId: string): boolean {
+    if (useSettingsStore(pinia).readOnly) {
+        return false;
+    }
     const groupStore = useGroupStore(pinia);
     const group = groupStore.groups.find((item) => item.id === groupId);
     const version = group ? getGroupVersions(group).find((item) => item.id === versionId) : null;
@@ -744,6 +748,9 @@ export function showReplayedGroupPhases(
 }
 
 export function startNewGroupPhase(): boolean {
+    if (useSettingsStore(pinia).readOnly) {
+        return false;
+    }
     const groupStore = useGroupStore(pinia);
     const group = groupStore.phaseGroupId
         ? groupStore.groups.find((item) => item.id === groupStore.phaseGroupId)
@@ -779,17 +786,24 @@ export function refreshGroupPhasePresentation(): void {
         group && groupStore.phaseVersionId
             ? getGroupVersions(group).find((item) => item.id === groupStore.phaseVersionId)
             : null;
-    if (!version || !groupStore.phaseDraftActive) {
+    if (!version || !groupStore.phaseDraftActive || useSettingsStore(pinia).readOnly) {
         return;
     }
+    const versionMemberKeys = new Set(
+        version.members.map((member) => `${member.layerId}:${member.historyId}`)
+    );
+    const selectedVersionEntries = selectionStore.selected.filter(
+        (entry) =>
+            entry.historyId !== null && versionMemberKeys.has(`${entry.layerId}:${entry.historyId}`)
+    );
     const selectedKeys = new Set(
-        selectionStore.selected.map((entry) => `${entry.layerId}:${entry.historyId}`)
+        selectedVersionEntries.map((entry) => `${entry.layerId}:${entry.historyId}`)
     );
     const editingId = groupStore.phaseEditingId;
     if (editingId) {
         const selectedMembers = Array.from(
             new Map(
-                selectionStore.selected
+                selectedVersionEntries
                     .filter(
                         (entry): entry is SelectedMarker & { historyId: string } =>
                             entry.historyId !== null
@@ -910,6 +924,9 @@ function finishGroupPhaseEditing(): void {
 }
 
 export function confirmEmptyGroupPhaseDeletion(deletePhase: boolean): boolean {
+    if (useSettingsStore(pinia).readOnly) {
+        return false;
+    }
     const groupStore = useGroupStore(pinia);
     const groupId = groupStore.phaseGroupId;
     const versionId = groupStore.phaseVersionId;
@@ -935,6 +952,9 @@ export function confirmEmptyGroupPhaseDeletion(deletePhase: boolean): boolean {
 }
 
 export function reorderGroupPhases(phaseIds: string[]): boolean {
+    if (useSettingsStore(pinia).readOnly) {
+        return false;
+    }
     const groupStore = useGroupStore(pinia);
     const groupId = groupStore.phaseGroupId;
     const versionId = groupStore.phaseVersionId;
