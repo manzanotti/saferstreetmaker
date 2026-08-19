@@ -11,7 +11,7 @@
         "typecheck": "vue-tsc --noEmit -p tsconfig.typecheck.json"
     },
     "devDependencies": {
-        "@playwright/test": "^1.61.1",
+        "@playwright/test": "^1.62.1",
         "@tailwindcss/vite": "^4.3.3",
         "@types/leaflet": "^1.9.22",
         "@types/lz-string": "^1.5.0",
