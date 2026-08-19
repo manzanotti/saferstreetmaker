@@ -2411,9 +2411,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pinia@npm:^4.0.2":
-  version: 4.0.2
-  resolution: "pinia@npm:4.0.2"
+"pinia@npm:^4.0.3":
+  version: 4.0.3
+  resolution: "pinia@npm:4.0.3"
   dependencies:
     nostics: ^1.1.4
   peerDependencies:
@@ -2425,7 +2425,7 @@ __metadata:
       optional: false
     typescript:
       optional: true
-  checksum: dee318e7ef41c67598adf5506a0085f559474bcc66791c5e95e03e042657b5840f7d793ed8987b0cac8b2339e856355f3eea682182c0ac415670e76005e813e3
+  checksum: aacef9656911936edd1f3e52f490e94b8561f3d6fb2220d444baa663f2faecbb20e7364d642168d22c6d3030763478893bde0bb1ce2aed5f32bdc85a483944a9
   languageName: node
   linkType: hard
 
@@ -2690,7 +2690,7 @@ __metadata:
     leaflet-arrowheads: ^1.4.0
     leaflet-geometryutil: ^0.10.3
     lz-string: ^1.5.0
-    pinia: ^4.0.2
+    pinia: ^4.0.3
     prettier: ^3.9.6
     tailwindcss: ^4.3.3
     typescript: ^6.0.3
