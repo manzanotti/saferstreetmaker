@@ -366,14 +366,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@playwright/test@npm:^1.61.1":
-  version: 1.61.1
-  resolution: "@playwright/test@npm:1.61.1"
+"@playwright/test@npm:^1.62.1":
+  version: 1.62.1
+  resolution: "@playwright/test@npm:1.62.1"
   dependencies:
-    playwright: 1.61.1
+    playwright: 1.62.1
   bin:
     playwright: cli.js
-  checksum: cf664aa3f5ccc63061ec8a96cf957ad2160b0a300035b310b9fcf67da43f52681fb775755c6134230e0ace7b391a08d9cfe7ca9664546d1bb5d4cf02e1db170a
+  checksum: 168f3c0436aa6ddfdfca955ce7b329c42fddef27b1f8898d09c7af34e51f54739bc421f24058e9a851d9d9b26f68d2dec87cc9564826d15539f3b572c1ed9aea
   languageName: node
   linkType: hard
 
@@ -2429,27 +2429,27 @@ __metadata:
   languageName: node
   linkType: hard
 
-"playwright-core@npm:1.61.1":
-  version: 1.61.1
-  resolution: "playwright-core@npm:1.61.1"
+"playwright-core@npm:1.62.1":
+  version: 1.62.1
+  resolution: "playwright-core@npm:1.62.1"
   bin:
     playwright-core: cli.js
-  checksum: 69bd5c4eb1884a16e92674c0399ad25120ce91faecadd25227cb07eaa0892cce07f908c6bad51256363bf17634953759c30d42d7c253128c28bc8b86087a1f62
+  checksum: 270674de6b921dd09e00d01e9a725117d03097f0e540ed681fb70d183d2f7855188640b0d7de1b9c0f8a2fb334eb33dedf1f34eeed86792fe88dc14633b06121
   languageName: node
   linkType: hard
 
-"playwright@npm:1.61.1":
-  version: 1.61.1
-  resolution: "playwright@npm:1.61.1"
+"playwright@npm:1.62.1":
+  version: 1.62.1
+  resolution: "playwright@npm:1.62.1"
   dependencies:
     fsevents: 2.3.2
-    playwright-core: 1.61.1
+    playwright-core: 1.62.1
   dependenciesMeta:
     fsevents:
       optional: true
   bin:
     playwright: cli.js
-  checksum: 2d85be1b6a88dbeeb206c5800629182840f07bd0e5e74f154fa57de2f1df16631918df9139a1cb8ddde8f2f125c5c9e447686a0fdadb61552b668ba97ffcaaf1
+  checksum: 1e18e684d97b3d42ac6c80defe676c4c6c85d96394b690407f75b7a9007d8d44d774c9e9c40957a7319ff70a4d4dad103d6362415b81055256b823abe89abdca
   languageName: node
   linkType: hard
 
@@ -2675,7 +2675,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "root-workspace-0b6124@workspace:."
   dependencies:
-    "@playwright/test": ^1.61.1
+    "@playwright/test": ^1.62.1
     "@tailwindcss/vite": ^4.3.3
     "@types/leaflet": ^1.9.22
     "@types/lz-string": ^1.5.0
