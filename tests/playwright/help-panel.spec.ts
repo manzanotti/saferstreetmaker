@@ -58,6 +58,10 @@ test.describe('Help Panel', () => {
         await expect(page.locator('#tabs-groups')).toContainText('version dropdown');
         await expect(page.locator('#tabs-groups')).toContainText('all LTN cells in the group');
         await expect(page.locator('#tabs-groups')).toContainText('striped pattern');
+        await expect(page.locator('#tabs-groups')).toContainText('Group phases');
+        await expect(page.locator('#tabs-groups')).toContainText('New phase');
+        await expect(page.locator('#tabs-groups')).toContainText('ordered sequence');
+        await expect(page.locator('#tabs-groups')).toContainText('dragging them in the list');
     });
 
     test('clicking the help modal close button hides the modal', async ({ page }) => {
