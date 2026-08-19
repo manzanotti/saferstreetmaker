@@ -32,7 +32,7 @@
     },
     "dependencies": {
         "@vue/devtools-api": "^8.1.5",
-        "dexie": "^4.2.0",
+        "dexie": "^4.4.5",
         "dompurify": "^3.4.12",
         "pinia": "^4.0.2",
         "tailwindcss": "^4.3.3",

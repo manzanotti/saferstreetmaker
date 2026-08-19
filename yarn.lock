@@ -1441,10 +1441,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"dexie@npm:^4.2.0":
-  version: 4.4.4
-  resolution: "dexie@npm:4.4.4"
-  checksum: 2d1c989b920628f738619dcea9a82929fb3aa33b54351b9b719fd214b0978857ee431e7976a0a0736deced0a888f3d5d7950eb362412b107282efd631f1c93e8
+"dexie@npm:^4.4.5":
+  version: 4.4.5
+  resolution: "dexie@npm:4.4.5"
+  checksum: 98f03f2df38a966bbb61845521d6ab0b59f8749b46163632c392c803e5ddd81c053eb37e60c2281f193b56ca35b3e366b9d11b8df1e969ed91eacd661a25cb37
   languageName: node
   linkType: hard
 
@@ -2683,7 +2683,7 @@ __metadata:
     "@vitejs/plugin-vue": ^6.0.8
     "@vue/devtools-api": ^8.1.5
     "@vue/tsconfig": ^0.9.1
-    dexie: ^4.2.0
+    dexie: ^4.4.5
     dompurify: ^3.4.12
     fake-indexeddb: ^6.2.4
     jsdom: ^29.1.1
