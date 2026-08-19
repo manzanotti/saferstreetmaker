@@ -386,6 +386,27 @@ function close() {
                                 is marked <strong>Default</strong>. Deleting a version removes its
                                 copied features; Undo can restore the deletion if needed.
                             </p>
+                            <h2>Group phases</h2>
+                            <p class="mb-8">
+                                Phases let you divide a version's features into an ordered sequence
+                                of works or changes. Click <strong>Phases</strong> beside a version
+                                to view its phases. Each phase contains features from that version,
+                                so changing the version does not change the phase plan for another
+                                version.
+                            </p>
+                            <p class="mb-8">
+                                Click <strong>New phase</strong> to create a phase, or click an
+                                existing phase to edit it. Select the features for that phase on the
+                                map; features already assigned to another phase are removed from
+                                that phase when they are added here. Empty phases can be deleted
+                                when you finish editing.
+                            </p>
+                            <p class="mb-8">
+                                Reorder phases by dragging them in the list. When a phase is
+                                focused, you can also use the Up and Down arrow keys to move it.
+                                Close the phases window when you are finished; phase changes are
+                                saved with the group and can be restored with Undo.
+                            </p>
                         </div>
 
                         <!-- Map Management -->
