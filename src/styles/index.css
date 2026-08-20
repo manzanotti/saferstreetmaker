@@ -324,6 +324,11 @@ a {
     box-shadow: 0 0 0 2px #15803d;
 }
 
+.leaflet-popup.group-popup .leaflet-popup-content-wrapper {
+    width: 75px;
+    max-width: 75px;
+}
+
 .leaflet-tooltip {
     font-size: 3em;
     font-weight: 700;

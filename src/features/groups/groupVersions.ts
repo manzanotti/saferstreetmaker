@@ -75,6 +75,11 @@ export function getActiveVersion(group: Group, activeVersionId?: string | null):
     return versions.find((version) => version.id === requestedId) ?? versions[0];
 }
 
+export function needsReadOnlyGroupDetails(group: Group): boolean {
+    const versions = getGroupVersions(group);
+    return versions.length > 1 || versions.some((version) => (version.phases?.length ?? 0) > 0);
+}
+
 export function normalizeGroup(group: Group): NormalizedGroup {
     const versions = getGroupVersions(group).map((version) => ({
         id: version.id,

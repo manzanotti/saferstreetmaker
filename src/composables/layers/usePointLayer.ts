@@ -22,6 +22,11 @@ import {
     closeFeatureHoverPopups,
     createFeatureHoverPopupController
 } from './layerUtils';
+import {
+    buildReadOnlyGroupPopup,
+    findFirstFeatureGroupId,
+    getReadOnlyGroupCenter
+} from './layerUtils';
 import { useSelectionStore } from '../../stores/selectionStore';
 import { useGroupStore } from '../../stores/groupStore';
 import { executeAreaDelete, executeCopy, selectFeature } from '../useAreaSelection';
@@ -113,11 +118,16 @@ export function handlePointFeatureClick(
     const member = { layerId, historyId };
     closeFeatureHoverPopups(map);
     if (readOnly) {
+        const groupId = findFirstFeatureGroupId(member);
+        if (groupId) {
+            openGroupDetails(groupId);
+            return;
+        }
         const descriptionPopup = buildFeatureDescriptionPopup(
             { minWidth: 30, keepInView: true },
             member,
             'click',
-            { iconSrc }
+            { iconSrc, onOpenGroup: openGroupDetails }
         );
         descriptionPopup?.setLatLng(latLng ?? map.getCenter()).openOn(map);
         return;
@@ -169,6 +179,32 @@ export function createPointLayer(config: PointLayerConfig, map: L.Map): IMapLaye
             }
 
             closeFeatureHoverPopups(markerMap);
+
+            const groupId = findFirstFeatureGroupId({
+                layerId: config.id,
+                historyId: nextHistoryId
+            });
+            if (groupId) {
+                if (useSettingsStore(pinia).readOnly) {
+                    const groupPopup = buildReadOnlyGroupPopup(groupId, openGroupDetails);
+                    if (groupPopup) {
+                        hoverPopupController.set(groupPopup);
+                        addFeatureHoverPopup(
+                            markerMap,
+                            groupPopup,
+                            getFeatureHoverLatLng(
+                                markerMap,
+                                getReadOnlyGroupCenter(groupId) ?? latlng,
+                                event.latlng
+                            ),
+                            () => hoverPopupController.close(groupPopup)
+                        );
+                    }
+                    return;
+                }
+            } else {
+                return;
+            }
 
             const descriptionPopup = buildFeatureDescriptionPopup(
                 { minWidth: 30, keepInView: true },

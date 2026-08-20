@@ -85,6 +85,9 @@ export const useGroupStore = defineStore('group', () => {
     const phaseEditingId = ref<string | null>(null);
     const pendingEmptyPhaseDeletionId = ref<string | null>(null);
     const focusedPhaseId = ref<string | null>(null);
+    const playbackPlaying = ref(false);
+    const playbackComplete = ref(false);
+    const playbackPhaseIndex = ref<number | null>(null);
 
     // ── Group mutations ───────────────────────────────────────────────────────
 
@@ -643,6 +646,18 @@ export const useGroupStore = defineStore('group', () => {
         focusedPhaseId.value = null;
     }
 
+    function setReadOnlyPhaseContext(groupId: string, versionId: string) {
+        phaseGroupId.value = groupId;
+        phaseVersionId.value = versionId;
+        phaseDraftActive.value = false;
+        phaseEditingId.value = null;
+        pendingEmptyPhaseDeletionId.value = null;
+        focusedPhaseId.value = null;
+        playbackPlaying.value = false;
+        playbackComplete.value = false;
+        playbackPhaseIndex.value = null;
+    }
+
     function closePhasesDialog() {
         phasesDialogOpen.value = false;
         phaseGroupId.value = null;
@@ -651,6 +666,9 @@ export const useGroupStore = defineStore('group', () => {
         phaseEditingId.value = null;
         pendingEmptyPhaseDeletionId.value = null;
         focusedPhaseId.value = null;
+        playbackPlaying.value = false;
+        playbackComplete.value = false;
+        playbackPhaseIndex.value = null;
     }
 
     function setFocusedPhase(id: string | null) {
@@ -690,6 +708,9 @@ export const useGroupStore = defineStore('group', () => {
         phaseEditingId,
         pendingEmptyPhaseDeletionId,
         focusedPhaseId,
+        playbackPlaying,
+        playbackComplete,
+        playbackPhaseIndex,
         setGroups,
         addGroup,
         renameGroup,
@@ -725,6 +746,7 @@ export const useGroupStore = defineStore('group', () => {
         openDetailsDialog,
         closeDetailsDialog,
         openPhasesDialog,
+        setReadOnlyPhaseContext,
         closePhasesDialog,
         setFocusedPhase,
         clearPendingState

@@ -1,12 +1,15 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { getMapManager } from '../../composables/useMapManager';
 import { useHistoryStore } from '../../stores/historyStore';
 import { useSelectionStore } from '../../stores/selectionStore';
 import { useUiStore, type PanelId } from '../../stores/uiStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 
 const historyStore = useHistoryStore();
 const selectionStore = useSelectionStore();
 const uiStore = useUiStore();
+const settingsStore = useSettingsStore();
 const areaSelectIcon = new URL('../../img/area-select.svg', import.meta.url).href;
 const mapManagerIconSrc = new URL('../../img/folder-svgrepo-com.svg', import.meta.url).href;
 const groupIconSrc = new URL('../../img/group.svg', import.meta.url).href;
@@ -45,6 +48,9 @@ const panelButtons: PanelButtonDef[] = [
         iconSrc: new URL('../../img/help-svgrepo-com.svg', import.meta.url).href
     }
 ];
+const visiblePanelButtons = computed(() =>
+    panelButtons.filter((button) => button.id !== 'groups' || !settingsStore.readOnly)
+);
 
 async function onUndo() {
     await getMapManager().undo();
@@ -70,7 +76,7 @@ function onPanelButtonClick(panelId: PanelId) {
         class="flex flex-wrap sm:flex-nowrap gap-1 sm:gap-1.5 p-[3px] rounded-2xl bg-white/[0.94] shadow-xl border border-white/60 w-fit"
     >
         <!-- Map manager — first button in the bar -->
-        <li>
+        <li v-if="!settingsStore.readOnly">
             <button
                 id="map-manager-button"
                 type="button"
@@ -100,7 +106,7 @@ function onPanelButtonClick(panelId: PanelId) {
             </button>
         </li>
         <!-- Undo -->
-        <li>
+        <li v-if="!settingsStore.readOnly">
             <button
                 id="undo-button"
                 type="button"
@@ -114,7 +120,7 @@ function onPanelButtonClick(panelId: PanelId) {
             </button>
         </li>
         <!-- Redo -->
-        <li>
+        <li v-if="!settingsStore.readOnly">
             <button
                 id="redo-button"
                 type="button"
@@ -128,7 +134,7 @@ function onPanelButtonClick(panelId: PanelId) {
             </button>
         </li>
         <!-- Area select -->
-        <li>
+        <li v-if="!settingsStore.readOnly">
             <button
                 id="select-area-button"
                 type="button"
@@ -164,7 +170,7 @@ function onPanelButtonClick(panelId: PanelId) {
         <!-- Line-break on mobile: forces groups/settings/share/help onto a second row -->
         <li class="basis-full sm:hidden" aria-hidden="true"></li>
         <!-- Settings, share, help -->
-        <li v-for="mb in panelButtons" :key="mb.id">
+        <li v-for="mb in visiblePanelButtons" :key="mb.id">
             <button
                 :id="`${mb.id}-button`"
                 type="button"

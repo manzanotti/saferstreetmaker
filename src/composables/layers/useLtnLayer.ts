@@ -13,6 +13,9 @@ import {
     setMouseMarkerCursor,
     buildHistoryId,
     buildFeatureDescriptionPopup,
+    buildReadOnlyGroupPopup,
+    findFirstFeatureGroupId,
+    getReadOnlyGroupCenter,
     addFeatureHoverPopup,
     getFeatureHoverLatLng,
     buildFeatureGroupMembershipContent,
@@ -487,6 +490,27 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
 
             closeFeatureHoverPopups(map);
 
+            const groupId = findFirstFeatureGroupId({ layerId: 'LtnCells', historyId });
+            if (groupId) {
+                if (useSettingsStore(pinia).readOnly) {
+                    const groupPopup = buildReadOnlyGroupPopup(groupId, openGroupDetails);
+                    if (groupPopup) {
+                        const groupCenter =
+                            getReadOnlyGroupCenter(groupId) ?? polygon.getBounds().getCenter();
+                        hoverPopupController.set(groupPopup);
+                        addFeatureHoverPopup(
+                            map,
+                            groupPopup,
+                            getFeatureHoverLatLng(map, groupCenter, event.latlng),
+                            () => hoverPopupController.close(groupPopup)
+                        );
+                    }
+                    return;
+                }
+            } else {
+                return;
+            }
+
             const descriptionPopup = buildFeatureDescriptionPopup(
                 { minWidth: 30, keepInView: true },
                 { layerId: 'LtnCells', historyId },
@@ -544,6 +568,11 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             closeFeatureHoverPopups(map);
             if (useSettingsStore(pinia).readOnly) {
                 L.DomEvent.stopPropagation(e.originalEvent ?? e);
+                const groupId = findFirstFeatureGroupId({ layerId: 'LtnCells', historyId });
+                if (groupId) {
+                    openGroupDetails(groupId);
+                    return;
+                }
                 const descriptionPopup = buildFeatureDescriptionPopup(
                     { minWidth: 30, keepInView: true },
                     { layerId: 'LtnCells', historyId },

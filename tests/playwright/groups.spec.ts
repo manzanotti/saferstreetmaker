@@ -120,6 +120,20 @@ async function createGroupWithDescription(
     await page.waitForTimeout(300);
 }
 
+async function setGroupPhases(page: Page, phaseCount: number): Promise<void> {
+    await page.evaluate((count) => {
+        const app = (document.getElementById('app') as any).__vue_app__;
+        const groupStore = app?.config?.globalProperties?.$pinia?._s?.get('group');
+        const group = groupStore.groups[0];
+        const version = groupStore.getActiveGroupVersion(group.id);
+        const phases = Array.from({ length: count }, (_, index) => ({
+            id: `read-only-phase-${index + 1}`,
+            members: [version.members[index % version.members.length]]
+        }));
+        groupStore.replaceVersionPhases(group.id, version.id, phases);
+    }, phaseCount);
+}
+
 async function createGroupVersion(page: Page, name: string): Promise<void> {
     const dialog = page.getByRole('dialog', { name: 'Group details' });
     await expect(dialog).toBeVisible();
@@ -493,6 +507,21 @@ test.describe('Groups — Create group', () => {
         );
     });
 
+    test('ungrouped feature hover does not show a popup in either mode', async ({ page }) => {
+        await placeModalFilter(page, 110);
+        const marker = page.locator('.leaflet-filters-pane path.modal-filter-marker').first();
+
+        await marker.hover();
+        await expect(page.locator('.leaflet-popup.feature-popup-hover')).toHaveCount(0);
+
+        await page.locator('#settings-button').click();
+        await page.locator('#read-only').check();
+        await page.getByRole('button', { name: 'Save' }).click();
+
+        await marker.hover();
+        await expect(page.locator('.leaflet-popup.feature-popup-hover')).toHaveCount(0);
+    });
+
     test('polygon hover popup renders the descriptions of its groups', async ({ page }) => {
         await drawNamedLtnCell(page, 'School cell');
 
@@ -764,9 +793,7 @@ test.describe('Groups — Create group', () => {
         await expect(popup.locator('.feature-popup-group-none')).toHaveCount(0);
     });
 
-    test('read-only feature click renders the description popup without actions', async ({
-        page
-    }) => {
+    test('read-only simple feature click does not open the group viewer', async ({ page }) => {
         await placeTwoModalFilters(page);
         await selectBothFilters(page);
         await createGroupWithDescription(page, 'School Zone', '<p>Slow down near school</p>');
@@ -778,13 +805,65 @@ test.describe('Groups — Create group', () => {
         const marker = page.locator('.leaflet-filters-pane path.modal-filter-marker').first();
         await marker.dispatchEvent('click');
 
-        const popup = page.locator('.leaflet-popup');
+        await expect(page.getByRole('dialog', { name: 'School Zone' })).toHaveCount(0);
+    });
+
+    test('read-only simple groups do not open the group panel', async ({ page }) => {
+        await placeTwoModalFilters(page);
+        await selectBothFilters(page);
+        await createGroup(page, 'Simple Group');
+
+        await page.locator('#settings-button').click();
+        await page.locator('#read-only').check();
+        await page.getByRole('button', { name: 'Save' }).click();
+
+        await page
+            .locator('.leaflet-filters-pane path.modal-filter-marker')
+            .first()
+            .dispatchEvent('click');
+
+        await expect(page.getByRole('dialog', { name: 'Simple Group' })).toHaveCount(0);
+        await expect(page.locator('.group-popup-title')).toHaveCount(0);
+    });
+
+    test('read-only grouped feature hover shows the group popup', async ({ page }) => {
+        await placeTwoModalFilters(page);
+        await selectBothFilters(page);
+        await createGroupWithDescription(page, 'School Zone', '<p>Slow down near school</p>');
+        await setGroupPhases(page, 1);
+
+        await page.locator('#settings-button').click();
+        await page.locator('#read-only').check();
+        await page.getByRole('button', { name: 'Save' }).click();
+
+        const marker = page.locator('.leaflet-filters-pane path.modal-filter-marker').first();
+        await marker.hover();
+
+        const popup = page.locator('.leaflet-popup.group-popup').last();
         await expect(popup).toBeVisible();
-        await expect(popup).toHaveClass(/feature-popup-description/);
+        const firstPopupBox = await popup.boundingBox();
+        await expect(popup.locator('.group-popup-title')).toHaveText('School Zone');
         await expect(popup.locator('.feature-popup-description')).toContainText(
             'Slow down near school'
         );
-        await expect(popup.locator('.popup-buttons')).toHaveCount(0);
+        await expect(page.locator('.leaflet-popup.feature-popup-hover')).toHaveCount(0);
+
+        await page.locator('.leaflet-filters-pane path.modal-filter-marker').nth(1).hover();
+        const secondPopupBox = await page
+            .locator('.leaflet-popup.group-popup')
+            .last()
+            .boundingBox();
+        expect(firstPopupBox).not.toBeNull();
+        expect(secondPopupBox).not.toBeNull();
+        expect(secondPopupBox!.x).toBeCloseTo(firstPopupBox!.x, 0);
+        expect(secondPopupBox!.y).toBeCloseTo(firstPopupBox!.y, 0);
+
+        await page
+            .locator('.leaflet-popup.group-popup')
+            .last()
+            .getByRole('button', { name: 'Open group School Zone' })
+            .click();
+        await expect(page.getByRole('dialog', { name: 'School Zone' })).toBeVisible();
     });
 
     test('read-only group details cannot edit metadata, membership, or phases', async ({
@@ -797,22 +876,87 @@ test.describe('Groups — Create group', () => {
         await page.locator('#settings-button').click();
         await page.locator('#read-only').check();
         await page.getByRole('button', { name: 'Save' }).click();
-        await openGroupsPanel(page);
-        await openGroupDetails(page, 'Read-only Group');
-
-        const dialog = page.getByRole('dialog', { name: 'Group details' });
-        await expect(dialog.getByLabel('Group name')).toBeDisabled();
-        await expect(dialog.getByLabel('Description')).toBeDisabled();
-        await expect(dialog.getByLabel('Choose group colour')).toBeDisabled();
-        await expect(dialog.getByRole('button', { name: /Phases for version/ })).toHaveCount(0);
-        await expect(dialog.getByRole('button', { name: 'Create version' })).toHaveCount(0);
-
         await page
             .locator('.leaflet-filters-pane path.modal-filter-marker')
             .first()
             .dispatchEvent('click');
-        await expect(page.locator('.leaflet-popup.feature-popup-description')).toBeVisible();
-        await expect(dialog.getByText('(2 features)', { exact: true })).toBeVisible();
+
+        const dialog = page.getByRole('dialog', { name: 'Read-only Group' });
+        await expect(dialog.getByRole('textbox')).toHaveCount(0);
+        await expect(dialog.getByRole('heading', { name: 'Versions' })).toHaveCount(0);
+        await expect(dialog.getByRole('button', { name: /Phases for version/ })).toHaveCount(0);
+        await expect(dialog.getByRole('button', { name: 'Create version' })).toHaveCount(0);
+    });
+
+    test('read-only group details shows the single-phase summary', async ({ page }) => {
+        await placeTwoModalFilters(page);
+        await selectBothFilters(page);
+        await createGroup(page, 'Single Phase Group');
+        await setGroupPhases(page, 1);
+
+        await page.locator('#settings-button').click();
+        await page.locator('#read-only').check();
+        await page.getByRole('button', { name: 'Save' }).click();
+        await page
+            .locator('.leaflet-filters-pane path.modal-filter-marker')
+            .first()
+            .dispatchEvent('click');
+
+        const dialog = page.getByRole('dialog', { name: 'Single Phase Group' });
+        await expect(dialog.getByText('Implemented in one phase', { exact: true })).toBeVisible();
+        await expect(dialog.getByRole('list', { name: 'Group phases' })).toHaveCount(0);
+    });
+
+    test('read-only group details embeds the multi-phase player', async ({ page }) => {
+        await placeTwoModalFilters(page);
+        await selectBothFilters(page);
+        await createGroup(page, 'Multi Phase Group');
+        await setGroupPhases(page, 2);
+
+        await page.locator('#settings-button').click();
+        await page.locator('#read-only').check();
+        await page.getByRole('button', { name: 'Save' }).click();
+        await page
+            .locator('.leaflet-filters-pane path.modal-filter-marker')
+            .first()
+            .dispatchEvent('click');
+
+        const dialog = page.getByRole('dialog', { name: 'Multi Phase Group' });
+        await expect(dialog.getByRole('list', { name: 'Group phases' })).toBeVisible();
+        await expect(dialog.getByRole('heading', { name: 'Implementation Phases' })).toBeVisible();
+        const dialogBox = await dialog.boundingBox();
+        expect(dialogBox).not.toBeNull();
+        expect(dialogBox!.width).toBeCloseTo(336, 0);
+        await expect(dialog.getByRole('listitem')).toHaveCount(2);
+        await expect(dialog.getByRole('button', { name: 'Play phases' })).toBeVisible();
+        await expect(dialog.getByRole('button', { name: 'Previous phase' })).toBeVisible();
+        await expect(dialog.getByRole('button', { name: 'Next phase' })).toBeVisible();
+        await expect(page.getByRole('dialog', { name: /phases/ })).toHaveCount(0);
+    });
+
+    test('read-only multi-version details hides View on the selected version', async ({ page }) => {
+        await placeTwoModalFilters(page);
+        await selectBothFilters(page);
+        await createGroup(page, 'Versioned Group');
+        await openGroupsPanel(page);
+        await openGroupDetails(page, 'Versioned Group');
+        await createGroupVersion(page, 'Alternative');
+        await page.getByRole('button', { name: 'Close group details' }).click();
+
+        await page.locator('#settings-button').click();
+        await page.locator('#read-only').check();
+        await page.getByRole('button', { name: 'Save' }).click();
+        await page
+            .locator('.leaflet-filters-pane path.modal-filter-marker')
+            .first()
+            .dispatchEvent('click');
+
+        const dialog = page.getByRole('dialog', { name: 'Versioned Group' });
+        await expect(dialog.getByRole('heading', { name: 'Versions' })).toBeVisible();
+        await expect(dialog.getByRole('button', { name: 'View version Alternative' })).toHaveCount(
+            0
+        );
+        await expect(dialog.getByRole('button', { name: 'View version Default' })).toBeVisible();
     });
 
     test('Groups panel shows empty state message when no groups', async ({ page }) => {

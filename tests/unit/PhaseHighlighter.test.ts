@@ -51,4 +51,68 @@ describe('PhaseHighlighter', () => {
         highlighter.clear([member]);
         expect(element.style.opacity).toBe('0.8');
     });
+
+    it('dims only features outside the selected group', () => {
+        const groupElement = document.createElement('div');
+        groupElement.style.opacity = '0.8';
+        const outsideElement = document.createElement('div');
+        outsideElement.style.opacity = '0.9';
+        const groupMarker = { getElement: () => groupElement } as unknown as L.Layer;
+        const outsideMarker = { getElement: () => outsideElement } as unknown as L.Layer;
+        const markers = new Map([
+            ['group-1', groupMarker],
+            ['outside-1', outsideMarker]
+        ]);
+        const highlighter = new PhaseHighlighter((member) => markers.get(member.historyId) ?? null);
+
+        highlighter.dimOutside(
+            [
+                { layerId: 'ModalFilters', historyId: 'group-1' },
+                { layerId: 'ModalFilters', historyId: 'outside-1' }
+            ],
+            new Set(['ModalFilters:group-1'])
+        );
+
+        expect(groupElement.style.opacity).toBe('0.8');
+        expect(outsideElement.style.opacity).toBe('0.12');
+    });
+
+    it("scales playback opacity up to each feature's normal opacity", () => {
+        const syncGroupStyle = vi.fn();
+        const marker = {
+            options: {
+                opacity: 0.7,
+                fillOpacity: 0.2
+            },
+            setStyle: vi.fn(function (this: any, style: object) {
+                Object.assign(this.options, style);
+            }),
+            syncGroupStyle
+        } as unknown as L.Layer & { options: Record<string, unknown> };
+        const member = { layerId: 'LtnCells', historyId: 'cell-1' };
+        const highlighter = new PhaseHighlighter(() => marker);
+        const groupKey = 'LtnCells:cell-1';
+
+        highlighter.setProgress(
+            [member],
+            new Set([groupKey]),
+            0.5,
+            new Set(),
+            new Set(),
+            new Set([groupKey])
+        );
+        expect(marker.options.opacity).toBeCloseTo(0.35);
+        expect(marker.options.fillOpacity).toBeCloseTo(0.1);
+
+        highlighter.setProgress(
+            [member],
+            new Set([groupKey]),
+            1,
+            new Set([groupKey]),
+            new Set(),
+            new Set([groupKey])
+        );
+        expect(marker.options.opacity).toBeCloseTo(0.7);
+        expect(marker.options.fillOpacity).toBeCloseTo(0.2);
+    });
 });
