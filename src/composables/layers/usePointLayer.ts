@@ -20,7 +20,8 @@ import {
     addFeatureHoverPopup,
     getFeatureHoverLatLng,
     closeFeatureHoverPopups,
-    createFeatureHoverPopupController
+    createFeatureHoverPopupController,
+    setFeatureElementCursor
 } from './layerUtils';
 import {
     buildReadOnlyGroupPopup,
@@ -186,6 +187,7 @@ export function createPointLayer(config: PointLayerConfig, map: L.Map): IMapLaye
             });
             if (groupId) {
                 if (useSettingsStore(pinia).readOnly) {
+                    setFeatureElementCursor(event.originalEvent.target, 'pointer');
                     const groupPopup = buildReadOnlyGroupPopup(groupId, openGroupDetails);
                     if (groupPopup) {
                         hoverPopupController.set(groupPopup);
@@ -203,6 +205,9 @@ export function createPointLayer(config: PointLayerConfig, map: L.Map): IMapLaye
                     return;
                 }
             } else {
+                if (useSettingsStore(pinia).readOnly) {
+                    setFeatureElementCursor(event.originalEvent.target, 'default');
+                }
                 return;
             }
 
@@ -223,6 +228,7 @@ export function createPointLayer(config: PointLayerConfig, map: L.Map): IMapLaye
             }
         });
         marker.on('mouseout', () => {
+            setFeatureElementCursor(marker, null);
             hoverPopupController.scheduleClose();
         });
 

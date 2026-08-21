@@ -60,6 +60,25 @@ export function getFeatureHistoryId(marker: unknown): string | null {
     return typeof id === 'string' && id !== '' ? id : null;
 }
 
+export function setFeatureElementCursor(feature: unknown, cursor: string | null): void {
+    const layer = feature as { _icon?: HTMLElement; _path?: SVGElement } | null;
+    const element =
+        feature instanceof HTMLElement || feature instanceof SVGElement
+            ? feature
+            : (layer?._icon ?? layer?._path);
+    if (!element) {
+        return;
+    }
+    const elements = [element, ...element.querySelectorAll<HTMLElement | SVGElement>('*')];
+    for (const child of elements) {
+        if (cursor === null) {
+            child.style.removeProperty('cursor');
+        } else {
+            child.style.setProperty('cursor', cursor, 'important');
+        }
+    }
+}
+
 export function findLayerFeatureByHistoryId(
     layers: IMapLayer[],
     layerId: string,
@@ -115,6 +134,41 @@ export interface FeatureDescriptionPopupDetails {
 
 export function findFirstFeatureGroupId(member: GroupMember): string | null {
     return findFeatureGroupMemberships(useGroupStore(pinia).groups, member)[0]?.groupId ?? null;
+}
+
+export function findFeatureGroupIdByElement(element: Element): string | null {
+    const mapStore = useMapStore(pinia);
+    let foundGroupId: string | null = null;
+    for (const layer of mapStore.layers) {
+        layer.getLayer()?.eachLayer((feature) => {
+            if (foundGroupId) {
+                return;
+            }
+            const candidate = feature as L.Layer & {
+                _icon?: HTMLElement;
+                _path?: SVGElement;
+            };
+            const featureElement = candidate._icon ?? candidate._path;
+            if (!featureElement || !featureElement.contains(element)) {
+                return;
+            }
+
+            const historyId = getFeatureHistoryId(feature);
+            if (historyId) {
+                const groupId = findFirstFeatureGroupId({
+                    layerId: layer.id,
+                    historyId
+                });
+                if (groupId) {
+                    foundGroupId = groupId;
+                }
+            }
+        });
+        if (foundGroupId) {
+            return foundGroupId;
+        }
+    }
+    return foundGroupId;
 }
 
 export function getReadOnlyGroupCenter(groupId: string): L.LatLng | null {

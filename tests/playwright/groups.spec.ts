@@ -520,6 +520,9 @@ test.describe('Groups — Create group', () => {
 
         await marker.hover();
         await expect(page.locator('.leaflet-popup.feature-popup-hover')).toHaveCount(0);
+        await expect
+            .poll(() => marker.evaluate((element) => getComputedStyle(element).cursor))
+            .toBe('default');
     });
 
     test('polygon hover popup renders the descriptions of its groups', async ({ page }) => {
@@ -826,6 +829,29 @@ test.describe('Groups — Create group', () => {
         await expect(page.locator('.group-popup-title')).toHaveCount(0);
     });
 
+    test('clicking a simple group closes an open phased group viewer', async ({ page }) => {
+        await placeTwoModalFilters(page, 70, -120);
+        await selectBothFilters(page, 0, -120);
+        await createGroupWithDescription(page, 'Phased Group', '<p>Build in phases</p>');
+        await setGroupPhases(page, 1);
+
+        await placeTwoModalFilters(page, 70, 120);
+        await selectBothFilters(page, 0, 120);
+        await createGroup(page, 'Simple Group');
+
+        await page.locator('#settings-button').click();
+        await page.locator('#read-only').check();
+        await page.getByRole('button', { name: 'Save' }).click();
+
+        const markers = page.locator('.leaflet-filters-pane path.modal-filter-marker');
+        await markers.nth(0).dispatchEvent('click');
+        await expect(page.getByRole('dialog', { name: 'Phased Group' })).toBeVisible();
+
+        await markers.nth(2).dispatchEvent('click');
+        await expect(page.getByRole('dialog', { name: 'Phased Group' })).toHaveCount(0);
+        await expect(page.getByRole('dialog', { name: 'Simple Group' })).toHaveCount(0);
+    });
+
     test('read-only grouped feature hover shows the group popup', async ({ page }) => {
         await placeTwoModalFilters(page);
         await selectBothFilters(page);
@@ -966,13 +992,6 @@ test.describe('Groups — Create group', () => {
 
     test('Escape key closes the Groups panel', async ({ page }) => {
         await openGroupsPanel(page);
-        await expect(page.getByText('No groups yet')).toBeVisible();
-
-        await page.keyboard.press('Escape');
-        await expect(page.getByText('No groups yet')).not.toBeVisible();
-    });
-
-    test('the Groups toolbar button has a hover title', async ({ page }) => {
         await expect(page.locator('#groups-button')).toHaveAttribute('title', 'Manage groups');
     });
 

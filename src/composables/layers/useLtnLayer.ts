@@ -15,13 +15,15 @@ import {
     buildFeatureDescriptionPopup,
     buildReadOnlyGroupPopup,
     findFirstFeatureGroupId,
+    findFeatureGroupIdByElement,
     getReadOnlyGroupCenter,
     addFeatureHoverPopup,
     getFeatureHoverLatLng,
     buildFeatureGroupMembershipContent,
     isFeatureEditLayerButtonId,
     closeFeatureHoverPopups,
-    createFeatureHoverPopupController
+    createFeatureHoverPopupController,
+    setFeatureElementCursor
 } from './layerUtils';
 import type { IMapLayer } from './IMapLayer';
 import { type EditablePolylineLayer } from './usePolylineLayer';
@@ -318,6 +320,19 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             return;
         }
 
+        if (useSettingsStore(pinia).readOnly) {
+            setFeatureCursor(null, null);
+            const hoveredFeature = hoverStack.find(
+                (element) =>
+                    element.classList.contains('leaflet-interactive') ||
+                    isPointFeatureElement(element)
+            );
+            if (!hoveredFeature || !findFeatureGroupIdByElement(hoveredFeature)) {
+                mouseMarker.style.cursor = 'default';
+                return;
+            }
+        }
+
         const isHoveringPointFeature = hoverStack.some((element) => {
             return element !== mouseMarker && isPointFeatureElement(element);
         });
@@ -493,6 +508,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             const groupId = findFirstFeatureGroupId({ layerId: 'LtnCells', historyId });
             if (groupId) {
                 if (useSettingsStore(pinia).readOnly) {
+                    setFeatureElementCursor(polygon, 'pointer');
                     const groupPopup = buildReadOnlyGroupPopup(groupId, openGroupDetails);
                     if (groupPopup) {
                         const groupCenter =
@@ -508,6 +524,9 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                     return;
                 }
             } else {
+                if (useSettingsStore(pinia).readOnly) {
+                    setFeatureElementCursor(polygon, 'default');
+                }
                 return;
             }
 
@@ -534,6 +553,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         });
 
         polygon.on('mouseout', (e: any) => {
+            setFeatureElementCursor(polygon, null);
             hoverPopupController.scheduleClose();
 
             if (selectionMode !== 'edit' || mapStore.activeLayerId !== BUTTON_ID) {

@@ -20,7 +20,8 @@ import {
     createFeatureHoverPopupController,
     buildReadOnlyGroupPopup,
     findFirstFeatureGroupId,
-    getReadOnlyGroupCenter
+    getReadOnlyGroupCenter,
+    setFeatureElementCursor
 } from './layerUtils';
 import { useMapStore } from '../../stores/mapStore';
 import { pinia } from '../../stores/index';
@@ -243,6 +244,7 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
         const groupId = findFirstFeatureGroupId({ layerId, historyId });
         if (groupId) {
             if (useSettingsStore(pinia).readOnly) {
+                setFeatureElementCursor(polyline, 'pointer');
                 const groupPopup = buildReadOnlyGroupPopup(groupId, openGroupDetails);
                 if (groupPopup) {
                     const groupCenter =
@@ -258,6 +260,9 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
                 return;
             }
         } else {
+            if (useSettingsStore(pinia).readOnly) {
+                setFeatureElementCursor(polyline, 'default');
+            }
             return;
         }
         if (mapStore.activeLayerId === buttonId) {
@@ -283,6 +288,7 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
     });
 
     polyline.on('mouseout', () => {
+        setFeatureElementCursor(polyline, null);
         if (mapStore.activeLayerId === buttonId) {
             setMouseMarkerCursor(null);
         }

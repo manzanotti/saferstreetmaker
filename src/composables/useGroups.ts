@@ -629,6 +629,10 @@ export function openGroupDetails(id: string): void {
     uiStore.closePanel();
     if (!readOnly || (group && needsReadOnlyGroupDetails(group))) {
         groupStore.openDetailsDialog(id);
+    } else {
+        stopReadOnlyGroupPlayback();
+        clearReadOnlyGroupPresentation();
+        groupStore.closeDetailsDialog();
     }
     if (readOnly) {
         if (group) {
