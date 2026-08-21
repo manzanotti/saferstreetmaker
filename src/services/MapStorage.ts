@@ -164,6 +164,11 @@ export class MapStorage {
             return;
         }
 
+        if (typeof localStorage === 'undefined') {
+            await this.markLegacyImportCompleted();
+            return;
+        }
+
         const mapCount = await this.db.maps.count();
         if (mapCount > 0) {
             await this.markLegacyImportCompleted();

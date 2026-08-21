@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { Settings } from '../../../src/models/Settings';
 import { FileManager } from '../../../src/services/FileManager';
 import type { IMapLayer } from '../../../src/composables/layers/IMapLayer';
@@ -10,6 +10,17 @@ function makeSettings(title: string): Settings {
 }
 
 describe('history snapshot flow', () => {
+    it('initialises without browser localStorage', async () => {
+        vi.stubGlobal('localStorage', undefined);
+
+        try {
+            const fileManager = new FileManager();
+            await expect(fileManager.loadLastMapSelected()).resolves.toBe('');
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
+
     it('builds different snapshots when only the title changes', () => {
         const fileManager = new FileManager();
         const layers = new Map<string, IMapLayer>();
