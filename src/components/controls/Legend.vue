@@ -2,14 +2,20 @@
 import { computed, ref } from 'vue';
 import { useMapStore } from '../../stores/mapStore';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { useUiStore } from '../../stores/uiStore';
 
 const mapStore = useMapStore();
 const settingsStore = useSettingsStore();
+const uiStore = useUiStore();
 
 const isCollapsed = ref(false);
 
 const activeLayers = computed(() =>
-    mapStore.layers.filter((l) => settingsStore.activeLayers.includes(l.id))
+    mapStore.layers.filter(
+        (l) =>
+            settingsStore.activeLayers.includes(l.id) &&
+            (uiStore.legendLayerIds === null || uiStore.legendLayerIds.has(l.id))
+    )
 );
 
 function toggleCollapse() {

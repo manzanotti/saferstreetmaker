@@ -662,10 +662,11 @@ export class MapSerializer {
         layerFeatures.forEach((features, layerName) => {
             layers[layerName] = features.map((feature) => {
                 const state = { x: 0, y: 0 };
-                return [
-                    encodeCoordinates((feature.geometry as GeoJSON.Point).coordinates, state),
-                    encodeUrlProperties(feature.properties, getHistoryIndex)
-                ];
+                const geometryCoordinates =
+                    'coordinates' in feature.geometry ? feature.geometry.coordinates : [];
+                const coordinates = encodeCoordinates(geometryCoordinates, state);
+                const properties = encodeUrlProperties(feature.properties, getHistoryIndex);
+                return properties === undefined ? [coordinates] : [coordinates, properties];
             });
         });
 

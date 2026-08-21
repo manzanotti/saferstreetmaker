@@ -25,6 +25,17 @@ test.describe('Settings Panel', () => {
         await expect(page.locator('#read-only')).toBeVisible();
     });
 
+    test('settings uses the highest overlay stacking order', async ({ page }) => {
+        await page.locator('#groups-button').click();
+        await expect(page.locator('#groups-panel-title')).toBeVisible();
+
+        await page.locator('#settings-button').click();
+
+        const settingsDialog = page.getByRole('dialog', { name: 'Settings' });
+        await expect(settingsDialog).toBeVisible();
+        await expect(settingsDialog).toHaveCSS('z-index', '10002');
+    });
+
     test('clicking settings button a second time closes the settings panel', async ({ page }) => {
         const settingsButton = page.locator('#settings-button');
         await settingsButton.click(); // open
@@ -405,6 +416,7 @@ test.describe('Sharing Panel', () => {
         await page.locator('#width').fill('320');
         await page.locator('#height').fill('240');
         await page.locator('button:has-text("Create")').click();
+        await page.getByRole('button', { name: 'Just Shared Group' }).click();
         const iframeUrl = await page.evaluate(() => {
             const src = (window as any).__clipboardText.match(/src="([^"]+)"/)?.[1];
             return src;
@@ -415,6 +427,81 @@ test.describe('Sharing Panel', () => {
         await page.goto(iframeUrl);
         await expect(page.getByRole('dialog', { name: 'Shared Group' })).toBeVisible();
         await expect(page.locator('#groups-button')).not.toBeAttached();
+    });
+
+    test('sharing a selected group asks which scope to include', async ({ page }) => {
+        await page.goto('/');
+        await waitForFreshStorage(page);
+        await page.waitForSelector('.toolbar');
+        await page.evaluate(() => {
+            const app = (document.getElementById('app') as any).__vue_app__;
+            const pinia = app.config.globalProperties.$pinia;
+            const groupStore = pinia._s.get('group');
+            const selectionStore = pinia._s.get('selection');
+            groupStore.addGroup({
+                id: 'scope-group',
+                name: 'Cycle Route',
+                versions: [{ id: 'scope-version', name: 'Current', members: [] }],
+                members: []
+            });
+            selectionStore.markGroupSelection('scope-group');
+        });
+
+        await page.locator('#share-button').click();
+        await page.locator('button:has-text("Create")').click();
+
+        const prompt = page.getByRole('alertdialog', { name: 'Share Cycle Route' });
+        await expect(prompt).toBeVisible();
+        await expect(prompt.getByRole('button', { name: 'Whole map' })).toBeVisible();
+        await expect(prompt.getByRole('button', { name: 'Just Cycle Route' })).toBeVisible();
+        await expect(prompt.getByRole('button', { name: 'Cancel' })).toBeVisible();
+    });
+
+    test('shared group URLs omit an invalid active version', async ({ page }) => {
+        await page.addInitScript(() => {
+            (window as any).__clipboardText = '';
+            Object.defineProperty(navigator, 'clipboard', {
+                value: {
+                    writeText: (text: string) => (
+                        ((window as any).__clipboardText = text),
+                        Promise.resolve()
+                    )
+                },
+                configurable: true
+            });
+        });
+        await page.goto('/');
+        await waitForFreshStorage(page);
+        await page.waitForSelector('.toolbar');
+        await page.evaluate(() => {
+            const app = (document.getElementById('app') as any).__vue_app__;
+            const pinia = app.config.globalProperties.$pinia;
+            const groupStore = pinia._s.get('group');
+            const selectionStore = pinia._s.get('selection');
+            groupStore.addGroup({
+                id: 'stale-version-group',
+                name: 'Stale Version Group',
+                defaultVersionId: 'version-1',
+                versions: [{ id: 'version-1', name: 'First', members: [] }],
+                members: []
+            });
+            groupStore.activeVersionIds = { 'stale-version-group': 'missing-version' };
+            selectionStore.markGroupSelection('stale-version-group');
+        });
+
+        await page.locator('#share-button').click();
+        await page.locator('#width').fill('320');
+        await page.locator('#height').fill('240');
+        await page.locator('button:has-text("Create")').click();
+        await page.getByRole('button', { name: 'Just Stale Version Group' }).click();
+        const iframeUrl = await page.evaluate(() => {
+            const src = (window as any).__clipboardText.match(/src="([^"]+)"/)?.[1];
+            return src;
+        });
+
+        expect(iframeUrl).toContain('group=Stale+Version+Group');
+        expect(iframeUrl).not.toContain('version=0');
+        expect(iframeUrl).not.toContain('version=');
     });
 
     test('clicking the share Close button closes the sharing panel', async ({ page }) => {

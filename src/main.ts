@@ -12,11 +12,11 @@ import { createAllLayers } from './composables/layers/index';
 import CommandsToolbar from './components/controls/CommandsToolbar.vue';
 import LayersToolbar from './components/controls/LayersToolbar.vue';
 import Legend from './components/controls/Legend.vue';
-import PanelContainer from './components/controls/PanelContainer.vue';
 import AreaSelectionPanel from './components/panels/AreaSelectionPanel.vue';
 import { setupAreaSelection } from './composables/useAreaSelection';
 import { viewGroupVersion } from './composables/useGroups';
 import { useGroupStore } from './stores/groupStore';
+import { useUiStore } from './stores/uiStore';
 import { getGroupVersions } from './features/groups/groupVersions';
 
 // Mount the Vue overlay app (HelpPanel, ErrorPanel) immediately.
@@ -48,7 +48,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     map.addControl(makeLeafletVueControl(LayersToolbar, 'topleft'));
     map.addControl(makeLeafletVueControl(AreaSelectionPanel, 'topleft'));
     map.addControl(makeLeafletVueControl(Legend, 'topright'));
-    map.addControl(makeLeafletVueControl(PanelContainer, 'bottomleft'));
 
     // ── Wire area-selection composable ───────────────────────────────────────
     setupAreaSelection(map);
@@ -96,6 +95,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (group && version) {
             settingsStore.readOnly = true;
+            useUiStore(pinia).setLegendLayerIds(
+                new Set(version.members.map((member) => member.layerId))
+            );
         }
 
         if (group && version && viewGroupVersion(group.id, version.id)) {

@@ -219,6 +219,36 @@ describe('MapSerializer — groups', () => {
         expect(restored?.groups?.[0].members).toEqual(group.members);
     });
 
+    it('omits the properties tuple when a feature has no properties', () => {
+        const featureLayer = {
+            toGeoJSON: () => ({
+                type: 'FeatureCollection',
+                features: [
+                    {
+                        type: 'Feature',
+                        geometry: {
+                            type: 'LineString',
+                            coordinates: [
+                                [-1.1, 52.7],
+                                [-1.100001, 52.700002]
+                            ]
+                        }
+                    }
+                ]
+            })
+        } as any;
+        const hash = serializer.toEncodedHash(
+            makeSettings(),
+            new Map([['TestLayer', featureLayer]])
+        );
+        const payload = JSON.parse(
+            LZString.decompressFromEncodedURIComponent(hash.slice(3)) as string
+        );
+
+        expect(payload.l.TestLayer[0]).toHaveLength(1);
+        expect(payload.l.TestLayer[0][1]).toBeUndefined();
+    });
+
     it('keeps decoding legacy LZ-string hashes', () => {
         const legacyMap = serializer.toJSON(makeSettings(), layers, groups);
         const legacyHash = LZString.compressToEncodedURIComponent(JSON.stringify(legacyMap));

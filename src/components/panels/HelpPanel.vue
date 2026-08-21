@@ -35,7 +35,7 @@ function close() {
         <div
             v-if="uiStore.activePanel === 'help'"
             id="help"
-            class="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none"
+            class="fixed inset-0 z-[10002] flex items-center justify-center pointer-events-none"
             @keydown.escape.window="close"
             @dblclick.stop
         >
