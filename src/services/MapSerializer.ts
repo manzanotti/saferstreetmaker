@@ -10,7 +10,7 @@
 import LZString from 'lz-string';
 import type { IMapLayer } from '../composables/layers/IMapLayer';
 import type { Settings } from '../models/Settings';
-import type { Group, GroupPhase, GroupVersion } from '../models/Group';
+import type { Group, GroupMember, GroupPhase, GroupVersion } from '../models/Group';
 import { normalizeGroupDescription } from '../features/groups/groupDescription';
 
 /**
@@ -56,6 +56,41 @@ interface CompactSettings {
     c: [number, number] | null;
     z: number;
     v: string;
+}
+
+const URL_SCHEMA_VERSION = 2;
+const COORDINATE_PRECISION = 1_000_000;
+
+type CompactUrlCoordinates = number[] | CompactUrlCoordinates[];
+type CompactUrlProperties = {
+    h?: number;
+    l?: string;
+    c?: string;
+    x?: Record<string, unknown>;
+};
+type CompactUrlFeature = [CompactUrlCoordinates, CompactUrlProperties?];
+interface CompactUrlMap {
+    v: 2;
+    s: CompactSettings;
+    i: string[];
+    l: Record<string, CompactUrlFeature[]>;
+    d: string;
+    g?: CompactUrlGroup[];
+}
+
+interface CompactUrlGroup {
+    i: string;
+    n: string;
+    c?: string;
+    d?: string;
+    p?: string;
+    m?: Array<[string, number]>;
+    v?: Array<{
+        i: string;
+        n: string;
+        m: Array<[string, number]>;
+        p?: Array<{ i: string; m: Array<[string, number]> }>;
+    }>;
 }
 
 /** Compact serialisation of a Group (short keys to minimise URL hash length). */
@@ -115,6 +150,208 @@ function deserializeCompactMembers(members: Array<[string, string]> | undefined)
     return (members ?? []).map(([layerId, historyId]) => ({ layerId, historyId }));
 }
 
+function quantizeCoordinate(value: number): number {
+    return Math.round(value * COORDINATE_PRECISION);
+}
+
+function isNumericCoordinateArray(value: CompactUrlCoordinates): value is number[] {
+    return value.length >= 2 && typeof value[0] === 'number' && typeof value[1] === 'number';
+}
+
+function encodeCoordinates(
+    coordinates: unknown,
+    state: { x: number; y: number }
+): CompactUrlCoordinates {
+    if (!Array.isArray(coordinates)) {
+        return [];
+    }
+    if (isNumericCoordinateArray(coordinates)) {
+        const x = quantizeCoordinate(coordinates[0]);
+        const y = quantizeCoordinate(coordinates[1]);
+        const encoded = [x - state.x, y - state.y];
+        state.x = x;
+        state.y = y;
+        for (let index = 2; index < coordinates.length; index += 1) {
+            const value = coordinates[index];
+            if (typeof value === 'number') {
+                encoded.push(quantizeCoordinate(value));
+            }
+        }
+        return encoded;
+    }
+    return coordinates.map((value) => encodeCoordinates(value, state));
+}
+
+function decodeCoordinates(
+    coordinates: CompactUrlCoordinates,
+    state: { x: number; y: number }
+): CompactUrlCoordinates {
+    if (isNumericCoordinateArray(coordinates)) {
+        state.x += coordinates[0];
+        state.y += coordinates[1];
+        return [
+            state.x / COORDINATE_PRECISION,
+            state.y / COORDINATE_PRECISION,
+            ...coordinates.slice(2).map((value) => value / COORDINATE_PRECISION)
+        ];
+    }
+    return coordinates.map((value) => decodeCoordinates(value, state));
+}
+
+function encodeUrlProperties(
+    properties: Record<string, unknown> | null | undefined,
+    getHistoryIndex: (historyId: string) => number
+): CompactUrlProperties | undefined {
+    if (!properties || Object.keys(properties).length === 0) {
+        return undefined;
+    }
+    const compact: CompactUrlProperties = {};
+    const extra: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(properties)) {
+        if (key === 'historyId' && typeof value === 'string') {
+            compact.h = getHistoryIndex(value);
+        } else if (key === 'label' && typeof value === 'string') {
+            compact.l = value;
+        } else if (key === 'color' && typeof value === 'string') {
+            compact.c = value;
+        } else {
+            extra[key] = value;
+        }
+    }
+    if (Object.keys(extra).length > 0) {
+        compact.x = extra;
+    }
+    return compact;
+}
+
+function decodeUrlProperties(
+    properties: CompactUrlProperties | undefined,
+    historyIds: string[]
+): Record<string, unknown> {
+    const result: Record<string, unknown> = { ...(properties?.x ?? {}) };
+    if (properties?.h !== undefined && historyIds[properties.h] !== undefined) {
+        result.historyId = historyIds[properties.h];
+    }
+    if (properties?.l !== undefined) {
+        result.label = properties.l;
+    }
+    if (properties?.c !== undefined) {
+        result.color = properties.c;
+    }
+    return result;
+}
+
+function geometryTypeFromCoordinates(
+    coordinates: CompactUrlCoordinates
+): 'Point' | 'LineString' | 'Polygon' {
+    if (isNumericCoordinateArray(coordinates)) {
+        return 'Point';
+    }
+    if (Array.isArray(coordinates[0]) && typeof coordinates[0][0] === 'number') {
+        return 'LineString';
+    }
+    return 'Polygon';
+}
+
+function encodeUrlMembers(
+    members: GroupVersion['members'],
+    getHistoryIndex: (historyId: string) => number
+): Array<[string, number]> {
+    return members.map((member) => [member.layerId, getHistoryIndex(member.historyId)]);
+}
+
+function decodeUrlMembers(
+    members: Array<[string, number]> | undefined,
+    historyIds: string[]
+): GroupMember[] {
+    return (members ?? [])
+        .filter((member) => historyIds[member[1]] !== undefined)
+        .map(([layerId, historyIndex]) => ({
+            layerId,
+            historyId: historyIds[historyIndex]
+        }));
+}
+
+function encodeUrlGroups(
+    groups: Group[] | undefined,
+    getHistoryIndex: (historyId: string) => number
+): CompactUrlGroup[] | undefined {
+    if (!groups || groups.length === 0) {
+        return undefined;
+    }
+    return groups.map((group) => {
+        const description = normalizeGroupDescription(group.description);
+        if (!group.versions) {
+            return {
+                i: group.id,
+                n: group.name,
+                ...(description ? { p: description } : {}),
+                ...(group.color ? { c: group.color } : {}),
+                m: encodeUrlMembers(group.members ?? [], getHistoryIndex)
+            };
+        }
+        return {
+            i: group.id,
+            n: group.name,
+            ...(description ? { p: description } : {}),
+            ...(group.color ? { c: group.color } : {}),
+            d: group.defaultVersionId,
+            v: group.versions.map((version) => ({
+                i: version.id,
+                n: version.name,
+                m: encodeUrlMembers(version.members, getHistoryIndex),
+                ...(version.phases && version.phases.length > 0
+                    ? {
+                          p: version.phases.map((phase) => ({
+                              i: phase.id,
+                              m: encodeUrlMembers(phase.members, getHistoryIndex)
+                          }))
+                      }
+                    : {})
+            }))
+        };
+    });
+}
+
+function decodeUrlGroups(
+    groups: CompactUrlGroup[] | undefined,
+    historyIds: string[]
+): Group[] | undefined {
+    if (!groups || groups.length === 0) {
+        return undefined;
+    }
+    return groups.map((group) =>
+        group.v
+            ? {
+                  id: group.i,
+                  name: group.n,
+                  ...(group.p ? { description: group.p } : {}),
+                  ...(group.c ? { color: group.c } : {}),
+                  defaultVersionId: group.d,
+                  versions: group.v.map((version) => ({
+                      id: version.i,
+                      name: version.n,
+                      members: decodeUrlMembers(version.m, historyIds),
+                      ...(version.p
+                          ? {
+                                phases: version.p.map((phase) => ({
+                                    id: phase.i,
+                                    members: decodeUrlMembers(phase.m, historyIds)
+                                }))
+                            }
+                          : {})
+                  }))
+              }
+            : {
+                  id: group.i,
+                  name: group.n,
+                  ...(group.p ? { description: group.p } : {}),
+                  ...(group.c ? { color: group.c } : {}),
+                  members: decodeUrlMembers(group.m, historyIds)
+              }
+    );
+}
+
 export interface CompactStoredMap {
     s: CompactSettings;
     l: Record<string, unknown>;
@@ -166,8 +403,8 @@ export class MapSerializer {
         layersData: Map<string, IMapLayer>,
         groups?: Group[]
     ): string {
-        const mapString = JSON.stringify(this.toJSON(settings, layersData, groups));
-        return LZString.compressToEncodedURIComponent(mapString);
+        const mapString = JSON.stringify(this.toCompactUrlMap(settings, layersData, groups));
+        return `v2.${LZString.compressToEncodedURIComponent(mapString)}`;
     }
 
     toCompactStoredMap(
@@ -354,6 +591,13 @@ export class MapSerializer {
      */
     fromEncodedHash(hash: string): SerializedMap | null {
         try {
+            if (hash.startsWith('v2.')) {
+                const decompressed = LZString.decompressFromEncodedURIComponent(hash.slice(3));
+                if (decompressed === null) {
+                    return null;
+                }
+                return this.fromCompactUrlMap(JSON.parse(decompressed));
+            }
             if (hash.startsWith('%')) {
                 return JSON.parse(decodeURIComponent(hash));
             }
@@ -365,5 +609,129 @@ export class MapSerializer {
         } catch {
             return null;
         }
+    }
+
+    private toCompactUrlMap(
+        settings: Settings,
+        layersData: Map<string, IMapLayer>,
+        groups?: Group[]
+    ): CompactUrlMap {
+        const historyIds: string[] = [];
+        const historyIndexes = new Map<string, number>();
+        const getHistoryIndex = (historyId: string): number => {
+            const existing = historyIndexes.get(historyId);
+            if (existing !== undefined) {
+                return existing;
+            }
+            const index = historyIds.length;
+            historyIds.push(historyId);
+            historyIndexes.set(historyId, index);
+            return index;
+        };
+
+        const layerFeatures = new Map<string, GeoJSON.Feature[]>();
+        layersData.forEach((layer, layerName) => {
+            const featureCollection = layer.toGeoJSON() as unknown as {
+                features?: GeoJSON.Feature[];
+            };
+            const features = featureCollection.features ?? [];
+            layerFeatures.set(layerName, features);
+            features.forEach((feature) => {
+                const historyId = feature.properties?.historyId;
+                if (typeof historyId === 'string' && historyId !== '') {
+                    getHistoryIndex(historyId);
+                }
+            });
+        });
+
+        const collectGroupIds = (members: GroupMember[]) => {
+            members.forEach((member) => getHistoryIndex(member.historyId));
+        };
+        groups?.forEach((group) => {
+            if (group.versions) {
+                group.versions.forEach((version) => {
+                    collectGroupIds(version.members);
+                    version.phases?.forEach((phase) => collectGroupIds(phase.members));
+                });
+            } else {
+                collectGroupIds(group.members ?? []);
+            }
+        });
+
+        const layers: Record<string, CompactUrlFeature[]> = {};
+        layerFeatures.forEach((features, layerName) => {
+            layers[layerName] = features.map((feature) => {
+                const state = { x: 0, y: 0 };
+                return [
+                    encodeCoordinates((feature.geometry as GeoJSON.Point).coordinates, state),
+                    encodeUrlProperties(feature.properties, getHistoryIndex)
+                ];
+            });
+        });
+
+        return {
+            v: URL_SCHEMA_VERSION,
+            s: {
+                t: settings.title,
+                r: settings.readOnly ? 1 : 0,
+                h: settings.hideToolbar ? 1 : 0,
+                a: [...settings.activeLayers],
+                c: settings.centre
+                    ? ([settings.centre.lat, settings.centre.lng].map(quantizeCoordinate) as [
+                          number,
+                          number
+                      ])
+                    : null,
+                z: settings.zoom,
+                v: settings.version
+            },
+            i: historyIds,
+            l: layers,
+            d: new Date().toISOString(),
+            g: encodeUrlGroups(groups, getHistoryIndex)
+        };
+    }
+
+    private fromCompactUrlMap(data: CompactUrlMap): SerializedMap | null {
+        if (data.v !== 2 || !data.s || !data.l || !Array.isArray(data.i)) {
+            return null;
+        }
+        const layers: Record<string, unknown> = {};
+        for (const [layerName, features] of Object.entries(data.l)) {
+            layers[layerName] = {
+                type: 'FeatureCollection',
+                features: features.map(([coordinates, properties]) => {
+                    const state = { x: 0, y: 0 };
+                    const decodedCoordinates = decodeCoordinates(coordinates, state);
+                    return {
+                        type: 'Feature',
+                        properties: decodeUrlProperties(properties, data.i),
+                        geometry: {
+                            type: geometryTypeFromCoordinates(coordinates),
+                            coordinates: decodedCoordinates
+                        }
+                    };
+                })
+            };
+        }
+        return {
+            settings: {
+                title: data.s.t,
+                readOnly: data.s.r === 1,
+                hideToolbar: data.s.h === 1,
+                activeLayers: [...data.s.a],
+                centre: data.s.c
+                    ? {
+                          lat: data.s.c[0] / COORDINATE_PRECISION,
+                          lng: data.s.c[1] / COORDINATE_PRECISION
+                      }
+                    : null,
+                zoom: data.s.z,
+                version: data.s.v
+            },
+            layers,
+            lastSaved: data.d,
+            groups: decodeUrlGroups(data.g, data.i)
+        };
     }
 }

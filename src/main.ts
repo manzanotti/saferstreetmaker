@@ -15,6 +15,9 @@ import Legend from './components/controls/Legend.vue';
 import PanelContainer from './components/controls/PanelContainer.vue';
 import AreaSelectionPanel from './components/panels/AreaSelectionPanel.vue';
 import { setupAreaSelection } from './composables/useAreaSelection';
+import { viewGroupVersion } from './composables/useGroups';
+import { useGroupStore } from './stores/groupStore';
+import { getGroupVersions } from './features/groups/groupVersions';
 
 // Mount the Vue overlay app (HelpPanel, ErrorPanel) immediately.
 createApp(App).use(pinia).mount('#app');
@@ -75,6 +78,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const mapLoaded = await loadMap(remoteMapFile, hash, hideToolbar, zoom, centre);
+
+    if (mapLoaded) {
+        const groupName = params.get('group');
+        const versionNumber = Number(params.get('version'));
+        const groupStore = useGroupStore(pinia);
+        const group = groupName
+            ? groupStore.groups.find(
+                  (item) => item.name.trim().toLowerCase() === groupName.trim().toLowerCase()
+              )
+            : undefined;
+        const versions = group ? getGroupVersions(group) : [];
+        const version =
+            Number.isInteger(versionNumber) && versionNumber > 0
+                ? versions[versionNumber - 1]
+                : undefined;
+
+        if (group && version) {
+            settingsStore.readOnly = true;
+        }
+
+        if (group && version && viewGroupVersion(group.id, version.id)) {
+            const hasDescription = Boolean(group.description?.trim());
+            const hasPhases = (version.phases?.length ?? 0) > 0;
+            if (hasDescription || hasPhases) {
+                groupStore.openDetailsDialog(group.id);
+            }
+        }
+    }
 
     if (!mapLoaded && window.navigator.geolocation) {
         window.navigator.geolocation.getCurrentPosition(

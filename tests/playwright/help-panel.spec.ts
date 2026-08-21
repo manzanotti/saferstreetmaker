@@ -64,6 +64,16 @@ test.describe('Help Panel', () => {
         await expect(page.locator('#tabs-groups')).toContainText('dragging them in the list');
     });
 
+    test('Sharing tab explains group and version links', async ({ page }) => {
+        await page.locator('#help-button').click();
+        await page.locator('a[data-tab-target="#tabs-sharing"]').click();
+
+        await expect(page.locator('#tabs-sharing')).toContainText('group name');
+        await expect(page.locator('#tabs-sharing')).toContainText('active version number');
+        await expect(page.locator('#tabs-sharing')).toContainText('read-only mode');
+        await expect(page.locator('#tabs-sharing')).toContainText('implementation phases');
+    });
+
     test('clicking the help modal close button hides the modal', async ({ page }) => {
         await page.locator('#help-button').click();
         await page.locator('button[name="closeHelp"]').first().click();

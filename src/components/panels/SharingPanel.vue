@@ -4,15 +4,19 @@ import { useSettingsStore } from '../../stores/settingsStore';
 import { useMapStore } from '../../stores/mapStore';
 import { useUiStore } from '../../stores/uiStore';
 import { useGroupStore } from '../../stores/groupStore';
+import { useSelectionStore } from '../../stores/selectionStore';
 import { getFileManager } from '../../composables/useMapManager';
+import { getGroupVersions } from '../../features/groups/groupVersions';
 
 const settingsStore = useSettingsStore();
 const mapStore = useMapStore();
 const uiStore = useUiStore();
 const groupStore = useGroupStore();
+const selectionStore = useSelectionStore();
 
-const width = ref<number | null>(null);
-const height = ref<number | null>(null);
+const mapSize = mapStore.map?.getSize();
+const width = ref<number | null>(mapSize ? Math.round(mapSize.x) : null);
+const height = ref<number | null>(mapSize ? Math.round(mapSize.y) : null);
 const hideToolbar = ref(false);
 const showCopiedMessage = ref(false);
 
@@ -27,7 +31,18 @@ function onCreate() {
         groupStore.groups
     );
     const baseUrl = window.location.origin + window.location.pathname;
-    const html = `<iframe src="${baseUrl}?hide-toolbar=${hideToolbar.value}#${mapHash}" width="${width.value}" height="${height.value}" title="Safer Street Maker map"></iframe>`;
+    const params = new URLSearchParams({ 'hide-toolbar': String(hideToolbar.value) });
+    const selectedGroup = groupStore.groups.find(
+        (group) => group.id === selectionStore.selectedGroupId
+    );
+    if (selectedGroup) {
+        const versions = getGroupVersions(selectedGroup);
+        const activeVersionId = groupStore.activeVersionIds[selectedGroup.id];
+        const versionIndex = versions.findIndex((version) => version.id === activeVersionId);
+        params.set('group', selectedGroup.name);
+        params.set('version', String(versionIndex + 1));
+    }
+    const html = `<iframe src="${baseUrl}?${params.toString()}#${mapHash}" width="${width.value}" height="${height.value}" title="Safer Street Maker map"></iframe>`;
 
     if (!navigator.clipboard) {
         showCopiedMessage.value = false;

@@ -627,6 +627,13 @@ function close() {
                                 embed the map in your web page will be copied to your clipboard, so
                                 just go to your page and paste the html into the html of your page.
                             </p>
+                            <p class="mb-8">
+                                If a group is selected when you create the share link, the link also
+                                includes the group name and its active version number. Opening that
+                                link shows the selected group and version in read-only mode. The
+                                group panel is shown when the group has a description or the
+                                selected version has implementation phases.
+                            </p>
                             <p class="mb-8">Be warned: this can be a very large amount of data!</p>
                         </div>
 
