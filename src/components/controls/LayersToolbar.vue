@@ -217,7 +217,7 @@ onUnmounted(() => {
 
 <template>
     <ul
-        v-if="!settingsStore.hideToolbar"
+        v-if="!settingsStore.hideToolbar && !settingsStore.readOnly"
         ref="toolbarRef"
         role="toolbar"
         aria-label="Map tools"

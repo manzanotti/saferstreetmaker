@@ -17,7 +17,12 @@ import {
     buildHistoryId,
     isFeatureEditLayerButtonId,
     closeFeatureHoverPopups,
-    createFeatureHoverPopupController
+    createFeatureHoverPopupController,
+    buildReadOnlyGroupPopup,
+    findFirstFeatureGroupId,
+    getReadOnlyGroupCenter,
+    setFeatureElementCursor,
+    cacheFeatureGroupElement
 } from './layerUtils';
 import { useMapStore } from '../../stores/mapStore';
 import { pinia } from '../../stores/index';
@@ -237,6 +242,31 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
 
     polyline.on('mouseover', (event: L.LeafletMouseEvent) => {
         closeFeatureHoverPopups(map);
+        const groupId = findFirstFeatureGroupId({ layerId, historyId });
+        cacheFeatureGroupElement(event.originalEvent.target as Element | null, groupId);
+        if (groupId) {
+            if (useSettingsStore(pinia).readOnly) {
+                setFeatureElementCursor(polyline, 'pointer');
+                const groupPopup = buildReadOnlyGroupPopup(groupId, openGroupDetails);
+                if (groupPopup) {
+                    const groupCenter =
+                        getReadOnlyGroupCenter(groupId) ?? polyline.getBounds().getCenter();
+                    hoverPopupController.set(groupPopup);
+                    addFeatureHoverPopup(
+                        map,
+                        groupPopup,
+                        getFeatureHoverLatLng(map, groupCenter, event.latlng),
+                        () => hoverPopupController.close(groupPopup)
+                    );
+                }
+                return;
+            }
+        } else {
+            if (useSettingsStore(pinia).readOnly) {
+                setFeatureElementCursor(polyline, 'default');
+            }
+            return;
+        }
         if (mapStore.activeLayerId === buttonId) {
             setMouseMarkerCursor('pointer');
         }
@@ -245,7 +275,7 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
             { minWidth: 30, keepInView: true },
             { layerId, historyId },
             'hover',
-            { featureName: name, iconSrc: opts.iconSrc }
+            { featureName: name, iconSrc: opts.iconSrc, onOpenGroup: openGroupDetails }
         );
         if (descriptionPopup) {
             const featureCenter = polyline.getBounds().getCenter();
@@ -260,6 +290,7 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
     });
 
     polyline.on('mouseout', () => {
+        setFeatureElementCursor(polyline, null);
         if (mapStore.activeLayerId === buttonId) {
             setMouseMarkerCursor(null);
         }
@@ -339,11 +370,16 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
         });
 
         if (useSettingsStore(pinia).readOnly) {
+            const groupId = findFirstFeatureGroupId({ layerId, historyId });
+            if (groupId) {
+                openGroupDetails(groupId);
+                return;
+            }
             const descriptionPopup = buildFeatureDescriptionPopup(
                 { minWidth: 30, keepInView: true },
                 { layerId, historyId },
                 'click',
-                { featureName: name, iconSrc: opts.iconSrc }
+                { featureName: name, iconSrc: opts.iconSrc, onOpenGroup: openGroupDetails }
             );
             if (descriptionPopup) {
                 descriptionPopup.setLatLng(e.latlng);
