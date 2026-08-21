@@ -23,7 +23,8 @@ import {
     isFeatureEditLayerButtonId,
     closeFeatureHoverPopups,
     createFeatureHoverPopupController,
-    setFeatureElementCursor
+    setFeatureElementCursor,
+    cacheFeatureGroupElement
 } from './layerUtils';
 import type { IMapLayer } from './IMapLayer';
 import { type EditablePolylineLayer } from './usePolylineLayer';
@@ -506,6 +507,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             closeFeatureHoverPopups(map);
 
             const groupId = findFirstFeatureGroupId({ layerId: 'LtnCells', historyId });
+            cacheFeatureGroupElement(event.originalEvent.target as Element | null, groupId);
             if (groupId) {
                 if (useSettingsStore(pinia).readOnly) {
                     setFeatureElementCursor(polygon, 'pointer');

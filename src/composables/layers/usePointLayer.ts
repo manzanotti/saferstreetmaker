@@ -21,7 +21,8 @@ import {
     getFeatureHoverLatLng,
     closeFeatureHoverPopups,
     createFeatureHoverPopupController,
-    setFeatureElementCursor
+    setFeatureElementCursor,
+    cacheFeatureGroupElement
 } from './layerUtils';
 import {
     buildReadOnlyGroupPopup,
@@ -185,6 +186,7 @@ export function createPointLayer(config: PointLayerConfig, map: L.Map): IMapLaye
                 layerId: config.id,
                 historyId: nextHistoryId
             });
+            cacheFeatureGroupElement(event.originalEvent.target as Element | null, groupId);
             if (groupId) {
                 if (useSettingsStore(pinia).readOnly) {
                     setFeatureElementCursor(event.originalEvent.target, 'pointer');

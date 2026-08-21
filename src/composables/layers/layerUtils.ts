@@ -79,6 +79,18 @@ export function setFeatureElementCursor(feature: unknown, cursor: string | null)
     }
 }
 
+const featureGroupIds = new WeakMap<Element, string | null>();
+
+export function cacheFeatureGroupElement(element: Element | null, groupId: string | null): void {
+    if (element) {
+        featureGroupIds.set(element, groupId);
+    }
+}
+
+export function findFeatureGroupIdByElement(element: Element): string | null {
+    return featureGroupIds.get(element) ?? null;
+}
+
 export function findLayerFeatureByHistoryId(
     layers: IMapLayer[],
     layerId: string,
@@ -134,41 +146,6 @@ export interface FeatureDescriptionPopupDetails {
 
 export function findFirstFeatureGroupId(member: GroupMember): string | null {
     return findFeatureGroupMemberships(useGroupStore(pinia).groups, member)[0]?.groupId ?? null;
-}
-
-export function findFeatureGroupIdByElement(element: Element): string | null {
-    const mapStore = useMapStore(pinia);
-    let foundGroupId: string | null = null;
-    for (const layer of mapStore.layers) {
-        layer.getLayer()?.eachLayer((feature) => {
-            if (foundGroupId) {
-                return;
-            }
-            const candidate = feature as L.Layer & {
-                _icon?: HTMLElement;
-                _path?: SVGElement;
-            };
-            const featureElement = candidate._icon ?? candidate._path;
-            if (!featureElement || !featureElement.contains(element)) {
-                return;
-            }
-
-            const historyId = getFeatureHistoryId(feature);
-            if (historyId) {
-                const groupId = findFirstFeatureGroupId({
-                    layerId: layer.id,
-                    historyId
-                });
-                if (groupId) {
-                    foundGroupId = groupId;
-                }
-            }
-        });
-        if (foundGroupId) {
-            return foundGroupId;
-        }
-    }
-    return foundGroupId;
 }
 
 export function getReadOnlyGroupCenter(groupId: string): L.LatLng | null {

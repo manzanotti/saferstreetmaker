@@ -21,7 +21,8 @@ import {
     buildReadOnlyGroupPopup,
     findFirstFeatureGroupId,
     getReadOnlyGroupCenter,
-    setFeatureElementCursor
+    setFeatureElementCursor,
+    cacheFeatureGroupElement
 } from './layerUtils';
 import { useMapStore } from '../../stores/mapStore';
 import { pinia } from '../../stores/index';
@@ -242,6 +243,7 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
     polyline.on('mouseover', (event: L.LeafletMouseEvent) => {
         closeFeatureHoverPopups(map);
         const groupId = findFirstFeatureGroupId({ layerId, historyId });
+        cacheFeatureGroupElement(event.originalEvent.target as Element | null, groupId);
         if (groupId) {
             if (useSettingsStore(pinia).readOnly) {
                 setFeatureElementCursor(polyline, 'pointer');

@@ -718,14 +718,6 @@ function buildAllFeatureMembers(): GroupMember[] {
     return members;
 }
 
-function phaseMemberKeys(version: ReturnType<typeof getActiveVersion>): Set<string> {
-    return new Set(
-        (version.phases ?? []).flatMap((phase) =>
-            phase.members.map((member) => featureKey(member.layerId, member.historyId))
-        )
-    );
-}
-
 export function applyReadOnlyGroupPresentation(version: ReturnType<typeof getActiveVersion>): void {
     const members = buildAllFeatureMembers();
     const groupKeys = new Set(
