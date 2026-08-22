@@ -1,4 +1,4 @@
-import { createApp } from 'vue';
+import { createApp, nextTick } from 'vue';
 import App from './App.vue';
 import { pinia } from './stores/index';
 import { FileManager } from './services/FileManager';
@@ -96,9 +96,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (group && version) {
             settingsStore.readOnly = true;
-            useUiStore(pinia).setLegendLayerIds(
-                new Set(version.members.map((member) => member.layerId))
-            );
         }
 
         if (group && version && viewGroupVersion(group.id, version.id)) {
@@ -107,6 +104,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (hasDescription || hasPhases) {
                 groupStore.openDetailsDialog(group.id);
             }
+        }
+
+        if (group && version) {
+            await nextTick();
+            useUiStore(pinia).setLegendLayerIds(
+                new Set(version.members.map((member) => member.layerId))
+            );
         }
     }
 
