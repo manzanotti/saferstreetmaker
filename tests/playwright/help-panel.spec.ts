@@ -68,7 +68,7 @@ test.describe('Help Panel', () => {
         await page.locator('#help-button').click();
         await page.locator('a[data-tab-target="#tabs-sharing"]').click();
 
-        await expect(page.locator('#tabs-sharing')).toContainText('group name');
+        await expect(page.locator('#tabs-sharing')).toContainText('identifies the group');
         await expect(page.locator('#tabs-sharing')).toContainText('active version number');
         await expect(page.locator('#tabs-sharing')).toContainText('read-only mode');
         await expect(page.locator('#tabs-sharing')).toContainText('implementation phases');

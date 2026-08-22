@@ -241,10 +241,10 @@ export class MapStorage {
     }
 
     private getLegacyStorage(): Storage | null | undefined {
-        if (typeof localStorage === 'undefined') {
-            return undefined;
-        }
         try {
+            if (typeof localStorage === 'undefined') {
+                return undefined;
+            }
             return localStorage;
         } catch {
             return null;

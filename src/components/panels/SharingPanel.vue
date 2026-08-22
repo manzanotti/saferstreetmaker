@@ -122,6 +122,11 @@ function restoreScopePromptFocus() {
 }
 
 function onScopePromptKeydown(event: KeyboardEvent) {
+    if (event.key === 'Escape') {
+        event.preventDefault();
+        cancelScopePrompt();
+        return;
+    }
     if (event.key !== 'Tab' || !scopePrompt.value) {
         return;
     }
