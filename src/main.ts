@@ -79,13 +79,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const mapLoaded = await loadMap(remoteMapFile, hash, hideToolbar, zoom, centre);
 
     if (mapLoaded) {
-        const groupName = params.get('group');
+        const groupReference = params.get('group');
         const versionNumber = Number(params.get('version'));
         const groupStore = useGroupStore(pinia);
-        const group = groupName
-            ? groupStore.groups.find(
-                  (item) => item.name.trim().toLowerCase() === groupName.trim().toLowerCase()
-              )
+        const group = groupReference
+            ? (groupStore.groups.find((item) => item.id === groupReference) ??
+              groupStore.groups.find(
+                  (item) => item.name.trim().toLowerCase() === groupReference.trim().toLowerCase()
+              ))
             : undefined;
         const versions = group ? getGroupVersions(group) : [];
         const version =

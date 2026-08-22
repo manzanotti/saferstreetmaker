@@ -46,6 +46,7 @@ async function onSave() {
         if (isSaveErrorAlreadyShown(e)) {
             return;
         }
+        uiStore.closePanel();
         uiStore.showErrors(['There was a problem saving the settings:', String(e?.message ?? e)]);
         return;
     }

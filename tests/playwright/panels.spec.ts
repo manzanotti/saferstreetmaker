@@ -421,7 +421,7 @@ test.describe('Sharing Panel', () => {
             const src = (window as any).__clipboardText.match(/src="([^"]+)"/)?.[1];
             return src;
         });
-        expect(iframeUrl).toContain('group=Shared+Group');
+        expect(iframeUrl).toContain('group=shared-group');
         expect(iframeUrl).toContain('version=2');
 
         await page.goto(iframeUrl);
@@ -499,7 +499,7 @@ test.describe('Sharing Panel', () => {
             return src;
         });
 
-        expect(iframeUrl).toContain('group=Stale+Version+Group');
+        expect(iframeUrl).toContain('group=stale-version-group');
         expect(iframeUrl).not.toContain('version=0');
         expect(iframeUrl).not.toContain('version=');
     });

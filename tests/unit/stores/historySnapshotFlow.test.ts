@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import Dexie from 'dexie';
 import { Settings } from '../../../src/models/Settings';
 import { FileManager } from '../../../src/services/FileManager';
 import type { IMapLayer } from '../../../src/composables/layers/IMapLayer';
@@ -16,6 +17,26 @@ describe('history snapshot flow', () => {
         try {
             const fileManager = new FileManager();
             await expect(fileManager.loadLastMapSelected()).resolves.toBe('');
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
+
+    it('does not complete legacy migration when localStorage cannot be inspected', async () => {
+        await Dexie.delete('SaferStreetMakerDB');
+        const getItem = vi.fn(() => {
+            throw new DOMException('Storage is blocked', 'SecurityError');
+        });
+        vi.stubGlobal('localStorage', { getItem });
+
+        try {
+            const fileManager = new FileManager();
+            await expect(fileManager.loadLastMapSelected()).resolves.toBe('');
+            expect(getItem).toHaveBeenCalledWith('MapList');
+
+            vi.stubGlobal('localStorage', undefined);
+            const retryingFileManager = new FileManager();
+            await expect(retryingFileManager.loadLastMapSelected()).resolves.toBe('');
         } finally {
             vi.unstubAllGlobals();
         }

@@ -164,8 +164,12 @@ export class MapStorage {
             return;
         }
 
-        if (typeof localStorage === 'undefined') {
+        const legacyStorage = this.getLegacyStorage();
+        if (legacyStorage === undefined) {
             await this.markLegacyImportCompleted();
+            return;
+        }
+        if (legacyStorage === null) {
             return;
         }
 
@@ -175,24 +179,35 @@ export class MapStorage {
             return;
         }
 
-        const legacyList = this.readLegacyMapList();
+        let legacyList: string[];
+        let legacyLastSelected: string;
+        try {
+            legacyList = this.readLegacyMapList(legacyStorage);
+            legacyLastSelected = this.readLegacyLastSelected(legacyStorage);
+        } catch {
+            return;
+        }
         if (legacyList.length === 0) {
             await this.markLegacyImportCompleted();
             return;
         }
 
-        const legacyLastSelected = this.readLegacyLastSelected();
+        let legacyMaps: Array<{ mapName: string; map: SerializedMap }>;
+        try {
+            legacyMaps = legacyList.flatMap((mapName) => {
+                const map = this.readLegacyMap(legacyStorage, mapName);
+                return this.shouldImportLegacyMap(map) ? [{ mapName, map }] : [];
+            });
+        } catch {
+            return;
+        }
+
         const importedAt = Date.now();
         const importedMapNames: string[] = [];
 
         await this.db.transaction('rw', this.db.maps, this.db.metadata, async () => {
-            for (let index = 0; index < legacyList.length; index++) {
-                const mapName = legacyList[index];
-                const legacyMap = this.readLegacyMap(mapName);
-                if (!this.shouldImportLegacyMap(legacyMap)) {
-                    continue;
-                }
-
+            for (let index = 0; index < legacyMaps.length; index++) {
+                const { mapName, map: legacyMap } = legacyMaps[index];
                 const payload = this.serializer.toCompactStoredMapFromSerialized(
                     legacyMap,
                     mapName
@@ -225,8 +240,19 @@ export class MapStorage {
         await this.db.metadata.put({ key: LEGACY_IMPORT_COMPLETED_METADATA_KEY, value: '1' });
     }
 
-    private readLegacyMap(mapName: string): SerializedMap | null {
-        const raw = localStorage.getItem(`Map_${mapName}`);
+    private getLegacyStorage(): Storage | null | undefined {
+        if (typeof localStorage === 'undefined') {
+            return undefined;
+        }
+        try {
+            return localStorage;
+        } catch {
+            return null;
+        }
+    }
+
+    private readLegacyMap(storage: Storage, mapName: string): SerializedMap | null {
+        const raw = storage.getItem(`Map_${mapName}`);
         if (raw === null || raw === 'undefined') {
             return null;
         }
@@ -242,8 +268,8 @@ export class MapStorage {
         }
     }
 
-    private readLegacyMapList(): string[] {
-        const raw = localStorage.getItem(LEGACY_MAP_LIST_KEY);
+    private readLegacyMapList(storage: Storage): string[] {
+        const raw = storage.getItem(LEGACY_MAP_LIST_KEY);
         if (raw === null || raw === 'undefined') {
             return [];
         }
@@ -259,8 +285,8 @@ export class MapStorage {
         }
     }
 
-    private readLegacyLastSelected(): string {
-        const raw = localStorage.getItem(LEGACY_LAST_SELECTED_KEY);
+    private readLegacyLastSelected(storage: Storage): string {
+        const raw = storage.getItem(LEGACY_LAST_SELECTED_KEY);
         if (raw === null || raw === 'undefined') {
             return '';
         }

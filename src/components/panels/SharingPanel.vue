@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useMapStore } from '../../stores/mapStore';
 import { useUiStore } from '../../stores/uiStore';
@@ -22,6 +22,8 @@ const height = ref<number | null>(mapSize ? Math.round(mapSize.y) : null);
 const hideToolbar = ref(false);
 const showCopiedMessage = ref(false);
 const shareScopeGroup = ref<Group | null>(null);
+const scopePrompt = useTemplateRef<HTMLDivElement>('scopePrompt');
+const scopePromptTrigger = ref<HTMLElement | null>(null);
 
 function onCreate() {
     if (width.value === null || height.value === null || width.value <= 0 || height.value <= 0) {
@@ -32,6 +34,8 @@ function onCreate() {
         (group) => group.id === selectionStore.selectedGroupId
     );
     if (selectedGroup && shareScopeGroup.value === null) {
+        scopePromptTrigger.value =
+            document.activeElement instanceof HTMLElement ? document.activeElement : null;
         shareScopeGroup.value = selectedGroup;
         return;
     }
@@ -59,7 +63,7 @@ function createShare(scope: 'all' | 'group', selectedGroup: Group | undefined) {
         const versions = getGroupVersions(groupForShare);
         const activeVersionId = groupStore.activeVersionIds[groupForShare.id];
         const versionIndex = versions.findIndex((version) => version.id === activeVersionId);
-        params.set('group', groupForShare.name);
+        params.set('group', groupForShare.id);
         if (versionIndex >= 0) {
             params.set('version', String(versionIndex + 1));
         }
@@ -109,6 +113,51 @@ function cancelScopePrompt() {
     shareScopeGroup.value = null;
 }
 
+function restoreScopePromptFocus() {
+    const trigger = scopePromptTrigger.value;
+    scopePromptTrigger.value = null;
+    if (trigger?.isConnected) {
+        trigger.focus();
+    }
+}
+
+function onScopePromptKeydown(event: KeyboardEvent) {
+    if (event.key !== 'Tab' || !scopePrompt.value) {
+        return;
+    }
+
+    const focusable = Array.from(
+        scopePrompt.value.querySelectorAll<HTMLElement>(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        )
+    ).filter((element) => !element.hasAttribute('disabled'));
+    if (focusable.length === 0) {
+        event.preventDefault();
+        scopePrompt.value.focus();
+        return;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+    }
+}
+
+watch(shareScopeGroup, (group) => {
+    if (group) {
+        void nextTick(() => scopePrompt.value?.querySelector<HTMLElement>('button')?.focus());
+    } else {
+        void nextTick(restoreScopePromptFocus);
+    }
+});
+
+onBeforeUnmount(restoreScopePromptFocus);
+
 function onClose() {
     uiStore.closePanel();
 }
@@ -117,9 +166,13 @@ function onClose() {
 <template>
     <div
         v-if="shareScopeGroup"
+        ref="scopePrompt"
         role="alertdialog"
+        aria-modal="true"
         aria-labelledby="sharing-scope-title"
         class="fixed inset-0 z-[10003] flex items-center justify-center bg-black/30 p-4"
+        tabindex="-1"
+        @keydown="onScopePromptKeydown"
     >
         <div class="w-80 rounded-xl bg-white p-5 shadow-xl">
             <h2 id="sharing-scope-title" class="text-base font-semibold text-gray-800">
