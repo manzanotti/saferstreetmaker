@@ -1,4 +1,4 @@
-import { createApp } from 'vue';
+import { createApp, nextTick } from 'vue';
 import App from './App.vue';
 import { pinia } from './stores/index';
 import { FileManager } from './services/FileManager';
@@ -12,9 +12,12 @@ import { createAllLayers } from './composables/layers/index';
 import CommandsToolbar from './components/controls/CommandsToolbar.vue';
 import LayersToolbar from './components/controls/LayersToolbar.vue';
 import Legend from './components/controls/Legend.vue';
-import PanelContainer from './components/controls/PanelContainer.vue';
 import AreaSelectionPanel from './components/panels/AreaSelectionPanel.vue';
 import { setupAreaSelection } from './composables/useAreaSelection';
+import { viewGroupVersion } from './composables/useGroups';
+import { useGroupStore } from './stores/groupStore';
+import { useUiStore } from './stores/uiStore';
+import { getGroupVersions } from './features/groups/groupVersions';
 
 // Mount the Vue overlay app (HelpPanel, ErrorPanel) immediately.
 createApp(App).use(pinia).mount('#app');
@@ -45,7 +48,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     map.addControl(makeLeafletVueControl(LayersToolbar, 'topleft'));
     map.addControl(makeLeafletVueControl(AreaSelectionPanel, 'topleft'));
     map.addControl(makeLeafletVueControl(Legend, 'topright'));
-    map.addControl(makeLeafletVueControl(PanelContainer, 'bottomleft'));
 
     // ── Wire area-selection composable ───────────────────────────────────────
     setupAreaSelection(map);
@@ -75,6 +77,42 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const mapLoaded = await loadMap(remoteMapFile, hash, hideToolbar, zoom, centre);
+
+    if (mapLoaded) {
+        const groupReference = params.get('group');
+        const versionNumber = Number(params.get('version'));
+        const groupStore = useGroupStore(pinia);
+        const group = groupReference
+            ? (groupStore.groups.find((item) => item.id === groupReference) ??
+              groupStore.groups.find(
+                  (item) => item.name.trim().toLowerCase() === groupReference.trim().toLowerCase()
+              ))
+            : undefined;
+        const versions = group ? getGroupVersions(group) : [];
+        const version =
+            Number.isInteger(versionNumber) && versionNumber > 0
+                ? versions[versionNumber - 1]
+                : undefined;
+
+        if (group && version) {
+            settingsStore.readOnly = true;
+        }
+
+        if (group && version && viewGroupVersion(group.id, version.id)) {
+            const hasDescription = Boolean(group.description?.trim());
+            const hasPhases = (version.phases?.length ?? 0) > 0;
+            if (hasDescription || hasPhases) {
+                groupStore.openDetailsDialog(group.id);
+            }
+        }
+
+        if (group && version) {
+            await nextTick();
+            useUiStore(pinia).setLegendLayerIds(
+                new Set(version.members.map((member) => member.layerId))
+            );
+        }
+    }
 
     if (!mapLoaded && window.navigator.geolocation) {
         window.navigator.geolocation.getCurrentPosition(

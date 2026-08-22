@@ -46,6 +46,7 @@ async function onSave() {
         if (isSaveErrorAlreadyShown(e)) {
             return;
         }
+        uiStore.closePanel();
         uiStore.showErrors(['There was a problem saving the settings:', String(e?.message ?? e)]);
         return;
     }
@@ -61,7 +62,7 @@ function onCancel() {
     <div
         role="dialog"
         aria-labelledby="settings-panel-title"
-        class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] rounded-2xl bg-white shadow-xl border border-gray-100 w-80 flex flex-col overflow-hidden max-h-[90vh]"
+        class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[10002] rounded-2xl bg-white shadow-xl border border-gray-100 w-80 flex flex-col overflow-hidden max-h-[90vh]"
         @dblclick.stop
     >
         <div class="flex items-center px-5 py-4 border-b border-gray-100 shrink-0">

@@ -35,7 +35,7 @@ function close() {
         <div
             v-if="uiStore.activePanel === 'help'"
             id="help"
-            class="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none"
+            class="fixed inset-0 z-[10002] flex items-center justify-center pointer-events-none"
             @keydown.escape.window="close"
             @dblclick.stop
         >
@@ -626,6 +626,13 @@ function close() {
                                 toolbar is visible, then hit the Create button. The html needed to
                                 embed the map in your web page will be copied to your clipboard, so
                                 just go to your page and paste the html into the html of your page.
+                            </p>
+                            <p class="mb-8">
+                                If a group is selected when you create the share link, the link also
+                                identifies the group and includes its active version number. Opening
+                                that link shows the selected group and version in read-only mode.
+                                The group panel is shown when the group has a description or the
+                                selected version has implementation phases.
                             </p>
                             <p class="mb-8">Be warned: this can be a very large amount of data!</p>
                         </div>

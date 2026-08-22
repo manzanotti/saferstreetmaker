@@ -8,6 +8,7 @@ import FeatureDeletionDialog from './components/panels/FeatureDeletionDialog.vue
 import GroupDetailsDialog from './components/panels/GroupDetailsDialog.vue';
 import GroupPhasesDialog from './components/panels/GroupPhasesDialog.vue';
 import ReadOnlyGroupDetailsDialog from './components/panels/ReadOnlyGroupDetailsDialog.vue';
+import PanelContainer from './components/controls/PanelContainer.vue';
 import { useSettingsStore } from './stores/settingsStore';
 
 const settingsStore = useSettingsStore();
@@ -24,4 +25,5 @@ const readOnly = computed(() => settingsStore.readOnly);
     <ReadOnlyGroupDetailsDialog v-if="readOnly" />
     <PartialPolylineDialog />
     <FeatureDeletionDialog />
+    <PanelContainer />
 </template>

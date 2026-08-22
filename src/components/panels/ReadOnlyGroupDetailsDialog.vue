@@ -72,7 +72,20 @@ watch(
     }
 );
 
+watch(
+    [() => group.value?.id, () => activeVersion.value?.id],
+    ([groupId, versionId]) => {
+        uiStore.setLegendLayerIds(
+            groupId && versionId && activeVersion.value
+                ? new Set(activeVersion.value.members.map((member) => member.layerId))
+                : null
+        );
+    },
+    { immediate: true }
+);
+
 onBeforeUnmount(() => resizeObserver?.disconnect());
+onBeforeUnmount(() => uiStore.setLegendLayerIds(null));
 
 function memberCount(version: (typeof versions.value)[number]) {
     return new Set(version.members.map(memberKey)).size;
@@ -81,6 +94,7 @@ function memberCount(version: (typeof versions.value)[number]) {
 function close() {
     stopReadOnlyGroupPlayback();
     clearReadOnlyGroupPresentation();
+    uiStore.setLegendLayerIds(null);
     clearGroupSelection();
     groupStore.closePhasesDialog();
     groupStore.closeDetailsDialog();
