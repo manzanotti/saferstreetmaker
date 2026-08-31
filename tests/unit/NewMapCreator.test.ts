@@ -6,6 +6,7 @@ import { Settings } from '../../src/models/Settings';
 function createCreator(overrides: Partial<ConstructorParameters<typeof NewMapCreator>[0]> = {}) {
     const snapshot: SerializedMap = { title: 'New map', layers: {} };
     const options: ConstructorParameters<typeof NewMapCreator>[0] = {
+        appVersion: '0.10.0',
         loadMapListFromStorage: vi.fn().mockResolvedValue([]),
         clearAndReset: vi.fn(),
         getAllLayerIds: vi.fn().mockReturnValue(['ModalFilters', 'MobilityLanes']),
@@ -49,7 +50,8 @@ describe('NewMapCreator', () => {
                 title: 'New map',
                 readOnly: false,
                 activeLayers: ['ModalFilters', 'MobilityLanes'],
-                zoom: 14
+                zoom: 14,
+                version: '0.10.0'
             })
         );
         expect(state.options.addLayers).toHaveBeenCalledWith(['ModalFilters', 'MobilityLanes']);

@@ -188,6 +188,7 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         showErrors: (errors, options) => uiStore.showErrors(errors, options)
     });
     const newMapCreator = new NewMapCreator({
+        appVersion: APP_VERSION,
         loadMapListFromStorage: () => fileManager.loadMapListFromStorage(),
         clearAndReset: () => mapStateCoordinator.clearAllLayers(),
         getAllLayerIds: () => mapStateCoordinator.getAllLayerIds(),

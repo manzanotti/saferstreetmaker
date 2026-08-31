@@ -144,6 +144,38 @@ test.describe('Settings Panel', () => {
         await expect(page.locator('#redo-button')).toBeDisabled();
     });
 
+    test('new maps retain disabled Bus Lanes through undo, redo, and reload', async ({ page }) => {
+        await page.locator('#map-manager-button').click();
+        await page.locator('#new-map').click();
+        await page.locator('#new-map-title').fill('Versioned New Map');
+        await page.locator('#create-new-map button').click();
+        await page.waitForTimeout(300);
+
+        await page.locator('#settings-button').click();
+        await page.locator('#BusLanes').uncheck();
+        await page.locator('button:has-text("Save")').click();
+        await expect(page.locator('#bus-lane-button')).not.toBeVisible();
+        await expect(page.locator('#tram-line-button')).toBeVisible();
+
+        await page.locator('#undo-button').click();
+        await page.waitForTimeout(150);
+        await page.locator('#settings-button').click();
+        await expect(page.locator('#BusLanes')).toBeChecked();
+        await page.locator('button:has-text("Cancel")').click();
+
+        await page.locator('#redo-button').click();
+        await page.waitForTimeout(150);
+        await page.locator('#settings-button').click();
+        await expect(page.locator('#BusLanes')).not.toBeChecked();
+        await page.locator('button:has-text("Cancel")').click();
+
+        await page.reload();
+        await waitForFreshStorage(page);
+        await page.waitForSelector('.toolbar');
+        await expect(page.locator('#bus-lane-button')).not.toBeVisible();
+        await expect(page.locator('#tram-line-button')).toBeVisible();
+    });
+
     test('switching stored maps restores the correct independent undo state', async ({
         page,
         context
