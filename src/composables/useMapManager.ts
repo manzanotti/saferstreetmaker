@@ -45,7 +45,7 @@ import { MapPersistenceCoordinator } from '../features/map/MapPersistenceCoordin
 import { UploadedMapLoader } from '../features/map/UploadedMapLoader';
 import { MapViewCoordinator } from '../features/map/MapViewCoordinator';
 
-const APP_VERSION = '0.9.0';
+const APP_VERSION = '0.10.0';
 
 export interface MapManager {
     loadMap: (
@@ -188,6 +188,7 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         showErrors: (errors, options) => uiStore.showErrors(errors, options)
     });
     const newMapCreator = new NewMapCreator({
+        appVersion: APP_VERSION,
         loadMapListFromStorage: () => fileManager.loadMapListFromStorage(),
         clearAndReset: () => mapStateCoordinator.clearAllLayers(),
         getAllLayerIds: () => mapStateCoordinator.getAllLayerIds(),
@@ -322,7 +323,8 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         setVisibleLayerIds: (layerIds) => {
             mapStore.visibleLayerIds = layerIds;
         },
-        recomputeGroupPresentation: recomputeFeatureVisibility
+        recomputeGroupPresentation: recomputeFeatureVisibility,
+        appVersion: APP_VERSION
     });
     const historyNavigationCoordinator = new HistoryNavigationCoordinator({
         undoJournal,

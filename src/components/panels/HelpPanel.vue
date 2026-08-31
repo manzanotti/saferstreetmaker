@@ -134,7 +134,7 @@ function close() {
                             </p>
                             <h2>
                                 <img
-                                    src="../../img/double-decker-bus-svgrepo-com.svg"
+                                    src="../../img/bus-gate.svg"
                                     class="inline-block w-10 h-10 object-contain align-middle"
                                     alt=""
                                     aria-hidden="true"
@@ -200,6 +200,23 @@ function close() {
                                 click on the Tram button in the toolbar. You draw the lane by
                                 placing a series of points. When done, click on the last point
                                 added, and you will leave line creation mode.
+                            </p>
+                            <h2>
+                                <img
+                                    src="../../img/bus-lane.svg"
+                                    class="inline-block w-10 h-10 object-contain align-middle"
+                                    alt=""
+                                    aria-hidden="true"
+                                />
+                                Bus Lanes
+                            </h2>
+                            <p class="mb-8">
+                                Bus lanes are reserved for buses, helping them move more quickly
+                                through busy areas. To add one, right-click or hold the currently
+                                visible Tram or Bus Lane button in the toolbar, select the Bus Lane
+                                button, and draw the lane by placing a series of points. When done,
+                                click on the last point added, and you will leave line creation
+                                mode.
                             </p>
                             <h2>
                                 <img
@@ -558,7 +575,8 @@ function close() {
                                 Finally, you can choose which layers are active on the map.
                                 Switching a layer off will remove the button from the toolbar and
                                 the layer from the legend. So, if you're not interested in adding
-                                Tram Lines to your map, you can switch that layer off.
+                                Tram Lines or Bus Lanes to your map, you can switch either layer
+                                off.
                             </p>
                         </div>
 

@@ -19,6 +19,7 @@ function createCoordinator(
         removeAllLayers: vi.fn(),
         addLayers: vi.fn(),
         setVisibleLayerIds: vi.fn(),
+        appVersion: '0.10.0',
         ...overrides
     };
     return { coordinator: new HistoryReplayCoordinator(options), options };
@@ -100,6 +101,42 @@ describe('HistoryReplayCoordinator', () => {
         expect(state.options.removeAllLayers).toHaveBeenCalledOnce();
         expect(state.options.addLayers).toHaveBeenCalledWith([]);
         expect(state.options.setVisibleLayerIds).toHaveBeenCalledWith(new Set());
+    });
+
+    it('migrates historical Tram-only settings when replaying them', async () => {
+        const state = createCoordinator();
+        const payload = {
+            before: {
+                title: 'Before',
+                readOnly: false,
+                hideToolbar: false,
+                activeLayers: ['TramLines'],
+                centre: null,
+                zoom: 12,
+                version: '0.9.0'
+            },
+            after: {
+                title: 'After',
+                readOnly: false,
+                hideToolbar: false,
+                activeLayers: ['TramLines'],
+                centre: null,
+                zoom: 12,
+                version: '0.9.0'
+            }
+        };
+
+        await expect(state.coordinator.apply(makeReplay({ layers: {} }, payload))).resolves.toBe(
+            true
+        );
+
+        expect(state.options.applySettings).toHaveBeenCalledWith(
+            expect.objectContaining({
+                activeLayers: ['TramLines', 'BusLanes'],
+                version: '0.10.0'
+            })
+        );
+        expect(state.options.addLayers).toHaveBeenCalledWith(['TramLines', 'BusLanes']);
     });
 
     it('replaces a legacy snapshot viewport with the current view', async () => {

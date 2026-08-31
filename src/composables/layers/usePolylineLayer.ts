@@ -26,6 +26,7 @@ export interface PolylineLayerConfig {
     buttonId: string;
     tooltip: string;
     toggleTitle: string;
+    isFirst?: boolean;
     /**
      * Create (and enable) a new Leaflet.draw tool.
      * Called when the layer is selected.
@@ -260,7 +261,8 @@ export function createPolylineLayer(
                 groupName: config.groupName,
                 action,
                 selected: _selected,
-                iconSrc: config.iconSrc
+                iconSrc: config.iconSrc,
+                isFirst: config.isFirst
             });
         },
 

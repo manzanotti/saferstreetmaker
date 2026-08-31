@@ -37,6 +37,17 @@
     cursor: pointer !important;
 }
 
+#map.bus-lane,
+#map.bus-lane .leaflet-interactive:not(.bus-lane),
+#map.bus-lane .leaflet-marker-icon,
+.bus-lane [role='button'] {
+    cursor: crosshair;
+}
+
+#map.bus-lane .leaflet-interactive.bus-lane {
+    cursor: pointer !important;
+}
+
 #map.mobility-lane,
 #map.mobility-lane .leaflet-interactive:not(.mobility-lane),
 #map.mobility-lane .leaflet-marker-icon,
@@ -101,7 +112,7 @@
 #map.bus-gate .leaflet-interactive,
 #map.bus-gate .leaflet-marker-icon {
     cursor:
-        url('../img/double-decker-bus-svgrepo-com-cursor.svg') 10 10,
+        url('../img/bus-gate.svg') 11.5 11.5,
         auto !important;
 }
 

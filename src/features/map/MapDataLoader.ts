@@ -4,6 +4,29 @@ import { Settings } from '../../models/Settings';
 import type { Group } from '../../models/Group';
 import { MapLayerController } from './MapLayerController';
 
+const BUS_LANES_INTRODUCED_VERSION = '0.10.0';
+
+export function migrateSettingsForSchema<T extends { activeLayers: string[]; version: string }>(
+    settings: T,
+    appVersion: string
+): T {
+    const migratedSettings = {
+        ...settings,
+        activeLayers: [...settings.activeLayers]
+    };
+
+    if (
+        isVersionBefore(settings.version, BUS_LANES_INTRODUCED_VERSION) &&
+        settings.activeLayers.includes('TramLines') &&
+        !settings.activeLayers.includes('BusLanes')
+    ) {
+        migratedSettings.activeLayers.push('BusLanes');
+    }
+
+    migratedSettings.version = appVersion;
+    return migratedSettings;
+}
+
 export interface MapDataLoaderOptions {
     getMap: () => L.Map;
     setDefaultView: () => void;
@@ -87,7 +110,10 @@ export class MapDataLoader {
         if (geoJSON.settings !== undefined) {
             const rawCentre = geoJSON.settings.centre;
             const settingsCentre = rawCentre ? new L.LatLng(rawCentre.lat, rawCentre.lng) : null;
-            const settings: Settings = Object.assign(new Settings(), geoJSON.settings);
+            const settings: Settings = migrateSettingsForSchema(
+                Object.assign(new Settings(), geoJSON.settings),
+                this.appVersion
+            );
             this.applySettings({
                 title: settings.title,
                 readOnly: settings.readOnly,
@@ -148,4 +174,19 @@ export class MapDataLoader {
         }
         return this.getZoom();
     }
+}
+
+function isVersionBefore(version: string, targetVersion: string): boolean {
+    const versionParts = version.split('.').map(Number);
+    const targetParts = targetVersion.split('.').map(Number);
+
+    for (let index = 0; index < Math.max(versionParts.length, targetParts.length); index += 1) {
+        const versionPart = versionParts[index] ?? 0;
+        const targetPart = targetParts[index] ?? 0;
+        if (versionPart !== targetPart) {
+            return versionPart < targetPart;
+        }
+    }
+
+    return false;
 }

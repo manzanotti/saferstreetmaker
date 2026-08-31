@@ -43,6 +43,19 @@ test.describe('Help Panel', () => {
         await expect(page.locator('#tabs-home')).not.toBeVisible();
     });
 
+    test('Features tab documents Bus Lanes', async ({ page }) => {
+        await page.locator('#help-button').click();
+        await page.locator('a[data-tab-target="#tabs-features"]').click();
+
+        const busLanesHeading = page.locator('#tabs-features h2').filter({ hasText: 'Bus Lanes' });
+        await expect(busLanesHeading).toBeVisible();
+        await expect(busLanesHeading.locator('img')).toHaveAttribute('src', /bus-lane\.svg/);
+        await expect(page.locator('#tabs-features')).toContainText(
+            'right-click or hold the currently visible Tram or Bus Lane button'
+        );
+        await expect(page.locator('#tabs-features')).toContainText('select the Bus Lane button');
+    });
+
     test('Groups tab appears between Features and Maps with version guidance', async ({ page }) => {
         await page.locator('#help-button').click();
 

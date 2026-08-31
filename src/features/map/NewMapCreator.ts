@@ -3,6 +3,7 @@ import type { SerializedMap } from '../../services/MapSerializer';
 import type * as L from 'leaflet';
 
 export interface NewMapCreatorOptions {
+    appVersion: string;
     loadMapListFromStorage: () => Promise<string[]>;
     clearAndReset: () => void;
     getAllLayerIds: () => string[];
@@ -35,6 +36,7 @@ export class NewMapCreator {
 
         const activeLayerIds = this.options.getAllLayerIds();
         const settings = new Settings();
+        settings.version = this.options.appVersion;
         settings.title = title;
         settings.readOnly = false;
         settings.activeLayers = activeLayerIds;

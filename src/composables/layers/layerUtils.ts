@@ -117,6 +117,7 @@ const POINT_FEATURE_CLASSES = [
 const FEATURE_EDIT_LAYER_BUTTON_IDS = new Set([
     'mobility-lane',
     'tram-line',
+    'bus-lane',
     'car-free-street',
     'school-street',
     'one-way-street',
@@ -131,6 +132,7 @@ const FEATURE_TYPE_NAMES: Record<string, string> = {
     ZebraCrossing: 'Zebra crossing',
     MobilityLanes: 'Mobility lane',
     TramLines: 'Tram line',
+    BusLanes: 'Bus lane',
     CarFreeStreets: 'Car-free street',
     SchoolStreet: 'School street',
     OneWayStreets: 'One-way street',

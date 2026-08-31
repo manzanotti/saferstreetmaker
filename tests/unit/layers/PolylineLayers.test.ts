@@ -16,7 +16,8 @@ import {
     createCarFreeStreetLayer,
     createSchoolStreetLayer,
     createOneWayStreetLayer,
-    createTramLineLayer
+    createTramLineLayer,
+    createBusLaneLayer
 } from '../../../src/composables/layers/useSimplePolylineLayers';
 
 function makeMockMap(): L.Map {
@@ -207,6 +208,7 @@ sharedPolylineLayerTests(
     'one-way-street'
 );
 sharedPolylineLayerTests(createTramLineLayer, 'TramLines', 'Tram Lines', 'tram-line');
+sharedPolylineLayerTests(createBusLaneLayer, 'BusLanes', 'Bus Lanes', 'bus-lane');
 
 describe('MobilityLanes history payloads', () => {
     beforeEach(() => {
@@ -411,5 +413,48 @@ describe('MobilityLanes feature clicks', () => {
         expect(mapStore.activeLayerId).toBe('car-free-street');
         expect(selectionStore.selected).toHaveLength(2);
         expect(selectionStore.selected.every((entry) => entry.marker === carFreeLine)).toBe(true);
+    });
+
+    it('switches from a Bus Lane to a line in a different layer while editing', () => {
+        const map = makeMockMap();
+        const busLaneLayer = createBusLaneLayer(map);
+        const mobilityLayer = createMobilityLaneLayer(map);
+
+        busLaneLayer.loadFromGeoJSON(
+            polylineFeatureCollection([
+                [
+                    [-1.9, 52.5],
+                    [-1.8, 52.6]
+                ]
+            ])
+        );
+        mobilityLayer.loadFromGeoJSON(
+            polylineFeatureCollection([
+                [
+                    [-1.7, 52.7],
+                    [-1.6, 52.8]
+                ]
+            ])
+        );
+
+        const busLane = busLaneLayer.getLayer().getLayers()[0] as any;
+        const mobilityLine = mobilityLayer.getLayer().getLayers()[0] as any;
+        busLane.editing = { enable: vi.fn(), disable: vi.fn() };
+        mobilityLine.editing = { enable: vi.fn(), disable: vi.fn() };
+
+        const selectionStore = useSelectionStore(pinia);
+        const mapStore = useMapStore(pinia);
+        selectionStore.activate();
+        selectFeature(busLane as unknown as L.Layer, 'BusLanes', false, true);
+        mapStore.setActiveLayer('bus-lane');
+
+        mobilityLine.fire('click', {
+            latlng: new L.LatLng(52.8, -1.6),
+            originalEvent: { clientX: 0, clientY: 0 }
+        });
+
+        expect(mapStore.activeLayerId).toBe('mobility-lane');
+        expect(selectionStore.selected).toHaveLength(2);
+        expect(selectionStore.selected.every((entry) => entry.marker === mobilityLine)).toBe(true);
     });
 });
