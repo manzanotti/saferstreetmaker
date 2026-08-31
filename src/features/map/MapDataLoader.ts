@@ -88,8 +88,12 @@ export class MapDataLoader {
             const rawCentre = geoJSON.settings.centre;
             const settingsCentre = rawCentre ? new L.LatLng(rawCentre.lat, rawCentre.lng) : null;
             const settings: Settings = Object.assign(new Settings(), geoJSON.settings);
-            if (settings.activeLayers.includes('TramLines')) {
-                settings.activeLayers = [...new Set([...settings.activeLayers, 'BusLanes'])];
+            if (
+                isVersionBefore(settings.version, this.appVersion) &&
+                settings.activeLayers.includes('TramLines') &&
+                !settings.activeLayers.includes('BusLanes')
+            ) {
+                settings.activeLayers = [...settings.activeLayers, 'BusLanes'];
             }
             this.applySettings({
                 title: settings.title,
@@ -151,4 +155,19 @@ export class MapDataLoader {
         }
         return this.getZoom();
     }
+}
+
+function isVersionBefore(version: string, targetVersion: string): boolean {
+    const versionParts = version.split('.').map(Number);
+    const targetParts = targetVersion.split('.').map(Number);
+
+    for (let index = 0; index < Math.max(versionParts.length, targetParts.length); index += 1) {
+        const versionPart = versionParts[index] ?? 0;
+        const targetPart = targetParts[index] ?? 0;
+        if (versionPart !== targetPart) {
+            return versionPart < targetPart;
+        }
+    }
+
+    return false;
 }

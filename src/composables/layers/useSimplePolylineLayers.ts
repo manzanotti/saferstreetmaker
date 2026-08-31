@@ -1,5 +1,5 @@
 /**
- * Factory for the 6 simple polyline layers:
+ * Factory for the 5 simple polyline layers:
  * TramLine, BusLane, CarFreeStreet, SchoolStreet, OneWayStreet
  * (no drawing-tool re-init after draw:created)
  */

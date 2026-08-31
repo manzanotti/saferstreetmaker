@@ -45,7 +45,7 @@ import { MapPersistenceCoordinator } from '../features/map/MapPersistenceCoordin
 import { UploadedMapLoader } from '../features/map/UploadedMapLoader';
 import { MapViewCoordinator } from '../features/map/MapViewCoordinator';
 
-const APP_VERSION = '0.9.0';
+const APP_VERSION = '0.10.0';
 
 export interface MapManager {
     loadMap: (

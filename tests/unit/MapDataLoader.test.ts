@@ -69,7 +69,7 @@ function makeLoader(settings: { centre: L.LatLng | null; zoom: number; activeLay
         setAllGroupsHidden: vi.fn(),
         resetGroupVisibility: vi.fn(),
         pruneDanglingGroupMembers: vi.fn(),
-        appVersion: '0.9.0'
+        appVersion: '0.10.0'
     });
 
     return { loader, settings, appliedSettings, visibleLayerIds, groups };
@@ -122,6 +122,46 @@ describe('MapDataLoader', () => {
         expect(state.visibleLayerIds[0]).toEqual(new Set(['TramLines', 'BusLanes']));
     });
 
+    it('does not duplicate Bus Lanes when it is already enabled', () => {
+        const state = makeLoader({ centre: null, zoom: 0, activeLayers: [] });
+        const data: SerializedMap = {
+            settings: {
+                title: 'Updated tram map',
+                readOnly: false,
+                hideToolbar: false,
+                activeLayers: ['ModalFilters', 'TramLines', 'BusLanes'],
+                centre: { lat: 52.5, lng: -1.9 },
+                zoom: 12,
+                version: '0.9.0'
+            },
+            layers: {}
+        };
+
+        expect(state.loader.load(data, null, null)).toBe(true);
+        expect(state.appliedSettings[0]).toMatchObject({
+            activeLayers: ['ModalFilters', 'TramLines', 'BusLanes']
+        });
+    });
+
+    it('does not migrate Tram Lines in the current schema version', () => {
+        const state = makeLoader({ centre: null, zoom: 0, activeLayers: [] });
+        const data: SerializedMap = {
+            settings: {
+                title: 'Current tram map',
+                readOnly: false,
+                hideToolbar: false,
+                activeLayers: ['TramLines'],
+                centre: { lat: 52.5, lng: -1.9 },
+                zoom: 12,
+                version: '0.10.0'
+            },
+            layers: {}
+        };
+
+        expect(state.loader.load(data, null, null)).toBe(true);
+        expect(state.appliedSettings[0]).toMatchObject({ activeLayers: ['TramLines'] });
+    });
+
     it('preserves legacy view state when only zoom is overridden by the URL', () => {
         const state = makeLoader({
             centre: null,
@@ -159,7 +199,7 @@ describe('MapDataLoader', () => {
             setAllGroupsHidden: vi.fn(),
             resetGroupVisibility: vi.fn(),
             pruneDanglingGroupMembers: vi.fn(),
-            appVersion: '0.9.0'
+            appVersion: '0.10.0'
         });
 
         loader.load(legacyData, '13', null);
