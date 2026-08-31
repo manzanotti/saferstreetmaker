@@ -138,6 +138,30 @@ test.describe('Toolbar button groups', () => {
         const indexAfter = await page.evaluate(groupIndex(members));
         expect(indexAfter).toBe(indexBefore);
     });
+
+    test('Tram Lines is a single toolbar item when Bus Lanes is disabled', async ({ page }) => {
+        await page.locator('#settings-button').click();
+        await page.locator('#BusLanes').uncheck();
+        await page.locator('button:has-text("Save")').click();
+
+        const tramButton = page.locator('#tram-line-button');
+        await expect(tramButton).toBeVisible();
+        await expect(tramButton).not.toHaveAttribute('aria-expanded');
+        await expect(tramButton.locator('xpath=ancestor::li')).not.toHaveClass(/group/);
+        await expect(page.locator('#bus-lane-button')).not.toBeVisible();
+    });
+
+    test('Bus Lanes is a single toolbar item when Tram Lines is disabled', async ({ page }) => {
+        await page.locator('#settings-button').click();
+        await page.locator('#TramLines').uncheck();
+        await page.locator('button:has-text("Save")').click();
+
+        const busButton = page.locator('#bus-lane-button');
+        await expect(busButton).toBeVisible();
+        await expect(busButton).not.toHaveAttribute('aria-expanded');
+        await expect(busButton.locator('xpath=ancestor::li')).not.toHaveClass(/group/);
+        await expect(page.locator('#tram-line-button')).not.toBeVisible();
+    });
 });
 
 test.describe('Toolbar sub-group collapse', () => {

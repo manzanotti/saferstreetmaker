@@ -46,6 +46,10 @@ const layerItems = computed<ToolbarItem[]>(() => {
         handledGroups.add(btn.groupName);
 
         const groupBtns = allButtons.filter((b) => b.groupName === btn.groupName);
+        if (groupBtns.length === 1) {
+            items.push({ type: 'single', button: groupBtns[0] });
+            continue;
+        }
         const anchor = groupBtns.find((b) => b.isFirst) ?? groupBtns[0];
 
         const lastId = lastSelectedByGroup.value[btn.groupName];

@@ -322,7 +322,8 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         setVisibleLayerIds: (layerIds) => {
             mapStore.visibleLayerIds = layerIds;
         },
-        recomputeGroupPresentation: recomputeFeatureVisibility
+        recomputeGroupPresentation: recomputeFeatureVisibility,
+        appVersion: APP_VERSION
     });
     const historyNavigationCoordinator = new HistoryNavigationCoordinator({
         undoJournal,

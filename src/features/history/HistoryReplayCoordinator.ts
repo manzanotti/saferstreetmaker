@@ -6,6 +6,7 @@ import type { HistoryReplayEntry } from '../../services/UndoJournal';
 import { dispatchHistoryReplay } from './historyReplayDispatch';
 import { replayFeatureMutation } from './featureMutationReplay';
 import { getSettingsMutationTarget } from './settingsMutationReplay';
+import { migrateSettingsForSchema } from '../map/MapDataLoader';
 import {
     runHistoryReplayTransaction,
     type HistoryReplayTransactionEffects
@@ -34,6 +35,7 @@ export interface HistoryReplayCoordinatorOptions {
     addLayers: (layerIds: string[]) => void;
     setVisibleLayerIds: (layerIds: Set<string>) => void;
     recomputeGroupPresentation?: () => void;
+    appVersion: string;
 }
 
 export class HistoryReplayCoordinator {
@@ -138,18 +140,22 @@ export class HistoryReplayCoordinator {
 
         return await runHistoryReplayTransaction(this.options.transactionEffects, async () => {
             const currentView = this.options.getCurrentView();
+            const migratedSettings = migrateSettingsForSchema(
+                targetSettings,
+                this.options.appVersion
+            );
             this.options.applySettings({
-                title: targetSettings.title,
-                readOnly: targetSettings.readOnly,
-                hideToolbar: targetSettings.hideToolbar,
-                activeLayers: [...targetSettings.activeLayers],
+                title: migratedSettings.title,
+                readOnly: migratedSettings.readOnly,
+                hideToolbar: migratedSettings.hideToolbar,
+                activeLayers: migratedSettings.activeLayers,
                 centre: currentView.centre,
                 zoom: currentView.zoom,
-                version: targetSettings.version
+                version: migratedSettings.version
             });
             this.options.removeAllLayers();
-            this.options.addLayers(targetSettings.activeLayers);
-            this.options.setVisibleLayerIds(new Set(targetSettings.activeLayers));
+            this.options.addLayers(migratedSettings.activeLayers);
+            this.options.setVisibleLayerIds(new Set(migratedSettings.activeLayers));
             this.options.recomputeGroupPresentation?.();
             await this.options.saveMap();
             this.options.setLastSavedSnapshot(this.options.buildSnapshot());
