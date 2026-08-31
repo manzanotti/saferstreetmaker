@@ -100,6 +100,28 @@ describe('MapDataLoader', () => {
         expect(state.visibleLayerIds[0]).toEqual(new Set(['MobilityLanes']));
     });
 
+    it('adds Bus Lanes to legacy maps that have Tram Lines enabled', () => {
+        const state = makeLoader({ centre: null, zoom: 0, activeLayers: [] });
+        const data: SerializedMap = {
+            settings: {
+                title: 'Legacy tram map',
+                readOnly: false,
+                hideToolbar: false,
+                activeLayers: ['TramLines'],
+                centre: { lat: 52.5, lng: -1.9 },
+                zoom: 12,
+                version: '0.9.0'
+            },
+            layers: {}
+        };
+
+        expect(state.loader.load(data, null, null)).toBe(true);
+        expect(state.appliedSettings[0]).toMatchObject({
+            activeLayers: ['TramLines', 'BusLanes']
+        });
+        expect(state.visibleLayerIds[0]).toEqual(new Set(['TramLines', 'BusLanes']));
+    });
+
     it('preserves legacy view state when only zoom is overridden by the URL', () => {
         const state = makeLoader({
             centre: null,

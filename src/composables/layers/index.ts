@@ -11,6 +11,7 @@ import { createZebraCrossingLayer } from './useZebraCrossingLayer';
 import { createMobilityLaneLayer } from './useMobilityLaneLayer';
 import {
     createTramLineLayer,
+    createBusLaneLayer,
     createCarFreeStreetLayer,
     createSchoolStreetLayer,
     createOneWayStreetLayer
@@ -22,6 +23,7 @@ export function createAllLayers(map: L.Map): IMapLayer[] {
         createModalFilterLayer(map),
         createMobilityLaneLayer(map),
         createTramLineLayer(map),
+        createBusLaneLayer(map),
         createCarFreeStreetLayer(map),
         createSchoolStreetLayer(map),
         createOneWayStreetLayer(map),

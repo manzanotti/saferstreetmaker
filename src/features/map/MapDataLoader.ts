@@ -88,6 +88,9 @@ export class MapDataLoader {
             const rawCentre = geoJSON.settings.centre;
             const settingsCentre = rawCentre ? new L.LatLng(rawCentre.lat, rawCentre.lng) : null;
             const settings: Settings = Object.assign(new Settings(), geoJSON.settings);
+            if (settings.activeLayers.includes('TramLines')) {
+                settings.activeLayers = [...new Set([...settings.activeLayers, 'BusLanes'])];
+            }
             this.applySettings({
                 title: settings.title,
                 readOnly: settings.readOnly,

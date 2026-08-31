@@ -280,7 +280,6 @@ onUnmounted(() => {
             <li
                 v-else-if="item.type === 'group'"
                 class="group relative"
-                @contextmenu.prevent="showSubmenu(item.groupName)"
                 @touchstart="onTouchStart(item.groupName)"
                 @touchend="cancelLongPress(item.groupName)"
                 @touchmove="cancelLongPress(item.groupName)"
@@ -307,6 +306,7 @@ onUnmounted(() => {
                             : 'bg-slate-50 hover:bg-green-100'
                     ]"
                     @click.stop="onLayerButtonClick(item.parent)"
+                    @contextmenu.prevent.stop="showSubmenu(item.groupName)"
                     @keydown.down.prevent="showSubmenu(item.groupName)"
                     @keydown.escape="hideSubmenu(item.groupName)"
                 >

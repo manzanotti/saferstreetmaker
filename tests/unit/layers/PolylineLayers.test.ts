@@ -16,7 +16,8 @@ import {
     createCarFreeStreetLayer,
     createSchoolStreetLayer,
     createOneWayStreetLayer,
-    createTramLineLayer
+    createTramLineLayer,
+    createBusLaneLayer
 } from '../../../src/composables/layers/useSimplePolylineLayers';
 
 function makeMockMap(): L.Map {
@@ -207,6 +208,7 @@ sharedPolylineLayerTests(
     'one-way-street'
 );
 sharedPolylineLayerTests(createTramLineLayer, 'TramLines', 'Tram Lines', 'tram-line');
+sharedPolylineLayerTests(createBusLaneLayer, 'BusLanes', 'Bus Lanes', 'bus-lane');
 
 describe('MobilityLanes history payloads', () => {
     beforeEach(() => {

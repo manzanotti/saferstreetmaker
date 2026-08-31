@@ -1,6 +1,6 @@
 /**
- * Factory for the 4 simple polyline layers:
- * TramLine, CarFreeStreet, SchoolStreet, OneWayStreet
+ * Factory for the 6 simple polyline layers:
+ * TramLine, BusLane, CarFreeStreet, SchoolStreet, OneWayStreet
  * (no drawing-tool re-init after draw:created)
  */
 import * as L from 'leaflet';
@@ -12,6 +12,8 @@ import { buildHistoryId } from './layerUtils';
 interface SimplePolylineConfig {
     id: string;
     title: string;
+    groupName?: string;
+    isFirst?: boolean;
     buttonId: string;
     tooltip: string;
     toggleTitle: string;
@@ -56,10 +58,11 @@ function createSimplePolylineLayer(cfg: SimplePolylineConfig, map: L.Map): IMapL
         {
             id: cfg.id,
             title: cfg.title,
-            groupName: '',
+            groupName: cfg.groupName ?? '',
             buttonId: cfg.buttonId,
             tooltip: cfg.tooltip,
             toggleTitle: cfg.toggleTitle,
+            isFirst: cfg.isFirst,
             iconSrc: cfg.iconSrc,
             createDrawingTool(m) {
                 const tool = new L.Draw.Polyline(m, {
@@ -111,12 +114,37 @@ export function createTramLineLayer(map: L.Map): IMapLayer {
         {
             id: 'TramLines',
             title: 'Tram Lines',
+            groupName: 'tram-and-bus-lanes',
             buttonId: 'tram-line',
             tooltip: 'Add tram lines to the map',
             toggleTitle: 'Toggle tram lines from the map',
             colour: '#ff5e00',
             weight: 5,
-            iconSrc: new URL('../../img/tram-svgrepo-com.svg', import.meta.url).href
+            iconSrc: new URL('../../img/tram-svgrepo-com.svg', import.meta.url).href,
+            isFirst: true
+        },
+        map
+    );
+}
+
+export function createBusLaneLayer(map: L.Map): IMapLayer {
+    const iconSrc = new URL('../../img/bus-lane.svg', import.meta.url).href;
+    return createSimplePolylineLayer(
+        {
+            id: 'BusLanes',
+            title: 'Bus Lanes',
+            groupName: 'tram-and-bus-lanes',
+            buttonId: 'bus-lane',
+            tooltip: 'Add bus lanes to the map',
+            toggleTitle: 'Toggle bus lanes from the map',
+            colour: '#b91c1c',
+            weight: 5,
+            iconSrc,
+            iconExtra: (icon) => {
+                icon.style.backgroundImage = `url(${iconSrc})`;
+                icon.style.backgroundSize = '18px 18px';
+                icon.style.backgroundRepeat = 'no-repeat';
+            }
         },
         map
     );
