@@ -51,7 +51,7 @@ test.describe('Help Panel', () => {
         await expect(busLanesHeading).toBeVisible();
         await expect(busLanesHeading.locator('img')).toHaveAttribute('src', /bus-lane\.svg/);
         await expect(page.locator('#tabs-features')).toContainText(
-            'right-click or hold the Tram button'
+            'right-click or hold the currently visible Tram or Bus Lane button'
         );
         await expect(page.locator('#tabs-features')).toContainText('select the Bus Lane button');
     });

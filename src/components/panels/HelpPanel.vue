@@ -212,10 +212,11 @@ function close() {
                             </h2>
                             <p class="mb-8">
                                 Bus lanes are reserved for buses, helping them move more quickly
-                                through busy areas. To add one, right-click or hold the Tram button
-                                in the toolbar, select the Bus Lane button, and draw the lane by
-                                placing a series of points. When done, click on the last point
-                                added, and you will leave line creation mode.
+                                through busy areas. To add one, right-click or hold the currently
+                                visible Tram or Bus Lane button in the toolbar, select the Bus Lane
+                                button, and draw the lane by placing a series of points. When done,
+                                click on the last point added, and you will leave line creation
+                                mode.
                             </p>
                             <h2>
                                 <img
