@@ -574,7 +574,8 @@ function close() {
                                 Finally, you can choose which layers are active on the map.
                                 Switching a layer off will remove the button from the toolbar and
                                 the layer from the legend. So, if you're not interested in adding
-                                Tram Lines to your map, you can switch that layer off.
+                                Tram Lines or Bus Lanes to your map, you can switch either layer
+                                off.
                             </p>
                         </div>
 

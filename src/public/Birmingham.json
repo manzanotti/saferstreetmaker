@@ -7,6 +7,7 @@
             "ModalFilters",
             "MobilityLanes",
             "TramLines",
+            "BusLanes",
             "CarFreeStreets",
             "SchoolStreet",
             "OneWayStreets",
@@ -18,7 +19,7 @@
         ],
         "centre": { "lat": 52.449628003534514, "lng": -1.8778872546011962 },
         "zoom": 13,
-        "version": "0.9.0"
+        "version": "0.10.0"
     },
     "layers": {
         "ModalFilters": {

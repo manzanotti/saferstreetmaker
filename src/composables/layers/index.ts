@@ -1,5 +1,5 @@
 /**
- * Layer factory barrel — creates all 11 map layers for a given Leaflet map.
+ * Layer factory barrel — creates all 12 map layers for a given Leaflet map.
  * Import this instead of the individual layer files in main.ts.
  */
 import type * as L from 'leaflet';

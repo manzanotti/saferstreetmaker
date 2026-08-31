@@ -69,7 +69,7 @@ function makeLoader(settings: { centre: L.LatLng | null; zoom: number; activeLay
         setAllGroupsHidden: vi.fn(),
         resetGroupVisibility: vi.fn(),
         pruneDanglingGroupMembers: vi.fn(),
-        appVersion: '0.10.0'
+        appVersion: '0.11.0'
     });
 
     return { loader, settings, appliedSettings, visibleLayerIds, groups };
@@ -199,7 +199,7 @@ describe('MapDataLoader', () => {
             setAllGroupsHidden: vi.fn(),
             resetGroupVisibility: vi.fn(),
             pruneDanglingGroupMembers: vi.fn(),
-            appVersion: '0.10.0'
+            appVersion: '0.11.0'
         });
 
         loader.load(legacyData, '13', null);

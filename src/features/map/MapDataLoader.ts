@@ -4,6 +4,8 @@ import { Settings } from '../../models/Settings';
 import type { Group } from '../../models/Group';
 import { MapLayerController } from './MapLayerController';
 
+const BUS_LANES_INTRODUCED_VERSION = '0.10.0';
+
 export interface MapDataLoaderOptions {
     getMap: () => L.Map;
     setDefaultView: () => void;
@@ -89,7 +91,7 @@ export class MapDataLoader {
             const settingsCentre = rawCentre ? new L.LatLng(rawCentre.lat, rawCentre.lng) : null;
             const settings: Settings = Object.assign(new Settings(), geoJSON.settings);
             if (
-                isVersionBefore(settings.version, this.appVersion) &&
+                isVersionBefore(settings.version, BUS_LANES_INTRODUCED_VERSION) &&
                 settings.activeLayers.includes('TramLines') &&
                 !settings.activeLayers.includes('BusLanes')
             ) {
