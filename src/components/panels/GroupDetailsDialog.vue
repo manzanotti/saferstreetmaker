@@ -330,7 +330,7 @@ function confirmDeleteGroup(deleteElements: boolean) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="group-details-dialog-title"
-        class="fixed bottom-0 left-1/2 z-9999 flex max-h-[90vh] w-[min(42rem,calc(100vw-2rem))] -translate-x-1/2 flex-col overflow-hidden rounded-t-2xl border border-gray-100 bg-white shadow-xl"
+        class="fixed bottom-0 left-1/2 z-[9999] flex max-h-[90vh] w-[min(42rem,calc(100vw-2rem))] -translate-x-1/2 flex-col overflow-hidden rounded-t-2xl border border-gray-100 bg-white shadow-xl"
         @dblclick.stop
         @keydown="onKeydown"
     >

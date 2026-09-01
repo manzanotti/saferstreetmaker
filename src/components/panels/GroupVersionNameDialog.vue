@@ -49,7 +49,7 @@ function onKeydown(event: KeyboardEvent) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="group-version-name-dialog-title"
-        class="fixed top-1/2 left-1/2 z-10000 flex w-80 -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-xl"
+        class="fixed top-1/2 left-1/2 z-[10000] flex w-80 -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-xl"
         @dblclick.stop
         @keydown.stop="onKeydown"
     >

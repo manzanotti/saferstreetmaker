@@ -46,9 +46,10 @@ export const useImportedLayerStore = defineStore('importedLayers', () => {
         value: string
     ): void {
         const layer = layers.value.find((item) => item.id === id);
-        const properties = layer?.featureCollection.features[featureIndex]?.properties;
-        if (properties) {
-            properties[key] = value;
+        const feature = layer?.featureCollection.features[featureIndex];
+        if (feature) {
+            feature.properties = feature.properties ?? {};
+            feature.properties[key] = value;
         }
     }
 

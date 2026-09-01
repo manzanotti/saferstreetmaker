@@ -132,7 +132,7 @@ nextTick(() => fileInput.value?.focus());
 <template>
     <div
         id="add-layer-overlay"
-        class="fixed inset-0 z-10003 flex items-center justify-center bg-black/20 px-4"
+        class="fixed inset-0 z-[10003] flex items-center justify-center bg-black/20 px-4"
         @click.self="close"
     >
         <div
@@ -157,10 +157,10 @@ nextTick(() => fileInput.value?.focus());
                 </button>
             </div>
             <div class="px-5 py-4 space-y-4">
-                <div class="flex gap-2" role="tablist" aria-label="GeoJSON source">
+                <div class="flex gap-2" role="group" aria-label="GeoJSON source">
                     <button
                         type="button"
-                        :aria-selected="source === 'file'"
+                        :aria-pressed="source === 'file'"
                         class="rounded-lg px-3 py-2 text-sm"
                         :class="
                             source === 'file'
@@ -173,7 +173,7 @@ nextTick(() => fileInput.value?.focus());
                     </button>
                     <button
                         type="button"
-                        :aria-selected="source === 'url'"
+                        :aria-pressed="source === 'url'"
                         class="rounded-lg px-3 py-2 text-sm"
                         :class="
                             source === 'url'
