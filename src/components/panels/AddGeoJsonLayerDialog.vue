@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, toRaw } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRaw } from 'vue';
 import type { ImportedGeoJsonLayer } from '../../models/ImportedGeoJsonLayer';
 import {
     createImportedLayer,
@@ -20,7 +20,9 @@ const emit = defineEmits<{
 
 const source = ref<'file' | 'url'>('file');
 const dropZone = ref<HTMLButtonElement | null>(null);
+const dialog = ref<HTMLDivElement | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
+const opener = ref<HTMLElement | null>(null);
 const url = ref('');
 const layerName = ref('');
 const nameProperty = ref<string | null>(null);
@@ -131,7 +133,48 @@ function close() {
     emit('cancel');
 }
 
-nextTick(() => dropZone.value?.focus());
+function onDialogKeydown(event: KeyboardEvent) {
+    if (event.key === 'Escape') {
+        event.preventDefault();
+        close();
+        return;
+    }
+    if (event.key !== 'Tab' || !dialog.value) {
+        return;
+    }
+
+    const focusable = Array.from(
+        dialog.value.querySelectorAll<HTMLElement>(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        )
+    ).filter((element) => !element.hasAttribute('disabled'));
+    if (focusable.length === 0) {
+        event.preventDefault();
+        dialog.value.focus();
+        return;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+    }
+}
+
+onMounted(() => {
+    opener.value = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    void nextTick(() => dropZone.value?.focus());
+});
+
+onBeforeUnmount(() => {
+    if (opener.value?.isConnected) {
+        opener.value.focus();
+    }
+});
 </script>
 
 <template>
@@ -141,12 +184,14 @@ nextTick(() => dropZone.value?.focus());
         @click.self="close"
     >
         <div
+            ref="dialog"
             id="add-layer-dialog"
             role="dialog"
             aria-modal="true"
             aria-labelledby="add-layer-dialog-title"
             class="w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl bg-white shadow-xl border border-gray-100"
-            @keydown.esc="close"
+            tabindex="-1"
+            @keydown="onDialogKeydown"
         >
             <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
                 <h2 id="add-layer-dialog-title" class="text-base font-semibold text-gray-800">
@@ -198,6 +243,7 @@ nextTick(() => dropZone.value?.focus());
                         type="file"
                         accept=".geojson,.json,application/geo+json,application/json"
                         class="sr-only"
+                        tabindex="-1"
                         @change="onFileSelected"
                     />
                     <button

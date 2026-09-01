@@ -58,7 +58,7 @@ function createShare(scope: 'all' | 'group', selectedGroup: Group | undefined) {
         settingsStore.toSettings(),
         layers,
         scope === 'group' && groupForShare ? [groupForShare] : groupStore.groups,
-        importedLayerStore.layers
+        scope === 'group' ? [] : importedLayerStore.layers
     );
     const baseUrl = window.location.origin + window.location.pathname;
     const params = new URLSearchParams({ 'hide-toolbar': String(hideToolbar.value) });

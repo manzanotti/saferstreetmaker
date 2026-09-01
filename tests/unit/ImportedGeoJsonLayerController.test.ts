@@ -38,17 +38,24 @@ describe('ImportedGeoJsonLayerController', () => {
     let fakeLeafletLayer: { addTo: ReturnType<typeof vi.fn> };
     let options: any;
     let featureLayer: any;
+    let pointOptions: any;
 
     beforeEach(() => {
         map = makeMap();
         fakeLeafletLayer = { addTo: vi.fn().mockReturnThis() };
+        pointOptions = undefined;
         featureLayer = {
             bindPopup: vi.fn(),
             on: vi.fn()
         };
         options = undefined;
+        vi.spyOn(L, 'circleMarker').mockImplementation((_latLng: any, markerOptions: any) => {
+            pointOptions = markerOptions;
+            return {} as any;
+        });
         vi.spyOn(L, 'geoJSON').mockImplementation((_data: any, layerOptions: any) => {
             options = layerOptions;
+            layerOptions.pointToLayer?.({}, { lat: 52.5, lng: -1.9 });
             layerOptions.onEachFeature(makeLayer().featureCollection.features[0], featureLayer);
             return fakeLeafletLayer as any;
         });
@@ -64,6 +71,7 @@ describe('ImportedGeoJsonLayerController', () => {
 
         controller.render([makeLayer(), makeLayer(false)]);
         expect(fakeLeafletLayer.addTo).toHaveBeenCalledOnce();
+        expect(pointOptions.pane).toBe('imported');
 
         controller.clear();
         expect(map.removeLayer).toHaveBeenCalledOnce();

@@ -73,7 +73,8 @@ export class ImportedGeoJsonLayerController {
                     color: '#0f766e',
                     weight: 2,
                     fillColor: '#5eead4',
-                    fillOpacity: 0.8
+                    fillOpacity: 0.8,
+                    pane: 'imported'
                 }),
             onEachFeature: (feature, featureLayer) => {
                 const index = featureIndex;
