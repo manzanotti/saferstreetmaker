@@ -78,14 +78,14 @@ export class ImportedGeoJsonLayerController {
             onEachFeature: (feature, featureLayer) => {
                 const index = featureIndex;
                 featureIndex += 1;
-                if (this.getActiveLayerId() === null) {
-                    featureLayer.bindPopup(() => this.buildPopup(layer, feature, index));
-                } else {
-                    featureLayer.on('click', (event) => {
+                featureLayer.bindPopup(() => this.buildPopup(layer, feature, index));
+                featureLayer.on('click', (event) => {
+                    if (this.getActiveLayerId() !== null) {
                         L.DomEvent.stopPropagation(event);
                         this.map.fire('click', { latlng: event.latlng });
-                    });
-                }
+                        this.map.closePopup();
+                    }
+                });
             }
         });
         leafletLayer.addTo(this.map);

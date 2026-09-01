@@ -6,12 +6,18 @@ defineProps<{
     readOnly?: boolean;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
     add: [];
     delete: [id: string];
     toggleVisibility: [id: string];
     rename: [id: string, name: string];
 }>();
+
+function renameLayer(event: Event, layer: ImportedGeoJsonLayer): void {
+    const input = event.target as HTMLInputElement;
+    emit('rename', layer.id, input.value);
+    input.value = layer.name;
+}
 </script>
 
 <template>
@@ -42,7 +48,7 @@ defineEmits<{
                     :disabled="readOnly"
                     class="min-w-0 flex-1 rounded border border-transparent bg-transparent px-1 py-1 text-sm text-gray-700 focus:border-gray-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-green-500"
                     :aria-label="`Rename ${layer.name}`"
-                    @change="$emit('rename', layer.id, ($event.target as HTMLInputElement).value)"
+                    @change="renameLayer($event, layer)"
                 />
                 <button
                     type="button"

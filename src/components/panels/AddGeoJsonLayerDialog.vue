@@ -19,6 +19,7 @@ const emit = defineEmits<{
 }>();
 
 const source = ref<'file' | 'url'>('file');
+const dropZone = ref<HTMLButtonElement | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
 const url = ref('');
 const layerName = ref('');
@@ -50,6 +51,8 @@ function setParsedGeoJson(value: unknown, sourceName: string) {
 
 async function onFileSelected(event: Event) {
     resetError();
+    parsedGeoJson.value = null;
+    propertyPreview.value = [];
     const file = (event.target as HTMLInputElement).files?.[0];
     if (!file) {
         return;
@@ -85,6 +88,8 @@ async function loadFromUrl() {
         return;
     }
     loading.value = true;
+    parsedGeoJson.value = null;
+    propertyPreview.value = [];
     try {
         const response = await fetch(url.value.trim());
         if (!response.ok) {
@@ -126,7 +131,7 @@ function close() {
     emit('cancel');
 }
 
-nextTick(() => fileInput.value?.focus());
+nextTick(() => dropZone.value?.focus());
 </script>
 
 <template>
@@ -195,8 +200,10 @@ nextTick(() => fileInput.value?.focus());
                         class="sr-only"
                         @change="onFileSelected"
                     />
-                    <div
+                    <button
+                        ref="dropZone"
                         id="geojson-drop-zone"
+                        type="button"
                         tabindex="0"
                         class="border-2 border-dashed border-gray-300 rounded-xl px-4 py-8 text-center text-sm text-gray-600 focus-visible:ring-2 focus-visible:ring-green-500"
                         @click="openFilePicker"
@@ -207,7 +214,7 @@ nextTick(() => fileInput.value?.focus());
                     >
                         Drop a GeoJSON file here or
                         <span class="font-semibold text-green-700">choose a file</span>
-                    </div>
+                    </button>
                 </div>
                 <div v-else class="space-y-2">
                     <label for="geojson-url" class="block text-sm font-medium text-gray-700"

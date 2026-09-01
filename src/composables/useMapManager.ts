@@ -191,11 +191,6 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         (layers) => importedLayerController.render(layers),
         { deep: true }
     );
-    watch(
-        () => mapStore.activeLayerId,
-        () => importedLayerController.render(importedLayerStore.layers),
-        { flush: 'sync' }
-    );
     const mapLoadSourceResolver = new MapLoadSourceResolver(fileManager, () => settingsStore.title);
     const storedMapLoader = new StoredMapLoader({
         loadMapFromStorage: (mapName) => fileManager.loadMapFromStorage(mapName),

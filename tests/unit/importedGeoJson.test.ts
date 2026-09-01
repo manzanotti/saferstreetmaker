@@ -38,6 +38,20 @@ describe('imported GeoJSON helpers', () => {
         );
     });
 
+    it.each([
+        { type: 'Point', coordinates: [-1.82, Infinity] },
+        { type: 'LineString', coordinates: [[-1.82, 52.44]] },
+        { type: 'Polygon', coordinates: [[[-1.82, 52.44]]] },
+        { type: 'GeometryCollection', geometries: [] }
+    ])('rejects malformed $type geometry payloads', (geometry) => {
+        expect(() =>
+            parseGeoJson({
+                type: 'FeatureCollection',
+                features: [{ type: 'Feature', properties: null, geometry }]
+            })
+        ).toThrow();
+    });
+
     it('previews all first-feature properties and only allows strings as names', () => {
         expect(getPropertyPreview(featureCollection)).toEqual([
             {

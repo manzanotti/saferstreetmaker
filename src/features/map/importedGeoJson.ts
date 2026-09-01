@@ -20,6 +20,62 @@ const supportedGeometryTypes = new Set([
     'GeometryCollection'
 ]);
 
+function isPosition(value: unknown): value is number[] {
+    return (
+        Array.isArray(value) &&
+        value.length >= 2 &&
+        value.every((coordinate) => typeof coordinate === 'number' && Number.isFinite(coordinate))
+    );
+}
+
+function isPositionArray(value: unknown, minimumLength: number): value is number[][] {
+    return Array.isArray(value) && value.length >= minimumLength && value.every(isPosition);
+}
+
+function validateGeometry(geometry: unknown, featureIndex: number): void {
+    if (!geometry || typeof geometry !== 'object') {
+        throw new Error(`Feature ${featureIndex + 1} is missing a valid geometry.`);
+    }
+    const candidate = geometry as { type?: unknown; coordinates?: unknown; geometries?: unknown };
+    if (typeof candidate.type !== 'string' || !supportedGeometryTypes.has(candidate.type)) {
+        throw new Error(`Feature ${featureIndex + 1} uses an unsupported geometry type.`);
+    }
+    if (candidate.type === 'GeometryCollection') {
+        if (!Array.isArray(candidate.geometries) || candidate.geometries.length === 0) {
+            throw new Error(`Feature ${featureIndex + 1} has an invalid GeometryCollection.`);
+        }
+        candidate.geometries.forEach((item) => validateGeometry(item, featureIndex));
+        return;
+    }
+
+    const valid =
+        candidate.type === 'Point'
+            ? isPosition(candidate.coordinates)
+            : candidate.type === 'MultiPoint' || candidate.type === 'LineString'
+              ? isPositionArray(candidate.coordinates, candidate.type === 'LineString' ? 2 : 1)
+              : candidate.type === 'MultiLineString'
+                ? Array.isArray(candidate.coordinates) &&
+                  candidate.coordinates.length > 0 &&
+                  candidate.coordinates.every((line) => isPositionArray(line, 2))
+                : candidate.type === 'Polygon'
+                  ? Array.isArray(candidate.coordinates) &&
+                    candidate.coordinates.length > 0 &&
+                    candidate.coordinates.every((ring) => isPositionArray(ring, 4))
+                  : candidate.type === 'MultiPolygon'
+                    ? Array.isArray(candidate.coordinates) &&
+                      candidate.coordinates.length > 0 &&
+                      candidate.coordinates.every(
+                          (polygon) =>
+                              Array.isArray(polygon) &&
+                              polygon.length > 0 &&
+                              polygon.every((ring) => isPositionArray(ring, 4))
+                      )
+                    : false;
+    if (!valid) {
+        throw new Error(`Feature ${featureIndex + 1} has invalid coordinates.`);
+    }
+}
+
 export function parseGeoJson(value: unknown): GeoJSON.FeatureCollection {
     if (!value || typeof value !== 'object') {
         throw new Error('The file does not contain a JSON object.');
@@ -38,10 +94,7 @@ export function parseGeoJson(value: unknown): GeoJSON.FeatureCollection {
         if (item.type !== 'Feature' || !item.geometry || typeof item.geometry !== 'object') {
             throw new Error(`Feature ${index + 1} is missing a valid geometry.`);
         }
-        const geometry = item.geometry as { type?: unknown };
-        if (typeof geometry.type !== 'string' || !supportedGeometryTypes.has(geometry.type)) {
-            throw new Error(`Feature ${index + 1} uses an unsupported geometry type.`);
-        }
+        validateGeometry(item.geometry, index);
         if (item.properties !== null && typeof item.properties !== 'object') {
             throw new Error(`Feature ${index + 1} has invalid properties.`);
         }
