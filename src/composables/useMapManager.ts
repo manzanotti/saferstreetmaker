@@ -8,7 +8,7 @@
  * fileLoaded is a FileManager callback.
  */
 import * as L from 'leaflet';
-import { watch } from 'vue';
+import { toRaw, watch } from 'vue';
 import { FileManager } from '../services/FileManager';
 import { UndoJournal } from '../services/UndoJournal';
 import type { SerializedMap } from '../services/MapSerializer';
@@ -18,6 +18,8 @@ import { useMapStore } from '../stores/mapStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useUiStore } from '../stores/uiStore';
 import { useGroupStore } from '../stores/groupStore';
+import { useImportedLayerStore } from '../stores/importedLayerStore';
+import { cloneImportedLayers } from '../features/map/importedGeoJson';
 import {
     pruneDanglingGroupMembers,
     recomputeFeatureVisibility,
@@ -44,6 +46,7 @@ import { MapLoadCoordinator } from '../features/map/MapLoadCoordinator';
 import { MapPersistenceCoordinator } from '../features/map/MapPersistenceCoordinator';
 import { UploadedMapLoader } from '../features/map/UploadedMapLoader';
 import { MapViewCoordinator } from '../features/map/MapViewCoordinator';
+import { ImportedGeoJsonLayerController } from '../features/map/ImportedGeoJsonLayerController';
 
 const APP_VERSION = '0.10.0';
 
@@ -96,6 +99,8 @@ export function setupMapManager(fileManager: FileManager): MapManager {
     const mapStore = useMapStore(pinia);
     const settingsStore = useSettingsStore(pinia);
     const uiStore = useUiStore(pinia);
+    const importedLayerStore = useImportedLayerStore(pinia);
+    const defaultImportedLayers = cloneImportedLayers(toRaw(importedLayerStore.layers));
     const undoJournal = new UndoJournal();
     let lastSavedSnapshot: SerializedMap | null = null;
     let suppressHistory = false;
@@ -114,8 +119,20 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         getMap,
         getLayers: () => mapStore.layers
     });
+    const importedLayerController = new ImportedGeoJsonLayerController({
+        getMap,
+        isReadOnly: () => settingsStore.readOnly,
+        getActiveLayerId: () => mapStore.activeLayerId,
+        onFeaturePropertyChange: (layerId, featureIndex, key, value) => {
+            importedLayerStore.updateFeatureProperty(layerId, featureIndex, key, value);
+            mapStore.markLayerUpdated();
+            importedLayerController.render(importedLayerStore.layers);
+        }
+    });
     const mapStateCoordinator = new MapStateCoordinator({
         mapLayerController,
+        importedLayerController,
+        clearImportedLayers: () => importedLayerStore.clear(),
         setActiveLayerIds: (layerIds) => {
             settingsStore.activeLayers = layerIds;
         },
@@ -165,8 +182,20 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         resetGroupVisibility,
         recomputeGroupVisibility: recomputeFeatureVisibility,
         pruneDanglingGroupMembers,
-        appVersion: APP_VERSION
+        appVersion: APP_VERSION,
+        importedLayerController,
+        setImportedLayers: (layers) => importedLayerStore.setLayers(layers)
     });
+    watch(
+        () => importedLayerStore.layers,
+        (layers) => importedLayerController.render(layers),
+        { deep: true }
+    );
+    watch(
+        () => mapStore.activeLayerId,
+        () => importedLayerController.render(importedLayerStore.layers),
+        { flush: 'sync' }
+    );
     const mapLoadSourceResolver = new MapLoadSourceResolver(fileManager, () => settingsStore.title);
     const storedMapLoader = new StoredMapLoader({
         loadMapFromStorage: (mapName) => fileManager.loadMapFromStorage(mapName),
@@ -191,6 +220,7 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         appVersion: APP_VERSION,
         loadMapListFromStorage: () => fileManager.loadMapListFromStorage(),
         clearAndReset: () => mapStateCoordinator.clearAllLayers(),
+        resetImportedLayers: () => importedLayerStore.setLayers(defaultImportedLayers),
         getAllLayerIds: () => mapStateCoordinator.getAllLayerIds(),
         getCurrentZoom: () => settingsStore.zoom,
         getCurrentCentre: () => settingsStore.centre ?? new L.LatLng(0, 0),
@@ -230,7 +260,8 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         fileManager,
         getSettings: () => settingsStore.toSettings(),
         getLayers: () => mapStore.toLayers(),
-        getGroups: () => useGroupStore(pinia).groups
+        getGroups: () => useGroupStore(pinia).groups,
+        getImportedLayers: () => importedLayerStore.layers
     });
     const buildCurrentSnapshot = (): SerializedMap => mapSnapshotBuilder.build();
 
@@ -307,7 +338,8 @@ export function setupMapManager(fileManager: FileManager): MapManager {
             await fileManager.saveMap(
                 settingsStore.toSettings(),
                 mapStore.toLayers(),
-                groupStore.groups
+                groupStore.groups,
+                importedLayerStore.layers
             );
         },
         buildSnapshot: () => buildCurrentSnapshot(),
@@ -361,7 +393,8 @@ export function setupMapManager(fileManager: FileManager): MapManager {
             await fileManager.saveMap(
                 settingsStore.toSettings(),
                 mapStore.toLayers(),
-                groupStore.groups
+                groupStore.groups,
+                importedLayerStore.layers
             );
         },
         buildSnapshot: () => buildCurrentSnapshot(),

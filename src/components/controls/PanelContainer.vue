@@ -4,6 +4,7 @@ import SettingsPanel from '../panels/SettingsPanel.vue';
 import MapManagerPanel from '../panels/MapManagerPanel.vue';
 import SharingPanel from '../panels/SharingPanel.vue';
 import GroupsPanel from '../panels/GroupsPanel.vue';
+import LayersPanel from '../panels/LayersPanel.vue';
 
 const uiStore = useUiStore();
 </script>
@@ -14,5 +15,6 @@ const uiStore = useUiStore();
         <MapManagerPanel v-if="uiStore.activePanel === 'mapManager'" />
         <SharingPanel v-if="uiStore.activePanel === 'sharing'" />
         <GroupsPanel v-if="uiStore.activePanel === 'groups'" />
+        <LayersPanel v-if="uiStore.activePanel === 'layers'" />
     </div>
 </template>

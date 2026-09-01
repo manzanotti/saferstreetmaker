@@ -142,6 +142,9 @@ test.describe('Settings Panel', () => {
 
         await expect(page.locator('#undo-button')).toBeDisabled();
         await expect(page.locator('#redo-button')).toBeDisabled();
+        await page.locator('#layers-button').click();
+        await expect(page.getByLabel('Rename Birmingham Wards')).toBeVisible();
+        await expect(page.getByLabel('Show layer Birmingham Wards')).toBeVisible();
     });
 
     test('new maps retain disabled Bus Lanes through undo, redo, and reload', async ({ page }) => {
@@ -235,6 +238,57 @@ test.describe('Map Manager Panel', () => {
     test('clicking map manager button opens the panel', async ({ page }) => {
         await page.locator('#map-manager-button').click();
         await expect(page.locator('#map-manager')).toBeVisible();
+    });
+
+    test('L toggles the Layers panel', async ({ page }) => {
+        await page.keyboard.press('l');
+        await expect(page.locator('#layers-panel')).toBeVisible();
+
+        await page.keyboard.press('l');
+        await expect(page.locator('#layers-panel')).not.toBeAttached();
+    });
+
+    test('Layers has a dedicated toolbar panel with visibility controls', async ({ page }) => {
+        await page.locator('#layers-button').click();
+        await expect(page.locator('#layers-panel')).toBeVisible();
+        await expect(page.locator('#map-manager')).not.toBeAttached();
+        await expect(page.getByLabel('Rename Birmingham Wards')).toBeVisible();
+        await expect(page.getByLabel('Show layer Birmingham Wards')).toBeVisible();
+
+        await page.locator('#add-layer-button').click();
+        await expect(page.locator('#add-layer-dialog')).toBeVisible();
+        await expect(page.locator('#add-layer-overlay')).toHaveCSS('z-index', '10003');
+        await page.locator('#geojson-file').setInputFiles('src/public/Birmingham Wards.geojson');
+        await page.waitForTimeout(200);
+        await page.locator('#imported-name-property').selectOption({ label: 'wd25nm' });
+        await page.locator('#imported-layer-name').fill('Imported Wards');
+        await page.locator('#add-layer-dialog').getByRole('button', { name: 'Add layer' }).click();
+
+        const layerItem = page.locator('#layers-list .layer-item').filter({
+            has: page.getByLabel('Rename Imported Wards')
+        });
+        const visibilityButton = layerItem.locator('button').first();
+        await expect(visibilityButton).toHaveAttribute('aria-label', 'Hide layer Imported Wards');
+        await visibilityButton.click();
+        await expect(visibilityButton).toHaveAttribute('aria-label', 'Show layer Imported Wards');
+
+        await page.locator('#settings-button').click();
+        await page.locator('#read-only').check();
+        await page.getByRole('button', { name: 'Save' }).click();
+        await page.locator('#layers-button').click();
+        await expect(page.locator('#layers-panel')).toBeVisible();
+        await expect(page.locator('#layers-list .delete-button')).not.toBeAttached();
+
+        const readOnlyVisibilityButton = layerItem.locator('button').first();
+        await expect(readOnlyVisibilityButton).toHaveAttribute(
+            'aria-label',
+            'Show layer Imported Wards'
+        );
+        await readOnlyVisibilityButton.click();
+        await expect(readOnlyVisibilityButton).toHaveAttribute(
+            'aria-label',
+            'Hide layer Imported Wards'
+        );
     });
 
     test('loading a JSON file replaces the map and persists the uploaded data', async ({

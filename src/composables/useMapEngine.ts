@@ -28,6 +28,8 @@ export function setupMapEngine(): MapEngineResult {
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
     // ── Custom panes ─────────────────────────────────────────────────────────
+    const importedPane = map.createPane('imported');
+    importedPane.style.zIndex = '250';
     const ltnsPane = map.createPane('ltns');
     ltnsPane.style.zIndex = '300';
     const filtersPane = map.createPane('filters');

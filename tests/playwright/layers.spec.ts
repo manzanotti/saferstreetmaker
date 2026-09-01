@@ -1655,6 +1655,21 @@ test.describe('Layer: LTN Cell (polygon)', () => {
         expect(await getCursorAtPagePoint(page, point.x, point.y)).toBe('grab');
     });
 
+    test('LTN draw mode keeps its cursor over an existing modal filter', async ({ page }) => {
+        await page.locator('#modal-filter-button').click();
+        await clickMap(page);
+
+        const modalFilter = page.locator('.leaflet-filters-pane path.modal-filter-marker');
+        await expect(modalFilter).toHaveCount(1);
+
+        await page.locator('#ltn-button').click();
+        await hoverLocatorCenter(page, modalFilter);
+
+        const cursor = await getCursorAtLocatorCenter(modalFilter);
+        expect(cursor).not.toContain('data:image/svg+xml');
+        expect(cursor).toBe('crosshair');
+    });
+
     test('clicking an existing LTN polygon while draw mode is active switches into edit mode', async ({
         page
     }) => {
@@ -2088,7 +2103,7 @@ test.describe('Layer: LTN Cell (polygon)', () => {
         expect(await handles.count()).toBe(0);
     });
 
-    test('hovering an existing point feature shows the select cursor even while another tool is active', async ({
+    test('hovering an existing point feature shows a pointer cursor while another tool is active', async ({
         page
     }) => {
         await page.locator('#modal-filter-button').click({ button: 'right' });
@@ -2101,8 +2116,7 @@ test.describe('Layer: LTN Cell (polygon)', () => {
         await hoverLocatorCenter(page, marker);
 
         const cursor = await getCursorAtLocatorCenter(marker);
-        expect(cursor).toContain('data:image/svg+xml');
-        expect(cursor).toContain('M20,6V5a3,3,0,0,0-3-3H15a3,3,0,0,0-3,3V6H4V8H6V27');
+        expect(cursor).toBe('pointer');
     });
 });
 
@@ -2190,5 +2204,25 @@ test.describe('Layer exclusivity', () => {
         await expect(page.locator('#ltn-button')).toHaveAttribute('aria-pressed', 'false');
         expect(await getLayerFeatureCount(page, 'ModalFilters')).toBe(1);
         expect(await getLayerFeatureCount(page, 'LtnCells')).toBe(1);
+    });
+
+    test('clicking an imported feature while a point layer is active places the point', async ({
+        page
+    }) => {
+        await page.locator('#layers-button').click();
+        await page.getByLabel('Show layer Birmingham Wards').click();
+        await page.locator('#layers-button').click();
+
+        await page.locator('#modal-filter-button').click();
+        await expect(page.locator('#modal-filter-button')).toHaveAttribute('aria-pressed', 'true');
+
+        const importedFeature = page
+            .locator('.leaflet-imported-pane path.leaflet-interactive')
+            .first();
+        await importedFeature.dispatchEvent('click');
+        await page.waitForTimeout(100);
+
+        await expect(page.locator('.popup-buttons')).toHaveCount(0);
+        expect(await getLayerFeatureCount(page, 'ModalFilters')).toBe(1);
     });
 });

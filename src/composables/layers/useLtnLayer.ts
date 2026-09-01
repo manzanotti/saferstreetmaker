@@ -8,7 +8,6 @@ import {
     buildToolbarButton,
     buildLegendEntry,
     buildPopupActionControl,
-    getPointSelectCursor,
     isPointFeatureElement,
     setMouseMarkerCursor,
     buildHistoryId,
@@ -338,9 +337,9 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             return element !== mouseMarker && isPointFeatureElement(element);
         });
 
-        if (isHoveringPointFeature) {
+        if (isHoveringPointFeature && selectionMode !== 'draw') {
             setFeatureCursor(null, null);
-            mouseMarker.style.cursor = getPointSelectCursor();
+            mouseMarker.style.cursor = 'pointer';
             return;
         }
 

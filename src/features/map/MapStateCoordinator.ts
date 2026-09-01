@@ -1,10 +1,13 @@
 import type { MapLayerController } from './MapLayerController';
+import type { ImportedGeoJsonLayerController } from './ImportedGeoJsonLayerController';
 
 export interface MapStateCoordinatorOptions {
     mapLayerController: Pick<
         MapLayerController,
         'addLayers' | 'removeAllLayers' | 'clearAllLayers' | 'getAllLayerIds'
     >;
+    importedLayerController?: Pick<ImportedGeoJsonLayerController, 'clear'>;
+    clearImportedLayers?: () => void;
     setActiveLayerIds: (layerIds: string[]) => void;
     setVisibleLayerIds: (layerIds: Set<string>) => void;
     clearGroups: () => void;
@@ -29,6 +32,8 @@ export class MapStateCoordinator {
 
     clearAllLayers(): void {
         this.options.mapLayerController.clearAllLayers();
+        this.options.importedLayerController?.clear();
+        this.options.clearImportedLayers?.();
         this.options.clearGroups();
         this.options.setAllGroupsHidden(false);
         this.options.resetGroupVisibility();

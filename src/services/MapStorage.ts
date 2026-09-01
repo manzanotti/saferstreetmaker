@@ -8,6 +8,7 @@ import LZString from 'lz-string';
 import type { IMapLayer } from '../composables/layers/IMapLayer';
 import type { Settings } from '../models/Settings';
 import type { Group } from '../models/Group';
+import type { ImportedGeoJsonLayer } from '../models/ImportedGeoJsonLayer';
 import { MapDatabase, type StoredMapRecord } from './MapDatabase';
 import { MapSerializer, type SerializedMap } from './MapSerializer';
 
@@ -34,11 +35,17 @@ export class MapStorage {
     async saveMap(
         settings: Settings,
         layersData: Map<string, IMapLayer>,
-        groups?: Group[]
+        groups?: Group[],
+        importedLayers?: ImportedGeoJsonLayer[]
     ): Promise<void> {
         await this.ready;
 
-        const payload = this.serializer.toCompactStoredMap(settings, layersData, groups);
+        const payload = this.serializer.toCompactStoredMap(
+            settings,
+            layersData,
+            groups,
+            importedLayers
+        );
 
         await this.db.transaction('rw', this.db.maps, this.db.metadata, async () => {
             const sortOrder = await this.getNextSortOrder();
@@ -106,7 +113,8 @@ export class MapStorage {
     async copyMap(
         settings: Settings,
         layersData: Map<string, IMapLayer>,
-        groups?: Group[]
+        groups?: Group[],
+        importedLayers?: ImportedGeoJsonLayer[]
     ): Promise<void> {
         const existing = await this.listMaps();
         let index = 1;
@@ -114,7 +122,7 @@ export class MapStorage {
             index++;
         }
         settings.title = `${settings.title}_copy_${index}`;
-        await this.saveMap(settings, layersData, groups);
+        await this.saveMap(settings, layersData, groups, importedLayers);
     }
 
     // ── Map list ──────────────────────────────────────────────────────────────

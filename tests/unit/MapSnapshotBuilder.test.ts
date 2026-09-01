@@ -16,6 +16,6 @@ describe('MapSnapshotBuilder', () => {
         });
 
         expect(builder.build()).toEqual({ settings, layers, groups });
-        expect(buildSerializedMap).toHaveBeenCalledWith(settings, layers, groups);
+        expect(buildSerializedMap).toHaveBeenCalledWith(settings, layers, groups, []);
     });
 });

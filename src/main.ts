@@ -18,6 +18,8 @@ import { viewGroupVersion } from './composables/useGroups';
 import { useGroupStore } from './stores/groupStore';
 import { useUiStore } from './stores/uiStore';
 import { getGroupVersions } from './features/groups/groupVersions';
+import { parseGeoJson } from './features/map/importedGeoJson';
+import { useImportedLayerStore } from './stores/importedLayerStore';
 
 // Mount the Vue overlay app (HelpPanel, ErrorPanel) immediately.
 createApp(App).use(pinia).mount('#app');
@@ -33,12 +35,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ── Register all layer instances in the store ────────────────────────────
     const mapStore = useMapStore(pinia);
     const settingsStore = useSettingsStore(pinia);
+    const importedLayerStore = useImportedLayerStore(pinia);
 
     const allLayers = createAllLayers(map);
     mapStore.setLayers(allLayers);
 
     // Pre-populate activeLayers so the toolbar and legend render before loadMap.
     settingsStore.activeLayers = allLayers.map((l) => l.id);
+
+    try {
+        const response = await fetch('/Birmingham%20Wards.geojson');
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        const featureCollection = parseGeoJson(await response.json());
+        importedLayerStore.addLayer({
+            id: 'birmingham-wards',
+            name: 'Birmingham Wards',
+            nameProperty: null,
+            visible: false,
+            featureCollection
+        });
+    } catch (error) {
+        console.warn('Unable to load the default Birmingham Wards layer.', error);
+    }
 
     // ── Set up map manager (loads/saves maps, wires layer-update and file-loaded callbacks) ─────
     const { loadMap, setUserLocation, setDefaultView } = setupMapManager(fileManager);

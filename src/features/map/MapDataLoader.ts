@@ -3,6 +3,8 @@ import type { SerializedMap } from '../../services/MapSerializer';
 import { Settings } from '../../models/Settings';
 import type { Group } from '../../models/Group';
 import { MapLayerController } from './MapLayerController';
+import type { ImportedGeoJsonLayer } from '../../models/ImportedGeoJsonLayer';
+import type { ImportedGeoJsonLayerController } from './ImportedGeoJsonLayerController';
 
 const BUS_LANES_INTRODUCED_VERSION = '0.10.0';
 
@@ -54,6 +56,8 @@ export interface MapDataLoaderOptions {
     recomputeGroupVisibility?: () => void;
     pruneDanglingGroupMembers: () => void;
     appVersion: string;
+    importedLayerController?: Pick<ImportedGeoJsonLayerController, 'render'>;
+    setImportedLayers?: (layers: ImportedGeoJsonLayer[]) => void;
 }
 
 export class MapDataLoader {
@@ -75,6 +79,8 @@ export class MapDataLoader {
     private readonly recomputeGroupVisibility: () => void;
     private readonly pruneDanglingGroupMembers: () => void;
     private readonly appVersion: string;
+    private readonly importedLayerController?: Pick<ImportedGeoJsonLayerController, 'render'>;
+    private readonly setImportedLayers: (layers: ImportedGeoJsonLayer[]) => void;
 
     constructor(options: MapDataLoaderOptions) {
         this.getMap = options.getMap;
@@ -95,6 +101,8 @@ export class MapDataLoader {
         this.recomputeGroupVisibility = options.recomputeGroupVisibility ?? (() => {});
         this.pruneDanglingGroupMembers = options.pruneDanglingGroupMembers;
         this.appVersion = options.appVersion;
+        this.importedLayerController = options.importedLayerController;
+        this.setImportedLayers = options.setImportedLayers ?? (() => {});
     }
 
     load(geoJSON: SerializedMap | null, zoom: string | null, centre: number[] | null): boolean {
@@ -128,6 +136,9 @@ export class MapDataLoader {
         if (geoJSON.layers !== undefined) {
             this.mapLayerController.loadLayers(geoJSON.layers, this.getActiveLayerIds());
         }
+        const importedLayers = geoJSON.importedLayers ?? [];
+        this.setImportedLayers(importedLayers);
+        this.importedLayerController?.render(importedLayers);
 
         if (
             geoJSON.settings === undefined &&

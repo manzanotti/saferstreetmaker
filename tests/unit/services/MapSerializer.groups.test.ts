@@ -2,6 +2,7 @@
  * Tests for MapSerializer groups serialization round-trips.
  */
 import { describe, it, expect } from 'vitest';
+import { reactive } from 'vue';
 import { MapSerializer } from '../../../src/services/MapSerializer';
 import type { Group } from '../../../src/models/Group';
 import LZString from 'lz-string';
@@ -96,6 +97,30 @@ describe('MapSerializer — groups', () => {
     it('toJSON omits groups property when groups is undefined', () => {
         const result = serializer.toJSON(makeSettings(), layers);
         expect(result.groups).toBeUndefined();
+    });
+
+    it('serializes reactive imported layers into cloneable data', () => {
+        const importedLayers = reactive([
+            {
+                id: 'imported-1',
+                name: 'Wards',
+                nameProperty: 'wd25nm',
+                featureCollection: {
+                    type: 'FeatureCollection',
+                    features: []
+                }
+            }
+        ]);
+
+        const compact = serializer.toCompactStoredMap(
+            makeSettings(),
+            layers,
+            undefined,
+            importedLayers
+        );
+
+        expect(structuredClone(compact)).toEqual(compact);
+        expect(compact.o).toEqual(importedLayers);
     });
 
     // ── toCompactStoredMap / fromCompactStoredMap ─────────────────────────────
