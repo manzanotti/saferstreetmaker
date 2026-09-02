@@ -19,7 +19,7 @@ import { useGroupStore } from './stores/groupStore';
 import { useUiStore } from './stores/uiStore';
 import { getGroupVersions } from './features/groups/groupVersions';
 import { parseGeoJson } from './features/map/importedGeoJson';
-import { useImportedLayerStore } from './stores/importedLayerStore';
+import type { ImportedGeoJsonLayer } from './models/ImportedGeoJsonLayer';
 
 // Mount the Vue overlay app (HelpPanel, ErrorPanel) immediately.
 createApp(App).use(pinia).mount('#app');
@@ -35,7 +35,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ── Register all layer instances in the store ────────────────────────────
     const mapStore = useMapStore(pinia);
     const settingsStore = useSettingsStore(pinia);
-    const importedLayerStore = useImportedLayerStore(pinia);
 
     const allLayers = createAllLayers(map);
     mapStore.setLayers(allLayers);
@@ -43,7 +42,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Pre-populate activeLayers so the toolbar and legend render before loadMap.
     settingsStore.activeLayers = allLayers.map((l) => l.id);
 
-    let defaultImportedLayers: ReturnType<typeof useImportedLayerStore>['layers'][number][] = [];
+    let defaultImportedLayers: ImportedGeoJsonLayer[] = [];
     const defaultLayerPromise = fetch('/Birmingham%20Wards.geojson')
         .then(async (response) => {
             if (!response.ok) {
@@ -64,10 +63,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
     // ── Set up map manager (loads/saves maps, wires layer-update and file-loaded callbacks) ─────
-    const { loadMap, setUserLocation, setDefaultView } = setupMapManager(
-        fileManager,
-        () => defaultImportedLayers
-    );
+    const { loadMap, setUserLocation, setDefaultView, initialiseDefaultImportedLayers } =
+        setupMapManager(fileManager, () => defaultImportedLayers);
 
     // ── Add Vue-backed Leaflet controls ──────────────────────────────────────
     map.addControl(makeLeafletVueControl(CommandsToolbar, 'topleft'));
@@ -109,13 +106,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         defaultImportedLayers = [defaultLayer];
-        if (
-            !mapLoaded &&
-            remoteMapFile === null &&
-            hash === '' &&
-            importedLayerStore.layers.length === 0
-        ) {
-            importedLayerStore.addLayer(defaultLayer);
+        if (remoteMapFile === null && hash === '') {
+            initialiseDefaultImportedLayers([defaultLayer]);
         }
     });
 

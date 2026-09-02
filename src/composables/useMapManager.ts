@@ -67,6 +67,7 @@ export interface MapManager {
     redo: () => Promise<boolean>;
     setUserLocation: (position: GeolocationPosition) => void;
     setDefaultView: () => void;
+    initialiseDefaultImportedLayers: (layers: ImportedGeoJsonLayer[]) => void;
     downloadStorageMap: () => Promise<void>;
     runViewCheckpointMigration: () => Promise<void>;
 }
@@ -524,6 +525,18 @@ export function setupMapManager(
 
     const redo = () => historyNavigationCoordinator.redo();
 
+    const initialiseDefaultImportedLayers = (layers: ImportedGeoJsonLayer[]) => {
+        if (importedLayerStore.layers.length > 0) {
+            return;
+        }
+        suppressHistory = true;
+        importedLayerStore.setLayers(layers);
+        lastSavedSnapshot = buildCurrentSnapshot();
+        mapStore.clearLastLayerMutation();
+        suppressHistory = false;
+        void syncHistoryStatus();
+    };
+
     // ── Wire event bridges (replaces PubSub subscriptions) ───────────────────
 
     // fileLoaded: FileManager calls this callback when a file is loaded via OS picker.
@@ -558,6 +571,7 @@ export function setupMapManager(
         redo,
         setUserLocation,
         setDefaultView,
+        initialiseDefaultImportedLayers,
         downloadStorageMap,
         runViewCheckpointMigration
     };
