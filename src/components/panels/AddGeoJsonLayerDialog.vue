@@ -84,6 +84,9 @@ function onDrop(event: DragEvent) {
 }
 
 async function loadFromUrl() {
+    if (loading.value) {
+        return;
+    }
     resetError();
     if (!url.value.trim()) {
         error.value = 'Enter a GeoJSON URL.';
@@ -251,7 +254,7 @@ onBeforeUnmount(() => {
                         id="geojson-drop-zone"
                         type="button"
                         tabindex="0"
-                        class="border-2 border-dashed border-gray-300 rounded-xl px-4 py-8 text-center text-sm text-gray-600 focus-visible:ring-2 focus-visible:ring-green-500"
+                        class="w-full border-2 border-dashed border-gray-300 rounded-xl px-4 py-8 text-center text-sm text-gray-600 focus-visible:ring-2 focus-visible:ring-green-500"
                         @click="openFilePicker"
                         @keydown.enter="openFilePicker"
                         @keydown.space.prevent="openFilePicker"

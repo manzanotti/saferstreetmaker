@@ -244,6 +244,70 @@ describe('MapSerializer — groups', () => {
         expect(restored?.groups?.[0].members).toEqual(group.members);
     });
 
+    it('round-trips imported layers with compact URL geometry', () => {
+        const importedLayers = [
+            {
+                id: 'imported-1',
+                name: 'Wards',
+                nameProperty: 'name',
+                visible: false,
+                featureCollection: {
+                    type: 'FeatureCollection',
+                    features: [
+                        {
+                            type: 'Feature',
+                            properties: { name: 'Ward 1', category: 'example' },
+                            geometry: { type: 'Point', coordinates: [-1.1234567, 52.7654321] }
+                        },
+                        {
+                            type: 'Feature',
+                            properties: null,
+                            geometry: {
+                                type: 'LineString',
+                                coordinates: [
+                                    [-1.1, 52.7],
+                                    [-1.100001, 52.700002]
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        ] as any;
+
+        const hash = serializer.toEncodedHash(makeSettings(), layers, [], importedLayers);
+        const payload = JSON.parse(
+            LZString.decompressFromEncodedURIComponent(hash.slice(3)) as string
+        );
+        expect(payload.o[0].f).toHaveLength(2);
+        expect(payload.o[0].f[0][0]).toEqual({
+            t: 'Point',
+            c: [-1123457, 52765432]
+        });
+        expect(payload.o[0].featureCollection).toBeUndefined();
+
+        const restored = serializer.fromEncodedHash(hash);
+        expect(restored?.importedLayers?.[0]).toEqual({
+            ...importedLayers[0],
+            featureCollection: {
+                ...importedLayers[0].featureCollection,
+                features: [
+                    {
+                        ...importedLayers[0].featureCollection.features[0],
+                        geometry: {
+                            type: 'Point',
+                            coordinates: [-1.123457, 52.765432]
+                        }
+                    },
+                    {
+                        ...importedLayers[0].featureCollection.features[1],
+                        properties: null
+                    }
+                ]
+            }
+        });
+    });
+
     it('omits the properties tuple when a feature has no properties', () => {
         const featureLayer = {
             toGeoJSON: () => ({
