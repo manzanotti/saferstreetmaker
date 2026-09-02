@@ -81,10 +81,9 @@ interface CompactUrlImportedGeometry {
     c?: CompactUrlCoordinates;
     g?: CompactUrlImportedGeometry[];
 }
-type CompactUrlImportedFeature = [
-    CompactUrlImportedGeometry,
-    Record<string, unknown> | null | undefined
-];
+type CompactUrlImportedFeature =
+    | [CompactUrlImportedGeometry, Record<string, unknown> | null | undefined]
+    | [CompactUrlImportedGeometry, Record<string, unknown> | null | undefined, string | number];
 interface CompactUrlImportedLayer {
     i: string;
     n: string;
@@ -278,7 +277,10 @@ function encodeImportedLayers(layers: ImportedGeoJsonLayer[]): CompactUrlImporte
             const properties = feature.properties
                 ? JSON.parse(JSON.stringify(feature.properties))
                 : feature.properties;
-            return [encodeImportedGeometry(feature.geometry, state), properties];
+            const encodedGeometry = encodeImportedGeometry(feature.geometry, state);
+            return feature.id === undefined
+                ? [encodedGeometry, properties]
+                : [encodedGeometry, properties, feature.id];
         })
     }));
 }
@@ -291,8 +293,9 @@ function decodeImportedLayers(layers: CompactUrlImportedLayer[]): SerializedImpo
         ...(layer.v === 0 ? { visible: false } : {}),
         featureCollection: {
             type: 'FeatureCollection',
-            features: layer.f.map(([geometry, properties]) => ({
+            features: layer.f.map(([geometry, properties, id]) => ({
                 type: 'Feature',
+                ...(id !== undefined ? { id } : {}),
                 properties: properties ?? null,
                 geometry: decodeImportedGeometry(geometry, { x: 0, y: 0 })
             }))

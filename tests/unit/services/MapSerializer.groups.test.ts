@@ -256,6 +256,7 @@ describe('MapSerializer — groups', () => {
                     features: [
                         {
                             type: 'Feature',
+                            id: 'ward-1',
                             properties: { name: 'Ward 1', category: 'example' },
                             geometry: { type: 'Point', coordinates: [-1.1234567, 52.7654321] }
                         },
@@ -294,6 +295,7 @@ describe('MapSerializer — groups', () => {
                 features: [
                     {
                         ...importedLayers[0].featureCollection.features[0],
+                        id: 'ward-1',
                         geometry: {
                             type: 'Point',
                             coordinates: [-1.123457, 52.765432]

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRaw } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue';
 import type { ImportedGeoJsonLayer } from '../../models/ImportedGeoJsonLayer';
 import {
     createImportedLayer,
@@ -40,6 +40,15 @@ function openFilePicker() {
 function resetError() {
     error.value = '';
 }
+
+function resetParsedImport() {
+    parsedGeoJson.value = null;
+    propertyPreview.value = [];
+    nameProperty.value = null;
+    layerName.value = '';
+}
+
+watch(source, resetParsedImport);
 
 function setParsedGeoJson(value: unknown, sourceName: string) {
     const featureCollection = parseGeoJson(value);
@@ -256,8 +265,6 @@ onBeforeUnmount(() => {
                         tabindex="0"
                         class="w-full border-2 border-dashed border-gray-300 rounded-xl px-4 py-8 text-center text-sm text-gray-600 focus-visible:ring-2 focus-visible:ring-green-500"
                         @click="openFilePicker"
-                        @keydown.enter="openFilePicker"
-                        @keydown.space.prevent="openFilePicker"
                         @dragover.prevent
                         @drop="onDrop"
                     >

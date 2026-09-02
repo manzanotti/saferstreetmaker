@@ -52,6 +52,21 @@ describe('imported GeoJSON helpers', () => {
         ).toThrow();
     });
 
+    it('rejects array feature properties', () => {
+        expect(() =>
+            parseGeoJson({
+                type: 'FeatureCollection',
+                features: [
+                    {
+                        type: 'Feature',
+                        properties: [],
+                        geometry: { type: 'Point', coordinates: [-1.82, 52.44] }
+                    }
+                ]
+            })
+        ).toThrow('Feature 1 has invalid properties.');
+    });
+
     it('previews all first-feature properties and only allows strings as names', () => {
         expect(getPropertyPreview(featureCollection)).toEqual([
             {

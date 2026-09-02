@@ -95,7 +95,10 @@ export function parseGeoJson(value: unknown): GeoJSON.FeatureCollection {
             throw new Error(`Feature ${index + 1} is missing a valid geometry.`);
         }
         validateGeometry(item.geometry, index);
-        if (item.properties !== null && typeof item.properties !== 'object') {
+        if (
+            item.properties !== null &&
+            (typeof item.properties !== 'object' || Array.isArray(item.properties))
+        ) {
             throw new Error(`Feature ${index + 1} has invalid properties.`);
         }
     });

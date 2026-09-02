@@ -126,7 +126,6 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         onFeaturePropertyChange: (layerId, featureIndex, key, value) => {
             importedLayerStore.updateFeatureProperty(layerId, featureIndex, key, value);
             mapStore.markLayerUpdated();
-            importedLayerController.render(importedLayerStore.layers);
         }
     });
     const mapStateCoordinator = new MapStateCoordinator({

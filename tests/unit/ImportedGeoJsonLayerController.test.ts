@@ -5,9 +5,9 @@ import type { ImportedGeoJsonLayer } from '../../src/models/ImportedGeoJsonLayer
 
 vi.mock('leaflet', () => import('./__mocks__/leaflet'));
 
-function makeLayer(visible = true): ImportedGeoJsonLayer {
+function makeLayer(id = 'layer-1', visible = true): ImportedGeoJsonLayer {
     return {
-        id: 'layer-1',
+        id,
         name: 'Wards',
         nameProperty: 'name',
         visible,
@@ -69,10 +69,11 @@ describe('ImportedGeoJsonLayerController', () => {
             getActiveLayerId: () => null
         });
 
-        controller.render([makeLayer(), makeLayer(false)]);
+        controller.render([makeLayer('visible-layer'), makeLayer('hidden-layer', false)]);
         expect(fakeLeafletLayer.addTo).toHaveBeenCalledOnce();
         expect(pointOptions.pane).toBe('imported');
 
+        expect(map.removeLayer).not.toHaveBeenCalled();
         controller.clear();
         expect(map.removeLayer).toHaveBeenCalledOnce();
     });

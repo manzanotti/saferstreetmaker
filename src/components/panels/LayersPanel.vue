@@ -47,7 +47,6 @@ function onRenameLayer(id: string, name: string) {
         id="layers-panel"
         class="fixed top-1/2 left-1/2 z-[10001] flex max-h-[90vh] w-[min(24rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-xl"
         role="dialog"
-        aria-modal="true"
         aria-labelledby="layers-panel-title"
     >
         <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
