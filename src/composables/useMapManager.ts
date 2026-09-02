@@ -67,7 +67,11 @@ export interface MapManager {
     redo: () => Promise<boolean>;
     setUserLocation: (position: GeolocationPosition) => void;
     setDefaultView: () => void;
-    initialiseDefaultImportedLayers: (layers: ImportedGeoJsonLayer[]) => void;
+    getMapGeneration: () => number;
+    initialiseDefaultImportedLayers: (
+        layers: ImportedGeoJsonLayer[],
+        expectedGeneration?: number
+    ) => void;
     downloadStorageMap: () => Promise<void>;
     runViewCheckpointMigration: () => Promise<void>;
 }
@@ -109,6 +113,8 @@ export function setupMapManager(
     let lastSavedSnapshot: SerializedMap | null = null;
     let suppressHistory = false;
     let pendingHistoryMutation: HistoryMutation | null = null;
+    let mapGeneration = 0;
+    let newMapPendingDefaultLayers = false;
 
     const getMap = (): L.Map => {
         const m = mapStore.map;
@@ -499,11 +505,17 @@ export function setupMapManager(
      * Returns true on success.
      */
     const createNewMap = async (title: string): Promise<boolean> => {
-        return await newMapCreator.create(title);
+        mapGeneration += 1;
+        newMapPendingDefaultLayers = true;
+        const created = await newMapCreator.create(title);
+        newMapPendingDefaultLayers = created;
+        return created;
     };
 
     // ── loadMapFromStorage ────────────────────────────────────────────────────
     const loadMapFromStorage = async (mapName: string): Promise<boolean> => {
+        mapGeneration += 1;
+        newMapPendingDefaultLayers = false;
         return await storedMapLoader.load(mapName);
     };
 
@@ -525,7 +537,17 @@ export function setupMapManager(
 
     const redo = () => historyNavigationCoordinator.redo();
 
-    const initialiseDefaultImportedLayers = (layers: ImportedGeoJsonLayer[]) => {
+    const initialiseDefaultImportedLayers = (
+        layers: ImportedGeoJsonLayer[],
+        expectedGeneration?: number
+    ) => {
+        if (
+            expectedGeneration !== undefined &&
+            expectedGeneration !== mapGeneration &&
+            !newMapPendingDefaultLayers
+        ) {
+            return;
+        }
         if (importedLayerStore.layers.length > 0) {
             return;
         }
@@ -534,6 +556,7 @@ export function setupMapManager(
         lastSavedSnapshot = buildCurrentSnapshot();
         mapStore.clearLastLayerMutation();
         suppressHistory = false;
+        newMapPendingDefaultLayers = false;
         void syncHistoryStatus();
     };
 
@@ -543,6 +566,8 @@ export function setupMapManager(
     const uploadedMapLoader = new UploadedMapLoader({
         closePanel: () => uiStore.closePanel(),
         clearAndReset: () => {
+            mapGeneration += 1;
+            newMapPendingDefaultLayers = false;
             clearAllLayers();
             resetSettings();
         },
@@ -571,6 +596,7 @@ export function setupMapManager(
         redo,
         setUserLocation,
         setDefaultView,
+        getMapGeneration: () => mapGeneration,
         initialiseDefaultImportedLayers,
         downloadStorageMap,
         runViewCheckpointMigration

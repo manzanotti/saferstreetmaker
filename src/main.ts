@@ -63,8 +63,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
     // ── Set up map manager (loads/saves maps, wires layer-update and file-loaded callbacks) ─────
-    const { loadMap, setUserLocation, setDefaultView, initialiseDefaultImportedLayers } =
-        setupMapManager(fileManager, () => defaultImportedLayers);
+    const {
+        loadMap,
+        setUserLocation,
+        setDefaultView,
+        getMapGeneration,
+        initialiseDefaultImportedLayers
+    } = setupMapManager(fileManager, () => defaultImportedLayers);
 
     // ── Add Vue-backed Leaflet controls ──────────────────────────────────────
     map.addControl(makeLeafletVueControl(CommandsToolbar, 'topleft'));
@@ -100,14 +105,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const mapLoaded = await loadMap(remoteMapFile, hash, hideToolbar, zoom, centre);
+    const initialMapGeneration = getMapGeneration();
 
     void defaultLayerPromise.then((defaultLayer) => {
         if (!defaultLayer) {
             return;
         }
         defaultImportedLayers = [defaultLayer];
-        if (remoteMapFile === null && hash === '') {
-            initialiseDefaultImportedLayers([defaultLayer]);
+        if (!mapLoaded && remoteMapFile === null && hash === '') {
+            initialiseDefaultImportedLayers([defaultLayer], initialMapGeneration);
         }
     });
 

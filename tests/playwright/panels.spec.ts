@@ -147,6 +147,19 @@ test.describe('Settings Panel', () => {
         await expect(page.getByLabel('Show layer Birmingham Wards')).toBeVisible();
     });
 
+    test('deleting the final imported layer survives reload', async ({ page }) => {
+        await page.locator('#layers-button').click();
+        await expect(page.getByLabel('Delete Birmingham Wards')).toBeVisible();
+        await page.getByLabel('Delete Birmingham Wards').click();
+        await expect(page.locator('#layers-empty')).toBeVisible();
+        await expect(page.locator('#undo-button')).toBeEnabled();
+        await page.reload();
+        await waitForFreshStorage(page);
+        await page.locator('#layers-button').click();
+        await expect(page.locator('#layers-empty')).toBeVisible();
+        await expect(page.getByLabel('Rename Birmingham Wards')).not.toBeAttached();
+    });
+
     test('new maps retain disabled Bus Lanes through undo, redo, and reload', async ({ page }) => {
         await page.locator('#map-manager-button').click();
         await page.locator('#new-map').click();
