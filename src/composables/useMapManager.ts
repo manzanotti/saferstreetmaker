@@ -319,6 +319,10 @@ export function setupMapManager(
     const runViewCheckpointMigration = () =>
         historyLifecycleCoordinator.migrateViewOnlyCheckpoints();
 
+    // Stamp a fresh map with the current schema so load-time migrations do not re-apply to it.
+    if (settingsStore.version === '') {
+        settingsStore.version = APP_VERSION;
+    }
     lastSavedSnapshot = buildCurrentSnapshot();
     historyStore.clearStatus();
     void activateHistory(settingsStore.title);
@@ -508,7 +512,9 @@ export function setupMapManager(
         mapGeneration += 1;
         newMapPendingDefaultLayers = true;
         const created = await newMapCreator.create(title);
-        newMapPendingDefaultLayers = created;
+        if (!created) {
+            newMapPendingDefaultLayers = false;
+        }
         return created;
     };
 

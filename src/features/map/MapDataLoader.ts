@@ -4,6 +4,7 @@ import { Settings } from '../../models/Settings';
 import type { Group } from '../../models/Group';
 import { MapLayerController } from './MapLayerController';
 import type { ImportedGeoJsonLayer } from '../../models/ImportedGeoJsonLayer';
+import { sanitizeImportedLayers } from './importedGeoJson';
 import type { ImportedGeoJsonLayerController } from './ImportedGeoJsonLayerController';
 
 const BUS_LANES_INTRODUCED_VERSION = '0.10.0';
@@ -136,7 +137,7 @@ export class MapDataLoader {
         if (geoJSON.layers !== undefined) {
             this.mapLayerController.loadLayers(geoJSON.layers, this.getActiveLayerIds());
         }
-        const importedLayers = geoJSON.importedLayers ?? [];
+        const importedLayers = sanitizeImportedLayers(geoJSON.importedLayers);
         this.setImportedLayers(importedLayers);
         this.importedLayerController?.render(importedLayers);
 

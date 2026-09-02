@@ -193,16 +193,47 @@ export function cloneImportedLayers(
     }));
 }
 
+export function createImportedLayerId(): string {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID();
+    }
+
+    return `imported-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export function createImportedLayer(
     sourceName: string,
     featureCollection: GeoJSON.FeatureCollection,
     existingNames: string[] = []
 ): ImportedGeoJsonLayer {
     return {
-        id: crypto.randomUUID(),
+        id: createImportedLayerId(),
         name: deriveLayerName(sourceName, existingNames),
         nameProperty: null,
         visible: true,
         featureCollection: structuredClone(featureCollection)
     };
+}
+
+/**
+ * Imported layers restored from storage or a shared URL are untrusted, so drop
+ * any whose GeoJSON no longer validates rather than failing the whole map load.
+ */
+export function sanitizeImportedLayers(
+    layers: SerializedImportedGeoJsonLayer[] | ImportedGeoJsonLayer[] | undefined
+): ImportedGeoJsonLayer[] {
+    return (layers ?? []).reduce<ImportedGeoJsonLayer[]>((valid, layer) => {
+        try {
+            valid.push({
+                id: layer.id,
+                name: layer.name,
+                nameProperty: layer.nameProperty,
+                visible: layer.visible !== false,
+                featureCollection: parseGeoJson(layer.featureCollection)
+            });
+        } catch (error) {
+            console.warn(`Ignoring invalid imported layer "${layer?.name ?? layer?.id}".`, error);
+        }
+        return valid;
+    }, []);
 }

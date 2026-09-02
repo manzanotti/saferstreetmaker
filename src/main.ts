@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     settingsStore.activeLayers = allLayers.map((l) => l.id);
 
     let defaultImportedLayers: ImportedGeoJsonLayer[] = [];
-    const defaultLayerPromise = fetch('/Birmingham%20Wards.geojson')
+    const defaultLayerPromise = fetch(`${import.meta.env.BASE_URL}Birmingham%20Wards.geojson`)
         .then(async (response) => {
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}`);

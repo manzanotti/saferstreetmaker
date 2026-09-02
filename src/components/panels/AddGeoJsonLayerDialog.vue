@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue';
 import type { ImportedGeoJsonLayer } from '../../models/ImportedGeoJsonLayer';
 import {
-    createImportedLayer,
+    createImportedLayerId,
     getNamePropertyOptions,
     getPropertyPreview,
     parseGeoJson,
@@ -156,11 +156,13 @@ function addLayer() {
         error.value = 'A layer with this name already exists.';
         return;
     }
-    const layer = createImportedLayer(trimmedName, toRaw(parsedGeoJson.value), props.existingNames);
-    layer.name = trimmedName;
-    layer.nameProperty = nameProperty.value;
-    layer.featureCollection = retainNameProperty(layer.featureCollection, layer.nameProperty);
-    emit('add', layer);
+    emit('add', {
+        id: createImportedLayerId(),
+        name: trimmedName,
+        nameProperty: nameProperty.value,
+        visible: true,
+        featureCollection: retainNameProperty(toRaw(parsedGeoJson.value), nameProperty.value)
+    });
 }
 
 function close() {

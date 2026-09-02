@@ -54,11 +54,17 @@ function createShare(scope: 'all' | 'group', selectedGroup: Group | undefined) {
     const layers =
         scope === 'group' && groupForShare ? getGroupLayers(groupForShare) : mapStore.toLayers();
 
+    // Hidden imported layers are omitted so shared URLs stay a usable length.
+    const importedLayersForShare =
+        scope === 'group'
+            ? []
+            : importedLayerStore.layers.filter((layer) => layer.visible !== false);
+
     const mapHash = getFileManager().saveMapToHash(
         settingsStore.toSettings(),
         layers,
         scope === 'group' && groupForShare ? [groupForShare] : groupStore.groups,
-        scope === 'group' ? [] : importedLayerStore.layers
+        importedLayersForShare
     );
     const baseUrl = window.location.origin + window.location.pathname;
     const params = new URLSearchParams({ 'hide-toolbar': String(hideToolbar.value) });

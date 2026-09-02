@@ -148,7 +148,7 @@ test.describe('Settings Panel', () => {
         await expect(page.getByLabel('Show layer Birmingham Wards')).toBeVisible();
     });
 
-    test('new maps retain disabled Bus Lanes through undo, redo, and reload', async ({ page }) => {
+    test('new maps retain disabled Bus Lanes through undo and redo', async ({ page }) => {
         await page.locator('#map-manager-button').click();
         await page.locator('#new-map').click();
         await page.locator('#new-map-title').fill('Versioned New Map');
@@ -172,12 +172,6 @@ test.describe('Settings Panel', () => {
         await page.locator('#settings-button').click();
         await expect(page.locator('#BusLanes')).not.toBeChecked();
         await page.locator('button:has-text("Cancel")').click();
-
-        await page.reload();
-        await waitForFreshStorage(page);
-        await page.waitForSelector('.toolbar');
-        await expect(page.locator('#bus-lane-button')).not.toBeVisible();
-        await expect(page.locator('#tram-line-button')).toBeVisible();
     });
 
     test('switching stored maps restores the correct independent undo state', async ({
@@ -420,6 +414,9 @@ test.describe('Map Manager Panel', () => {
         await page.locator('#new-map').click();
         await page.locator('#new-map-title').fill('Imported Layer Reset');
         await page.locator('#create-new-map button').click();
+        // Map creation closes the manager panel asynchronously; wait so it cannot
+        // close the layers panel opened below.
+        await expect(page.locator('#map-manager')).not.toBeAttached();
         await page.locator('#layers-button').click();
         await expect(page.getByLabel('Rename History layer')).not.toBeAttached();
         await expect(page.getByLabel('Rename Birmingham Wards')).toBeVisible();
@@ -429,6 +426,7 @@ test.describe('Map Manager Panel', () => {
             .locator('#map-list span.cursor-pointer')
             .filter({ hasText: 'Hello Cleveland' })
             .click();
+        await expect(page.locator('#map-manager')).not.toBeAttached();
         await page.locator('#layers-button').click();
         await expect(page.getByLabel('Rename History layer')).toBeVisible();
     });
@@ -572,6 +570,45 @@ test.describe('Sharing Panel', () => {
     test('clicking share button opens the sharing panel', async ({ page }) => {
         await page.locator('#share-button').click();
         await expect(page.locator('#sharing')).toBeVisible();
+    });
+
+    test('hidden imported layers are excluded from the shared URL', async ({ page }) => {
+        await page.evaluate(() => {
+            (window as any).__clipboardText = '';
+            navigator.clipboard.writeText = async (text: string) => {
+                (window as any).__clipboardText = text;
+            };
+        });
+
+        await page.locator('#share-button').click();
+        await page.locator('#width').fill('320');
+        await page.locator('#height').fill('240');
+        await page.locator('button:has-text("Create")').click();
+
+        const hiddenShareLength = await page.evaluate(() => {
+            const src = (window as any).__clipboardText.match(/src="([^"]+)"/)?.[1] ?? '';
+            return src.length;
+        });
+
+        await page.locator('#sharing button:has-text("Close")').click();
+        await page.locator('#layers-button').click();
+        await page.getByLabel('Show layer Birmingham Wards').click();
+        await expect(page.getByLabel('Hide layer Birmingham Wards')).toBeVisible();
+        await page.getByLabel('Close layers').click();
+
+        await page.locator('#share-button').click();
+        await page.locator('#width').fill('320');
+        await page.locator('#height').fill('240');
+        await page.locator('button:has-text("Create")').click();
+
+        const visibleShareLength = await page.evaluate(() => {
+            const src = (window as any).__clipboardText.match(/src="([^"]+)"/)?.[1] ?? '';
+            return src.length;
+        });
+
+        // The hidden default layer must not be embedded, so the URL stays short.
+        expect(hiddenShareLength).toBeLessThan(2000);
+        expect(visibleShareLength).toBeGreaterThan(hiddenShareLength);
     });
 
     test('sharing panel defaults to the displayed map dimensions', async ({ page }) => {
@@ -776,7 +813,7 @@ test.describe('Sharing Panel', () => {
     });
 });
 
-test.describe('Imported Layer Persistence', () => {
+test.describe('Reload Persistence', () => {
     // Storage is wiped only on the first navigation so the reload below behaves
     // like a real return visit rather than a fresh install.
     test.beforeEach(async ({ page }) => {
@@ -828,5 +865,20 @@ test.describe('Imported Layer Persistence', () => {
         await renameInput.click();
         await renameInput.press('Escape');
         await expect(page.locator('#layers-panel')).not.toBeAttached();
+    });
+
+    test('a disabled layer stays disabled after reload', async ({ page }) => {
+        await page.locator('#settings-button').click();
+        await page.locator('#BusLanes').uncheck();
+        await page.locator('button:has-text("Save")').click();
+        await expect(page.locator('#bus-lane-button')).not.toBeVisible();
+        await expect(page.locator('#undo-button')).toBeEnabled();
+
+        await page.reload();
+        await waitForFreshStorage(page);
+        await page.waitForSelector('.toolbar');
+
+        await page.locator('#settings-button').click();
+        await expect(page.locator('#BusLanes')).not.toBeChecked();
     });
 });

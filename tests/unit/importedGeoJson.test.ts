@@ -1,11 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
     deriveLayerName,
     formatPropertyValue,
     getNamePropertyOptions,
     getPropertyPreview,
     parseGeoJson,
-    retainNameProperty
+    retainNameProperty,
+    sanitizeImportedLayers
 } from '../../src/features/map/importedGeoJson';
 
 const featureCollection: GeoJSON.FeatureCollection = {
@@ -121,5 +122,158 @@ describe('imported GeoJSON helpers', () => {
             name: 'Acocks Green'
         });
         expect(retainNameProperty(featureCollection, null).features[0]?.properties).toBeNull();
+    });
+
+    it.each([
+        { type: 'MultiPoint', coordinates: [] },
+        { type: 'MultiLineString', coordinates: [[[-1.82, 52.44]]] },
+        {
+            type: 'MultiPolygon',
+            coordinates: [
+                [
+                    [
+                        [-1.82, 52.44],
+                        [-1.8, 52.44],
+                        [-1.8, 52.46]
+                    ]
+                ]
+            ]
+        }
+    ])('rejects malformed $type geometry payloads', (geometry) => {
+        expect(() =>
+            parseGeoJson({
+                type: 'FeatureCollection',
+                features: [{ type: 'Feature', properties: null, geometry }]
+            })
+        ).toThrow('Feature 1 has invalid coordinates.');
+    });
+
+    it('rejects unsupported geometry types', () => {
+        expect(() =>
+            parseGeoJson({
+                type: 'FeatureCollection',
+                features: [
+                    {
+                        type: 'Feature',
+                        properties: null,
+                        geometry: { type: 'Circle', coordinates: [-1.82, 52.44] }
+                    }
+                ]
+            })
+        ).toThrow('Feature 1 uses an unsupported geometry type.');
+    });
+
+    it('rejects a GeometryCollection containing an invalid child geometry', () => {
+        expect(() =>
+            parseGeoJson({
+                type: 'FeatureCollection',
+                features: [
+                    {
+                        type: 'Feature',
+                        properties: null,
+                        geometry: {
+                            type: 'GeometryCollection',
+                            geometries: [{ type: 'LineString', coordinates: [[-1.82, 52.44]] }]
+                        }
+                    }
+                ]
+            })
+        ).toThrow('Feature 1 has invalid coordinates.');
+    });
+
+    it('accepts valid multi-part and nested geometries', () => {
+        const collection: GeoJSON.FeatureCollection = {
+            type: 'FeatureCollection',
+            features: [
+                {
+                    type: 'Feature',
+                    properties: null,
+                    geometry: {
+                        type: 'MultiPolygon',
+                        coordinates: [
+                            [
+                                [
+                                    [-1.82, 52.44],
+                                    [-1.8, 52.44],
+                                    [-1.8, 52.46],
+                                    [-1.82, 52.44]
+                                ]
+                            ]
+                        ]
+                    }
+                },
+                {
+                    type: 'Feature',
+                    properties: null,
+                    geometry: {
+                        type: 'GeometryCollection',
+                        geometries: [
+                            { type: 'Point', coordinates: [-1.82, 52.44] },
+                            {
+                                type: 'LineString',
+                                coordinates: [
+                                    [-1.82, 52.44],
+                                    [-1.8, 52.46]
+                                ]
+                            }
+                        ]
+                    }
+                }
+            ]
+        };
+
+        expect(parseGeoJson(collection)).toEqual(collection);
+    });
+});
+
+describe('sanitizeImportedLayers', () => {
+    const validLayer = {
+        id: 'valid',
+        name: 'Valid',
+        nameProperty: 'name',
+        featureCollection
+    };
+
+    it('returns an empty array when there is nothing to sanitize', () => {
+        expect(sanitizeImportedLayers(undefined)).toEqual([]);
+        expect(sanitizeImportedLayers([])).toEqual([]);
+    });
+
+    it('keeps valid layers and normalises visibility', () => {
+        const [visible, hidden] = sanitizeImportedLayers([
+            validLayer,
+            { ...validLayer, id: 'hidden', visible: false }
+        ]);
+
+        expect(visible.visible).toBe(true);
+        expect(hidden.visible).toBe(false);
+        expect(visible.featureCollection).not.toBe(featureCollection);
+    });
+
+    it('drops layers whose GeoJSON no longer validates', () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        const result = sanitizeImportedLayers([
+            validLayer,
+            {
+                id: 'broken',
+                name: 'Broken',
+                nameProperty: null,
+                featureCollection: {
+                    type: 'FeatureCollection',
+                    features: [
+                        {
+                            type: 'Feature',
+                            properties: null,
+                            geometry: { type: 'LineString', coordinates: [[-1.82, 52.44]] }
+                        }
+                    ]
+                } as unknown as GeoJSON.FeatureCollection
+            }
+        ]);
+
+        expect(result.map((layer) => layer.id)).toEqual(['valid']);
+        expect(warn).toHaveBeenCalled();
+        warn.mockRestore();
     });
 });
