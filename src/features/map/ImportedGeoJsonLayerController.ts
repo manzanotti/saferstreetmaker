@@ -20,6 +20,7 @@ export class ImportedGeoJsonLayerController {
     private readonly isReadOnly: () => boolean;
     private readonly getActiveLayerId: () => string | null;
     private readonly leafletLayers = new Map<string, L.GeoJSON>();
+    private readonly renderedFeatureCollections = new Map<string, GeoJSON.FeatureCollection>();
 
     constructor(options: ImportedGeoJsonLayerControllerOptions) {
         this.map = options.getMap();
@@ -34,6 +35,7 @@ export class ImportedGeoJsonLayerController {
             if (!currentIds.has(id)) {
                 this.map.removeLayer(leafletLayer);
                 this.leafletLayers.delete(id);
+                this.renderedFeatureCollections.delete(id);
             }
         }
         layers.forEach((layer) => this.renderLayer(layer));
@@ -44,16 +46,27 @@ export class ImportedGeoJsonLayerController {
             this.map.removeLayer(leafletLayer);
         }
         this.leafletLayers.clear();
+        this.renderedFeatureCollections.clear();
     }
 
     private renderLayer(layer: ImportedGeoJsonLayer): void {
         const previous = this.leafletLayers.get(layer.id);
+
+        if (
+            layer.visible !== false &&
+            previous &&
+            this.renderedFeatureCollections.get(layer.id) === layer.featureCollection
+        ) {
+            return;
+        }
+
         if (previous) {
             this.map.removeLayer(previous);
         }
 
         if (layer.visible === false) {
             this.leafletLayers.delete(layer.id);
+            this.renderedFeatureCollections.delete(layer.id);
             return;
         }
 
@@ -91,6 +104,7 @@ export class ImportedGeoJsonLayerController {
         });
         leafletLayer.addTo(this.map);
         this.leafletLayers.set(layer.id, leafletLayer);
+        this.renderedFeatureCollections.set(layer.id, layer.featureCollection);
     }
 
     private buildPopup(

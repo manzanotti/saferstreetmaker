@@ -344,6 +344,43 @@ test.describe('Map Manager Panel', () => {
         await expect(page.locator('#imported-layer-name')).not.toBeAttached();
     });
 
+    test('ignores a URL response that resolves after switching to file upload', async ({
+        page
+    }) => {
+        let releaseResponse!: () => void;
+        const responseBlocked = new Promise<void>((resolve) => {
+            releaseResponse = resolve;
+        });
+        await page.route('**/delayed-layer.geojson', async (route) => {
+            await responseBlocked;
+            await route.fulfill({
+                contentType: 'application/geo+json',
+                body: JSON.stringify({
+                    type: 'FeatureCollection',
+                    features: [
+                        {
+                            type: 'Feature',
+                            properties: { name: 'Stale feature' },
+                            geometry: { type: 'Point', coordinates: [-1.9, 52.5] }
+                        }
+                    ]
+                })
+            });
+        });
+
+        await page.locator('#layers-button').click();
+        await page.locator('#add-layer-button').click();
+        await page.getByRole('button', { name: 'Load URL' }).click();
+        await page.locator('#geojson-url').fill('http://localhost:1234/delayed-layer.geojson');
+        await page.getByRole('button', { name: 'Load', exact: true }).click();
+        await expect(page.getByRole('button', { name: 'Loading...' })).toBeVisible();
+
+        await page.getByRole('button', { name: 'Upload file' }).click();
+        releaseResponse();
+
+        await expect(page.locator('#imported-layer-name')).not.toBeAttached();
+    });
+
     test('loading a JSON file replaces the map and persists the uploaded data', async ({
         page
     }) => {

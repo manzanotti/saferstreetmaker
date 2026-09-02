@@ -41,6 +41,7 @@ describe('ImportedGeoJsonLayerController', () => {
     let pointOptions: any;
 
     beforeEach(() => {
+        vi.clearAllMocks();
         map = makeMap();
         fakeLeafletLayer = { addTo: vi.fn().mockReturnThis() };
         pointOptions = undefined;
@@ -100,6 +101,24 @@ describe('ImportedGeoJsonLayerController', () => {
         const readOnlyPopup = featureLayer.bindPopup.mock.calls[1][0]();
         expect(readOnlyPopup.querySelector('span')?.textContent).toBe('Ward 1');
         expect(readOnlyPopup.querySelector('input')).toBeNull();
+    });
+
+    it('keeps rendered geometry when only layer metadata changes', () => {
+        const layer = makeLayer();
+        const controller = new ImportedGeoJsonLayerController({
+            getMap: () => map,
+            onFeaturePropertyChange: vi.fn(),
+            isReadOnly: () => false,
+            getActiveLayerId: () => null
+        });
+
+        controller.render([layer]);
+        layer.name = 'Renamed wards';
+        layer.featureCollection.features[0].properties!.name = 'Renamed feature';
+        controller.render([layer]);
+
+        expect(L.geoJSON).toHaveBeenCalledOnce();
+        expect(map.removeLayer).not.toHaveBeenCalled();
     });
 
     it('forwards feature clicks to the active map tool and closes the popup', () => {

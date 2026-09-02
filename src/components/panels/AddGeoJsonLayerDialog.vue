@@ -30,6 +30,7 @@ const parsedGeoJson = ref<GeoJSON.FeatureCollection | null>(null);
 const propertyPreview = ref<GeoJsonPropertyPreview[]>([]);
 const error = ref('');
 const loading = ref(false);
+let urlRequestId = 0;
 
 const dialogInputId = computed(() => (source.value === 'file' ? 'geojson-file' : 'geojson-url'));
 
@@ -41,7 +42,13 @@ function resetError() {
     error.value = '';
 }
 
+function invalidateUrlRequest() {
+    urlRequestId += 1;
+    loading.value = false;
+}
+
 function resetParsedImport() {
+    invalidateUrlRequest();
     parsedGeoJson.value = null;
     propertyPreview.value = [];
     nameProperty.value = null;
@@ -49,15 +56,18 @@ function resetParsedImport() {
 }
 
 watch(source, resetParsedImport);
+watch(url, () => {
+    if (loading.value) {
+        invalidateUrlRequest();
+    }
+});
 
 function setParsedGeoJson(value: unknown, sourceName: string) {
     const featureCollection = parseGeoJson(value);
     parsedGeoJson.value = featureCollection;
     propertyPreview.value = getPropertyPreview(featureCollection);
     nameProperty.value = null;
-    if (!layerName.value) {
-        layerName.value = sourceName.replace(/\.(geojson|json)$/i, '');
-    }
+    layerName.value = sourceName.replace(/\.(geojson|json)$/i, '');
 }
 
 async function onFileSelected(event: Event) {
@@ -101,22 +111,33 @@ async function loadFromUrl() {
         error.value = 'Enter a GeoJSON URL.';
         return;
     }
+    const requestedUrl = url.value.trim();
+    const requestId = ++urlRequestId;
     loading.value = true;
     parsedGeoJson.value = null;
     propertyPreview.value = [];
     try {
-        const response = await fetch(url.value.trim());
+        const response = await fetch(requestedUrl);
         if (!response.ok) {
             throw new Error(`The URL returned ${response.status} ${response.statusText}.`);
         }
-        setParsedGeoJson(
-            await response.json(),
-            new URL(url.value.trim()).pathname.split('/').pop() || 'GeoJSON layer'
-        );
+        const value = await response.json();
+        if (
+            requestId !== urlRequestId ||
+            source.value !== 'url' ||
+            url.value.trim() !== requestedUrl
+        ) {
+            return;
+        }
+        setParsedGeoJson(value, new URL(requestedUrl).pathname.split('/').pop() || 'GeoJSON layer');
     } catch (e: unknown) {
-        error.value = `Could not load GeoJSON. ${String((e as Error).message ?? e)} Check that the URL allows browser CORS requests.`;
+        if (requestId === urlRequestId) {
+            error.value = `Could not load GeoJSON. ${String((e as Error).message ?? e)} Check that the URL allows browser CORS requests.`;
+        }
     } finally {
-        loading.value = false;
+        if (requestId === urlRequestId) {
+            loading.value = false;
+        }
     }
 }
 

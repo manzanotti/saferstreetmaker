@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         importedLayerStore.addLayer({
             id: 'birmingham-wards',
             name: 'Birmingham Wards',
-            nameProperty: null,
+            nameProperty: 'wd25nm',
             visible: false,
             featureCollection
         });
