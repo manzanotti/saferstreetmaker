@@ -122,6 +122,18 @@ export function getPropertyPreview(
     }));
 }
 
+export function getNamePropertyOptions(featureCollection: GeoJSON.FeatureCollection): string[] {
+    const options = new Set<string>();
+    featureCollection.features.forEach((feature) => {
+        Object.entries(feature.properties ?? {}).forEach(([key, value]) => {
+            if (typeof value === 'string') {
+                options.add(key);
+            }
+        });
+    });
+    return [...options];
+}
+
 export function formatPropertyValue(value: unknown): string {
     if (typeof value === 'string') {
         return value;

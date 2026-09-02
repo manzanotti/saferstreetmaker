@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
     deriveLayerName,
     formatPropertyValue,
+    getNamePropertyOptions,
     getPropertyPreview,
     parseGeoJson,
     retainNameProperty
@@ -83,6 +84,26 @@ describe('imported GeoJSON helpers', () => {
                 selectableAsName: false
             }
         ]);
+    });
+
+    it('finds string name fields across all features', () => {
+        const collection: GeoJSON.FeatureCollection = {
+            type: 'FeatureCollection',
+            features: [
+                {
+                    type: 'Feature',
+                    properties: { code: 1, name: null },
+                    geometry: { type: 'Point', coordinates: [-1.82, 52.44] }
+                },
+                {
+                    type: 'Feature',
+                    properties: { name: 'Acocks Green', ward: 'Acocks Green Ward' },
+                    geometry: { type: 'Point', coordinates: [-1.83, 52.45] }
+                }
+            ]
+        };
+
+        expect(getNamePropertyOptions(collection)).toEqual(['name', 'ward']);
     });
 
     it('derives unique source names', () => {

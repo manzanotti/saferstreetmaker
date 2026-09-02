@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRaw, watch } fro
 import type { ImportedGeoJsonLayer } from '../../models/ImportedGeoJsonLayer';
 import {
     createImportedLayer,
+    getNamePropertyOptions,
     getPropertyPreview,
     parseGeoJson,
     retainNameProperty,
@@ -28,6 +29,7 @@ const layerName = ref('');
 const nameProperty = ref<string | null>(null);
 const parsedGeoJson = ref<GeoJSON.FeatureCollection | null>(null);
 const propertyPreview = ref<GeoJsonPropertyPreview[]>([]);
+const namePropertyOptions = ref<string[]>([]);
 const error = ref('');
 const loading = ref(false);
 let urlRequestId = 0;
@@ -51,21 +53,19 @@ function resetParsedImport() {
     invalidateUrlRequest();
     parsedGeoJson.value = null;
     propertyPreview.value = [];
+    namePropertyOptions.value = [];
     nameProperty.value = null;
     layerName.value = '';
 }
 
 watch(source, resetParsedImport);
-watch(url, () => {
-    if (loading.value) {
-        invalidateUrlRequest();
-    }
-});
+watch(url, resetParsedImport);
 
 function setParsedGeoJson(value: unknown, sourceName: string) {
     const featureCollection = parseGeoJson(value);
     parsedGeoJson.value = featureCollection;
     propertyPreview.value = getPropertyPreview(featureCollection);
+    namePropertyOptions.value = getNamePropertyOptions(featureCollection);
     nameProperty.value = null;
     layerName.value = sourceName.replace(/\.(geojson|json)$/i, '');
 }
@@ -74,6 +74,7 @@ async function onFileSelected(event: Event) {
     resetError();
     parsedGeoJson.value = null;
     propertyPreview.value = [];
+    namePropertyOptions.value = [];
     const file = (event.target as HTMLInputElement).files?.[0];
     if (!file) {
         return;
@@ -343,13 +344,11 @@ onBeforeUnmount(() => {
                         >
                             <option :value="null">None</option>
                             <option
-                                v-for="property in propertyPreview.filter(
-                                    (item) => item.selectableAsName
-                                )"
-                                :key="property.key"
-                                :value="property.key"
+                                v-for="property in namePropertyOptions"
+                                :key="property"
+                                :value="property"
                             >
-                                {{ property.key }}
+                                {{ property }}
                             </option>
                         </select>
                     </div>

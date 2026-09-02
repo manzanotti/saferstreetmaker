@@ -182,7 +182,6 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         recomputeGroupVisibility: recomputeFeatureVisibility,
         pruneDanglingGroupMembers,
         appVersion: APP_VERSION,
-        importedLayerController,
         setImportedLayers: (layers) => importedLayerStore.setLayers(layers)
     });
     watch(
