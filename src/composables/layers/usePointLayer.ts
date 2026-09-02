@@ -33,6 +33,7 @@ import { useSelectionStore } from '../../stores/selectionStore';
 import { useGroupStore } from '../../stores/groupStore';
 import { executeAreaDelete, executeCopy, selectFeature } from '../useAreaSelection';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { shouldShowPointFeatures } from '../../features/map/pointFeatureVisibility';
 import {
     addFeatureToGroup,
     createGroupFromFeature,

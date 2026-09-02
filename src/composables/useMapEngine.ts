@@ -11,6 +11,10 @@ import { useMapStore } from '../stores/mapStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { pinia } from '../stores/index';
 import { recomputeFeatureVisibility } from './useGroups';
+import {
+    shouldReducePointFeatureSize,
+    shouldShowPointFeatures
+} from '../features/map/pointFeatureVisibility';
 
 export interface MapEngineResult {
     map: L.Map;
@@ -76,6 +80,15 @@ export function setupMapEngine(): MapEngineResult {
         settingsStore.zoom = map.getZoom();
         settingsStore.centre = map.getCenter();
     });
+
+    const updatePointFeatureVisibility = () => {
+        const mapContainer = map.getContainer();
+        mapContainer.classList.toggle('point-features-hidden', !shouldShowPointFeatures(map));
+        mapContainer.classList.toggle('point-features-small', shouldReducePointFeatureSize(map));
+    };
+
+    map.on('zoomend', updatePointFeatureVisibility);
+    updatePointFeatureVisibility();
 
     // ── Layer visibility watch ────────────────────────────────────────────────
     // Add/remove layers from the map when visibleLayerIds changes in the store.

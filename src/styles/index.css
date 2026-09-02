@@ -156,6 +156,24 @@ a {
     margin-bottom: 0 !important;
 }
 
+.point-features-hidden .leaflet-filters-pane .leaflet-interactive,
+.point-features-hidden .leaflet-filters-pane .leaflet-marker-icon,
+.point-features-hidden .imported-point-feature {
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.point-features-small .imported-point-feature {
+    zoom: 0.5;
+    transform-origin: center;
+}
+
+.point-features-small .leaflet-filters-pane .modal-filter-marker {
+    transform: scale(0.5);
+    transform-box: fill-box;
+    transform-origin: center;
+}
+
 /* ── Leaflet zoom control ────────────────────────────────────────────────── */
 .leaflet-control-zoom {
     border: 1px solid rgba(255, 255, 255, 0.6) !important;
@@ -404,33 +422,77 @@ ul.ltn-popup-buttons > li.feature-popup-group-content {
 }
 
 .bus-gate-icon {
-    background-image: url(../img/bus-gate.svg);
-    background-size: 23px 23px;
-    background-repeat: no-repeat;
     height: 23px !important;
     width: 23px !important;
 }
 
-.traffic-lights-icon {
-    background-image: url(../img/trafficlights-black1.svg);
-    background-size: 30px 30px;
+.bus-gate-icon::before {
+    background-image: url(../img/bus-gate.svg);
     background-repeat: no-repeat;
+    background-size: 23px 23px;
+    content: '';
+    inset: 0;
+    position: absolute;
+}
+
+.traffic-lights-icon {
     height: 30px !important;
     width: 30px !important;
+}
+
+.traffic-lights-icon::before {
+    background-image: url(../img/trafficlights-black1.svg);
+    background-repeat: no-repeat;
+    background-size: 30px 30px;
+    content: '';
+    inset: 0;
+    position: absolute;
 }
 
 .pedestrian-lights-icon {
-    background-image: url(../img/UK-Traffic-Signal-Pedestrians-1975.svg);
-    background-size: 30px 30px;
-    background-repeat: no-repeat;
     height: 30px !important;
     width: 30px !important;
 }
 
-.zebra-crossing-icon {
-    background-image: url(../img/zebra-crossing.svg);
-    background-size: 21px 32px;
+.pedestrian-lights-icon::before {
+    background-image: url(../img/UK-Traffic-Signal-Pedestrians-1975.svg);
     background-repeat: no-repeat;
+    background-size: 30px 30px;
+    content: '';
+    inset: 0;
+    position: absolute;
+}
+
+.zebra-crossing-icon {
     height: 21px !important;
     width: 32px !important;
+}
+
+.zebra-crossing-icon::before {
+    background-image: url(../img/zebra-crossing.svg);
+    background-repeat: no-repeat;
+    background-size: 21px 32px;
+    content: '';
+    inset: 0;
+    position: absolute;
+}
+
+:where(.bus-gate-icon, .traffic-lights-icon, .pedestrian-lights-icon, .zebra-crossing-icon):not(
+    .leaflet-marker-icon
+) {
+    position: relative;
+}
+
+:where(
+    .bus-gate-icon,
+    .traffic-lights-icon,
+    .pedestrian-lights-icon,
+    .zebra-crossing-icon
+)::before {
+    pointer-events: none;
+}
+
+.point-features-small .leaflet-filters-pane .leaflet-marker-icon::before {
+    transform: scale(0.5);
+    transform-origin: center;
 }

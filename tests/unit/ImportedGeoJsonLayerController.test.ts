@@ -29,7 +29,10 @@ function makeMap() {
         addLayer: vi.fn(),
         removeLayer: vi.fn(),
         fire: vi.fn(),
-        closePopup: vi.fn()
+        closePopup: vi.fn(),
+        getZoom: vi.fn().mockReturnValue(10),
+        getMaxZoom: vi.fn().mockReturnValue(20),
+        on: vi.fn()
     } as unknown as L.Map;
 }
 
@@ -43,11 +46,15 @@ describe('ImportedGeoJsonLayerController', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         map = makeMap();
-        fakeLeafletLayer = { addTo: vi.fn().mockReturnThis() };
+        fakeLeafletLayer = {
+            addTo: vi.fn().mockReturnThis(),
+            eachLayer: vi.fn((callback: (layer: any) => void) => callback(featureLayer))
+        };
         pointOptions = undefined;
         featureLayer = {
             bindPopup: vi.fn(),
-            on: vi.fn()
+            on: vi.fn(),
+            setStyle: vi.fn()
         };
         options = undefined;
         vi.spyOn(L, 'circleMarker').mockImplementation((_latLng: any, markerOptions: any) => {
@@ -144,5 +151,25 @@ describe('ImportedGeoJsonLayerController', () => {
         activeLayerId = null;
         clickHandler({ latlng: { lat: 52.5, lng: -1.9 } });
         expect(map.fire).toHaveBeenCalledOnce();
+    });
+
+    it('hides imported point features eight zoom levels from maximum', () => {
+        const controller = new ImportedGeoJsonLayerController({
+            getMap: () => map,
+            onFeaturePropertyChange: vi.fn(),
+            isReadOnly: () => false,
+            getActiveLayerId: () => null
+        });
+
+        controller.render([makeLayer()]);
+        expect(featureLayer.setStyle).toHaveBeenCalledWith({ opacity: 0, fillOpacity: 0 });
+
+        vi.mocked(map.getZoom).mockReturnValue(13);
+        const zoomHandler = vi.mocked(map.on).mock.calls[0][1] as () => void;
+        zoomHandler();
+        expect(featureLayer.setStyle).toHaveBeenLastCalledWith({
+            opacity: 0.8,
+            fillOpacity: 0.8
+        });
     });
 });

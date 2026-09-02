@@ -487,6 +487,80 @@ async function moveToMapOffset(
     return point;
 }
 
+async function setMapZoom(page: Page, zoom: number): Promise<void> {
+    await page.evaluate((nextZoom) => {
+        const app = (document.getElementById('app') as any).__vue_app__;
+        const mapStore = app?.config?.globalProperties?.$pinia?._s?.get('map');
+        mapStore.map.setZoom(nextZoom, { animate: false });
+    }, zoom);
+    await page.waitForFunction(
+        (nextZoom) => document.getElementById('map')?.classList.contains(`zoom-${nextZoom}`),
+        zoom
+    );
+}
+
+async function getPointIconState(page: Page, selector: string, index = 0) {
+    return await page
+        .locator(selector)
+        .nth(index)
+        .evaluate((element) => {
+            const mapElement = document.getElementById('map');
+            const rect = element.getBoundingClientRect();
+            const app = (document.getElementById('app') as any).__vue_app__;
+            const map = app?.config?.globalProperties?.$pinia?._s?.get('map').map;
+            let featureLatLng: { lat: number; lng: number } | null = null;
+
+            const visitLayer = (layer: any) => {
+                if (featureLatLng) {
+                    return;
+                }
+                if (layer.getElement?.() === element && layer.getLatLng) {
+                    featureLatLng = layer.getLatLng();
+                    return;
+                }
+                layer.eachLayer?.(visitLayer);
+            };
+            map.eachLayer(visitLayer);
+
+            if (!featureLatLng) {
+                throw new Error(`Leaflet layer not found for ${selector}`);
+            }
+
+            const expectedAnchor = map.latLngToContainerPoint(featureLatLng);
+            const mapRect = mapElement?.getBoundingClientRect();
+            const visualStyle = getComputedStyle(element, '::before');
+            const transformMatch = visualStyle.transform.match(/^matrix\(([^,]+),/);
+            const visualScale = transformMatch ? Number(transformMatch[1]) : 1;
+            const [originX = 0, originY = 0] = visualStyle.transformOrigin
+                .split(' ')
+                .map(Number.parseFloat);
+            const visualLeft = rect.left + originX * (1 - visualScale);
+            const visualTop = rect.top + originY * (1 - visualScale);
+            return {
+                size: getComputedStyle(element).zoom,
+                visibility: getComputedStyle(element).visibility,
+                anchor: {
+                    x: rect.left + rect.width / 2 - (mapRect?.left ?? 0),
+                    y: rect.top + rect.height / 2 - (mapRect?.top ?? 0)
+                },
+                visualAnchor: {
+                    x: visualLeft + (rect.width * visualScale) / 2 - (mapRect?.left ?? 0),
+                    y: visualTop + (rect.height * visualScale) / 2 - (mapRect?.top ?? 0)
+                },
+                expectedAnchor,
+                width: rect.width,
+                height: rect.height,
+                visualTransform: getComputedStyle(element, '::before').transform,
+                visualTransformOrigin: getComputedStyle(element, '::before').transformOrigin
+            };
+        });
+}
+
+function expectPointAtLeafletCoordinate(state: Awaited<ReturnType<typeof getPointIconState>>) {
+    expect(Math.abs(state.visualAnchor.x - state.expectedAnchor.x)).toBeLessThan(1);
+    expect(Math.abs(state.visualAnchor.y - state.expectedAnchor.y)).toBeLessThan(1);
+}
+
 // ---------------------------------------------------------------------------
 // Shared beforeEach – clear storage so each test starts from a blank map
 // ---------------------------------------------------------------------------
@@ -530,6 +604,29 @@ test.describe('Layer: Modal Filter (point, primary button)', () => {
     test('toolbar button activates the layer', async ({ page }) => {
         await page.locator('#modal-filter-button').click();
         await expect(page.locator('#modal-filter-button')).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    test('marker resizes and stays at its coordinate from zoom 12 to 16', async ({ page }) => {
+        await page.locator('#modal-filter-button').click();
+        await clickMap(page);
+
+        const selector = '.leaflet-filters-pane path.modal-filter-marker';
+        await setMapZoom(page, 17);
+        const normalState = await getPointIconState(page, selector);
+
+        for (const zoom of [16, 15, 14, 13]) {
+            await setMapZoom(page, zoom);
+            const state = await getPointIconState(page, selector);
+            expectPointAtLeafletCoordinate(state);
+            expect(state.width).toBeLessThan(normalState.width * 0.51);
+            expect(state.height).toBeLessThan(normalState.height * 0.51);
+            expect(state.visibility).toBe('visible');
+        }
+
+        await setMapZoom(page, 12);
+        const hiddenState = await getPointIconState(page, selector);
+        expectPointAtLeafletCoordinate(hiddenState);
+        expect(hiddenState.visibility).toBe('hidden');
     });
 
     test('clicking the map places a marker and persists it', async ({ page }) => {
@@ -735,6 +832,84 @@ test.describe('Layer: Modal Filter (point, primary button)', () => {
 test.describe('Layer: Bus Gate (point, submenu button)', () => {
     setupFreshPage();
 
+    test('point icons scale and hide at their zoom thresholds', async ({ page }) => {
+        await page.locator('#modal-filter-button').dispatchEvent('contextmenu');
+        await page.locator('#bus-gate-button').click();
+        await clickMap(page);
+
+        const icons = page.locator('.leaflet-marker-icon.bus-gate-icon');
+        await expect(icons).toHaveCount(1);
+
+        await setMapZoom(page, 20);
+        await expect
+            .poll(() =>
+                getPointIconState(page, '.leaflet-marker-icon.bus-gate-icon').then(
+                    (state) => state.size
+                )
+            )
+            .toBe('1');
+        await setMapZoom(page, 17);
+        await expect
+            .poll(() =>
+                getPointIconState(page, '.leaflet-marker-icon.bus-gate-icon').then(
+                    (state) => state.size
+                )
+            )
+            .toBe('1');
+        await setMapZoom(page, 16);
+        const busGateState = await getPointIconState(page, '.leaflet-marker-icon.bus-gate-icon');
+        expectPointAtLeafletCoordinate(busGateState);
+        expect(busGateState.size).toBe('1');
+        expect(busGateState.width).toBe(23);
+        expect(busGateState.height).toBe(23);
+        expect(busGateState.visualTransform).toBe('matrix(0.5, 0, 0, 0.5, 0, 0)');
+        expect(busGateState.visualTransformOrigin).toBe('11.5px 11.5px');
+
+        for (const zoom of [15, 14]) {
+            await setMapZoom(page, zoom);
+            const state = await getPointIconState(page, '.leaflet-marker-icon.bus-gate-icon');
+            expectPointAtLeafletCoordinate(state);
+            expect(state.visualTransform).toBe('matrix(0.5, 0, 0, 0.5, 0, 0)');
+            expect(state.visibility).toBe('visible');
+        }
+
+        await setMapZoom(page, 13);
+        await expect
+            .poll(() =>
+                getPointIconState(page, '.leaflet-marker-icon.bus-gate-icon').then(
+                    (state) => state.size
+                )
+            )
+            .toBe('1');
+        expectPointAtLeafletCoordinate(
+            await getPointIconState(page, '.leaflet-marker-icon.bus-gate-icon')
+        );
+        await setMapZoom(page, 12);
+        const hiddenBusGateState = await getPointIconState(
+            page,
+            '.leaflet-marker-icon.bus-gate-icon'
+        );
+        expectPointAtLeafletCoordinate(hiddenBusGateState);
+        expect(hiddenBusGateState.visibility).toBe('hidden');
+    });
+
+    test('multiple icons stay at their coordinates at every visible zoom', async ({ page }) => {
+        await page.locator('#modal-filter-button').dispatchEvent('contextmenu');
+        await page.locator('#bus-gate-button').click();
+        await clickMap(page, -80);
+        await clickMap(page);
+        await clickMap(page, 80);
+
+        const selector = '.leaflet-marker-icon.bus-gate-icon';
+        await expect(page.locator(selector)).toHaveCount(3);
+        for (const zoom of [20, 19, 18, 17, 16, 15, 14, 13]) {
+            await setMapZoom(page, zoom);
+            for (let index = 0; index < 3; index++) {
+                expectPointAtLeafletCoordinate(await getPointIconState(page, selector, index));
+            }
+        }
+    });
+
     test('right-clicking the filter button reveals the bus gate button', async ({ page }) => {
         // Bus Gate is in the 'filters' subgroup; revealed by right-click on the parent
         await page.locator('#modal-filter-button').dispatchEvent('contextmenu');
@@ -819,6 +994,86 @@ test.describe('Layer: Traffic Lights (point, primary button)', () => {
             'aria-pressed',
             'true'
         );
+    });
+
+    test('traffic-light icons scale and hide at their zoom thresholds', async ({ page }) => {
+        await page.locator('#traffic-lights-button').click();
+        await clickMap(page);
+
+        const icons = page.locator('.leaflet-marker-icon.traffic-lights-icon');
+        await expect(icons).toHaveCount(1);
+
+        await setMapZoom(page, 20);
+        await expect
+            .poll(() =>
+                getPointIconState(page, '.leaflet-marker-icon.traffic-lights-icon').then(
+                    (state) => state.size
+                )
+            )
+            .toBe('1');
+        await setMapZoom(page, 17);
+        await expect
+            .poll(() =>
+                getPointIconState(page, '.leaflet-marker-icon.traffic-lights-icon').then(
+                    (state) => state.size
+                )
+            )
+            .toBe('1');
+        await setMapZoom(page, 16);
+        const trafficLightState = await getPointIconState(
+            page,
+            '.leaflet-marker-icon.traffic-lights-icon'
+        );
+        expectPointAtLeafletCoordinate(trafficLightState);
+        expect(trafficLightState.size).toBe('1');
+        expect(trafficLightState.width).toBe(30);
+        expect(trafficLightState.height).toBe(30);
+        expect(trafficLightState.visualTransform).toBe('matrix(0.5, 0, 0, 0.5, 0, 0)');
+        expect(trafficLightState.visualTransformOrigin).toBe('15px 15px');
+
+        for (const zoom of [15, 14]) {
+            await setMapZoom(page, zoom);
+            const state = await getPointIconState(page, '.leaflet-marker-icon.traffic-lights-icon');
+            expectPointAtLeafletCoordinate(state);
+            expect(state.visualTransform).toBe('matrix(0.5, 0, 0, 0.5, 0, 0)');
+            expect(state.visibility).toBe('visible');
+        }
+
+        await setMapZoom(page, 13);
+        await expect
+            .poll(() =>
+                getPointIconState(page, '.leaflet-marker-icon.traffic-lights-icon').then(
+                    (state) => state.size
+                )
+            )
+            .toBe('1');
+        expectPointAtLeafletCoordinate(
+            await getPointIconState(page, '.leaflet-marker-icon.traffic-lights-icon')
+        );
+
+        await setMapZoom(page, 12);
+        const hiddenTrafficLightState = await getPointIconState(
+            page,
+            '.leaflet-marker-icon.traffic-lights-icon'
+        );
+        expectPointAtLeafletCoordinate(hiddenTrafficLightState);
+        expect(hiddenTrafficLightState.visibility).toBe('hidden');
+    });
+
+    test('multiple icons stay at their coordinates at every visible zoom', async ({ page }) => {
+        await page.locator('#traffic-lights-button').click();
+        await clickMap(page, -80);
+        await clickMap(page);
+        await clickMap(page, 80);
+
+        const selector = '.leaflet-marker-icon.traffic-lights-icon';
+        await expect(page.locator(selector)).toHaveCount(3);
+        for (const zoom of [20, 19, 18, 17, 16, 15, 14, 13]) {
+            await setMapZoom(page, zoom);
+            for (let index = 0; index < 3; index++) {
+                expectPointAtLeafletCoordinate(await getPointIconState(page, selector, index));
+            }
+        }
     });
 
     test('clicking the map places a traffic light and persists it', async ({ page }) => {

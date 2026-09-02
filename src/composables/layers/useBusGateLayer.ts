@@ -15,7 +15,11 @@ export function createBusGateLayer(map: L.Map): IMapLayer {
 
             buildMarker(latlng, geoJsonLayer, _historyId) {
                 const marker = new L.Marker(latlng, {
-                    icon: new L.DivIcon({ className: 'bus-gate-icon' }),
+                    icon: new L.DivIcon({
+                        className: 'bus-gate-icon',
+                        iconSize: [23, 23],
+                        iconAnchor: [11.5, 11.5]
+                    }),
                     draggable: true,
                     pane: 'filters'
                 } as any).on('click', (e: any) =>
