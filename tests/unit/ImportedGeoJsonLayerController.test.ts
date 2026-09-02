@@ -96,9 +96,14 @@ describe('ImportedGeoJsonLayerController', () => {
         input.dispatchEvent(new Event('blur'));
         expect(onFeaturePropertyChange).toHaveBeenCalledWith('layer-1', 0, 'name', 'Renamed');
 
+        onFeaturePropertyChange.mockClear();
+        const unchangedPopup = featureLayer.bindPopup.mock.calls[0][0]();
+        unchangedPopup.querySelector('input')?.dispatchEvent(new Event('blur'));
+        expect(onFeaturePropertyChange).not.toHaveBeenCalled();
+
         readOnly = true;
         controller.render([makeLayer()]);
-        const readOnlyPopup = featureLayer.bindPopup.mock.calls[1][0]();
+        const readOnlyPopup = featureLayer.bindPopup.mock.calls[0][0]();
         expect(readOnlyPopup.querySelector('span')?.textContent).toBe('Ward 1');
         expect(readOnlyPopup.querySelector('input')).toBeNull();
     });

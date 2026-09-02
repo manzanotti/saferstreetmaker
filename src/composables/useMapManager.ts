@@ -509,10 +509,11 @@ export function setupMapManager(
      * Returns true on success.
      */
     const createNewMap = async (title: string): Promise<boolean> => {
-        mapGeneration += 1;
-        newMapPendingDefaultLayers = true;
+        const creationGeneration = ++mapGeneration;
         const created = await newMapCreator.create(title);
-        if (!created) {
+        if (created && mapGeneration === creationGeneration) {
+            newMapPendingDefaultLayers = true;
+        } else {
             newMapPendingDefaultLayers = false;
         }
         return created;

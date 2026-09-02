@@ -219,10 +219,11 @@ export function createImportedLayer(
  * Imported layers restored from storage or a shared URL are untrusted, so drop
  * any whose GeoJSON no longer validates rather than failing the whole map load.
  */
-export function sanitizeImportedLayers(
-    layers: SerializedImportedGeoJsonLayer[] | ImportedGeoJsonLayer[] | undefined
-): ImportedGeoJsonLayer[] {
-    return (layers ?? []).reduce<ImportedGeoJsonLayer[]>((valid, layer) => {
+export function sanitizeImportedLayers(layers: unknown): ImportedGeoJsonLayer[] {
+    if (!Array.isArray(layers)) {
+        return [];
+    }
+    return layers.reduce<ImportedGeoJsonLayer[]>((valid, layer) => {
         try {
             valid.push({
                 id: layer.id,

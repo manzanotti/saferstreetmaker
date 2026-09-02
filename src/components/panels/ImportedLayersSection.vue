@@ -33,7 +33,7 @@ function renameLayer(event: Event, layer: ImportedGeoJsonLayer): void {
                 Add layer
             </button>
         </div>
-        <p v-if="layers.length === 0" id="layers-empty" class="text-xs text-gray-400 italic">
+        <p v-if="layers.length === 0" id="layers-empty" class="text-xs text-gray-600 italic">
             No imported layers yet.
         </p>
         <ul v-else id="layers-list" class="space-y-1">

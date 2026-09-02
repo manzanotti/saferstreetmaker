@@ -276,4 +276,9 @@ describe('sanitizeImportedLayers', () => {
         expect(warn).toHaveBeenCalled();
         warn.mockRestore();
     });
+
+    it('treats malformed imported-layer collections as empty', () => {
+        expect(sanitizeImportedLayers({})).toEqual([]);
+        expect(sanitizeImportedLayers(null)).toEqual([]);
+    });
 });

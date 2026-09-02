@@ -33,6 +33,7 @@ const namePropertyOptions = ref<string[]>([]);
 const error = ref('');
 const loading = ref(false);
 let urlRequestId = 0;
+let fileRequestId = 0;
 
 const dialogInputId = computed(() => (source.value === 'file' ? 'geojson-file' : 'geojson-url'));
 
@@ -51,6 +52,7 @@ function invalidateUrlRequest() {
 
 function resetParsedImport() {
     invalidateUrlRequest();
+    fileRequestId += 1;
     parsedGeoJson.value = null;
     propertyPreview.value = [];
     namePropertyOptions.value = [];
@@ -72,6 +74,8 @@ function setParsedGeoJson(value: unknown, sourceName: string) {
 
 async function onFileSelected(event: Event) {
     resetError();
+    const requestId = ++fileRequestId;
+    const selectedSource = source.value;
     parsedGeoJson.value = null;
     propertyPreview.value = [];
     namePropertyOptions.value = [];
@@ -80,12 +84,18 @@ async function onFileSelected(event: Event) {
         return;
     }
     try {
-        setParsedGeoJson(JSON.parse(await file.text()), file.name);
+        const value = JSON.parse(await file.text());
+        if (requestId !== fileRequestId || source.value !== selectedSource) {
+            return;
+        }
+        setParsedGeoJson(value, file.name);
     } catch (e: unknown) {
-        error.value =
-            e instanceof SyntaxError
-                ? 'The file is not valid JSON.'
-                : String((e as Error).message ?? e);
+        if (requestId === fileRequestId && source.value === selectedSource) {
+            error.value =
+                e instanceof SyntaxError
+                    ? 'The file is not valid JSON.'
+                    : String((e as Error).message ?? e);
+        }
     }
 }
 

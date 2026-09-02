@@ -134,6 +134,9 @@ export class ImportedGeoJsonLayerController {
         input.setAttribute('aria-label', 'Feature title');
         if (layer.nameProperty) {
             const saveName = () => {
+                if (input.value === nameValue) {
+                    return;
+                }
                 this.onFeaturePropertyChange(
                     layer.id,
                     featureIndex,
