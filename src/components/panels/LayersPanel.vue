@@ -48,14 +48,18 @@ function closePanel() {
 }
 
 function onDialogKeydown(event: KeyboardEvent) {
-    if (
-        event.target instanceof Element &&
-        (event.target.closest('#add-layer-dialog') ||
-            event.target.matches('input, select, textarea, [contenteditable="true"]'))
-    ) {
+    if (event.target instanceof Element && event.target.closest('#add-layer-dialog')) {
         return;
     }
+    const target = event.target;
+    const isEditableTarget =
+        target instanceof HTMLElement &&
+        (target.tagName === 'INPUT' ||
+            target.tagName === 'TEXTAREA' ||
+            target.tagName === 'SELECT' ||
+            target.isContentEditable);
     if (
+        !isEditableTarget &&
         event.key.toLowerCase() === 'l' &&
         !event.ctrlKey &&
         !event.metaKey &&

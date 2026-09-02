@@ -112,9 +112,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         defaultImportedLayers = [defaultLayer];
-        if (!mapLoaded && remoteMapFile === null && hash === '') {
-            initialiseDefaultImportedLayers([defaultLayer], initialMapGeneration);
-        }
+        initialiseDefaultImportedLayers([defaultLayer], {
+            expectedGeneration: initialMapGeneration,
+            allowInitialSeed: !mapLoaded && remoteMapFile === null && hash === ''
+        });
     });
 
     if (mapLoaded) {

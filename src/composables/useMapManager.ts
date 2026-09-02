@@ -70,7 +70,7 @@ export interface MapManager {
     getMapGeneration: () => number;
     initialiseDefaultImportedLayers: (
         layers: ImportedGeoJsonLayer[],
-        expectedGeneration?: number
+        options?: { expectedGeneration?: number; allowInitialSeed?: boolean }
     ) => void;
     downloadStorageMap: () => Promise<void>;
     runViewCheckpointMigration: () => Promise<void>;
@@ -539,24 +539,33 @@ export function setupMapManager(
 
     const initialiseDefaultImportedLayers = (
         layers: ImportedGeoJsonLayer[],
-        expectedGeneration?: number
+        options?: { expectedGeneration?: number; allowInitialSeed?: boolean }
     ) => {
-        if (
-            expectedGeneration !== undefined &&
-            expectedGeneration !== mapGeneration &&
-            !newMapPendingDefaultLayers
-        ) {
-            return;
+        const seedingNewMap = newMapPendingDefaultLayers;
+        if (!seedingNewMap) {
+            if (options?.allowInitialSeed !== true) {
+                return;
+            }
+            if (
+                options.expectedGeneration !== undefined &&
+                options.expectedGeneration !== mapGeneration
+            ) {
+                return;
+            }
         }
         if (importedLayerStore.layers.length > 0) {
             return;
         }
+        const previouslySuppressed = suppressHistory;
         suppressHistory = true;
         importedLayerStore.setLayers(layers);
         lastSavedSnapshot = buildCurrentSnapshot();
         mapStore.clearLastLayerMutation();
-        suppressHistory = false;
+        suppressHistory = previouslySuppressed;
         newMapPendingDefaultLayers = false;
+        if (seedingNewMap) {
+            void persistMap({ recordHistory: false });
+        }
         void syncHistoryStatus();
     };
 

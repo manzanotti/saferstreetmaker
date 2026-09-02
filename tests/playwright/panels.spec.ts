@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { Buffer } from 'node:buffer';
 import {
     addFreshStorageInitScript,
+    addFirstNavigationStorageResetScript,
     getLayerFeatureCount,
     seedStoredMap,
     waitForFreshStorage
@@ -147,19 +148,6 @@ test.describe('Settings Panel', () => {
         await expect(page.getByLabel('Show layer Birmingham Wards')).toBeVisible();
     });
 
-    test('deleting the final imported layer survives reload', async ({ page }) => {
-        await page.locator('#layers-button').click();
-        await expect(page.getByLabel('Delete Birmingham Wards')).toBeVisible();
-        await page.getByLabel('Delete Birmingham Wards').click();
-        await expect(page.locator('#layers-empty')).toBeVisible();
-        await expect(page.locator('#undo-button')).toBeEnabled();
-        await page.reload();
-        await waitForFreshStorage(page);
-        await page.locator('#layers-button').click();
-        await expect(page.locator('#layers-empty')).toBeVisible();
-        await expect(page.getByLabel('Rename Birmingham Wards')).not.toBeAttached();
-    });
-
     test('new maps retain disabled Bus Lanes through undo, redo, and reload', async ({ page }) => {
         await page.locator('#map-manager-button').click();
         await page.locator('#new-map').click();
@@ -269,7 +257,6 @@ test.describe('Map Manager Panel', () => {
         await expect(page.getByLabel('Show layer Birmingham Wards')).toBeVisible();
         await page.locator('#layers-list input').first().fill('l');
         await expect(page.locator('#layers-panel')).toBeVisible();
-        await page.locator('#layers-list input').first().press('Escape');
 
         await page.locator('#add-layer-button').click();
         await expect(page.locator('#add-layer-dialog')).toBeVisible();
@@ -426,6 +413,8 @@ test.describe('Map Manager Panel', () => {
         await expect(page.getByLabel('Rename History layer')).not.toBeAttached();
         await page.locator('#redo-button').click();
         await expect(page.getByLabel('Rename History layer')).toBeVisible();
+        // Let the debounced save flush before switching away from this map.
+        await page.waitForTimeout(500);
 
         await page.locator('#map-manager-button').click();
         await page.locator('#new-map').click();
@@ -784,5 +773,60 @@ test.describe('Sharing Panel', () => {
         await page.locator('#share-button').click();
         await page.locator('#sharing button:has-text("Close")').click();
         await expect(page.locator('#sharing')).not.toBeAttached();
+    });
+});
+
+test.describe('Imported Layer Persistence', () => {
+    // Storage is wiped only on the first navigation so the reload below behaves
+    // like a real return visit rather than a fresh install.
+    test.beforeEach(async ({ page }) => {
+        await addFirstNavigationStorageResetScript(page);
+        await page.goto('/');
+        await waitForFreshStorage(page);
+        await page.waitForSelector('.toolbar');
+    });
+
+    test('deleting the final imported layer survives reload', async ({ page }) => {
+        await page.locator('#layers-button').click();
+        await expect(page.getByLabel('Delete Birmingham Wards')).toBeVisible();
+        await page.getByLabel('Delete Birmingham Wards').click();
+        await expect(page.locator('#layers-empty')).toBeVisible();
+        await expect(page.locator('#undo-button')).toBeEnabled();
+
+        await page.reload();
+        await waitForFreshStorage(page);
+        await page.waitForSelector('.toolbar');
+
+        await page.locator('#layers-button').click();
+        await expect(page.locator('#layers-empty')).toBeVisible();
+        await expect(page.getByLabel('Rename Birmingham Wards')).not.toBeAttached();
+    });
+
+    test('the default imported layer is restored after reload when it is kept', async ({
+        page
+    }) => {
+        await page.locator('#layers-button').click();
+        await expect(page.getByLabel('Rename Birmingham Wards')).toBeVisible();
+        await page.getByLabel('Close layers').click();
+
+        await page.locator('#settings-button').click();
+        await page.locator('#title').fill('Kept Wards Map');
+        await page.locator('button:has-text("Save")').click();
+        await expect(page.locator('#undo-button')).toBeEnabled();
+
+        await page.reload();
+        await waitForFreshStorage(page);
+        await page.waitForSelector('.toolbar');
+
+        await page.locator('#layers-button').click();
+        await expect(page.getByLabel('Rename Birmingham Wards')).toBeVisible();
+    });
+
+    test('Escape from the layer rename input closes the panel', async ({ page }) => {
+        await page.locator('#layers-button').click();
+        const renameInput = page.locator('#layers-list input').first();
+        await renameInput.click();
+        await renameInput.press('Escape');
+        await expect(page.locator('#layers-panel')).not.toBeAttached();
     });
 });
