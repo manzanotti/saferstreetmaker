@@ -360,18 +360,20 @@ onBeforeUnmount(() => {
                         <p class="text-xs font-medium uppercase tracking-wide text-gray-500 mb-2">
                             First feature properties
                         </p>
-                        <div
-                            v-for="property in propertyPreview"
-                            :key="property.key"
-                            class="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-2"
-                        >
-                            <dt class="font-medium text-gray-700 truncate">
-                                {{ property.key }}
-                            </dt>
-                            <dd class="text-gray-600 wrap-break-word">
-                                {{ property.displayValue }}
-                            </dd>
-                        </div>
+                        <dl class="space-y-1">
+                            <div
+                                v-for="property in propertyPreview"
+                                :key="property.key"
+                                class="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-2"
+                            >
+                                <dt class="font-medium text-gray-700 truncate">
+                                    {{ property.key }}
+                                </dt>
+                                <dd class="text-gray-600 wrap-break-word">
+                                    {{ property.displayValue }}
+                                </dd>
+                            </div>
+                        </dl>
                     </div>
                 </div>
                 <p v-if="error" role="alert" class="text-sm text-red-600">{{ error }}</p>

@@ -48,7 +48,11 @@ function closePanel() {
 }
 
 function onDialogKeydown(event: KeyboardEvent) {
-    if (event.target instanceof Element && event.target.closest('#add-layer-dialog')) {
+    if (
+        event.target instanceof Element &&
+        (event.target.closest('#add-layer-dialog') ||
+            event.target.matches('input, select, textarea, [contenteditable="true"]'))
+    ) {
         return;
     }
     if (

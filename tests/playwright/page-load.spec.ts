@@ -25,4 +25,28 @@ test.describe('Page Load', () => {
         const tilePane = page.locator('.leaflet-tile-pane');
         await expect(tilePane).toBeAttached();
     });
+
+    test('initializes the map before the optional ward layer finishes loading', async ({
+        page
+    }) => {
+        let releaseWards!: () => void;
+        const wardsBlocked = new Promise<void>((resolve) => {
+            releaseWards = resolve;
+        });
+        await page.route('**/Birmingham%20Wards.geojson', async (route) => {
+            await wardsBlocked;
+            await route.fulfill({
+                contentType: 'application/geo+json',
+                body: JSON.stringify({
+                    type: 'FeatureCollection',
+                    features: []
+                })
+            });
+        });
+        await page.goto('/');
+
+        await expect(page.locator('#map')).toBeVisible();
+        await expect(page.locator('.toolbar')).toBeVisible();
+        releaseWards();
+    });
 });

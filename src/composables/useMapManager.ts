@@ -13,6 +13,7 @@ import { FileManager } from '../services/FileManager';
 import { UndoJournal } from '../services/UndoJournal';
 import type { SerializedMap } from '../services/MapSerializer';
 import { Settings } from '../models/Settings';
+import type { ImportedGeoJsonLayer } from '../models/ImportedGeoJsonLayer';
 import { useHistoryStore } from '../stores/historyStore';
 import { useMapStore } from '../stores/mapStore';
 import { useSettingsStore } from '../stores/settingsStore';
@@ -93,14 +94,16 @@ export function getFileManager(): FileManager {
     return _fileManager;
 }
 
-export function setupMapManager(fileManager: FileManager): MapManager {
+export function setupMapManager(
+    fileManager: FileManager,
+    getDefaultImportedLayers: () => ImportedGeoJsonLayer[] = () => []
+): MapManager {
     _fileManager = fileManager;
     const historyStore = useHistoryStore(pinia);
     const mapStore = useMapStore(pinia);
     const settingsStore = useSettingsStore(pinia);
     const uiStore = useUiStore(pinia);
     const importedLayerStore = useImportedLayerStore(pinia);
-    const defaultImportedLayers = cloneImportedLayers(toRaw(importedLayerStore.layers));
     const undoJournal = new UndoJournal();
     let lastSavedSnapshot: SerializedMap | null = null;
     let suppressHistory = false;
@@ -213,7 +216,8 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         appVersion: APP_VERSION,
         loadMapListFromStorage: () => fileManager.loadMapListFromStorage(),
         clearAndReset: () => mapStateCoordinator.clearAllLayers(),
-        resetImportedLayers: () => importedLayerStore.setLayers(defaultImportedLayers),
+        resetImportedLayers: () =>
+            importedLayerStore.setLayers(cloneImportedLayers(getDefaultImportedLayers())),
         getAllLayerIds: () => mapStateCoordinator.getAllLayerIds(),
         getCurrentZoom: () => settingsStore.zoom,
         getCurrentCentre: () => settingsStore.centre ?? new L.LatLng(0, 0),

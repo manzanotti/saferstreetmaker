@@ -254,6 +254,9 @@ test.describe('Map Manager Panel', () => {
         await expect(page.locator('#map-manager')).not.toBeAttached();
         await expect(page.getByLabel('Rename Birmingham Wards')).toBeVisible();
         await expect(page.getByLabel('Show layer Birmingham Wards')).toBeVisible();
+        await page.locator('#layers-list input').first().fill('l');
+        await expect(page.locator('#layers-panel')).toBeVisible();
+        await page.locator('#layers-list input').first().press('Escape');
 
         await page.locator('#add-layer-button').click();
         await expect(page.locator('#add-layer-dialog')).toBeVisible();
@@ -261,7 +264,7 @@ test.describe('Map Manager Panel', () => {
         await expect(page.locator('#layers-panel')).not.toHaveAttribute('aria-modal');
         await expect(page.locator('#add-layer-overlay')).toHaveCSS('z-index', '10003');
         await page.locator('#geojson-file').setInputFiles('src/public/Birmingham Wards.geojson');
-        await page.waitForTimeout(200);
+        await expect(page.locator('#geojson-property-preview dl dt').first()).toBeAttached();
         await page.locator('#imported-name-property').selectOption({ label: 'wd25nm' });
         await page.locator('#imported-layer-name').fill('Imported Wards');
         await page.locator('#add-layer-dialog').getByRole('button', { name: 'Add layer' }).click();

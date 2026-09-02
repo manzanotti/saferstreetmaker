@@ -43,25 +43,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Pre-populate activeLayers so the toolbar and legend render before loadMap.
     settingsStore.activeLayers = allLayers.map((l) => l.id);
 
-    try {
-        const response = await fetch('/Birmingham%20Wards.geojson');
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
-        const featureCollection = parseGeoJson(await response.json());
-        importedLayerStore.addLayer({
-            id: 'birmingham-wards',
-            name: 'Birmingham Wards',
-            nameProperty: 'wd25nm',
-            visible: false,
-            featureCollection
+    let defaultImportedLayers: ReturnType<typeof useImportedLayerStore>['layers'][number][] = [];
+    const defaultLayerPromise = fetch('/Birmingham%20Wards.geojson')
+        .then(async (response) => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            const featureCollection = parseGeoJson(await response.json());
+            return {
+                id: 'birmingham-wards',
+                name: 'Birmingham Wards',
+                nameProperty: 'wd25nm',
+                visible: false,
+                featureCollection
+            };
+        })
+        .catch((error) => {
+            console.warn('Unable to load the default Birmingham Wards layer.', error);
+            return null;
         });
-    } catch (error) {
-        console.warn('Unable to load the default Birmingham Wards layer.', error);
-    }
 
     // ── Set up map manager (loads/saves maps, wires layer-update and file-loaded callbacks) ─────
-    const { loadMap, setUserLocation, setDefaultView } = setupMapManager(fileManager);
+    const { loadMap, setUserLocation, setDefaultView } = setupMapManager(
+        fileManager,
+        () => defaultImportedLayers
+    );
 
     // ── Add Vue-backed Leaflet controls ──────────────────────────────────────
     map.addControl(makeLeafletVueControl(CommandsToolbar, 'topleft'));
@@ -97,6 +103,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const mapLoaded = await loadMap(remoteMapFile, hash, hideToolbar, zoom, centre);
+
+    void defaultLayerPromise.then((defaultLayer) => {
+        if (!defaultLayer) {
+            return;
+        }
+        defaultImportedLayers = [defaultLayer];
+        if (
+            !mapLoaded &&
+            remoteMapFile === null &&
+            hash === '' &&
+            importedLayerStore.layers.length === 0
+        ) {
+            importedLayerStore.addLayer(defaultLayer);
+        }
+    });
 
     if (mapLoaded) {
         const groupReference = params.get('group');
