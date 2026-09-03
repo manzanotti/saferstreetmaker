@@ -195,9 +195,15 @@ export function setupMapManager(
         setImportedLayers: (layers) => importedLayerStore.setLayers(layers)
     });
     watch(
-        () => importedLayerStore.layers,
-        (layers) => importedLayerController.render(layers),
-        { deep: true }
+        () =>
+            importedLayerStore.layers.map((layer) => [
+                layer.id,
+                layer.name,
+                layer.nameProperty,
+                layer.visible,
+                layer.featureCollection
+            ]),
+        () => importedLayerController.render(importedLayerStore.layers)
     );
     const mapLoadSourceResolver = new MapLoadSourceResolver(fileManager, () => settingsStore.title);
     const storedMapLoader = new StoredMapLoader({

@@ -32,6 +32,18 @@ function isPositionArray(value: unknown, minimumLength: number): value is number
     return Array.isArray(value) && value.length >= minimumLength && value.every(isPosition);
 }
 
+function isLinearRing(value: unknown): value is number[][] {
+    if (!isPositionArray(value, 4)) {
+        return false;
+    }
+    const first = value[0];
+    const last = value[value.length - 1];
+    return (
+        first.length === last.length &&
+        first.every((coordinate, index) => coordinate === last[index])
+    );
+}
+
 function validateGeometry(geometry: unknown, featureIndex: number): void {
     if (!geometry || typeof geometry !== 'object') {
         throw new Error(`Feature ${featureIndex + 1} is missing a valid geometry.`);
@@ -60,7 +72,7 @@ function validateGeometry(geometry: unknown, featureIndex: number): void {
                 : candidate.type === 'Polygon'
                   ? Array.isArray(candidate.coordinates) &&
                     candidate.coordinates.length > 0 &&
-                    candidate.coordinates.every((ring) => isPositionArray(ring, 4))
+                    candidate.coordinates.every(isLinearRing)
                   : candidate.type === 'MultiPolygon'
                     ? Array.isArray(candidate.coordinates) &&
                       candidate.coordinates.length > 0 &&
@@ -68,7 +80,7 @@ function validateGeometry(geometry: unknown, featureIndex: number): void {
                           (polygon) =>
                               Array.isArray(polygon) &&
                               polygon.length > 0 &&
-                              polygon.every((ring) => isPositionArray(ring, 4))
+                              polygon.every(isLinearRing)
                       )
                     : false;
     if (!valid) {

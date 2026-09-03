@@ -427,7 +427,7 @@ ul.ltn-popup-buttons > li.feature-popup-group-content {
     width: 23px !important;
 }
 
-.bus-gate-icon::before {
+.leaflet-marker-icon.bus-gate-icon::before {
     background-image: url(../img/bus-gate.svg);
     background-repeat: no-repeat;
     background-size: 23px 23px;
@@ -441,7 +441,7 @@ ul.ltn-popup-buttons > li.feature-popup-group-content {
     width: 30px !important;
 }
 
-.traffic-lights-icon::before {
+.leaflet-marker-icon.traffic-lights-icon::before {
     background-image: url(../img/trafficlights-black1.svg);
     background-repeat: no-repeat;
     background-size: 30px 30px;
@@ -455,7 +455,7 @@ ul.ltn-popup-buttons > li.feature-popup-group-content {
     width: 30px !important;
 }
 
-.pedestrian-lights-icon::before {
+.leaflet-marker-icon.pedestrian-lights-icon::before {
     background-image: url(../img/UK-Traffic-Signal-Pedestrians-1975.svg);
     background-repeat: no-repeat;
     background-size: 30px 30px;
@@ -469,7 +469,7 @@ ul.ltn-popup-buttons > li.feature-popup-group-content {
     width: 32px !important;
 }
 
-.zebra-crossing-icon::before {
+.leaflet-marker-icon.zebra-crossing-icon::before {
     background-image: url(../img/zebra-crossing.svg);
     background-repeat: no-repeat;
     background-size: 32px 21px;

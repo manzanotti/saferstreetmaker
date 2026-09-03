@@ -141,13 +141,25 @@ describe('imported GeoJSON helpers', () => {
         { type: 'MultiPoint', coordinates: [] },
         { type: 'MultiLineString', coordinates: [[[-1.82, 52.44]]] },
         {
+            type: 'Polygon',
+            coordinates: [
+                [
+                    [-1.82, 52.44],
+                    [-1.8, 52.44],
+                    [-1.8, 52.46],
+                    [-1.82, 52.46]
+                ]
+            ]
+        },
+        {
             type: 'MultiPolygon',
             coordinates: [
                 [
                     [
                         [-1.82, 52.44],
                         [-1.8, 52.44],
-                        [-1.8, 52.46]
+                        [-1.8, 52.46],
+                        [-1.82, 52.46]
                     ]
                 ]
             ]

@@ -107,4 +107,32 @@ describe('MapPersistenceCoordinator', () => {
         expect(state.options.setLastSavedSnapshot).not.toHaveBeenCalled();
         expect(state.options.clearMutation).not.toHaveBeenCalled();
     });
+
+    it('serializes the complete persistence lifecycle across concurrent calls', async () => {
+        let finishFirstSave!: () => void;
+        const saveMap = vi
+            .fn()
+            .mockImplementationOnce(
+                () =>
+                    new Promise<void>((resolve) => {
+                        finishFirstSave = resolve;
+                    })
+            )
+            .mockResolvedValue(undefined);
+        const state = createCoordinator({ saveMap });
+
+        const first = state.coordinator.persist();
+        const second = state.coordinator.persist();
+        await Promise.resolve();
+
+        expect(saveMap).toHaveBeenCalledOnce();
+        expect(state.options.getLastSavedSnapshot).toHaveBeenCalledOnce();
+
+        finishFirstSave();
+        await Promise.all([first, second]);
+
+        expect(saveMap).toHaveBeenCalledTimes(2);
+        expect(state.options.getLastSavedSnapshot).toHaveBeenCalledTimes(2);
+        expect(state.options.clearMutation).toHaveBeenCalledTimes(2);
+    });
 });

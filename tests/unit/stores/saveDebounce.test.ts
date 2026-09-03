@@ -31,6 +31,12 @@ function makeFileManager(): FileManager {
     return fm;
 }
 
+async function flushPersistence(): Promise<void> {
+    for (let index = 0; index < 6; index += 1) {
+        await Promise.resolve();
+    }
+}
+
 // ---------------------------------------------------------------------------
 describe('useMapManager – save debounce', () => {
     let fm: FileManager;
@@ -55,7 +61,9 @@ describe('useMapManager – save debounce', () => {
         }
     });
 
-    afterEach(() => {
+    afterEach(async () => {
+        await flushPersistence();
+        useUiStore(pinia).clearErrors();
         vi.useRealTimers();
         vi.restoreAllMocks();
     });
@@ -109,7 +117,7 @@ describe('useMapManager – save debounce', () => {
 
         // Let the final debounce fire
         vi.advanceTimersByTime(300);
-        await nextTick();
+        await vi.runAllTimersAsync();
         expect(fm.saveMap).toHaveBeenCalledTimes(1);
     });
 
@@ -131,7 +139,7 @@ describe('useMapManager – save debounce', () => {
         expect(fm.saveMap).not.toHaveBeenCalled();
 
         vi.advanceTimersByTime(400);
-        await nextTick();
+        await vi.runAllTimersAsync();
         expect(fm.saveMap).toHaveBeenCalledTimes(1);
     });
 
@@ -152,6 +160,7 @@ describe('useMapManager – save debounce', () => {
         await nextTick();
         mapStore.markLayerUpdated();
         await nextTick();
+        await flushPersistence();
 
         expect(fm.saveMap).toHaveBeenCalledTimes(2);
     });
@@ -167,7 +176,7 @@ describe('useMapManager – save debounce', () => {
 
         mapStore.markLayerUpdated();
         await nextTick();
-        await Promise.resolve();
+        await flushPersistence();
 
         expect(uiStore.errorMessages).toEqual([
             'There was a problem saving the map:',
@@ -184,7 +193,7 @@ describe('useMapManager – save debounce', () => {
 
         mapStore.markLayerUpdated();
         await nextTick();
-        await Promise.resolve();
+        await flushPersistence();
 
         expect(uiStore.errorMessages).toEqual([
             'There was a problem saving the map:',

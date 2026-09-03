@@ -30,12 +30,32 @@ export interface MapPersistenceCoordinatorOptions {
 
 export class MapPersistenceCoordinator {
     private readonly options: MapPersistenceCoordinatorOptions;
+    private persistenceQueue: Promise<void> | undefined;
 
     constructor(options: MapPersistenceCoordinatorOptions) {
         this.options = options;
     }
 
     async persist(options?: {
+        throwOnFailure?: boolean;
+        recordHistory?: boolean;
+        preserveMutation?: boolean;
+    }): Promise<boolean> {
+        const queuedPersistence =
+            this.persistenceQueue === undefined
+                ? this.persistNow(options)
+                : this.persistenceQueue.then(
+                      () => this.persistNow(options),
+                      () => this.persistNow(options)
+                  );
+        this.persistenceQueue = queuedPersistence.then(
+            () => undefined,
+            () => undefined
+        );
+        return await queuedPersistence;
+    }
+
+    private async persistNow(options?: {
         throwOnFailure?: boolean;
         recordHistory?: boolean;
         preserveMutation?: boolean;
