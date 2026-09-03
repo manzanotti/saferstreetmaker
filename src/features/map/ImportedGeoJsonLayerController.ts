@@ -21,7 +21,10 @@ export class ImportedGeoJsonLayerController {
     private readonly isReadOnly: () => boolean;
     private readonly getActiveLayerId: () => string | null;
     private readonly leafletLayers = new Map<string, L.GeoJSON>();
-    private readonly renderedFeatureCollections = new Map<string, GeoJSON.FeatureCollection>();
+    private readonly renderedFeatureCollections = new Map<
+        string,
+        GeoJSON.FeatureCollection<GeoJSON.Geometry | null>
+    >();
     private readonly pointFeatureLayers = new Set<
         L.Layer & { setStyle?: (style: L.PathOptions) => void }
     >();
@@ -80,7 +83,9 @@ export class ImportedGeoJsonLayerController {
             return;
         }
 
-        let featureIndex = 0;
+        const featureIndexes = new Map(
+            layer.featureCollection.features.map((feature, index) => [feature, index])
+        );
         const leafletLayer = L.geoJSON(layer.featureCollection, {
             pane: 'imported',
             style: {
@@ -101,8 +106,10 @@ export class ImportedGeoJsonLayerController {
                     pane: 'imported'
                 }),
             onEachFeature: (feature, featureLayer) => {
-                const index = featureIndex;
-                featureIndex += 1;
+                const index = featureIndexes.get(feature);
+                if (index === undefined) {
+                    return;
+                }
                 if (feature.geometry?.type === 'Point' || feature.geometry?.type === 'MultiPoint') {
                     this.pointFeatureLayers.add(featureLayer);
                 }

@@ -310,6 +310,35 @@ describe('MapSerializer — groups', () => {
         });
     });
 
+    it('preserves null geometry in imported layers through the compact URL', () => {
+        const importedLayers = [
+            {
+                id: 'imported-null',
+                name: 'Incomplete records',
+                nameProperty: null,
+                featureCollection: {
+                    type: 'FeatureCollection',
+                    features: [
+                        {
+                            type: 'Feature',
+                            properties: { name: 'Unknown' },
+                            geometry: null
+                        }
+                    ]
+                }
+            }
+        ] as any;
+
+        const hash = serializer.toEncodedHash(makeSettings(), layers, [], importedLayers);
+        const payload = JSON.parse(
+            LZString.decompressFromEncodedURIComponent(hash.slice(3)) as string
+        );
+        expect(payload.o[0].f[0][0]).toBeNull();
+
+        const restored = serializer.fromEncodedHash(hash);
+        expect(restored?.importedLayers?.[0].featureCollection.features[0].geometry).toBeNull();
+    });
+
     it('round-trips imported GeometryCollection features through the compact URL', () => {
         const importedLayers = [
             {

@@ -82,8 +82,12 @@ interface CompactUrlImportedGeometry {
     g?: CompactUrlImportedGeometry[];
 }
 type CompactUrlImportedFeature =
-    | [CompactUrlImportedGeometry, Record<string, unknown> | null | undefined]
-    | [CompactUrlImportedGeometry, Record<string, unknown> | null | undefined, string | number];
+    | [CompactUrlImportedGeometry | null, Record<string, unknown> | null | undefined]
+    | [
+          CompactUrlImportedGeometry | null,
+          Record<string, unknown> | null | undefined,
+          string | number
+      ];
 interface CompactUrlImportedLayer {
     i: string;
     n: string;
@@ -277,7 +281,8 @@ function encodeImportedLayers(layers: ImportedGeoJsonLayer[]): CompactUrlImporte
             const properties = feature.properties
                 ? JSON.parse(JSON.stringify(feature.properties))
                 : feature.properties;
-            const encodedGeometry = encodeImportedGeometry(feature.geometry, state);
+            const encodedGeometry =
+                feature.geometry === null ? null : encodeImportedGeometry(feature.geometry, state);
             return feature.id === undefined
                 ? [encodedGeometry, properties]
                 : [encodedGeometry, properties, feature.id];
@@ -297,7 +302,8 @@ function decodeImportedLayers(layers: CompactUrlImportedLayer[]): SerializedImpo
                 type: 'Feature',
                 ...(id !== undefined ? { id } : {}),
                 properties: properties ?? null,
-                geometry: decodeImportedGeometry(geometry, { x: 0, y: 0 })
+                geometry:
+                    geometry === null ? null : decodeImportedGeometry(geometry, { x: 0, y: 0 })
             }))
         }
     }));

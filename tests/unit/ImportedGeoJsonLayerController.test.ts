@@ -24,6 +24,16 @@ function makeLayer(id = 'layer-1', visible = true): ImportedGeoJsonLayer {
     };
 }
 
+function makeLayerWithNullGeometry(): ImportedGeoJsonLayer {
+    const layer = makeLayer();
+    layer.featureCollection.features.unshift({
+        type: 'Feature',
+        properties: { name: 'Unknown' },
+        geometry: null
+    });
+    return layer;
+}
+
 function makeMap() {
     return {
         addLayer: vi.fn(),
@@ -61,10 +71,11 @@ describe('ImportedGeoJsonLayerController', () => {
             pointOptions = markerOptions;
             return {} as any;
         });
-        vi.spyOn(L, 'geoJSON').mockImplementation((_data: any, layerOptions: any) => {
+        vi.spyOn(L, 'geoJSON').mockImplementation((data: any, layerOptions: any) => {
             options = layerOptions;
             layerOptions.pointToLayer?.({}, { lat: 52.5, lng: -1.9 });
-            layerOptions.onEachFeature(makeLayer().featureCollection.features[0], featureLayer);
+            const renderedFeature = data.features.find((feature: any) => feature.geometry !== null);
+            layerOptions.onEachFeature(renderedFeature, featureLayer);
             return fakeLeafletLayer as any;
         });
     });
@@ -131,6 +142,24 @@ describe('ImportedGeoJsonLayerController', () => {
         const readOnlyPopup = featureLayer.bindPopup.mock.calls[0][0]();
         expect(readOnlyPopup.querySelector('span')?.textContent).toBe('Ward 1');
         expect(readOnlyPopup.querySelector('input')).toBeNull();
+    });
+
+    it('uses the source feature index after a null-geometry feature', () => {
+        const onFeaturePropertyChange = vi.fn();
+        const controller = new ImportedGeoJsonLayerController({
+            getMap: () => map,
+            onFeaturePropertyChange,
+            isReadOnly: () => false,
+            getActiveLayerId: () => null
+        });
+
+        controller.render([makeLayerWithNullGeometry()]);
+        const popup = featureLayer.bindPopup.mock.calls[0][0]();
+        const input = popup.querySelector('input') as HTMLInputElement;
+        input.value = 'Renamed';
+        input.dispatchEvent(new Event('blur'));
+
+        expect(onFeaturePropertyChange).toHaveBeenCalledWith('layer-1', 1, 'name', 'Renamed');
     });
 
     it('keeps rendered geometry when only layer metadata changes', () => {
