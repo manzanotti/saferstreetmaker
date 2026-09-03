@@ -86,6 +86,24 @@ describe('ImportedGeoJsonLayerController', () => {
         expect(map.removeLayer).toHaveBeenCalledOnce();
     });
 
+    it('stops styling point features after their imported layer is deleted', () => {
+        const controller = new ImportedGeoJsonLayerController({
+            getMap: () => map,
+            onFeaturePropertyChange: vi.fn(),
+            isReadOnly: () => false,
+            getActiveLayerId: () => null
+        });
+
+        controller.render([makeLayer()]);
+        const zoomHandler = vi.mocked(map.on).mock.calls[0][1] as () => void;
+        featureLayer.setStyle.mockClear();
+
+        controller.render([]);
+        zoomHandler();
+
+        expect(featureLayer.setStyle).not.toHaveBeenCalled();
+    });
+
     it('builds editable and read-only popup content and reports edits', () => {
         const onFeaturePropertyChange = vi.fn();
         let readOnly = false;

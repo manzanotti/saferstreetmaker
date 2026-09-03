@@ -512,7 +512,11 @@ export function setupMapManager(
         const creationGeneration = ++mapGeneration;
         const created = await newMapCreator.create(title);
         if (created && mapGeneration === creationGeneration) {
+            const availableDefaultLayers = getDefaultImportedLayers();
             newMapPendingDefaultLayers = true;
+            if (availableDefaultLayers.length > 0) {
+                initialiseDefaultImportedLayers(availableDefaultLayers);
+            }
         } else {
             newMapPendingDefaultLayers = false;
         }

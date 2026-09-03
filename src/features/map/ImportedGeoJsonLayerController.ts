@@ -39,6 +39,9 @@ export class ImportedGeoJsonLayerController {
         for (const [id, leafletLayer] of this.leafletLayers) {
             if (!currentIds.has(id)) {
                 this.map.removeLayer(leafletLayer);
+                leafletLayer.eachLayer((featureLayer) =>
+                    this.pointFeatureLayers.delete(featureLayer)
+                );
                 this.leafletLayers.delete(id);
                 this.renderedFeatureCollections.delete(id);
             }
