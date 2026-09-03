@@ -542,9 +542,18 @@ export function setupMapManager(
      * Returns true on success.
      */
     const createNewMap = async (title: string): Promise<boolean> => {
+        const previousGeneration = mapGeneration;
         const creationGeneration = ++mapGeneration;
         const creationActionRevision = userActionRevision;
-        const created = await newMapCreator.create(title);
+        let created: boolean;
+        try {
+            created = await newMapCreator.create(title);
+        } catch (error) {
+            if (mapGeneration === creationGeneration) {
+                mapGeneration = previousGeneration;
+            }
+            throw error;
+        }
         if (created && mapGeneration === creationGeneration) {
             defaultSeedingBlocked = userActionRevision !== creationActionRevision;
             const availableDefaultLayers = getDefaultImportedLayers();
@@ -557,6 +566,9 @@ export function setupMapManager(
                 await initialiseDefaultImportedLayers(availableDefaultLayers);
             }
         } else {
+            if (!created && mapGeneration === creationGeneration) {
+                mapGeneration = previousGeneration;
+            }
             newMapPendingDefaultLayers = false;
         }
         return created;
