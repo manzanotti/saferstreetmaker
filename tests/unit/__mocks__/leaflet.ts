@@ -379,6 +379,12 @@ class Map {
         }
         return this;
     }
+    fire(event: string, payload?: Record<string, unknown>) {
+        for (const handler of this._handlers[event] ?? []) {
+            handler({ target: this, ...payload });
+        }
+        return this;
+    }
     addLayer(_layer: any) {
         return this;
     }
@@ -396,6 +402,9 @@ class Map {
     }
     getZoom() {
         return 10;
+    }
+    getMaxZoom() {
+        return 18;
     }
     getCenter() {
         return new LatLng(0, 0);

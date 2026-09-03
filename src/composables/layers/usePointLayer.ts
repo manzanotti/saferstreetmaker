@@ -240,6 +240,9 @@ export function createPointLayer(config: PointLayerConfig, map: L.Map): IMapLaye
 
     const handleMapClick = (e: L.LeafletMouseEvent) => {
         L.DomEvent.stopPropagation(e);
+        if (!shouldShowPointFeatures(map)) {
+            return;
+        }
         const { historyId } = addMarker(e.latlng);
         mapStore.markLayerUpdated({
             kind: 'point-add',

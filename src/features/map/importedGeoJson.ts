@@ -91,10 +91,15 @@ export function parseGeoJson(value: unknown): GeoJSON.FeatureCollection {
             throw new Error(`Feature ${index + 1} is not a JSON object.`);
         }
         const item = feature as { type?: unknown; geometry?: unknown; properties?: unknown };
-        if (item.type !== 'Feature' || !item.geometry || typeof item.geometry !== 'object') {
+        if (
+            item.type !== 'Feature' ||
+            (item.geometry !== null && typeof item.geometry !== 'object')
+        ) {
             throw new Error(`Feature ${index + 1} is missing a valid geometry.`);
         }
-        validateGeometry(item.geometry, index);
+        if (item.geometry !== null) {
+            validateGeometry(item.geometry, index);
+        }
         if (
             item.properties !== null &&
             (typeof item.properties !== 'object' || Array.isArray(item.properties))

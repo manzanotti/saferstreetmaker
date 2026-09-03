@@ -568,8 +568,14 @@ export function setupMapManager(
         } else {
             if (!created && mapGeneration === creationGeneration) {
                 mapGeneration = previousGeneration;
+                const availableDefaultLayers = getDefaultImportedLayers();
+                if (availableDefaultLayers.length > 0) {
+                    await initialiseDefaultImportedLayers(availableDefaultLayers, {
+                        expectedGeneration: previousGeneration,
+                        allowInitialSeed: true
+                    });
+                }
             }
-            newMapPendingDefaultLayers = false;
         }
         return created;
     };

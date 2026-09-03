@@ -34,6 +34,19 @@ describe('imported GeoJSON helpers', () => {
         expect(parsed).not.toBe(featureCollection);
     });
 
+    it('accepts features with null geometry', () => {
+        const parsed = parseGeoJson({
+            type: 'FeatureCollection',
+            features: [
+                { type: 'Feature', properties: { name: 'Unknown' }, geometry: null },
+                featureCollection.features[0]
+            ]
+        });
+
+        expect(parsed.features).toHaveLength(2);
+        expect(parsed.features[0].geometry).toBeNull();
+    });
+
     it('rejects non-FeatureCollection data', () => {
         expect(() => parseGeoJson({ type: 'Feature', geometry: null })).toThrow(
             'GeoJSON must contain a FeatureCollection with a features array.'
