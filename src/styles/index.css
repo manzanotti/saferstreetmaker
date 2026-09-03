@@ -164,7 +164,8 @@ a {
 }
 
 .point-features-small .imported-point-feature {
-    zoom: 0.5;
+    transform: scale(0.5);
+    transform-box: fill-box;
     transform-origin: center;
 }
 
@@ -471,7 +472,7 @@ ul.ltn-popup-buttons > li.feature-popup-group-content {
 .zebra-crossing-icon::before {
     background-image: url(../img/zebra-crossing.svg);
     background-repeat: no-repeat;
-    background-size: 21px 32px;
+    background-size: 32px 21px;
     content: '';
     inset: 0;
     position: absolute;
