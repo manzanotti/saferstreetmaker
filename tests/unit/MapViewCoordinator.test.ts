@@ -62,4 +62,74 @@ describe('MapViewCoordinator', () => {
             vi.useRealTimers();
         }
     });
+
+    it('waits for an in-flight save when there is no pending timer', async () => {
+        vi.useFakeTimers();
+        try {
+            let finishSave!: () => void;
+            const saveMap = vi.fn().mockImplementation(
+                () =>
+                    new Promise<void>((resolve) => {
+                        finishSave = resolve;
+                    })
+            );
+            const coordinator = new MapViewCoordinator({
+                getMap: () => ({ setView: vi.fn() }) as never,
+                saveMap
+            });
+
+            coordinator.scheduleSave();
+            vi.advanceTimersByTime(500);
+            const flush = coordinator.flushPendingSave();
+            await Promise.resolve();
+
+            expect(saveMap).toHaveBeenCalledOnce();
+            let flushed = false;
+            void flush.then(() => {
+                flushed = true;
+            });
+            await Promise.resolve();
+            expect(flushed).toBe(false);
+
+            finishSave();
+            await flush;
+            expect(flushed).toBe(true);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('waits for an in-flight save before flushing a newly queued save', async () => {
+        vi.useFakeTimers();
+        try {
+            let finishFirstSave!: () => void;
+            const saveMap = vi
+                .fn()
+                .mockImplementationOnce(
+                    () =>
+                        new Promise<void>((resolve) => {
+                            finishFirstSave = resolve;
+                        })
+                )
+                .mockResolvedValue(undefined);
+            const coordinator = new MapViewCoordinator({
+                getMap: () => ({ setView: vi.fn() }) as never,
+                saveMap
+            });
+
+            coordinator.scheduleSave();
+            vi.advanceTimersByTime(500);
+            coordinator.scheduleSave();
+            const flush = coordinator.flushPendingSave();
+            await Promise.resolve();
+
+            expect(saveMap).toHaveBeenCalledOnce();
+            finishFirstSave();
+            await flush;
+
+            expect(saveMap).toHaveBeenCalledTimes(2);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
 });
