@@ -49,7 +49,11 @@ export class MapViewCoordinator {
     }
 
     private startSave(): Promise<void> {
-        const savePromise = this.options.saveMap();
+        const previousSave = this.saveViewPromise ?? Promise.resolve();
+        const savePromise = previousSave.then(
+            () => this.options.saveMap(),
+            () => this.options.saveMap()
+        );
         this.saveViewPromise = savePromise;
         void savePromise.then(
             () => this.clearCompletedSave(savePromise),
