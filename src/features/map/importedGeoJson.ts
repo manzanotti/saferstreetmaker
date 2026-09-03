@@ -223,17 +223,52 @@ export function sanitizeImportedLayers(layers: unknown): ImportedGeoJsonLayer[] 
     if (!Array.isArray(layers)) {
         return [];
     }
+
+    const seenIds = new Set<string>();
     return layers.reduce<ImportedGeoJsonLayer[]>((valid, layer) => {
         try {
-            valid.push({
-                id: layer.id,
-                name: layer.name,
-                nameProperty: layer.nameProperty,
-                visible: layer.visible !== false,
-                featureCollection: parseGeoJson(layer.featureCollection)
-            });
+            if (!layer || typeof layer !== 'object' || Array.isArray(layer)) {
+                throw new Error('Imported layer must be an object.');
+            }
+
+            const candidate = layer as Record<string, unknown>;
+            const { id, name, nameProperty, visible, featureCollection } = candidate;
+
+            if (typeof id !== 'string' || id.trim() === '') {
+                throw new Error('Imported layer is missing a valid id.');
+            }
+            if (seenIds.has(id)) {
+                throw new Error(`Duplicate imported layer id "${id}".`);
+            }
+            if (typeof name !== 'string' || name.trim() === '') {
+                throw new Error('Imported layer is missing a valid name.');
+            }
+            if (
+                nameProperty !== undefined &&
+                nameProperty !== null &&
+                typeof nameProperty !== 'string'
+            ) {
+                throw new Error('Imported layer nameProperty must be a string or null.');
+            }
+            if (visible !== undefined && typeof visible !== 'boolean') {
+                throw new Error('Imported layer visible must be a boolean.');
+            }
+
+            const sanitisedLayer: ImportedGeoJsonLayer = {
+                id,
+                name,
+                nameProperty: nameProperty ?? null,
+                visible: visible !== false,
+                featureCollection: parseGeoJson(featureCollection)
+            };
+
+            valid.push(sanitisedLayer);
+            seenIds.add(id);
         } catch (error) {
-            console.warn(`Ignoring invalid imported layer "${layer?.name ?? layer?.id}".`, error);
+            console.warn(
+                `Ignoring invalid imported layer "${(layer as { name?: unknown; id?: unknown })?.name ?? (layer as { id?: unknown })?.id ?? 'unknown'}".`,
+                error
+            );
         }
         return valid;
     }, []);

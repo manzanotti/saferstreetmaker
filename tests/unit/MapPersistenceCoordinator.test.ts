@@ -82,6 +82,18 @@ describe('MapPersistenceCoordinator', () => {
         expect(state.options.syncHistoryStatus).not.toHaveBeenCalled();
     });
 
+    it('can preserve a mutation while advancing a non-history baseline', async () => {
+        const state = createCoordinator();
+
+        await expect(
+            state.coordinator.persist({ recordHistory: false, preserveMutation: true })
+        ).resolves.toBe(true);
+
+        expect(state.options.recordCheckpoint).not.toHaveBeenCalled();
+        expect(state.options.setLastSavedSnapshot).toHaveBeenCalledWith(state.after);
+        expect(state.options.clearMutation).not.toHaveBeenCalled();
+    });
+
     it('reports failures and rethrows the marked error when requested', async () => {
         const failure = new Error('Storage unavailable');
         const state = createCoordinator({ saveMap: vi.fn().mockRejectedValue(failure) });

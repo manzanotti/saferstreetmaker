@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         defaultImportedLayers = [defaultLayer];
-        initialiseDefaultImportedLayers([defaultLayer], {
+        void initialiseDefaultImportedLayers([defaultLayer], {
             expectedGeneration: initialMapGeneration,
             allowInitialSeed: !mapLoaded && remoteMapFile === null && hash === ''
         });

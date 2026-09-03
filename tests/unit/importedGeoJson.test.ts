@@ -277,6 +277,23 @@ describe('sanitizeImportedLayers', () => {
         warn.mockRestore();
     });
 
+    it('drops malformed metadata and duplicate ids', () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        const result = sanitizeImportedLayers([
+            validLayer,
+            { ...validLayer, id: 'duplicate', name: 'Duplicate', nameProperty: null },
+            { ...validLayer, id: 'duplicate', name: 'Duplicate 2', nameProperty: null },
+            { id: '', name: 'Empty id', featureCollection },
+            { id: 'bad-visibility', name: 'Bad visibility', visible: 'yes', featureCollection },
+            { ...validLayer, id: 'other', nameProperty: 42 }
+        ]);
+
+        expect(result.map((layer) => layer.id)).toEqual(['valid', 'duplicate']);
+        expect(warn).toHaveBeenCalledTimes(4);
+        warn.mockRestore();
+    });
+
     it('treats malformed imported-layer collections as empty', () => {
         expect(sanitizeImportedLayers({})).toEqual([]);
         expect(sanitizeImportedLayers(null)).toEqual([]);

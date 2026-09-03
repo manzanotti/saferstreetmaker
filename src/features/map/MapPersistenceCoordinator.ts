@@ -38,6 +38,7 @@ export class MapPersistenceCoordinator {
     async persist(options?: {
         throwOnFailure?: boolean;
         recordHistory?: boolean;
+        preserveMutation?: boolean;
     }): Promise<boolean> {
         this.options.pruneDanglingGroupMembers();
 
@@ -70,7 +71,9 @@ export class MapPersistenceCoordinator {
             }
 
             this.options.setLastSavedSnapshot(afterSnapshot);
-            this.options.clearMutation();
+            if (options?.preserveMutation !== true) {
+                this.options.clearMutation();
+            }
             return true;
         } catch (error) {
             this.showSaveError(error);

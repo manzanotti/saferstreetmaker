@@ -30,4 +30,14 @@ export class MapViewCoordinator {
             void this.options.saveMap();
         }, 500);
     }
+
+    async flushPendingSave(): Promise<void> {
+        if (this.saveViewTimer === undefined) {
+            return;
+        }
+
+        clearTimeout(this.saveViewTimer);
+        this.saveViewTimer = undefined;
+        await this.options.saveMap();
+    }
 }

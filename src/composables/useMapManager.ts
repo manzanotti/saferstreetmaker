@@ -8,7 +8,7 @@
  * fileLoaded is a FileManager callback.
  */
 import * as L from 'leaflet';
-import { toRaw, watch } from 'vue';
+import { nextTick, toRaw, watch } from 'vue';
 import { FileManager } from '../services/FileManager';
 import { UndoJournal } from '../services/UndoJournal';
 import type { SerializedMap } from '../services/MapSerializer';
@@ -71,7 +71,7 @@ export interface MapManager {
     initialiseDefaultImportedLayers: (
         layers: ImportedGeoJsonLayer[],
         options?: { expectedGeneration?: number; allowInitialSeed?: boolean }
-    ) => void;
+    ) => Promise<void>;
     downloadStorageMap: () => Promise<void>;
     runViewCheckpointMigration: () => Promise<void>;
 }
@@ -425,16 +425,49 @@ export function setupMapManager(
         showErrors: (errors) => uiStore.showErrors(errors)
     });
 
-    const persistMap = (options?: { throwOnFailure?: boolean; recordHistory?: boolean }) =>
-        persistenceCoordinator.persist(options);
+    let persistenceBarrier: Promise<void> | null = null;
+    let defaultSeedingBlocked = false;
+    let userActionRevision = 0;
 
-    const saveMap = () => persistenceCoordinator.save();
+    const blockDefaultSeeding = (): void => {
+        defaultSeedingBlocked = true;
+        userActionRevision += 1;
+    };
 
-    const saveMapOrThrow = () => persistenceCoordinator.saveOrThrow();
+    const persistImmediately = (options?: {
+        throwOnFailure?: boolean;
+        recordHistory?: boolean;
+        preserveMutation?: boolean;
+    }) => persistenceCoordinator.persist(options);
+
+    const persistMap = (options?: {
+        throwOnFailure?: boolean;
+        recordHistory?: boolean;
+        preserveMutation?: boolean;
+    }) => {
+        if (persistenceBarrier) {
+            return persistenceBarrier.then(() => persistenceCoordinator.persist(options));
+        }
+        return persistImmediately(options);
+    };
+
+    const saveMap = async (): Promise<void> => {
+        blockDefaultSeeding();
+        await persistMap();
+    };
+
+    const saveMapOrThrow = async (): Promise<void> => {
+        blockDefaultSeeding();
+        await persistMap({ throwOnFailure: true });
+    };
+
+    const saveViewMap = async (): Promise<void> => {
+        await persistMap();
+    };
 
     const mapViewCoordinator = new MapViewCoordinator({
         getMap,
-        saveMap
+        saveMap: saveViewMap
     });
 
     // Watch settingsStore.zoom/centre changes (set by useMapEngine on zoom/move events)
@@ -510,12 +543,18 @@ export function setupMapManager(
      */
     const createNewMap = async (title: string): Promise<boolean> => {
         const creationGeneration = ++mapGeneration;
+        const creationActionRevision = userActionRevision;
         const created = await newMapCreator.create(title);
         if (created && mapGeneration === creationGeneration) {
+            defaultSeedingBlocked = userActionRevision !== creationActionRevision;
             const availableDefaultLayers = getDefaultImportedLayers();
-            newMapPendingDefaultLayers = true;
-            if (availableDefaultLayers.length > 0) {
-                initialiseDefaultImportedLayers(availableDefaultLayers);
+            newMapPendingDefaultLayers = importedLayerStore.layers.length === 0;
+            if (
+                newMapPendingDefaultLayers &&
+                !defaultSeedingBlocked &&
+                availableDefaultLayers.length > 0
+            ) {
+                await initialiseDefaultImportedLayers(availableDefaultLayers);
             }
         } else {
             newMapPendingDefaultLayers = false;
@@ -527,6 +566,7 @@ export function setupMapManager(
     const loadMapFromStorage = async (mapName: string): Promise<boolean> => {
         mapGeneration += 1;
         newMapPendingDefaultLayers = false;
+        defaultSeedingBlocked = true;
         return await storedMapLoader.load(mapName);
     };
 
@@ -544,40 +584,72 @@ export function setupMapManager(
         await storageMapDownloader.download();
     };
 
-    const undo = () => historyNavigationCoordinator.undo();
+    const undo = async (): Promise<boolean> => {
+        blockDefaultSeeding();
+        if (persistenceBarrier) {
+            await persistenceBarrier;
+        }
+        return await historyNavigationCoordinator.undo();
+    };
 
-    const redo = () => historyNavigationCoordinator.redo();
+    const redo = async (): Promise<boolean> => {
+        blockDefaultSeeding();
+        if (persistenceBarrier) {
+            await persistenceBarrier;
+        }
+        return await historyNavigationCoordinator.redo();
+    };
 
-    const initialiseDefaultImportedLayers = (
+    const initialiseDefaultImportedLayers = async (
         layers: ImportedGeoJsonLayer[],
         options?: { expectedGeneration?: number; allowInitialSeed?: boolean }
-    ) => {
-        const seedingNewMap = newMapPendingDefaultLayers;
-        if (!seedingNewMap) {
-            if (options?.allowInitialSeed !== true) {
-                return;
-            }
+    ): Promise<void> => {
+        const seedGeneration = mapGeneration;
+        const canSeed = (): boolean => {
             if (
-                options.expectedGeneration !== undefined &&
-                options.expectedGeneration !== mapGeneration
+                defaultSeedingBlocked ||
+                mapGeneration !== seedGeneration ||
+                importedLayerStore.layers.length > 0
             ) {
-                return;
+                return false;
             }
-        }
-        if (importedLayerStore.layers.length > 0) {
+            if (newMapPendingDefaultLayers) {
+                return true;
+            }
+            return (
+                options?.allowInitialSeed === true &&
+                (options.expectedGeneration === undefined ||
+                    options.expectedGeneration === mapGeneration)
+            );
+        };
+
+        if (!canSeed()) {
             return;
         }
-        const previouslySuppressed = suppressHistory;
-        suppressHistory = true;
-        importedLayerStore.setLayers(layers);
-        lastSavedSnapshot = buildCurrentSnapshot();
-        mapStore.clearLastLayerMutation();
-        suppressHistory = previouslySuppressed;
-        newMapPendingDefaultLayers = false;
-        if (seedingNewMap) {
-            void persistMap({ recordHistory: false });
+
+        await nextTick();
+        await mapViewCoordinator.flushPendingSave();
+        if (!canSeed()) {
+            return;
         }
-        void syncHistoryStatus();
+
+        let releasePersistenceBarrier: () => void = () => undefined;
+        const seedBarrier = new Promise<void>((resolve) => {
+            releasePersistenceBarrier = resolve;
+        });
+        persistenceBarrier = seedBarrier;
+
+        try {
+            importedLayerStore.setLayers(layers);
+            newMapPendingDefaultLayers = false;
+            await persistImmediately({ recordHistory: false, preserveMutation: true });
+            await syncHistoryStatus();
+        } finally {
+            if (persistenceBarrier === seedBarrier) {
+                persistenceBarrier = null;
+            }
+            releasePersistenceBarrier();
+        }
     };
 
     // ── Wire event bridges (replaces PubSub subscriptions) ───────────────────
@@ -588,6 +660,7 @@ export function setupMapManager(
         clearAndReset: () => {
             mapGeneration += 1;
             newMapPendingDefaultLayers = false;
+            defaultSeedingBlocked = true;
             clearAllLayers();
             resetSettings();
         },

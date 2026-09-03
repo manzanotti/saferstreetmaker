@@ -47,4 +47,19 @@ describe('MapViewCoordinator', () => {
             vi.useRealTimers();
         }
     });
+
+    it('flushes a pending save immediately and cancels its timer', async () => {
+        vi.useFakeTimers();
+        try {
+            const state = createCoordinator();
+
+            state.coordinator.scheduleSave();
+            await state.coordinator.flushPendingSave();
+            vi.advanceTimersByTime(500);
+
+            expect(state.saveMap).toHaveBeenCalledOnce();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
 });

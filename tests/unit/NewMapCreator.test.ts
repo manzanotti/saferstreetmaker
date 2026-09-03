@@ -9,6 +9,7 @@ function createCreator(overrides: Partial<ConstructorParameters<typeof NewMapCre
         appVersion: '0.10.0',
         loadMapListFromStorage: vi.fn().mockResolvedValue([]),
         clearAndReset: vi.fn(),
+        resetImportedLayers: vi.fn(),
         getAllLayerIds: vi.fn().mockReturnValue(['ModalFilters', 'MobilityLanes']),
         getCurrentZoom: vi.fn().mockReturnValue(14),
         getCurrentCentre: vi.fn().mockReturnValue({ lat: 52.5, lng: -1.9 }),
@@ -35,6 +36,7 @@ describe('NewMapCreator', () => {
         await expect(state.creator.create('Existing map')).resolves.toBe(false);
 
         expect(state.options.clearAndReset).not.toHaveBeenCalled();
+        expect(state.options.resetImportedLayers).not.toHaveBeenCalled();
         expect(state.options.applySettings).not.toHaveBeenCalled();
         expect(state.options.persistMap).not.toHaveBeenCalled();
     });
@@ -45,6 +47,7 @@ describe('NewMapCreator', () => {
         await expect(state.creator.create('New map')).resolves.toBe(true);
 
         expect(state.options.clearAndReset).toHaveBeenCalledOnce();
+        expect(state.options.resetImportedLayers).toHaveBeenCalledOnce();
         expect(state.options.applySettings).toHaveBeenCalledWith(
             expect.objectContaining({
                 title: 'New map',
