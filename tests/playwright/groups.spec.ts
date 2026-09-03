@@ -2,6 +2,7 @@ import { test, expect, type Page, type BrowserContext } from '@playwright/test';
 import {
     addFreshStorageInitScript,
     getLayerFeatureCount,
+    getHistoryEntryCount,
     waitForFreshStorage
 } from './indexedDbHelpers';
 
@@ -1705,8 +1706,10 @@ test.describe('Groups — Phases', () => {
         await openGroupDetails(page, 'Editable Phase Group');
         await page.getByRole('button', { name: 'Phases for version Default' }).click();
         await expect(page.getByText('Edit Phase 1', { exact: true })).toBeVisible();
+        const historyEntryCount = await getHistoryEntryCount(page);
         await markers.first().dispatchEvent('click');
         await expect(page.getByText('1 feature', { exact: true })).toBeVisible();
+        await expect.poll(() => getHistoryEntryCount(page)).toBeGreaterThan(historyEntryCount);
         await expect(page.getByRole('button', { name: 'Save group changes' })).toHaveCount(0);
         await page.getByRole('button', { name: 'Undo' }).click();
         await expect(page.getByText('2 features', { exact: true })).toBeVisible();

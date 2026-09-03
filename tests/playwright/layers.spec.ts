@@ -1,6 +1,7 @@
 import { test, expect, Page } from '@playwright/test';
 import {
     addFreshStorageInitScript,
+    getHistoryEntryCount,
     getLayerFeatures,
     getLayerFeatureCount as getIndexedDbLayerFeatureCount,
     waitForFreshStorage
@@ -812,6 +813,7 @@ test.describe('Layer: Modal Filter (point, primary button)', () => {
         await page.locator('#modal-filter-button').click();
         await clickMap(page);
         expect(await getLayerFeatureCount(page, 'ModalFilters')).toBe(1);
+        await expect.poll(() => getHistoryEntryCount(page)).toBeGreaterThan(0);
         await waitForHistoryButtons(page, { canUndo: true, canRedo: false });
 
         const secondPage = await context.newPage();

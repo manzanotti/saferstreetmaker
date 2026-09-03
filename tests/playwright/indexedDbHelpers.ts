@@ -245,3 +245,27 @@ export async function getLayerFeatures(
         );
     });
 }
+
+export async function getHistoryEntryCount(page: Page): Promise<number> {
+    return await withDatabase(page, async (databaseName) => {
+        return await page.evaluate(async (name) => {
+            return await new Promise<number>((resolve, reject) => {
+                const openRequest = indexedDB.open(name);
+                openRequest.onerror = () => reject(openRequest.error);
+                openRequest.onsuccess = () => {
+                    const db = openRequest.result;
+                    if (!db.objectStoreNames.contains('historyEntries')) {
+                        db.close();
+                        resolve(0);
+                        return;
+                    }
+                    const tx = db.transaction('historyEntries', 'readonly');
+                    const countRequest = tx.objectStore('historyEntries').count();
+                    countRequest.onsuccess = () => resolve(countRequest.result);
+                    countRequest.onerror = () => reject(countRequest.error);
+                    tx.oncomplete = () => db.close();
+                };
+            });
+        }, databaseName);
+    });
+}
