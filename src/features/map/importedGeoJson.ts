@@ -159,7 +159,7 @@ export function formatPropertyValue(value: unknown): string {
         return '';
     }
     if (typeof value === 'object') {
-        return JSON.stringify(value);
+        return JSON.stringify(value) ?? '';
     }
     return String(value);
 }
