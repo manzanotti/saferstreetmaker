@@ -24,7 +24,8 @@ export function normaliseSnapshotForHistory(snapshot: SerializedMap | null): unk
         title: snapshot.title,
         settings: snapshot.settings ? settingsWithoutView : undefined,
         layers: snapshot.layers,
-        groups: snapshot.groups
+        groups: snapshot.groups,
+        importedLayers: snapshot.importedLayers
     };
 }
 

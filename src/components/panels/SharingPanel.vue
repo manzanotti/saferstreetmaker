@@ -5,6 +5,7 @@ import { useMapStore } from '../../stores/mapStore';
 import { useUiStore } from '../../stores/uiStore';
 import { useGroupStore } from '../../stores/groupStore';
 import { useSelectionStore } from '../../stores/selectionStore';
+import { useImportedLayerStore } from '../../stores/importedLayerStore';
 import { getFileManager } from '../../composables/useMapManager';
 import { getGroupVersions } from '../../features/groups/groupVersions';
 import type { Group } from '../../models/Group';
@@ -15,6 +16,7 @@ const mapStore = useMapStore();
 const uiStore = useUiStore();
 const groupStore = useGroupStore();
 const selectionStore = useSelectionStore();
+const importedLayerStore = useImportedLayerStore();
 
 const mapSize = mapStore.map?.getSize();
 const width = ref<number | null>(mapSize ? Math.round(mapSize.x) : null);
@@ -52,10 +54,17 @@ function createShare(scope: 'all' | 'group', selectedGroup: Group | undefined) {
     const layers =
         scope === 'group' && groupForShare ? getGroupLayers(groupForShare) : mapStore.toLayers();
 
+    // Hidden imported layers are omitted so shared URLs stay a usable length.
+    const importedLayersForShare =
+        scope === 'group'
+            ? []
+            : importedLayerStore.layers.filter((layer) => layer.visible !== false);
+
     const mapHash = getFileManager().saveMapToHash(
         settingsStore.toSettings(),
         layers,
-        scope === 'group' && groupForShare ? [groupForShare] : groupStore.groups
+        scope === 'group' && groupForShare ? [groupForShare] : groupStore.groups,
+        importedLayersForShare
     );
     const baseUrl = window.location.origin + window.location.pathname;
     const params = new URLSearchParams({ 'hide-toolbar': String(hideToolbar.value) });

@@ -228,15 +228,6 @@ export function buildReadOnlyGroupPopup(
     );
 }
 
-export function getPointSelectCursor(): string {
-    const mapElement = document.getElementById('map');
-    const cursor = mapElement
-        ? getComputedStyle(mapElement).getPropertyValue('--point-select-cursor').trim()
-        : '';
-
-    return cursor === '' ? 'pointer' : cursor;
-}
-
 export function isPointFeatureElement(element: Element): boolean {
     return POINT_FEATURE_CLASSES.some((className) => element.classList.contains(className));
 }

@@ -6,6 +6,7 @@ export interface NewMapCreatorOptions {
     appVersion: string;
     loadMapListFromStorage: () => Promise<string[]>;
     clearAndReset: () => void;
+    resetImportedLayers?: () => void;
     getAllLayerIds: () => string[];
     getCurrentZoom: () => number;
     getCurrentCentre: () => L.LatLng | null;
@@ -33,6 +34,7 @@ export class NewMapCreator {
         }
 
         this.options.clearAndReset();
+        this.options.resetImportedLayers?.();
 
         const activeLayerIds = this.options.getAllLayerIds();
         const settings = new Settings();

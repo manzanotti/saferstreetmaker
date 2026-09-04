@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
-export type PanelId = 'settings' | 'mapManager' | 'sharing' | 'help' | 'groups';
+export type PanelId = 'settings' | 'mapManager' | 'sharing' | 'help' | 'groups' | 'layers';
 
 export const useUiStore = defineStore('ui', () => {
     const activePanel = ref<PanelId | null>(null);

@@ -14,6 +14,7 @@ import { useUiStore } from '../stores/uiStore';
 const SHORTCUTS = {
     toggleSelection: 's',
     toggleGroups: 'g',
+    toggleLayers: 'l',
     undo: 'z',
     copy: 'c',
     paste: 'v',
@@ -94,6 +95,16 @@ export function setupKeyboardShortcuts(map: L.Map): void {
                 uiStore.closePanel();
             } else {
                 uiStore.openPanel('groups');
+            }
+            return;
+        }
+
+        if (event.key === SHORTCUTS.toggleLayers && isMapAction(event, mapElement)) {
+            event.preventDefault();
+            if (uiStore.activePanel === 'layers') {
+                uiStore.closePanel();
+            } else {
+                uiStore.openPanel('layers');
             }
             return;
         }

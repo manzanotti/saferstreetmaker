@@ -11,6 +11,7 @@
 import type { IMapLayer } from '../composables/layers/IMapLayer';
 import type { Settings } from '../models/Settings';
 import type { Group } from '../models/Group';
+import type { ImportedGeoJsonLayer } from '../models/ImportedGeoJsonLayer';
 import { MapSerializer, type SerializedMap } from './MapSerializer';
 import type { StoredMapRecord } from './MapDatabase';
 import { MapStorage } from './MapStorage';
@@ -41,9 +42,10 @@ export class FileManager {
     saveMapToHash(
         settings: Settings,
         layersData: Map<string, IMapLayer>,
-        groups?: Group[]
+        groups?: Group[],
+        importedLayers?: ImportedGeoJsonLayer[]
     ): string {
-        return this.serializer.toEncodedHash(settings, layersData, groups);
+        return this.serializer.toEncodedHash(settings, layersData, groups, importedLayers);
     }
 
     loadMapFromHash(hash: string): SerializedMap | null {
@@ -53,9 +55,10 @@ export class FileManager {
     buildSerializedMap(
         settings: Settings,
         layersData: Map<string, IMapLayer>,
-        groups?: Group[]
+        groups?: Group[],
+        importedLayers?: ImportedGeoJsonLayer[]
     ): SerializedMap {
-        return this.serializer.toJSON(settings, layersData, groups);
+        return this.serializer.toJSON(settings, layersData, groups, importedLayers);
     }
 
     // ── Storage (delegate to MapStorage) ─────────────────────────────────────
@@ -63,9 +66,10 @@ export class FileManager {
     async saveMap(
         settings: Settings,
         layersData: Map<string, IMapLayer>,
-        groups?: Group[]
+        groups?: Group[],
+        importedLayers?: ImportedGeoJsonLayer[]
     ): Promise<void> {
-        await this.storage.saveMap(settings, layersData, groups);
+        await this.storage.saveMap(settings, layersData, groups, importedLayers);
     }
 
     async loadMapFromStorage(mapName: string): Promise<SerializedMap | null> {
@@ -83,9 +87,10 @@ export class FileManager {
     async copyMap(
         settings: Settings,
         layersData: Map<string, IMapLayer>,
-        groups?: Group[]
+        groups?: Group[],
+        importedLayers?: ImportedGeoJsonLayer[]
     ): Promise<void> {
-        await this.storage.copyMap(settings, layersData, groups);
+        await this.storage.copyMap(settings, layersData, groups, importedLayers);
     }
 
     async loadMapListFromStorage(): Promise<string[]> {
@@ -106,18 +111,32 @@ export class FileManager {
 
     // ── File download ─────────────────────────────────────────────────────────
 
-    saveMapToFile(settings: Settings, layersData: Map<string, IMapLayer>, groups?: Group[]): void {
-        const mapString = JSON.stringify(this.serializer.toJSON(settings, layersData, groups));
+    saveMapToFile(
+        settings: Settings,
+        layersData: Map<string, IMapLayer>,
+        groups?: Group[],
+        importedLayers?: ImportedGeoJsonLayer[]
+    ): void {
+        const mapString = JSON.stringify(
+            this.serializer.toJSON(settings, layersData, groups, importedLayers)
+        );
         this._downloadBlob(mapString, `${settings.title}.json`);
     }
 
-    saveMapToGeoJSONFile(settings: Settings, layersData: Map<string, IMapLayer>): void {
+    saveMapToGeoJSONFile(
+        settings: Settings,
+        layersData: Map<string, IMapLayer>,
+        importedLayers?: ImportedGeoJsonLayer[]
+    ): void {
         const geoJSON: any = { type: 'FeatureCollection', features: [] };
         layersData.forEach((layer) => {
             const fc = layer.toGeoJSON() as any;
             if (fc?.features) {
                 geoJSON.features.push(...fc.features);
             }
+        });
+        importedLayers?.forEach((layer) => {
+            geoJSON.features.push(...layer.featureCollection.features);
         });
         this._downloadBlob(JSON.stringify(geoJSON), `${settings.title}.json`);
     }

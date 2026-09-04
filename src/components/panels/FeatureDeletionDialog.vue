@@ -42,7 +42,7 @@ function onKeydown(event: KeyboardEvent) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="feature-deletion-title"
-        class="fixed top-1/2 left-1/2 z-10000 flex max-h-[90vh] w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xl"
+        class="fixed top-1/2 left-1/2 z-[10000] flex max-h-[90vh] w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xl"
         @keydown.stop="onKeydown"
     >
         <div class="border-b border-gray-200 px-5 py-4">

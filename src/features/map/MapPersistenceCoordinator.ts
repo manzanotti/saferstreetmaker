@@ -28,18 +28,44 @@ export interface MapPersistenceCoordinatorOptions {
     showErrors: (errors: string[]) => void;
 }
 
+export interface PersistOptions {
+    throwOnFailure?: boolean;
+    recordHistory?: boolean;
+    preserveMutation?: boolean;
+    pruneDanglingGroupMembers?: boolean;
+}
+
 export class MapPersistenceCoordinator {
     private readonly options: MapPersistenceCoordinatorOptions;
+    private persistenceQueue: Promise<void> | undefined;
 
     constructor(options: MapPersistenceCoordinatorOptions) {
         this.options = options;
     }
 
-    async persist(options?: {
-        throwOnFailure?: boolean;
-        recordHistory?: boolean;
-    }): Promise<boolean> {
-        this.options.pruneDanglingGroupMembers();
+    async persist(options?: PersistOptions): Promise<boolean> {
+        const queuedPersistence =
+            this.persistenceQueue === undefined
+                ? this.persistNow(options)
+                : this.persistenceQueue.then(
+                      () => this.persistNow(options),
+                      () => this.persistNow(options)
+                  );
+        this.persistenceQueue = queuedPersistence.then(
+            () => undefined,
+            () => undefined
+        );
+        return await queuedPersistence;
+    }
+
+    async flush(): Promise<void> {
+        await this.persistenceQueue;
+    }
+
+    private async persistNow(options?: PersistOptions): Promise<boolean> {
+        if (options?.pruneDanglingGroupMembers !== false) {
+            this.options.pruneDanglingGroupMembers();
+        }
 
         const beforeSnapshot = this.options.getLastSavedSnapshot();
         const afterSnapshot = this.options.buildSnapshot();
@@ -70,7 +96,9 @@ export class MapPersistenceCoordinator {
             }
 
             this.options.setLastSavedSnapshot(afterSnapshot);
-            this.options.clearMutation();
+            if (options?.preserveMutation !== true) {
+                this.options.clearMutation();
+            }
             return true;
         } catch (error) {
             this.showSaveError(error);

@@ -56,13 +56,14 @@ test.describe('Help Panel', () => {
         await expect(page.locator('#tabs-features')).toContainText('select the Bus Lane button');
     });
 
-    test('Groups tab appears between Features and Maps with version guidance', async ({ page }) => {
+    test('Groups and Layers tabs appear before Maps with guidance', async ({ page }) => {
         await page.locator('#help-button').click();
 
         const tabs = page.locator('[data-tab-nav] [role="presentation"]');
         await expect(tabs.nth(1)).toContainText('Features');
         await expect(tabs.nth(2)).toContainText('Groups');
-        await expect(tabs.nth(3)).toContainText('Maps');
+        await expect(tabs.nth(3)).toContainText('Layers');
+        await expect(tabs.nth(4)).toContainText('Maps');
 
         await page.locator('a[data-tab-target="#tabs-groups"]').click();
 
@@ -75,6 +76,14 @@ test.describe('Help Panel', () => {
         await expect(page.locator('#tabs-groups')).toContainText('New phase');
         await expect(page.locator('#tabs-groups')).toContainText('ordered sequence');
         await expect(page.locator('#tabs-groups')).toContainText('dragging them in the list');
+
+        await page.locator('a[data-tab-target="#tabs-layers"]').click();
+        await expect(page.locator('#tabs-layers')).toBeVisible();
+        await expect(page.locator('#tabs-layers')).toContainText('Add layer');
+        await expect(page.locator('#tabs-layers')).toContainText('overlapping squares button');
+        await expect(page.locator('#tabs-layers')).toContainText('Birmingham Council wards');
+        await expect(page.locator('#tabs-layers')).toContainText('example');
+        await expect(page.locator('#tabs-layers')).toContainText('read-only map');
     });
 
     test('Sharing tab explains group and version links', async ({ page }) => {

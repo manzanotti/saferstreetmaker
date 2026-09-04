@@ -18,6 +18,8 @@ import { viewGroupVersion } from './composables/useGroups';
 import { useGroupStore } from './stores/groupStore';
 import { useUiStore } from './stores/uiStore';
 import { getGroupVersions } from './features/groups/groupVersions';
+import { parseGeoJson } from './features/map/importedGeoJson';
+import type { ImportedGeoJsonLayer } from './models/ImportedGeoJsonLayer';
 
 // Mount the Vue overlay app (HelpPanel, ErrorPanel) immediately.
 createApp(App).use(pinia).mount('#app');
@@ -40,8 +42,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Pre-populate activeLayers so the toolbar and legend render before loadMap.
     settingsStore.activeLayers = allLayers.map((l) => l.id);
 
+    let defaultImportedLayers: ImportedGeoJsonLayer[] = [];
+    const defaultLayerPromise = fetch(`${import.meta.env.BASE_URL}Birmingham%20Wards.geojson`)
+        .then(async (response) => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            const featureCollection = parseGeoJson(await response.json());
+            return {
+                id: 'birmingham-wards',
+                name: 'Birmingham Wards',
+                nameProperty: 'wd25nm',
+                visible: false,
+                featureCollection
+            };
+        })
+        .catch((error) => {
+            console.warn('Unable to load the default Birmingham Wards layer.', error);
+            return null;
+        });
+
     // ── Set up map manager (loads/saves maps, wires layer-update and file-loaded callbacks) ─────
-    const { loadMap, setUserLocation, setDefaultView } = setupMapManager(fileManager);
+    const {
+        loadMap,
+        setUserLocation,
+        setDefaultView,
+        getMapGeneration,
+        initialiseDefaultImportedLayers
+    } = setupMapManager(fileManager, () => defaultImportedLayers);
 
     // ── Add Vue-backed Leaflet controls ──────────────────────────────────────
     map.addControl(makeLeafletVueControl(CommandsToolbar, 'topleft'));
@@ -77,6 +105,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const mapLoaded = await loadMap(remoteMapFile, hash, hideToolbar, zoom, centre);
+    const initialMapGeneration = getMapGeneration();
+
+    void defaultLayerPromise.then((defaultLayer) => {
+        if (!defaultLayer) {
+            return;
+        }
+        defaultImportedLayers = [defaultLayer];
+        void initialiseDefaultImportedLayers([defaultLayer], {
+            expectedGeneration: initialMapGeneration,
+            allowInitialSeed: !mapLoaded && remoteMapFile === null && hash === ''
+        });
+    });
 
     if (mapLoaded) {
         const groupReference = params.get('group');

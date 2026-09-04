@@ -118,7 +118,7 @@ function move(phaseId: string, offset: number) {
         ref="dialog"
         role="dialog"
         aria-labelledby="group-phases-dialog-title"
-        class="fixed bottom-0 left-1/2 z-10000 flex max-h-[40vh] w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 flex-col overflow-hidden rounded-t-lg border border-gray-200 bg-white shadow-2xl"
+        class="fixed bottom-0 left-1/2 z-[10000] flex max-h-[40vh] w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 flex-col overflow-hidden rounded-t-lg border border-gray-200 bg-white shadow-2xl"
     >
         <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3">
             <div>

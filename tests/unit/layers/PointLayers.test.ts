@@ -15,10 +15,24 @@ import {
     createPedestrianLightsLayer
 } from '../../../src/composables/layers/useTrafficControlLayers';
 import { createZebraCrossingLayer } from '../../../src/composables/layers/useZebraCrossingLayer';
+import { useMapStore } from '../../../src/stores/mapStore';
 
 function makeMockMap(): L.Map {
     return new L.Map();
 }
+
+it('does not place a point when point features are hidden at the current zoom', () => {
+    const map = makeMockMap();
+    setActivePinia(createPinia());
+    const layer = createModalFilterLayer(map);
+    const mapStore = useMapStore();
+
+    mapStore.activeLayerId = 'modal-filter';
+    map.fire('click', { latlng: new L.LatLng(52.5, -1.9) });
+
+    expect(layer.getLayer().getLayers()).toHaveLength(0);
+    expect(mapStore.layerUpdateCount).toBe(0);
+});
 
 // -----------------------------------------------------------------------
 // Helper – build a minimal GeoJSON FeatureCollection for a point layer

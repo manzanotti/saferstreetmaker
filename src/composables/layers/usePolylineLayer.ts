@@ -14,7 +14,6 @@ import {
     removeMapCursor,
     buildToolbarButton,
     buildLegendEntry,
-    getPointSelectCursor,
     isPointFeatureElement
 } from './layerUtils';
 import type { IMapLayer } from './IMapLayer';
@@ -111,7 +110,7 @@ export function createPolylineLayer(
         });
 
         if (isHoveringPointFeature) {
-            mouseMarker.style.cursor = getPointSelectCursor();
+            mouseMarker.style.cursor = 'pointer';
             return;
         }
 

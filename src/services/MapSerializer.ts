@@ -12,6 +12,11 @@ import type { IMapLayer } from '../composables/layers/IMapLayer';
 import type { Settings } from '../models/Settings';
 import type { Group, GroupMember, GroupPhase, GroupVersion } from '../models/Group';
 import { normalizeGroupDescription } from '../features/groups/groupDescription';
+import type {
+    ImportedGeoJsonLayer,
+    SerializedImportedGeoJsonLayer
+} from '../models/ImportedGeoJsonLayer';
+import { retainNameProperty } from '../features/map/importedGeoJson';
 
 /**
  * Typed shape of the JSON document produced by `MapSerializer.toJSON` and
@@ -35,6 +40,8 @@ export interface SerializedMap {
     };
     /** GeoJSON FeatureCollections keyed by layer id */
     layers?: Record<string, unknown>;
+    /** User-imported GeoJSON overlays. */
+    importedLayers?: SerializedImportedGeoJsonLayer[];
     /**
      * Legacy top-level centre (stored directly before settings was introduced).
      * Only read when `settings` is absent.
@@ -69,6 +76,25 @@ type CompactUrlProperties = {
     x?: Record<string, unknown>;
 };
 type CompactUrlFeature = [CompactUrlCoordinates, CompactUrlProperties?];
+interface CompactUrlImportedGeometry {
+    t: GeoJSON.Geometry['type'];
+    c?: CompactUrlCoordinates;
+    g?: CompactUrlImportedGeometry[];
+}
+type CompactUrlImportedFeature =
+    | [CompactUrlImportedGeometry | null, Record<string, unknown> | null | undefined]
+    | [
+          CompactUrlImportedGeometry | null,
+          Record<string, unknown> | null | undefined,
+          string | number
+      ];
+interface CompactUrlImportedLayer {
+    i: string;
+    n: string;
+    p: string | null;
+    v?: 0;
+    f: CompactUrlImportedFeature[];
+}
 interface CompactUrlMap {
     v: 2;
     s: CompactSettings;
@@ -76,6 +102,7 @@ interface CompactUrlMap {
     l: Record<string, CompactUrlFeature[]>;
     d: string;
     g?: CompactUrlGroup[];
+    o?: CompactUrlImportedLayer[];
 }
 
 interface CompactUrlGroup {
@@ -146,6 +173,19 @@ function serializeGroup(group: Group): Group {
     };
 }
 
+function serializeImportedLayer(layer: ImportedGeoJsonLayer): SerializedImportedGeoJsonLayer {
+    return {
+        id: layer.id,
+        name: layer.name,
+        nameProperty: layer.nameProperty,
+        ...(layer.visible === false ? { visible: false } : {}),
+        featureCollection: retainNameProperty(
+            JSON.parse(JSON.stringify(layer.featureCollection)),
+            layer.nameProperty
+        )
+    };
+}
+
 function deserializeCompactMembers(members: Array<[string, string]> | undefined) {
     return (members ?? []).map(([layerId, historyId]) => ({ layerId, historyId }));
 }
@@ -196,6 +236,77 @@ function decodeCoordinates(
         ];
     }
     return coordinates.map((value) => decodeCoordinates(value, state));
+}
+
+function encodeImportedGeometry(
+    geometry: GeoJSON.Geometry,
+    state: { x: number; y: number }
+): CompactUrlImportedGeometry {
+    if (geometry.type === 'GeometryCollection') {
+        return {
+            t: geometry.type,
+            g: geometry.geometries.map((child) => encodeImportedGeometry(child, state))
+        };
+    }
+    return {
+        t: geometry.type,
+        c: encodeCoordinates(geometry.coordinates, state)
+    };
+}
+
+function decodeImportedGeometry(
+    geometry: CompactUrlImportedGeometry,
+    state: { x: number; y: number }
+): GeoJSON.Geometry {
+    if (geometry.t === 'GeometryCollection') {
+        return {
+            type: 'GeometryCollection',
+            geometries: (geometry.g ?? []).map((child) => decodeImportedGeometry(child, state))
+        };
+    }
+    return {
+        type: geometry.t,
+        coordinates: decodeCoordinates(geometry.c ?? [], state)
+    } as GeoJSON.Geometry;
+}
+
+function encodeImportedLayers(layers: ImportedGeoJsonLayer[]): CompactUrlImportedLayer[] {
+    return layers.map((layer) => ({
+        i: layer.id,
+        n: layer.name,
+        p: layer.nameProperty,
+        ...(layer.visible === false ? { v: 0 as const } : {}),
+        f: layer.featureCollection.features.map((feature) => {
+            const state = { x: 0, y: 0 };
+            const properties = feature.properties
+                ? JSON.parse(JSON.stringify(feature.properties))
+                : feature.properties;
+            const encodedGeometry =
+                feature.geometry === null ? null : encodeImportedGeometry(feature.geometry, state);
+            return feature.id === undefined
+                ? [encodedGeometry, properties]
+                : [encodedGeometry, properties, feature.id];
+        })
+    }));
+}
+
+function decodeImportedLayers(layers: CompactUrlImportedLayer[]): SerializedImportedGeoJsonLayer[] {
+    return layers.map((layer) => ({
+        id: layer.i,
+        name: layer.n,
+        nameProperty: layer.p,
+        ...(layer.v === 0 ? { visible: false } : {}),
+        featureCollection: {
+            type: 'FeatureCollection',
+            features: layer.f.map(([geometry, properties, id]) => ({
+                type: 'Feature',
+                ...(id !== undefined ? { id } : {}),
+                properties: properties ?? null,
+                geometry:
+                    geometry === null ? null : decodeImportedGeometry(geometry, { x: 0, y: 0 })
+            }))
+        }
+    }));
 }
 
 function encodeUrlProperties(
@@ -358,6 +469,7 @@ export interface CompactStoredMap {
     d: string;
     /** Compact groups — present only when at least one group exists. */
     g?: CompactGroup[];
+    o?: SerializedImportedGeoJsonLayer[];
 }
 
 export class MapSerializer {
@@ -365,7 +477,8 @@ export class MapSerializer {
     toJSON(
         settings: Settings,
         layersData: Map<string, IMapLayer>,
-        groups?: Group[]
+        groups?: Group[],
+        importedLayers?: ImportedGeoJsonLayer[]
     ): SerializedMap {
         const layers: Record<string, unknown> = {};
         layersData.forEach((layer, layerName) => {
@@ -391,6 +504,9 @@ export class MapSerializer {
             // when groups are read from a Vue reactive Proxy.
             result.groups = groups.map(serializeGroup);
         }
+        if (importedLayers && importedLayers.length > 0) {
+            result.importedLayers = importedLayers.map(serializeImportedLayer);
+        }
         return result;
     }
 
@@ -401,16 +517,20 @@ export class MapSerializer {
     toEncodedHash(
         settings: Settings,
         layersData: Map<string, IMapLayer>,
-        groups?: Group[]
+        groups?: Group[],
+        importedLayers?: ImportedGeoJsonLayer[]
     ): string {
-        const mapString = JSON.stringify(this.toCompactUrlMap(settings, layersData, groups));
+        const mapString = JSON.stringify(
+            this.toCompactUrlMap(settings, layersData, groups, importedLayers)
+        );
         return `v2.${LZString.compressToEncodedURIComponent(mapString)}`;
     }
 
     toCompactStoredMap(
         settings: Settings,
         layersData: Map<string, IMapLayer>,
-        groups?: Group[]
+        groups?: Group[],
+        importedLayers?: ImportedGeoJsonLayer[]
     ): CompactStoredMap {
         const layers: Record<string, unknown> = {};
         layersData.forEach((layer, layerName) => {
@@ -464,6 +584,9 @@ export class MapSerializer {
                 };
             });
         }
+        if (importedLayers && importedLayers.length > 0) {
+            result.o = importedLayers.map(serializeImportedLayer);
+        }
         return result;
     }
 
@@ -512,6 +635,9 @@ export class MapSerializer {
                           members: deserializeCompactMembers(group.m)
                       }
             );
+        }
+        if (data.o && data.o.length > 0) {
+            result.importedLayers = data.o;
         }
         return result;
     }
@@ -582,6 +708,9 @@ export class MapSerializer {
                 };
             });
         }
+        if (data.importedLayers && data.importedLayers.length > 0) {
+            fromSerializedResult.o = data.importedLayers;
+        }
         return fromSerializedResult;
     }
 
@@ -614,7 +743,8 @@ export class MapSerializer {
     private toCompactUrlMap(
         settings: Settings,
         layersData: Map<string, IMapLayer>,
-        groups?: Group[]
+        groups?: Group[],
+        importedLayers?: ImportedGeoJsonLayer[]
     ): CompactUrlMap {
         const historyIds: string[] = [];
         const historyIndexes = new Map<string, number>();
@@ -689,7 +819,10 @@ export class MapSerializer {
             i: historyIds,
             l: layers,
             d: new Date().toISOString(),
-            g: encodeUrlGroups(groups, getHistoryIndex)
+            g: encodeUrlGroups(groups, getHistoryIndex),
+            ...(importedLayers && importedLayers.length > 0
+                ? { o: encodeImportedLayers(importedLayers) }
+                : {})
         };
     }
 
@@ -732,7 +865,8 @@ export class MapSerializer {
             },
             layers,
             lastSaved: data.d,
-            groups: decodeUrlGroups(data.g, data.i)
+            groups: decodeUrlGroups(data.g, data.i),
+            ...(data.o && data.o.length > 0 ? { importedLayers: decodeImportedLayers(data.o) } : {})
         };
     }
 }

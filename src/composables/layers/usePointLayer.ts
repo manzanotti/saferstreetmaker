@@ -33,6 +33,7 @@ import { useSelectionStore } from '../../stores/selectionStore';
 import { useGroupStore } from '../../stores/groupStore';
 import { executeAreaDelete, executeCopy, selectFeature } from '../useAreaSelection';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { shouldShowPointFeatures } from '../../features/map/pointFeatureVisibility';
 import {
     addFeatureToGroup,
     createGroupFromFeature,
@@ -239,6 +240,9 @@ export function createPointLayer(config: PointLayerConfig, map: L.Map): IMapLaye
 
     const handleMapClick = (e: L.LeafletMouseEvent) => {
         L.DomEvent.stopPropagation(e);
+        if (!shouldShowPointFeatures(map)) {
+            return;
+        }
         const { historyId } = addMarker(e.latlng);
         mapStore.markLayerUpdated({
             kind: 'point-add',

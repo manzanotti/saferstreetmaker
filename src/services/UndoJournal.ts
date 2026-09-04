@@ -1,6 +1,7 @@
 import { MapDatabase } from './MapDatabase';
-import type { HistoryEntryRecord } from './MapDatabase';
+import type { HistoryEntryRecord, HistoryImportedLayersRecord } from './MapDatabase';
 import type { SerializedMap } from './MapSerializer';
+import type { SerializedImportedGeoJsonLayer } from '../models/ImportedGeoJsonLayer';
 
 export interface HistoryStatus {
     canUndo: boolean;
@@ -11,6 +12,15 @@ export interface HistoryReplayEntry {
     direction: 'undo' | 'redo';
     entry: HistoryEntryRecord;
     snapshot: SerializedMap;
+}
+
+type StoredHistorySnapshot = Omit<SerializedMap, 'importedLayers'> & {
+    importedLayersRef?: string;
+};
+
+interface StoredHistorySnapshotResult {
+    snapshot: StoredHistorySnapshot;
+    importedLayersRecord?: HistoryImportedLayersRecord;
 }
 
 export class UndoJournal {
@@ -24,19 +34,62 @@ export class UndoJournal {
         this.db = new MapDatabase();
     }
 
-    async clearHistory(mapTitle: string): Promise<void> {
-        await this.db.transaction('rw', this.db.historyEntries, this.db.historyStates, async () => {
-            // Use primaryKeys() to avoid fetching full row objects unnecessarily.
-            const ids = await this.db.historyEntries
-                .where('mapTitle')
-                .equals(mapTitle)
-                .primaryKeys();
-            if (ids.length > 0) {
-                await this.db.historyEntries.bulkDelete(ids as number[]);
-            }
+    private storeImportedLayersReference(snapshot: SerializedMap): StoredHistorySnapshotResult {
+        if (!snapshot.importedLayers || snapshot.importedLayers.length === 0) {
+            return { snapshot };
+        }
 
-            await this.db.historyStates.put({ mapTitle, currentSequence: 0 });
-        });
+        const serialized = JSON.stringify(snapshot.importedLayers);
+        const id = `v1-${hashString(serialized)}-${serialized.length}`;
+        const { importedLayers: _importedLayers, ...snapshotWithoutImportedLayers } = snapshot;
+        return {
+            snapshot: { ...snapshotWithoutImportedLayers, importedLayersRef: id },
+            importedLayersRecord: {
+                id,
+                importedLayers: snapshot.importedLayers
+            }
+        };
+    }
+
+    private async resolveSnapshotInTransaction(value: unknown): Promise<SerializedMap> {
+        if (!value || typeof value !== 'object') {
+            return value as SerializedMap;
+        }
+
+        const stored = value as StoredHistorySnapshot;
+        if (!stored.importedLayersRef) {
+            return stored as SerializedMap;
+        }
+
+        const importedLayersRecord = await this.db.historyImportedLayers.get(
+            stored.importedLayersRef
+        );
+        const { importedLayersRef: _importedLayersRef, ...snapshot } = stored;
+        return {
+            ...snapshot,
+            importedLayers: importedLayersRecord?.importedLayers ?? []
+        };
+    }
+
+    async clearHistory(mapTitle: string): Promise<void> {
+        await this.db.transaction(
+            'rw',
+            this.db.historyEntries,
+            this.db.historyStates,
+            this.db.historyImportedLayers,
+            async () => {
+                // Use primaryKeys() to avoid fetching full row objects unnecessarily.
+                const ids = await this.db.historyEntries
+                    .where('mapTitle')
+                    .equals(mapTitle)
+                    .primaryKeys();
+                if (ids.length > 0) {
+                    await this.db.historyEntries.bulkDelete(ids as number[]);
+                }
+
+                await this.db.historyStates.put({ mapTitle, currentSequence: 0 });
+            }
+        );
     }
 
     async renameHistory(fromMapTitle: string, toMapTitle: string): Promise<void> {
@@ -108,58 +161,75 @@ export class UndoJournal {
             payload?: unknown;
         }
     ): Promise<void> {
-        await this.db.transaction('rw', this.db.historyEntries, this.db.historyStates, async () => {
-            const state = await this.db.historyStates.get(mapTitle);
-            const nextSequence = state?.currentSequence ?? 0;
+        const [storedBefore, storedAfter] = await Promise.all([
+            this.storeImportedLayersReference(before),
+            this.storeImportedLayersReference(after)
+        ]);
+        await this.db.transaction(
+            'rw',
+            this.db.historyEntries,
+            this.db.historyStates,
+            this.db.historyImportedLayers,
+            async () => {
+                for (const storedSnapshot of [storedBefore, storedAfter]) {
+                    if (storedSnapshot.importedLayersRecord) {
+                        await this.db.historyImportedLayers.put(
+                            storedSnapshot.importedLayersRecord
+                        );
+                    }
+                }
+                const state = await this.db.historyStates.get(mapTitle);
+                const nextSequence = state?.currentSequence ?? 0;
 
-            // Delete any redo entries (sequence >= current position) using the
-            // compound index so we avoid an O(n) full scan.
-            const redoEntryIds = await this.db.historyEntries
-                .where('[mapTitle+sequence]')
-                .between([mapTitle, nextSequence], [mapTitle, Infinity], true, true)
-                .primaryKeys();
-            if (redoEntryIds.length > 0) {
-                await this.db.historyEntries.bulkDelete(redoEntryIds as number[]);
-            }
+                // Delete any redo entries (sequence >= current position) using the
+                // compound index so we avoid an O(n) full scan.
+                const redoEntryIds = await this.db.historyEntries
+                    .where('[mapTitle+sequence]')
+                    .between([mapTitle, nextSequence], [mapTitle, Infinity], true, true)
+                    .primaryKeys();
+                if (redoEntryIds.length > 0) {
+                    await this.db.historyEntries.bulkDelete(redoEntryIds as number[]);
+                }
 
-            await this.db.historyEntries.add({
-                mapTitle,
-                sequence: nextSequence,
-                kind,
-                mutationKind: mutation?.kind,
-                mutationLayerId: mutation?.layerId,
-                mutationPayload: mutation?.payload,
-                before,
-                after,
-                createdAt: new Date().toISOString()
-            });
+                await this.db.historyEntries.add({
+                    mapTitle,
+                    sequence: nextSequence,
+                    kind,
+                    mutationKind: mutation?.kind,
+                    mutationLayerId: mutation?.layerId,
+                    mutationPayload: mutation?.payload,
+                    before: storedBefore.snapshot,
+                    after: storedAfter.snapshot,
+                    createdAt: new Date().toISOString()
+                });
 
-            const newSequence = nextSequence + 1;
-            await this.db.historyStates.put({ mapTitle, currentSequence: newSequence });
+                const newSequence = nextSequence + 1;
+                await this.db.historyStates.put({ mapTitle, currentSequence: newSequence });
 
-            // Prune oldest entries if the history cap is exceeded.
-            // Use count() first so we do not materialize the full history on
-            // every checkpoint write; only fetch the overflow entries that need
-            // to be deleted.
-            const entryCount = await this.db.historyEntries
-                .where('[mapTitle+sequence]')
-                .between([mapTitle, -Infinity], [mapTitle, Infinity])
-                .count();
-            if (entryCount > UndoJournal.MAX_HISTORY) {
-                const overflow = entryCount - UndoJournal.MAX_HISTORY;
-                const idsToRemove = (await this.db.historyEntries
+                // Prune oldest entries if the history cap is exceeded.
+                // Use count() first so we do not materialize the full history on
+                // every checkpoint write; only fetch the overflow entries that need
+                // to be deleted.
+                const entryCount = await this.db.historyEntries
                     .where('[mapTitle+sequence]')
                     .between([mapTitle, -Infinity], [mapTitle, Infinity])
-                    .limit(overflow)
-                    .primaryKeys()) as number[];
-                if (idsToRemove.length > 0) {
-                    await this.db.historyEntries.bulkDelete(idsToRemove);
+                    .count();
+                if (entryCount > UndoJournal.MAX_HISTORY) {
+                    const overflow = entryCount - UndoJournal.MAX_HISTORY;
+                    const idsToRemove = (await this.db.historyEntries
+                        .where('[mapTitle+sequence]')
+                        .between([mapTitle, -Infinity], [mapTitle, Infinity])
+                        .limit(overflow)
+                        .primaryKeys()) as number[];
+                    if (idsToRemove.length > 0) {
+                        await this.db.historyEntries.bulkDelete(idsToRemove);
+                    }
+                    // Note: currentSequence is intentionally left at newSequence.
+                    // undoEntry self-heals when it finds that entries below currentSequence
+                    // have been pruned by snapping to the oldest surviving sequence.
                 }
-                // Note: currentSequence is intentionally left at newSequence.
-                // undoEntry self-heals when it finds that entries below currentSequence
-                // have been pruned by snapping to the oldest surviving sequence.
             }
-        });
+        );
     }
 
     async undo(mapTitle: string): Promise<SerializedMap | null> {
@@ -172,6 +242,7 @@ export class UndoJournal {
             'rw',
             this.db.historyEntries,
             this.db.historyStates,
+            this.db.historyImportedLayers,
             async () => {
                 const state = await this.db.historyStates.get(mapTitle);
                 const nextSequence = state?.currentSequence ?? 0;
@@ -212,7 +283,7 @@ export class UndoJournal {
                 return {
                     direction: 'undo',
                     entry,
-                    snapshot: entry.before as SerializedMap
+                    snapshot: await this.resolveSnapshotInTransaction(entry.before)
                 };
             }
         );
@@ -228,6 +299,7 @@ export class UndoJournal {
             'rw',
             this.db.historyEntries,
             this.db.historyStates,
+            this.db.historyImportedLayers,
             async () => {
                 const state = await this.db.historyStates.get(mapTitle);
                 const nextSequence = state?.currentSequence ?? 0;
@@ -245,7 +317,7 @@ export class UndoJournal {
                 return {
                     direction: 'redo',
                     entry,
-                    snapshot: entry.after as SerializedMap
+                    snapshot: await this.resolveSnapshotInTransaction(entry.after)
                 };
             }
         );
@@ -362,4 +434,13 @@ export class UndoJournal {
             value: '1'
         });
     }
+}
+
+function hashString(value: string): string {
+    let hash = 2166136261;
+    for (let index = 0; index < value.length; index += 1) {
+        hash ^= value.charCodeAt(index);
+        hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0).toString(16).padStart(8, '0');
 }

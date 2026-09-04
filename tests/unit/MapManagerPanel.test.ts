@@ -10,14 +10,18 @@ const {
     createNewMapMock,
     deleteMapFromStorageMock,
     loadMapListFromStorageMock,
-    loadMapFromStorageMock
+    loadMapFromStorageMock,
+    saveMapToFileMock,
+    saveMapToGeoJSONFileMock
 } = vi.hoisted(() => {
     return {
         copyMapMock: vi.fn(),
         createNewMapMock: vi.fn(),
         deleteMapFromStorageMock: vi.fn(),
         loadMapListFromStorageMock: vi.fn(),
-        loadMapFromStorageMock: vi.fn()
+        loadMapFromStorageMock: vi.fn(),
+        saveMapToFileMock: vi.fn(),
+        saveMapToGeoJSONFileMock: vi.fn()
     };
 });
 
@@ -31,14 +35,15 @@ vi.mock('../../src/composables/useMapManager', () => {
             loadMapListFromStorage: loadMapListFromStorageMock,
             copyMap: copyMapMock,
             loadMapFromFile: vi.fn(),
-            saveMapToFile: vi.fn(),
-            saveMapToGeoJSONFile: vi.fn(),
+            saveMapToFile: saveMapToFileMock,
+            saveMapToGeoJSONFile: saveMapToGeoJSONFileMock,
             deleteMapFromStorage: deleteMapFromStorageMock
         })
     };
 });
 
 import MapManagerPanel from '../../src/components/panels/MapManagerPanel.vue';
+import { useImportedLayerStore } from '../../src/stores/importedLayerStore';
 import { useUiStore } from '../../src/stores/uiStore';
 
 async function flushUi(): Promise<void> {
@@ -58,6 +63,8 @@ describe('MapManagerPanel', () => {
         deleteMapFromStorageMock.mockReset();
         loadMapListFromStorageMock.mockReset();
         loadMapFromStorageMock.mockReset();
+        saveMapToFileMock.mockReset();
+        saveMapToGeoJSONFileMock.mockReset();
         copyMapMock.mockResolvedValue(undefined);
         deleteMapFromStorageMock.mockResolvedValue(undefined);
         loadMapListFromStorageMock.mockResolvedValue([]);
@@ -307,6 +314,27 @@ describe('MapManagerPanel', () => {
             'There was a problem loading the stored map list:',
             'List unavailable'
         ]);
+    });
+
+    it('includes imported layers when copying and exporting maps', async () => {
+        const importedLayerStore = useImportedLayerStore();
+        importedLayerStore.addLayer({
+            id: 'imported-1',
+            name: 'Imported layer',
+            nameProperty: null,
+            visible: true,
+            featureCollection: { type: 'FeatureCollection', features: [] }
+        });
+        await flushUi();
+
+        (container?.querySelector('#copy-map') as HTMLButtonElement | null)?.click();
+        await flushUi();
+        (container?.querySelector('#save-file') as HTMLButtonElement | null)?.click();
+        (container?.querySelector('#save-geojson-file') as HTMLButtonElement | null)?.click();
+
+        expect(copyMapMock.mock.calls[0]?.[3]).toEqual(importedLayerStore.layers);
+        expect(saveMapToFileMock.mock.calls[0]?.[3]).toEqual(importedLayerStore.layers);
+        expect(saveMapToGeoJSONFileMock.mock.calls[0]?.[2]).toEqual(importedLayerStore.layers);
     });
 
     it('shows a list-refresh error when refreshing after creating a map fails', async () => {

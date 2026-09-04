@@ -126,7 +126,7 @@ function play() {
         role="dialog"
         aria-modal="true"
         :aria-label="group.name"
-        class="fixed bottom-0 left-1/2 z-9999 flex max-h-[90vh] w-[min(21rem,calc(100vw-2rem))] -translate-x-1/2 flex-col overflow-hidden rounded-t-2xl border border-gray-100 bg-white shadow-xl"
+        class="fixed bottom-0 left-1/2 z-[9999] flex max-h-[90vh] w-[min(21rem,calc(100vw-2rem))] -translate-x-1/2 flex-col overflow-hidden rounded-t-2xl border border-gray-100 bg-white shadow-xl"
     >
         <div class="flex items-center justify-between border-b border-gray-100 px-5 py-3">
             <h2 class="text-base font-semibold text-gray-800">{{ group.name }}</h2>

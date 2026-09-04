@@ -6,7 +6,6 @@ import * as L from 'leaflet';
 import {
     setMapCursor,
     removeMapCursor,
-    getPointSelectCursor,
     isPointFeatureElement,
     setMouseMarkerCursor,
     buildHistoryId,
@@ -75,21 +74,6 @@ describe('removeMapCursor', () => {
 
     it('is a no-op when the map element does not exist', () => {
         expect(() => removeMapCursor('modal-filter')).not.toThrow();
-    });
-});
-
-describe('getPointSelectCursor', () => {
-    it('returns the configured map css variable when present', () => {
-        const el = makeMapEl();
-        el.style.setProperty('--point-select-cursor', 'copy');
-
-        expect(getPointSelectCursor()).toBe('copy');
-    });
-
-    it('falls back to pointer when the variable is missing', () => {
-        makeMapEl();
-
-        expect(getPointSelectCursor()).toBe('pointer');
     });
 });
 

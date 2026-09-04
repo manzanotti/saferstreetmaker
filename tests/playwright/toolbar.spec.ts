@@ -14,6 +14,25 @@ test.describe('Toolbar', () => {
         await expect(page.locator('.toolbar')).toBeVisible();
     });
 
+    test('layer toolbar is positioned in the map control stack and contains layer buttons', async ({
+        page
+    }) => {
+        const layerToolbar = page.locator('.leaflet-top.leaflet-left .leaflet-control .toolbar');
+        await expect(layerToolbar).toBeVisible();
+        await expect(layerToolbar.locator('> li > button')).toHaveCount(8);
+        await expect(layerToolbar.locator('#modal-filter-button')).toBeVisible();
+        await expect(layerToolbar.locator('#mobility-lane-button')).toBeVisible();
+
+        const map = await page.locator('#map').boundingBox();
+        const toolbar = await layerToolbar.boundingBox();
+        expect(map).not.toBeNull();
+        expect(toolbar).not.toBeNull();
+        expect(toolbar!.x).toBeGreaterThanOrEqual(map!.x);
+        expect(toolbar!.y).toBeGreaterThanOrEqual(map!.y);
+        expect(toolbar!.x).toBeLessThan(map!.x + 120);
+        expect(toolbar!.y).toBeLessThan(map!.y + 120);
+    });
+
     test('help button is present', async ({ page }) => {
         await expect(page.locator('#help-button')).toBeVisible();
     });

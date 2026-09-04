@@ -6,11 +6,13 @@ import { useUiStore } from '../../stores/uiStore';
 import { useGroupStore } from '../../stores/groupStore';
 import { getMapManager, getFileManager } from '../../composables/useMapManager';
 import { isSaveErrorAlreadyShown } from '../../composables/saveErrorMarker';
+import { useImportedLayerStore } from '../../stores/importedLayerStore';
 
 const settingsStore = useSettingsStore();
 const mapStore = useMapStore();
 const uiStore = useUiStore();
 const groupStore = useGroupStore();
+const importedLayerStore = useImportedLayerStore();
 
 const showCreateForm = ref(false);
 const newMapTitle = ref('');
@@ -50,7 +52,8 @@ async function onCopyMap() {
         await getFileManager().copyMap(
             settingsStore.toSettings(),
             mapStore.toLayers(),
-            groupStore.groups
+            groupStore.groups,
+            importedLayerStore.layers
         );
     } catch (e: any) {
         uiStore.showErrors(['There was a problem copying the map:', String(e?.message ?? e)]);
@@ -104,13 +107,18 @@ function onSaveFile() {
     getFileManager().saveMapToFile(
         settingsStore.toSettings(),
         mapStore.toLayers(),
-        groupStore.groups
+        groupStore.groups,
+        importedLayerStore.layers
     );
     uiStore.closePanel();
 }
 
 function onExportGeoJSON() {
-    getFileManager().saveMapToGeoJSONFile(settingsStore.toSettings(), mapStore.toLayers());
+    getFileManager().saveMapToGeoJSONFile(
+        settingsStore.toSettings(),
+        mapStore.toLayers(),
+        importedLayerStore.layers
+    );
     uiStore.closePanel();
 }
 
@@ -328,20 +336,11 @@ function onClose() {
                                 >
                                 <button
                                     type="button"
-                                    class="delete-button shrink-0 w-8 h-8 rounded-lg flex items-center justify-center bg-slate-50 hover:bg-red-50 border border-gray-100 focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:outline-none [touch-action:manipulation] cursor-pointer [background-image:none] [background-size:0_0] hover:shadow-none"
+                                    class="delete-button shrink-0 w-8 h-8 rounded-lg flex items-center justify-center bg-slate-50 hover:bg-red-50 border border-gray-100 focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:outline-none touch-manipulation cursor-pointer"
                                     :aria-label="`Delete ${mapName}`"
                                     :title="`Delete ${mapName}`"
                                     @click.stop="onDeleteStoredMap(mapName)"
-                                >
-                                    <img
-                                        src="../../img/outlined-trash-bin-svgrepo-com.svg"
-                                        width="18"
-                                        height="18"
-                                        alt=""
-                                        aria-hidden="true"
-                                        class="w-[18px] h-[18px] object-contain pointer-events-none"
-                                    />
-                                </button>
+                                ></button>
                             </template>
                         </li>
                     </ul>

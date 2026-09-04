@@ -15,7 +15,11 @@ export function createZebraCrossingLayer(map: L.Map): IMapLayer {
 
             buildMarker(latlng, geoJsonLayer, _historyId) {
                 const marker = new L.Marker(latlng, {
-                    icon: new L.DivIcon({ className: 'zebra-crossing-icon' }),
+                    icon: new L.DivIcon({
+                        className: 'zebra-crossing-icon',
+                        iconSize: [32, 21],
+                        iconAnchor: [16, 10.5]
+                    }),
                     draggable: true,
                     pane: 'filters'
                 } as any).on('click', (e: any) =>

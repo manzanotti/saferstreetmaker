@@ -8,16 +8,19 @@
  * fileLoaded is a FileManager callback.
  */
 import * as L from 'leaflet';
-import { watch } from 'vue';
+import { nextTick, toRaw, watch } from 'vue';
 import { FileManager } from '../services/FileManager';
 import { UndoJournal } from '../services/UndoJournal';
 import type { SerializedMap } from '../services/MapSerializer';
 import { Settings } from '../models/Settings';
+import type { ImportedGeoJsonLayer } from '../models/ImportedGeoJsonLayer';
 import { useHistoryStore } from '../stores/historyStore';
 import { useMapStore } from '../stores/mapStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useUiStore } from '../stores/uiStore';
 import { useGroupStore } from '../stores/groupStore';
+import { useImportedLayerStore } from '../stores/importedLayerStore';
+import { cloneImportedLayers } from '../features/map/importedGeoJson';
 import {
     pruneDanglingGroupMembers,
     recomputeFeatureVisibility,
@@ -44,6 +47,7 @@ import { MapLoadCoordinator } from '../features/map/MapLoadCoordinator';
 import { MapPersistenceCoordinator } from '../features/map/MapPersistenceCoordinator';
 import { UploadedMapLoader } from '../features/map/UploadedMapLoader';
 import { MapViewCoordinator } from '../features/map/MapViewCoordinator';
+import { ImportedGeoJsonLayerController } from '../features/map/ImportedGeoJsonLayerController';
 
 const APP_VERSION = '0.10.0';
 
@@ -63,6 +67,11 @@ export interface MapManager {
     redo: () => Promise<boolean>;
     setUserLocation: (position: GeolocationPosition) => void;
     setDefaultView: () => void;
+    getMapGeneration: () => number;
+    initialiseDefaultImportedLayers: (
+        layers: ImportedGeoJsonLayer[],
+        options?: { expectedGeneration?: number; allowInitialSeed?: boolean }
+    ) => Promise<void>;
     downloadStorageMap: () => Promise<void>;
     runViewCheckpointMigration: () => Promise<void>;
 }
@@ -90,16 +99,22 @@ export function getFileManager(): FileManager {
     return _fileManager;
 }
 
-export function setupMapManager(fileManager: FileManager): MapManager {
+export function setupMapManager(
+    fileManager: FileManager,
+    getDefaultImportedLayers: () => ImportedGeoJsonLayer[] = () => []
+): MapManager {
     _fileManager = fileManager;
     const historyStore = useHistoryStore(pinia);
     const mapStore = useMapStore(pinia);
     const settingsStore = useSettingsStore(pinia);
     const uiStore = useUiStore(pinia);
+    const importedLayerStore = useImportedLayerStore(pinia);
     const undoJournal = new UndoJournal();
     let lastSavedSnapshot: SerializedMap | null = null;
     let suppressHistory = false;
     let pendingHistoryMutation: HistoryMutation | null = null;
+    let mapGeneration = 0;
+    let newMapPendingDefaultLayers = false;
 
     const getMap = (): L.Map => {
         const m = mapStore.map;
@@ -114,8 +129,19 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         getMap,
         getLayers: () => mapStore.layers
     });
+    const importedLayerController = new ImportedGeoJsonLayerController({
+        getMap,
+        isReadOnly: () => settingsStore.readOnly,
+        getActiveLayerId: () => mapStore.activeLayerId,
+        onFeaturePropertyChange: (layerId, featureIndex, key, value) => {
+            importedLayerStore.updateFeatureProperty(layerId, featureIndex, key, value);
+            mapStore.markLayerUpdated();
+        }
+    });
     const mapStateCoordinator = new MapStateCoordinator({
         mapLayerController,
+        importedLayerController,
+        clearImportedLayers: () => importedLayerStore.clear(),
         setActiveLayerIds: (layerIds) => {
             settingsStore.activeLayers = layerIds;
         },
@@ -165,8 +191,20 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         resetGroupVisibility,
         recomputeGroupVisibility: recomputeFeatureVisibility,
         pruneDanglingGroupMembers,
-        appVersion: APP_VERSION
+        appVersion: APP_VERSION,
+        setImportedLayers: (layers) => importedLayerStore.setLayers(layers)
     });
+    watch(
+        () =>
+            importedLayerStore.layers.map((layer) => [
+                layer.id,
+                layer.name,
+                layer.nameProperty,
+                layer.visible,
+                layer.featureCollection
+            ]),
+        () => importedLayerController.render(importedLayerStore.layers)
+    );
     const mapLoadSourceResolver = new MapLoadSourceResolver(fileManager, () => settingsStore.title);
     const storedMapLoader = new StoredMapLoader({
         loadMapFromStorage: (mapName) => fileManager.loadMapFromStorage(mapName),
@@ -191,6 +229,8 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         appVersion: APP_VERSION,
         loadMapListFromStorage: () => fileManager.loadMapListFromStorage(),
         clearAndReset: () => mapStateCoordinator.clearAllLayers(),
+        resetImportedLayers: () =>
+            importedLayerStore.setLayers(cloneImportedLayers(getDefaultImportedLayers())),
         getAllLayerIds: () => mapStateCoordinator.getAllLayerIds(),
         getCurrentZoom: () => settingsStore.zoom,
         getCurrentCentre: () => settingsStore.centre ?? new L.LatLng(0, 0),
@@ -230,7 +270,8 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         fileManager,
         getSettings: () => settingsStore.toSettings(),
         getLayers: () => mapStore.toLayers(),
-        getGroups: () => useGroupStore(pinia).groups
+        getGroups: () => useGroupStore(pinia).groups,
+        getImportedLayers: () => importedLayerStore.layers
     });
     const buildCurrentSnapshot = (): SerializedMap => mapSnapshotBuilder.build();
 
@@ -284,6 +325,10 @@ export function setupMapManager(fileManager: FileManager): MapManager {
     const runViewCheckpointMigration = () =>
         historyLifecycleCoordinator.migrateViewOnlyCheckpoints();
 
+    // Stamp a fresh map with the current schema so load-time migrations do not re-apply to it.
+    if (settingsStore.version === '') {
+        settingsStore.version = APP_VERSION;
+    }
     lastSavedSnapshot = buildCurrentSnapshot();
     historyStore.clearStatus();
     void activateHistory(settingsStore.title);
@@ -296,20 +341,14 @@ export function setupMapManager(fileManager: FileManager): MapManager {
             historyStore.setBusy(busy);
         }
     };
+    let saveHistoryReplay: () => Promise<void> = async () => undefined;
     const historyReplayCoordinator = new HistoryReplayCoordinator({
         transactionEffects: historyReplayTransactionEffects,
         getLayers: () => mapStore.layers,
         clearAllLayers: () => clearAllLayers(),
         resetSettings: () => resetSettings(),
         loadMapData: (snapshot) => loadMapData(snapshot, null, null),
-        saveMap: async () => {
-            const groupStore = useGroupStore(pinia);
-            await fileManager.saveMap(
-                settingsStore.toSettings(),
-                mapStore.toLayers(),
-                groupStore.groups
-            );
-        },
+        saveMap: () => saveHistoryReplay(),
         buildSnapshot: () => buildCurrentSnapshot(),
         setLastSavedSnapshot: (snapshot) => {
             lastSavedSnapshot = snapshot;
@@ -361,7 +400,8 @@ export function setupMapManager(fileManager: FileManager): MapManager {
             await fileManager.saveMap(
                 settingsStore.toSettings(),
                 mapStore.toLayers(),
-                groupStore.groups
+                groupStore.groups,
+                importedLayerStore.layers
             );
         },
         buildSnapshot: () => buildCurrentSnapshot(),
@@ -383,17 +423,57 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         syncHistoryStatus,
         showErrors: (errors) => uiStore.showErrors(errors)
     });
+    saveHistoryReplay = async () => {
+        await persistenceCoordinator.persist({
+            recordHistory: false,
+            preserveMutation: true,
+            pruneDanglingGroupMembers: false
+        });
+    };
 
-    const persistMap = (options?: { throwOnFailure?: boolean; recordHistory?: boolean }) =>
-        persistenceCoordinator.persist(options);
+    let persistenceBarrier: Promise<void> | null = null;
+    let defaultSeedingBlocked = false;
+    let userActionRevision = 0;
 
-    const saveMap = () => persistenceCoordinator.save();
+    const blockDefaultSeeding = (): void => {
+        defaultSeedingBlocked = true;
+        userActionRevision += 1;
+    };
 
-    const saveMapOrThrow = () => persistenceCoordinator.saveOrThrow();
+    const persistImmediately = (options?: {
+        throwOnFailure?: boolean;
+        recordHistory?: boolean;
+        preserveMutation?: boolean;
+    }) => persistenceCoordinator.persist(options);
+
+    const persistMap = (options?: {
+        throwOnFailure?: boolean;
+        recordHistory?: boolean;
+        preserveMutation?: boolean;
+    }) => {
+        if (persistenceBarrier) {
+            return persistenceBarrier.then(() => persistenceCoordinator.persist(options));
+        }
+        return persistImmediately(options);
+    };
+
+    const saveMap = async (): Promise<void> => {
+        blockDefaultSeeding();
+        await persistMap();
+    };
+
+    const saveMapOrThrow = async (): Promise<void> => {
+        blockDefaultSeeding();
+        await persistMap({ throwOnFailure: true });
+    };
+
+    const saveViewMap = async (): Promise<void> => {
+        await persistMap();
+    };
 
     const mapViewCoordinator = new MapViewCoordinator({
         getMap,
-        saveMap
+        saveMap: saveViewMap
     });
 
     // Watch settingsStore.zoom/centre changes (set by useMapEngine on zoom/move events)
@@ -448,6 +528,7 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         zoom: string | null,
         centre: number[] | null
     ): Promise<boolean> => {
+        await persistenceCoordinator.flush();
         return await mapLoadCoordinator.load(remoteMapFile, hash, hideToolbar, zoom, centre);
     };
 
@@ -468,11 +549,51 @@ export function setupMapManager(fileManager: FileManager): MapManager {
      * Returns true on success.
      */
     const createNewMap = async (title: string): Promise<boolean> => {
-        return await newMapCreator.create(title);
+        await persistenceCoordinator.flush();
+        const previousGeneration = mapGeneration;
+        const creationGeneration = ++mapGeneration;
+        const creationActionRevision = userActionRevision;
+        let created: boolean;
+        try {
+            created = await newMapCreator.create(title);
+        } catch (error) {
+            if (mapGeneration === creationGeneration) {
+                mapGeneration = previousGeneration;
+            }
+            throw error;
+        }
+        if (created && mapGeneration === creationGeneration) {
+            defaultSeedingBlocked = userActionRevision !== creationActionRevision;
+            const availableDefaultLayers = getDefaultImportedLayers();
+            newMapPendingDefaultLayers = importedLayerStore.layers.length === 0;
+            if (
+                newMapPendingDefaultLayers &&
+                !defaultSeedingBlocked &&
+                availableDefaultLayers.length > 0
+            ) {
+                await initialiseDefaultImportedLayers(availableDefaultLayers);
+            }
+        } else {
+            if (!created && mapGeneration === creationGeneration) {
+                mapGeneration = previousGeneration;
+                const availableDefaultLayers = getDefaultImportedLayers();
+                if (availableDefaultLayers.length > 0) {
+                    await initialiseDefaultImportedLayers(availableDefaultLayers, {
+                        expectedGeneration: previousGeneration,
+                        allowInitialSeed: true
+                    });
+                }
+            }
+        }
+        return created;
     };
 
     // ── loadMapFromStorage ────────────────────────────────────────────────────
     const loadMapFromStorage = async (mapName: string): Promise<boolean> => {
+        await persistenceCoordinator.flush();
+        mapGeneration += 1;
+        newMapPendingDefaultLayers = false;
+        defaultSeedingBlocked = true;
         return await storedMapLoader.load(mapName);
     };
 
@@ -490,9 +611,75 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         await storageMapDownloader.download();
     };
 
-    const undo = () => historyNavigationCoordinator.undo();
+    const undo = async (): Promise<boolean> => {
+        blockDefaultSeeding();
+        if (persistenceBarrier) {
+            await persistenceBarrier;
+        }
+        await persistenceCoordinator.flush();
+        return await historyNavigationCoordinator.undo();
+    };
 
-    const redo = () => historyNavigationCoordinator.redo();
+    const redo = async (): Promise<boolean> => {
+        blockDefaultSeeding();
+        if (persistenceBarrier) {
+            await persistenceBarrier;
+        }
+        await persistenceCoordinator.flush();
+        return await historyNavigationCoordinator.redo();
+    };
+
+    const initialiseDefaultImportedLayers = async (
+        layers: ImportedGeoJsonLayer[],
+        options?: { expectedGeneration?: number; allowInitialSeed?: boolean }
+    ): Promise<void> => {
+        const seedGeneration = mapGeneration;
+        const canSeed = (): boolean => {
+            if (
+                defaultSeedingBlocked ||
+                mapGeneration !== seedGeneration ||
+                importedLayerStore.layers.length > 0
+            ) {
+                return false;
+            }
+            if (newMapPendingDefaultLayers) {
+                return true;
+            }
+            return (
+                options?.allowInitialSeed === true &&
+                (options.expectedGeneration === undefined ||
+                    options.expectedGeneration === mapGeneration)
+            );
+        };
+
+        if (!canSeed()) {
+            return;
+        }
+
+        await nextTick();
+        await mapViewCoordinator.flushPendingSave();
+        if (!canSeed()) {
+            return;
+        }
+
+        let releasePersistenceBarrier: () => void = () => undefined;
+        const seedBarrier = new Promise<void>((resolve) => {
+            releasePersistenceBarrier = resolve;
+        });
+        persistenceBarrier = seedBarrier;
+
+        try {
+            importedLayerStore.setLayers(layers);
+            newMapPendingDefaultLayers = false;
+            await persistImmediately({ recordHistory: false, preserveMutation: true });
+            await syncHistoryStatus();
+        } finally {
+            if (persistenceBarrier === seedBarrier) {
+                persistenceBarrier = null;
+            }
+            releasePersistenceBarrier();
+        }
+    };
 
     // ── Wire event bridges (replaces PubSub subscriptions) ───────────────────
 
@@ -500,6 +687,9 @@ export function setupMapManager(fileManager: FileManager): MapManager {
     const uploadedMapLoader = new UploadedMapLoader({
         closePanel: () => uiStore.closePanel(),
         clearAndReset: () => {
+            mapGeneration += 1;
+            newMapPendingDefaultLayers = false;
+            defaultSeedingBlocked = true;
             clearAllLayers();
             resetSettings();
         },
@@ -507,7 +697,9 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         saveMap,
         showErrors: (errors) => uiStore.showErrors(errors)
     });
-    fileManager.setOnFileLoaded((data: unknown) => uploadedMapLoader.load(data));
+    fileManager.setOnFileLoaded((data: unknown) => {
+        void persistenceCoordinator.flush().then(() => uploadedMapLoader.load(data));
+    });
 
     // layerUpdateCount: watch Pinia counter incremented by layer composables.
     // Replaces PubSub.subscribe(EventTopics.layerUpdated, saveMap).
@@ -528,6 +720,8 @@ export function setupMapManager(fileManager: FileManager): MapManager {
         redo,
         setUserLocation,
         setDefaultView,
+        getMapGeneration: () => mapGeneration,
+        initialiseDefaultImportedLayers,
         downloadStorageMap,
         runViewCheckpointMigration
     };

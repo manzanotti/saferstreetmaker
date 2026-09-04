@@ -13,6 +13,7 @@ const settingsStore = useSettingsStore();
 const areaSelectIcon = new URL('../../img/area-select.svg', import.meta.url).href;
 const mapManagerIconSrc = new URL('../../img/folder-svgrepo-com.svg', import.meta.url).href;
 const groupIconSrc = new URL('../../img/group.svg', import.meta.url).href;
+const layersIconSrc = new URL('../../img/layers-overlap.svg', import.meta.url).href;
 
 interface PanelButtonDef {
     id: string;
@@ -23,6 +24,12 @@ interface PanelButtonDef {
 
 /** Settings, share and help — rendered after the history/select buttons. */
 const panelButtons: PanelButtonDef[] = [
+    {
+        id: 'layers',
+        panelId: 'layers',
+        tooltip: 'Manage layers',
+        iconSrc: layersIconSrc
+    },
     {
         id: 'groups',
         panelId: 'groups',

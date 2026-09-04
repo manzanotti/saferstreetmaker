@@ -49,6 +49,35 @@ export async function addFreshStorageInitScript(page: Page): Promise<void> {
     }, DB_NAME);
 }
 
+/**
+ * Wipes storage on the first navigation only, so later reloads in the same tab
+ * keep persisted data and can exercise real startup behaviour.
+ */
+export async function addFirstNavigationStorageResetScript(page: Page): Promise<void> {
+    await page.addInitScript((databaseName: string) => {
+        const guardKey = '__saferStreetMakerStorageWiped';
+        if (sessionStorage.getItem(guardKey) === '1') {
+            (window as any).__saferStreetMakerStorageResetState = 'done';
+            return;
+        }
+        (window as any).__saferStreetMakerStorageResetState = 'pending';
+        localStorage.clear();
+        sessionStorage.clear();
+        sessionStorage.setItem(guardKey, '1');
+        const deleteRequest = indexedDB.deleteDatabase(databaseName);
+        deleteRequest.onsuccess = () => {
+            (window as any).__saferStreetMakerStorageResetState = 'done';
+        };
+        deleteRequest.onerror = () => {
+            (window as any).__saferStreetMakerStorageResetState =
+                `error:${String(deleteRequest.error)}`;
+        };
+        deleteRequest.onblocked = () => {
+            (window as any).__saferStreetMakerStorageResetState = 'blocked';
+        };
+    }, DB_NAME);
+}
+
 export async function waitForFreshStorage(page: Page): Promise<void> {
     await page.waitForFunction((stateKey: string) => {
         return (window as any)[stateKey] !== 'pending';
@@ -214,5 +243,29 @@ export async function getLayerFeatures(
             },
             { name: databaseName, title: mapName, id: layerId }
         );
+    });
+}
+
+export async function getHistoryEntryCount(page: Page): Promise<number> {
+    return await withDatabase(page, async (databaseName) => {
+        return await page.evaluate(async (name) => {
+            return await new Promise<number>((resolve, reject) => {
+                const openRequest = indexedDB.open(name);
+                openRequest.onerror = () => reject(openRequest.error);
+                openRequest.onsuccess = () => {
+                    const db = openRequest.result;
+                    if (!db.objectStoreNames.contains('historyEntries')) {
+                        db.close();
+                        resolve(0);
+                        return;
+                    }
+                    const tx = db.transaction('historyEntries', 'readonly');
+                    const countRequest = tx.objectStore('historyEntries').count();
+                    countRequest.onsuccess = () => resolve(countRequest.result);
+                    countRequest.onerror = () => reject(countRequest.error);
+                    tx.oncomplete = () => db.close();
+                };
+            });
+        }, databaseName);
     });
 }
