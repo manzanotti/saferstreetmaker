@@ -107,6 +107,34 @@ describe('UndoJournal', () => {
         });
     });
 
+    it('stores imported layers once and resolves references during undo and redo', async () => {
+        const importedLayers = [
+            {
+                id: 'imported-1',
+                name: 'Wards',
+                nameProperty: null,
+                featureCollection: {
+                    type: 'FeatureCollection' as const,
+                    features: []
+                }
+            }
+        ];
+        const before = { ...makeSnapshot('Before'), importedLayers };
+        const after = { ...makeSnapshot('After'), importedLayers };
+
+        await journal.clearHistory('Map A');
+        await journal.recordCheckpoint('Map A', before, after);
+
+        const entry = await journal.getLatestEntry('Map A');
+        expect(entry?.before).not.toHaveProperty('importedLayers');
+        expect(entry?.after).not.toHaveProperty('importedLayers');
+        expect(entry?.before).toHaveProperty('importedLayersRef');
+        expect(entry?.after).toHaveProperty('importedLayersRef');
+
+        await expect(journal.undo('Map A')).resolves.toEqual(before);
+        await expect(journal.redo('Map A')).resolves.toEqual(after);
+    });
+
     it('stores structured mutation metadata with a checkpoint', async () => {
         await journal.clearHistory('Map A');
         await journal.recordCheckpoint(
