@@ -135,4 +135,37 @@ describe('MapPersistenceCoordinator', () => {
         expect(state.options.getLastSavedSnapshot).toHaveBeenCalledTimes(2);
         expect(state.options.clearMutation).toHaveBeenCalledTimes(2);
     });
+
+    it('flushes queued persistence before a map switch', async () => {
+        let finishFirstSave!: () => void;
+        let currentMap = 'Previous map';
+        const saveMap = vi
+            .fn()
+            .mockImplementationOnce(
+                () =>
+                    new Promise<void>((resolve) => {
+                        finishFirstSave = resolve;
+                    })
+            )
+            .mockResolvedValue(undefined);
+        const state = createCoordinator({ saveMap });
+
+        const first = state.coordinator.persist();
+        const second = state.coordinator.persist();
+        const switchMap = async (): Promise<void> => {
+            await state.coordinator.flush();
+            currentMap = 'Replacement map';
+        };
+
+        const switchPromise = switchMap();
+        await Promise.resolve();
+        expect(currentMap).toBe('Previous map');
+        expect(saveMap).toHaveBeenCalledOnce();
+
+        finishFirstSave();
+        await Promise.all([first, second, switchPromise]);
+
+        expect(currentMap).toBe('Replacement map');
+        expect(saveMap).toHaveBeenCalledTimes(2);
+    });
 });

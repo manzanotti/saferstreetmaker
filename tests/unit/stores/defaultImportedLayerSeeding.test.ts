@@ -95,6 +95,8 @@ describe('default imported layer seeding', () => {
         const initialGeneration = manager.getMapGeneration();
         const creation = manager.createNewMap('Existing map');
 
+        await Promise.resolve();
+        await Promise.resolve();
         defaultLayers = [defaultLayer];
         releaseDuplicateCheck();
 

@@ -28,6 +28,13 @@ export interface MapPersistenceCoordinatorOptions {
     showErrors: (errors: string[]) => void;
 }
 
+export interface PersistOptions {
+    throwOnFailure?: boolean;
+    recordHistory?: boolean;
+    preserveMutation?: boolean;
+    pruneDanglingGroupMembers?: boolean;
+}
+
 export class MapPersistenceCoordinator {
     private readonly options: MapPersistenceCoordinatorOptions;
     private persistenceQueue: Promise<void> | undefined;
@@ -36,11 +43,7 @@ export class MapPersistenceCoordinator {
         this.options = options;
     }
 
-    async persist(options?: {
-        throwOnFailure?: boolean;
-        recordHistory?: boolean;
-        preserveMutation?: boolean;
-    }): Promise<boolean> {
+    async persist(options?: PersistOptions): Promise<boolean> {
         const queuedPersistence =
             this.persistenceQueue === undefined
                 ? this.persistNow(options)
@@ -55,12 +58,14 @@ export class MapPersistenceCoordinator {
         return await queuedPersistence;
     }
 
-    private async persistNow(options?: {
-        throwOnFailure?: boolean;
-        recordHistory?: boolean;
-        preserveMutation?: boolean;
-    }): Promise<boolean> {
-        this.options.pruneDanglingGroupMembers();
+    async flush(): Promise<void> {
+        await this.persistenceQueue;
+    }
+
+    private async persistNow(options?: PersistOptions): Promise<boolean> {
+        if (options?.pruneDanglingGroupMembers !== false) {
+            this.options.pruneDanglingGroupMembers();
+        }
 
         const beforeSnapshot = this.options.getLastSavedSnapshot();
         const afterSnapshot = this.options.buildSnapshot();
