@@ -37,6 +37,7 @@
 ## Build & Dev
 
 - **Bundler/dev server**: Vite (`yarn start` → dev server on `http://localhost:1234`, `yarn build` → production, `yarn preview` → preview build)
+- **Git workspace**: Work directly in the user's existing project checkout and branch by default. Do not create or use an additional Git worktree unless it is absolutely necessary for the task. If a worktree is unavoidable, create or refresh it from the latest `main` (or the user's specified base branch) immediately before making changes, and verify its merge-base/branch status before starting work. Never assume an existing worktree is current after the main checkout has advanced.
 - **Docs and skills workflow**:
     - Use the Context7 MCP to query official documentation whenever external library or framework guidance is needed.
     - Check any locally installed skills before starting a task to see whether they provide relevant guidance or reusable patterns.
