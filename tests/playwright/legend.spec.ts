@@ -46,6 +46,87 @@ test.describe('Legend', () => {
         await expect(page.locator('#MobilityLanes-legend')).toBeVisible();
     });
 
+    test('legend renders point icons and line layers at legend scale', async ({ page }) => {
+        const iconMetrics = await page.evaluate(() => {
+            const busGateIcon = document.querySelector<HTMLElement>(
+                '#BusGates-legend .legend-icon--point i'
+            );
+            const trafficLightsIcon = document.querySelector<HTMLElement>(
+                '#TrafficLights-legend .legend-icon--point i'
+            );
+            const pedestrianLightsIcon = document.querySelector<HTMLElement>(
+                '#PedestrianLights-legend .legend-icon--point i'
+            );
+            const zebraCrossingIcon = document.querySelector<HTMLElement>(
+                '#ZebraCrossing-legend .legend-icon--point i'
+            );
+            const mobilityLaneIcon = document.querySelector<HTMLElement>(
+                '#MobilityLanes-legend .legend-icon--polyline i'
+            );
+            const busLaneIcon = document.querySelector<HTMLElement>(
+                '#BusLanes-legend .legend-icon--polyline i'
+            );
+
+            if (
+                !busGateIcon ||
+                !trafficLightsIcon ||
+                !pedestrianLightsIcon ||
+                !zebraCrossingIcon ||
+                !mobilityLaneIcon ||
+                !busLaneIcon
+            ) {
+                return null;
+            }
+
+            const busGateStyle = getComputedStyle(busGateIcon);
+            const busGateBeforeStyle = getComputedStyle(busGateIcon, '::before');
+            const trafficLightsBeforeStyle = getComputedStyle(trafficLightsIcon, '::before');
+            const pedestrianLightsBeforeStyle = getComputedStyle(pedestrianLightsIcon, '::before');
+            const zebraCrossingBeforeStyle = getComputedStyle(zebraCrossingIcon, '::before');
+            const mobilityLaneStyle = getComputedStyle(mobilityLaneIcon);
+            const busLaneStyle = getComputedStyle(busLaneIcon);
+
+            return {
+                busGateBackgroundImage: busGateStyle.backgroundImage,
+                busGateHeight: busGateStyle.height,
+                busGateWidth: busGateStyle.width,
+                busGateBeforeHasBackgroundImage: busGateBeforeStyle.backgroundImage !== 'none',
+                busGateBeforeBackgroundSize: busGateBeforeStyle.backgroundSize,
+                busGateBeforeContent: busGateBeforeStyle.content,
+                trafficLightsBeforeHasBackgroundImage:
+                    trafficLightsBeforeStyle.backgroundImage !== 'none',
+                pedestrianLightsBeforeHasBackgroundImage:
+                    pedestrianLightsBeforeStyle.backgroundImage !== 'none',
+                zebraCrossingBeforeHasBackgroundImage:
+                    zebraCrossingBeforeStyle.backgroundImage !== 'none',
+                busLaneBackgroundColor: busLaneStyle.backgroundColor,
+                busLaneBackgroundImage: busLaneStyle.backgroundImage,
+                busLaneHeight: busLaneStyle.height,
+                busLaneWidth: busLaneStyle.width,
+                mobilityLaneHeight: mobilityLaneStyle.height,
+                mobilityLaneWidth: mobilityLaneStyle.width
+            };
+        });
+
+        expect(iconMetrics).toEqual({
+            busGateBackgroundImage: 'none',
+            busGateHeight: '15px',
+            busGateWidth: '15px',
+            busGateBeforeHasBackgroundImage: true,
+            busGateBeforeBackgroundSize: '15px 15px',
+            busGateBeforeContent: '""',
+            trafficLightsBeforeHasBackgroundImage: true,
+            pedestrianLightsBeforeHasBackgroundImage: true,
+            zebraCrossingBeforeHasBackgroundImage: true,
+            busLaneBackgroundColor: 'rgb(185, 28, 28)',
+            busLaneBackgroundImage: 'none',
+            busLaneHeight: '6px',
+            busLaneWidth: '22px',
+            mobilityLaneHeight: '6px',
+            mobilityLaneWidth: '22px'
+        });
+    });
+
     test('clicking a legend entry toggles layer visibility', async ({ page }) => {
         const legendEntry = page.locator('#ModalFilters-legend');
         await legendEntry.click();
