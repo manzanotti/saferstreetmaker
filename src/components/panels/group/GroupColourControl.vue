@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { shallowRef, watch } from 'vue';
-import { DEFAULT_GROUP_COLOUR } from '../../features/groups/groupColours';
+import { DEFAULT_GROUP_COLOUR } from '../../../features/groups/groupColours';
 
 const props = defineProps<{
     groupId: string;

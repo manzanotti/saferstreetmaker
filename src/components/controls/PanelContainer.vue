@@ -3,7 +3,7 @@ import { useUiStore } from '../../stores/uiStore';
 import SettingsPanel from '../panels/SettingsPanel.vue';
 import MapManagerPanel from '../panels/MapManagerPanel.vue';
 import SharingPanel from '../panels/SharingPanel.vue';
-import GroupsPanel from '../panels/GroupsPanel.vue';
+import GroupsPanel from '../panels/group/GroupsPanel.vue';
 import LayersPanel from '../panels/LayersPanel.vue';
 
 const uiStore = useUiStore();

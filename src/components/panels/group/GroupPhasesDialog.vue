@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, useTemplateRef, watch } from 'vue';
-import { useGroupStore } from '../../stores/groupStore';
-import { useSelectionStore } from '../../stores/selectionStore';
+import { useGroupStore } from '../../../stores/groupStore';
+import { useSelectionStore } from '../../../stores/selectionStore';
 import {
     closeGroupPhases,
     confirmEmptyGroupPhaseDeletion,
@@ -10,8 +10,8 @@ import {
     refreshGroupPhasePresentation,
     reorderGroupPhases,
     startNewGroupPhase
-} from '../../composables/useGroups';
-import { getGroupVersions } from '../../features/groups/groupVersions';
+} from '../../../composables/useGroups';
+import { getGroupVersions } from '../../../features/groups/groupVersions';
 
 const groupStore = useGroupStore();
 const selectionStore = useSelectionStore();

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, useTemplateRef, watch } from 'vue';
-import { useGroupStore } from '../../stores/groupStore';
-import { useUiStore } from '../../stores/uiStore';
+import { useGroupStore } from '../../../stores/groupStore';
+import { useUiStore } from '../../../stores/uiStore';
 import {
     clearGroupSelection,
     clearReadOnlyGroupPresentation,
@@ -11,9 +11,9 @@ import {
     stopReadOnlyGroupPlayback,
     stepReadOnlyGroupPhase,
     viewGroupVersion
-} from '../../composables/useGroups';
-import { getGroupVersions, memberKey } from '../../features/groups/groupVersions';
-import { sanitizeGroupDescription } from '../../features/groups/groupDescription';
+} from '../../../composables/useGroups';
+import { getGroupVersions, memberKey } from '../../../features/groups/groupVersions';
+import { sanitizeGroupDescription } from '../../../features/groups/groupDescription';
 
 const groupStore = useGroupStore();
 const uiStore = useUiStore();
