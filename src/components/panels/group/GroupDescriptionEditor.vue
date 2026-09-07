@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue';
 import {
     GROUP_DESCRIPTION_MAX_LENGTH,
     sanitizeGroupDescription
-} from '../../features/groups/groupDescription';
+} from '../../../features/groups/groupDescription';
 
 const props = defineProps<{
     groupName: string;

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
-import { useGroupStore } from '../../stores/groupStore';
-import { useSelectionStore } from '../../stores/selectionStore';
-import { useUiStore } from '../../stores/uiStore';
-import { useSettingsStore } from '../../stores/settingsStore';
+import { useGroupStore } from '../../../stores/groupStore';
+import { useSelectionStore } from '../../../stores/selectionStore';
+import { useUiStore } from '../../../stores/uiStore';
+import { useSettingsStore } from '../../../stores/settingsStore';
 import {
     applyGroupDetails,
     clearGroupSelection,
@@ -17,17 +17,17 @@ import {
     saveGroupSelectionWhileEditing,
     setGroupDefaultVersion,
     switchGroupVersion
-} from '../../composables/useGroups';
+} from '../../../composables/useGroups';
 import {
     getDefaultVersionId,
     getGroupVersions,
     memberKey
-} from '../../features/groups/groupVersions';
+} from '../../../features/groups/groupVersions';
 import {
     GROUP_DESCRIPTION_MAX_LENGTH,
     sanitizeGroupDescription
-} from '../../features/groups/groupDescription';
-import { DEFAULT_GROUP_COLOUR } from '../../features/groups/groupColours';
+} from '../../../features/groups/groupDescription';
+import { DEFAULT_GROUP_COLOUR } from '../../../features/groups/groupColours';
 
 const groupStore = useGroupStore();
 const selectionStore = useSelectionStore();
