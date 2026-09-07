@@ -140,15 +140,7 @@ async function loadFromUrl() {
         ) {
             return;
         }
-        const sourceUrl = new URL(requestedUrl, window.location.href);
-        const encodedSourceName = sourceUrl.pathname.split('/').pop() || 'GeoJSON layer';
-        let sourceName = encodedSourceName;
-        try {
-            sourceName = decodeURIComponent(encodedSourceName);
-        } catch {
-            // Keep the encoded path segment when it is not valid URI encoding.
-        }
-        setParsedGeoJson(value, sourceName);
+        setParsedGeoJson(value, new URL(requestedUrl).pathname.split('/').pop() || 'GeoJSON layer');
     } catch (e: unknown) {
         if (requestId === urlRequestId) {
             error.value = `Could not load GeoJSON. ${String((e as Error).message ?? e)} Check that the URL allows browser CORS requests.`;

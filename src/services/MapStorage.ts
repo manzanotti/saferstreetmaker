@@ -11,18 +11,22 @@ import type { Group } from '../models/Group';
 import type { ImportedGeoJsonLayer } from '../models/ImportedGeoJsonLayer';
 import { MapDatabase, type StoredMapRecord } from './MapDatabase';
 import { MapSerializer, type SerializedMap } from './MapSerializer';
+import {
+    getLegacyStorage,
+    readLegacyMap,
+    readLegacyMapList,
+    readLegacyLastSelected,
+    shouldImportLegacyMap,
+    compareVersions
+} from './legacyMapStorageImport';
 
-const LEGACY_MAP_LIST_KEY = 'MapList';
-const LEGACY_LAST_SELECTED_KEY = 'LastMapSelected';
 const LAST_SELECTED_METADATA_KEY = 'lastSelectedMap';
 const LEGACY_IMPORT_COMPLETED_METADATA_KEY = 'legacyImportCompleted';
-const INDEXED_DB_MIGRATION_CUTOFF_VERSION = '0.9.0';
 
 export class MapStorage {
     private readonly serializer: MapSerializer;
     private readonly db: MapDatabase;
     private readonly ready: Promise<void>;
-    private writeQueue: Promise<void> = Promise.resolve();
 
     constructor(serializer: MapSerializer) {
         this.serializer = serializer;
@@ -34,17 +38,6 @@ export class MapStorage {
 
     /** Serialise the current map state into a compact payload, then persist it. */
     async saveMap(
-        settings: Settings,
-        layersData: Map<string, IMapLayer>,
-        groups?: Group[],
-        importedLayers?: ImportedGeoJsonLayer[]
-    ): Promise<void> {
-        await this.enqueueWrite(() =>
-            this.saveMapNow(settings, layersData, groups, importedLayers)
-        );
-    }
-
-    private async saveMapNow(
         settings: Settings,
         layersData: Map<string, IMapLayer>,
         groups?: Group[],
@@ -98,52 +91,43 @@ export class MapStorage {
     }
 
     async deleteMap(mapName: string): Promise<void> {
-        await this.enqueueWrite(async () => {
-            await this.ready;
+        await this.ready;
 
-            await this.db.transaction('rw', this.db.maps, this.db.metadata, async () => {
-                await this.db.maps.delete(mapName);
+        await this.db.transaction('rw', this.db.maps, this.db.metadata, async () => {
+            await this.db.maps.delete(mapName);
 
-                const lastSelected = await this.db.metadata.get(LAST_SELECTED_METADATA_KEY);
-                if (lastSelected?.value === mapName) {
-                    const replacement = await this.db.maps.orderBy('sortOrder').reverse().first();
-                    if (replacement) {
-                        await this.db.metadata.put({
-                            key: LAST_SELECTED_METADATA_KEY,
-                            value: replacement.title
-                        });
-                    } else {
-                        await this.db.metadata.delete(LAST_SELECTED_METADATA_KEY);
-                    }
+            const lastSelected = await this.db.metadata.get(LAST_SELECTED_METADATA_KEY);
+            if (lastSelected?.value === mapName) {
+                const replacement = await this.db.maps.orderBy('sortOrder').reverse().first();
+                if (replacement) {
+                    await this.db.metadata.put({
+                        key: LAST_SELECTED_METADATA_KEY,
+                        value: replacement.title
+                    });
+                } else {
+                    await this.db.metadata.delete(LAST_SELECTED_METADATA_KEY);
                 }
-            });
+            }
         });
     }
 
+    /**
+     * Copy the current map to a new title using the pattern `<title>_copy_N`
+     * where N is the lowest integer not already taken.
+     */
     async copyMap(
         settings: Settings,
         layersData: Map<string, IMapLayer>,
         groups?: Group[],
         importedLayers?: ImportedGeoJsonLayer[]
     ): Promise<void> {
-        await this.enqueueWrite(async () => {
-            const existing = await this.listMaps();
-            let index = 1;
-            while (existing.includes(`${settings.title}_copy_${index}`)) {
-                index++;
-            }
-            settings.title = `${settings.title}_copy_${index}`;
-            await this.saveMapNow(settings, layersData, groups, importedLayers);
-        });
-    }
-
-    private async enqueueWrite<T>(operation: () => Promise<T>): Promise<T> {
-        const queuedOperation = this.writeQueue.then(operation, operation);
-        this.writeQueue = queuedOperation.then(
-            () => undefined,
-            () => undefined
-        );
-        return await queuedOperation;
+        const existing = await this.listMaps();
+        let index = 1;
+        while (existing.includes(`${settings.title}_copy_${index}`)) {
+            index++;
+        }
+        settings.title = `${settings.title}_copy_${index}`;
+        await this.saveMap(settings, layersData, groups, importedLayers);
     }
 
     // ── Map list ──────────────────────────────────────────────────────────────
@@ -168,10 +152,8 @@ export class MapStorage {
     // ── Last selected ─────────────────────────────────────────────────────────
 
     async saveLastMapSelected(mapName: string): Promise<void> {
-        await this.enqueueWrite(async () => {
-            await this.ready;
-            await this.db.metadata.put({ key: LAST_SELECTED_METADATA_KEY, value: mapName });
-        });
+        await this.ready;
+        await this.db.metadata.put({ key: LAST_SELECTED_METADATA_KEY, value: mapName });
     }
 
     async loadLastSelected(): Promise<string> {
@@ -195,7 +177,7 @@ export class MapStorage {
             return;
         }
 
-        const legacyStorage = this.getLegacyStorage();
+        const legacyStorage = getLegacyStorage();
         if (legacyStorage === undefined) {
             await this.markLegacyImportCompleted();
             return;
@@ -213,8 +195,10 @@ export class MapStorage {
         let legacyList: string[];
         let legacyLastSelected: string;
         try {
-            legacyList = this.readLegacyMapList(legacyStorage);
-            legacyLastSelected = this.readLegacyLastSelected(legacyStorage);
+            legacyList = readLegacyMapList(legacyStorage, (raw) => LZString.decompress(raw));
+            legacyLastSelected = readLegacyLastSelected(legacyStorage, (raw) =>
+                LZString.decompress(raw)
+            );
         } catch {
             return;
         }
@@ -226,8 +210,10 @@ export class MapStorage {
         let legacyMaps: Array<{ mapName: string; map: SerializedMap }>;
         try {
             legacyMaps = legacyList.flatMap((mapName) => {
-                const map = this.readLegacyMap(legacyStorage, mapName);
-                return this.shouldImportLegacyMap(map) ? [{ mapName, map }] : [];
+                const map = readLegacyMap(legacyStorage, mapName, (raw) =>
+                    LZString.decompress(raw)
+                );
+                return shouldImportLegacyMap(map, compareVersions) ? [{ mapName, map }] : [];
             });
         } catch {
             return;
@@ -269,99 +255,6 @@ export class MapStorage {
 
     private async markLegacyImportCompleted(): Promise<void> {
         await this.db.metadata.put({ key: LEGACY_IMPORT_COMPLETED_METADATA_KEY, value: '1' });
-    }
-
-    private getLegacyStorage(): Storage | null | undefined {
-        try {
-            if (typeof localStorage === 'undefined') {
-                return undefined;
-            }
-            return localStorage;
-        } catch {
-            return null;
-        }
-    }
-
-    private readLegacyMap(storage: Storage, mapName: string): SerializedMap | null {
-        const raw = storage.getItem(`Map_${mapName}`);
-        if (raw === null || raw === 'undefined') {
-            return null;
-        }
-
-        const decompressed = LZString.decompress(raw);
-        if (!decompressed) {
-            return null;
-        }
-        try {
-            return JSON.parse(decompressed) as SerializedMap;
-        } catch {
-            return null;
-        }
-    }
-
-    private readLegacyMapList(storage: Storage): string[] {
-        const raw = storage.getItem(LEGACY_MAP_LIST_KEY);
-        if (raw === null || raw === 'undefined') {
-            return [];
-        }
-
-        const decompressed = LZString.decompress(raw);
-        if (!decompressed) {
-            return [];
-        }
-        try {
-            return JSON.parse(decompressed) as string[];
-        } catch {
-            return [];
-        }
-    }
-
-    private readLegacyLastSelected(storage: Storage): string {
-        const raw = storage.getItem(LEGACY_LAST_SELECTED_KEY);
-        if (raw === null || raw === 'undefined') {
-            return '';
-        }
-
-        return LZString.decompress(raw) ?? '';
-    }
-
-    private shouldImportLegacyMap(legacyMap: SerializedMap | null): legacyMap is SerializedMap {
-        if (!legacyMap) {
-            return false;
-        }
-
-        if (!legacyMap.settings) {
-            return (
-                legacyMap.title !== undefined ||
-                legacyMap.layers !== undefined ||
-                legacyMap.centre !== undefined ||
-                legacyMap.zoom !== undefined
-            );
-        }
-
-        const storedVersion = legacyMap.settings.version;
-        if (storedVersion === undefined || storedVersion === '') {
-            return true;
-        }
-
-        return this.compareVersions(storedVersion, INDEXED_DB_MIGRATION_CUTOFF_VERSION) < 0;
-    }
-
-    private compareVersions(left: string, right: string): number {
-        const leftParts = left.split('.').map((part) => Number(part));
-        const rightParts = right.split('.').map((part) => Number(part));
-        const maxLength = Math.max(leftParts.length, rightParts.length);
-
-        for (let index = 0; index < maxLength; index++) {
-            const leftValue = leftParts[index] ?? 0;
-            const rightValue = rightParts[index] ?? 0;
-
-            if (leftValue !== rightValue) {
-                return leftValue - rightValue;
-            }
-        }
-
-        return 0;
     }
 
     private async getNextSortOrder(): Promise<number> {

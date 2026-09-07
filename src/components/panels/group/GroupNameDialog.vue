@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue';
-import { useGroupStore } from '../../stores/groupStore';
-import { finalizeCreateGroup, finalizeRenameGroup } from '../../composables/useGroups';
+import { useGroupStore } from '../../../stores/groupStore';
+import { finalizeCreateGroup, finalizeRenameGroup } from '../../../composables/useGroups';
 
 const groupStore = useGroupStore();
 

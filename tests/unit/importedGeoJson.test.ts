@@ -34,19 +34,6 @@ describe('imported GeoJSON helpers', () => {
         expect(parsed).not.toBe(featureCollection);
     });
 
-    it('accepts features with null geometry', () => {
-        const parsed = parseGeoJson({
-            type: 'FeatureCollection',
-            features: [
-                { type: 'Feature', properties: { name: 'Unknown' }, geometry: null },
-                featureCollection.features[0]
-            ]
-        });
-
-        expect(parsed.features).toHaveLength(2);
-        expect(parsed.features[0].geometry).toBeNull();
-    });
-
     it('rejects non-FeatureCollection data', () => {
         expect(() => parseGeoJson({ type: 'Feature', geometry: null })).toThrow(
             'GeoJSON must contain a FeatureCollection with a features array.'
@@ -141,25 +128,13 @@ describe('imported GeoJSON helpers', () => {
         { type: 'MultiPoint', coordinates: [] },
         { type: 'MultiLineString', coordinates: [[[-1.82, 52.44]]] },
         {
-            type: 'Polygon',
-            coordinates: [
-                [
-                    [-1.82, 52.44],
-                    [-1.8, 52.44],
-                    [-1.8, 52.46],
-                    [-1.82, 52.46]
-                ]
-            ]
-        },
-        {
             type: 'MultiPolygon',
             coordinates: [
                 [
                     [
                         [-1.82, 52.44],
                         [-1.8, 52.44],
-                        [-1.8, 52.46],
-                        [-1.82, 52.46]
+                        [-1.8, 52.46]
                     ]
                 ]
             ]

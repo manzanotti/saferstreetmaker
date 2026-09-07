@@ -8,7 +8,6 @@ export interface MapViewCoordinatorOptions {
 export class MapViewCoordinator {
     private readonly options: MapViewCoordinatorOptions;
     private saveViewTimer: ReturnType<typeof setTimeout> | undefined;
-    private saveViewPromise: Promise<void> | undefined;
 
     constructor(options: MapViewCoordinatorOptions) {
         this.options = options;
@@ -28,43 +27,17 @@ export class MapViewCoordinator {
         }
         this.saveViewTimer = setTimeout(() => {
             this.saveViewTimer = undefined;
-            void this.startSave();
+            void this.options.saveMap();
         }, 500);
     }
 
     async flushPendingSave(): Promise<void> {
-        const pendingTimer = this.saveViewTimer;
-        const inFlightSave = this.saveViewPromise;
+        if (this.saveViewTimer === undefined) {
+            return;
+        }
 
-        if (pendingTimer !== undefined) {
-            clearTimeout(pendingTimer);
-            this.saveViewTimer = undefined;
-        }
-        if (inFlightSave !== undefined) {
-            await inFlightSave;
-        }
-        if (pendingTimer !== undefined) {
-            await this.startSave();
-        }
-    }
-
-    private startSave(): Promise<void> {
-        const previousSave = this.saveViewPromise ?? Promise.resolve();
-        const savePromise = previousSave.then(
-            () => this.options.saveMap(),
-            () => this.options.saveMap()
-        );
-        this.saveViewPromise = savePromise;
-        void savePromise.then(
-            () => this.clearCompletedSave(savePromise),
-            () => this.clearCompletedSave(savePromise)
-        );
-        return savePromise;
-    }
-
-    private clearCompletedSave(savePromise: Promise<void>): void {
-        if (this.saveViewPromise === savePromise) {
-            this.saveViewPromise = undefined;
-        }
+        clearTimeout(this.saveViewTimer);
+        this.saveViewTimer = undefined;
+        await this.options.saveMap();
     }
 }

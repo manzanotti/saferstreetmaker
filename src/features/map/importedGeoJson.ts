@@ -32,18 +32,6 @@ function isPositionArray(value: unknown, minimumLength: number): value is number
     return Array.isArray(value) && value.length >= minimumLength && value.every(isPosition);
 }
 
-function isLinearRing(value: unknown): value is number[][] {
-    if (!isPositionArray(value, 4)) {
-        return false;
-    }
-    const first = value[0];
-    const last = value[value.length - 1];
-    return (
-        first.length === last.length &&
-        first.every((coordinate, index) => coordinate === last[index])
-    );
-}
-
 function validateGeometry(geometry: unknown, featureIndex: number): void {
     if (!geometry || typeof geometry !== 'object') {
         throw new Error(`Feature ${featureIndex + 1} is missing a valid geometry.`);
@@ -72,7 +60,7 @@ function validateGeometry(geometry: unknown, featureIndex: number): void {
                 : candidate.type === 'Polygon'
                   ? Array.isArray(candidate.coordinates) &&
                     candidate.coordinates.length > 0 &&
-                    candidate.coordinates.every(isLinearRing)
+                    candidate.coordinates.every((ring) => isPositionArray(ring, 4))
                   : candidate.type === 'MultiPolygon'
                     ? Array.isArray(candidate.coordinates) &&
                       candidate.coordinates.length > 0 &&
@@ -80,7 +68,7 @@ function validateGeometry(geometry: unknown, featureIndex: number): void {
                           (polygon) =>
                               Array.isArray(polygon) &&
                               polygon.length > 0 &&
-                              polygon.every(isLinearRing)
+                              polygon.every((ring) => isPositionArray(ring, 4))
                       )
                     : false;
     if (!valid) {
@@ -103,15 +91,10 @@ export function parseGeoJson(value: unknown): GeoJSON.FeatureCollection {
             throw new Error(`Feature ${index + 1} is not a JSON object.`);
         }
         const item = feature as { type?: unknown; geometry?: unknown; properties?: unknown };
-        if (
-            item.type !== 'Feature' ||
-            (item.geometry !== null && typeof item.geometry !== 'object')
-        ) {
+        if (item.type !== 'Feature' || !item.geometry || typeof item.geometry !== 'object') {
             throw new Error(`Feature ${index + 1} is missing a valid geometry.`);
         }
-        if (item.geometry !== null) {
-            validateGeometry(item.geometry, index);
-        }
+        validateGeometry(item.geometry, index);
         if (
             item.properties !== null &&
             (typeof item.properties !== 'object' || Array.isArray(item.properties))
@@ -159,7 +142,7 @@ export function formatPropertyValue(value: unknown): string {
         return '';
     }
     if (typeof value === 'object') {
-        return JSON.stringify(value) ?? '';
+        return JSON.stringify(value);
     }
     return String(value);
 }

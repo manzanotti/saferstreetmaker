@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
-import { useGroupStore } from '../../stores/groupStore';
-import { useSelectionStore } from '../../stores/selectionStore';
-import { useUiStore } from '../../stores/uiStore';
-import { useSettingsStore } from '../../stores/settingsStore';
+import { useGroupStore } from '../../../stores/groupStore';
+import { useSelectionStore } from '../../../stores/selectionStore';
+import { useUiStore } from '../../../stores/uiStore';
+import { useSettingsStore } from '../../../stores/settingsStore';
 import {
     applyGroupDetails,
     clearGroupSelection,
@@ -17,17 +17,19 @@ import {
     saveGroupSelectionWhileEditing,
     setGroupDefaultVersion,
     switchGroupVersion
-} from '../../composables/useGroups';
+} from '../../../composables/useGroups';
 import {
     getDefaultVersionId,
     getGroupVersions,
     memberKey
-} from '../../features/groups/groupVersions';
+} from '../../../features/groups/groupVersions';
 import {
     GROUP_DESCRIPTION_MAX_LENGTH,
     sanitizeGroupDescription
-} from '../../features/groups/groupDescription';
-import { DEFAULT_GROUP_COLOUR } from '../../features/groups/groupColours';
+} from '../../../features/groups/groupDescription';
+import { DEFAULT_GROUP_COLOUR } from '../../../features/groups/groupColours';
+import GroupVersionsList from './GroupVersionsList.vue';
+import GroupDeleteConfirm from './GroupDeleteConfirm.vue';
 
 const groupStore = useGroupStore();
 const selectionStore = useSelectionStore();
@@ -422,215 +424,46 @@ function confirmDeleteGroup(deleteElements: boolean) {
                 ></div>
             </div>
 
-            <section class="border-t border-gray-100 pt-3" aria-labelledby="group-versions-title">
-                <div class="mb-2 flex items-center justify-between gap-2">
-                    <h3 id="group-versions-title" class="text-sm font-semibold text-gray-800">
-                        Versions
-                    </h3>
-                    <button
-                        v-if="!settingsStore.readOnly"
-                        type="button"
-                        class="rounded border border-gray-200 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
-                        aria-label="Create version"
-                        @click="startCreateVersion"
-                    >
-                        + Version
-                    </button>
-                </div>
-                <div class="space-y-2">
-                    <div
-                        role="list"
-                        :aria-label="`Versions for group ${group.name}`"
-                        class="space-y-1"
-                    >
-                        <div
-                            v-for="version in versions"
-                            :key="version.id"
-                            role="listitem"
-                            class="rounded border px-2 py-2"
-                            :class="
-                                groupStore.activeVersionIds[group.id] === version.id
-                                    ? 'border-green-300 bg-green-50'
-                                    : 'border-gray-200'
-                            "
-                        >
-                            <div class="flex items-center gap-2">
-                                <input
-                                    v-model="versionNames[version.id]"
-                                    type="text"
-                                    :disabled="settingsStore.readOnly"
-                                    :aria-label="`Version name ${version.name}`"
-                                    class="min-w-0 flex-1 rounded border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500"
-                                    @click.stop
-                                    @blur="saveVersionName(version.id)"
-                                    @keydown.enter.prevent="saveVersionName(version.id)"
-                                />
-                                <button
-                                    type="button"
-                                    :aria-label="`Select version ${version.name}`"
-                                    :aria-pressed="
-                                        groupStore.activeVersionIds[group.id] === version.id
-                                    "
-                                    class="shrink-0 rounded border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:bg-white"
-                                    @click="selectVersion(version.id)"
-                                >
-                                    Select
-                                </button>
-                                <span class="shrink-0 text-xs text-gray-500">
-                                    ({{ versionMemberCounts[version.id] }} feature{{
-                                        versionMemberCounts[version.id] === 1 ? '' : 's'
-                                    }})
-                                </span>
-                                <button
-                                    v-if="!settingsStore.readOnly"
-                                    type="button"
-                                    :aria-label="`Phases for version ${version.name}`"
-                                    class="shrink-0 rounded border border-green-200 px-2 py-1 text-xs text-green-700 hover:bg-green-50"
-                                    @click="openPhases(version.id)"
-                                >
-                                    Phases ({{ version.phases?.length ?? 0 }})
-                                </button>
-                                <button
-                                    v-if="!settingsStore.readOnly"
-                                    type="button"
-                                    :aria-label="`Set ${version.name} as default version`"
-                                    class="shrink-0 rounded border px-2 py-1 text-xs"
-                                    :class="
-                                        getDefaultVersionId(group) === version.id
-                                            ? 'border-green-200 bg-green-100 text-green-700'
-                                            : 'border-gray-200 text-gray-600 hover:bg-white'
-                                    "
-                                    @click="setDefault(version.id)"
-                                >
-                                    {{
-                                        getDefaultVersionId(group) === version.id
-                                            ? 'Default'
-                                            : 'Set default'
-                                    }}
-                                </button>
-                                <button
-                                    v-if="versions.length > 1 && !settingsStore.readOnly"
-                                    type="button"
-                                    :aria-label="`Delete version ${version.name}`"
-                                    class="shrink-0 rounded border border-red-100 px-2 py-1 text-xs text-red-600 hover:bg-red-50"
-                                    @click="requestDeleteVersion(version.id)"
-                                >
-                                    Delete
-                                </button>
-                            </div>
-                            <p
-                                v-if="versionErrors[version.id]"
-                                class="mt-1 text-xs text-red-600"
-                                role="alert"
-                            >
-                                {{ versionErrors[version.id] }}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                <div
-                    v-if="versionEditorOpen"
-                    class="mt-3 space-y-2 rounded border border-gray-100 bg-slate-50 p-3"
-                >
-                    <label for="group-version-name" class="block text-xs font-medium text-gray-700">
-                        New version
-                    </label>
-                    <input
-                        id="group-version-name"
-                        v-model="versionName"
-                        type="text"
-                        class="w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                        @keydown.enter.prevent="saveVersion"
-                    />
-                    <p v-if="versionError" class="text-xs text-red-600" role="alert">
-                        {{ versionError }}
-                    </p>
-                    <div class="flex justify-end gap-2">
-                        <button
-                            type="button"
-                            class="rounded border border-gray-200 px-2 py-1 text-xs text-gray-600"
-                            @click="cancelVersionEdit"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="button"
-                            class="rounded bg-green-700 px-2 py-1 text-xs font-medium text-white"
-                            @click="saveVersion"
-                        >
-                            Save
-                        </button>
-                    </div>
-                </div>
-                <div
-                    v-if="pendingVersionDelete"
-                    class="mt-3 space-y-2 rounded border border-red-100 bg-red-50 p-3 text-xs text-gray-700"
-                >
-                    <p>
-                        Delete version <strong>{{ pendingVersionDelete.name }}</strong
-                        >? Choose whether to keep its
-                        {{ pendingVersionDelete.memberCount }} element{{
-                            pendingVersionDelete.memberCount === 1 ? '' : 's'
-                        }}.
-                    </p>
-                    <div class="flex flex-wrap gap-2">
-                        <button
-                            type="button"
-                            class="rounded border border-gray-200 bg-white px-2 py-1"
-                            @click="confirmDeleteVersion(false)"
-                        >
-                            Delete version only
-                        </button>
-                        <button
-                            type="button"
-                            class="rounded bg-red-600 px-2 py-1 text-white"
-                            @click="confirmDeleteVersion(true)"
-                        >
-                            Delete version + elements
-                        </button>
-                        <button
-                            type="button"
-                            class="rounded border border-gray-200 bg-white px-2 py-1"
-                            @click="pendingVersionDelete = null"
-                        >
-                            Cancel
-                        </button>
-                    </div>
-                </div>
-            </section>
+            <GroupVersionsList
+                :group="group"
+                :versions="versions"
+                :version-member-counts="versionMemberCounts"
+                :active-version-id="groupStore.activeVersionIds[group.id]"
+                :default-version-id="getDefaultVersionId(group)"
+                :read-only="settingsStore.readOnly"
+                :version-names="versionNames"
+                :version-errors="versionErrors"
+                :version-editor-open="versionEditorOpen"
+                :version-name="versionName"
+                :version-error="versionError"
+                :pending-version-delete="pendingVersionDelete"
+                @update:version-names="versionNames = $event"
+                @update:version-editor-open="versionEditorOpen = $event"
+                @update:version-name="versionName = $event"
+                @update:pending-version-delete="pendingVersionDelete = $event"
+                @create="startCreateVersion"
+                @select="selectVersion"
+                @save-name="saveVersionName"
+                @set-default="setDefault"
+                @open-phases="openPhases"
+                @request-delete="requestDeleteVersion"
+                @save-version="saveVersion"
+                @cancel-version-edit="cancelVersionEdit"
+                @confirm-delete="confirmDeleteVersion"
+            />
 
             <section v-if="pendingGroupDelete" class="border-t border-red-100 pt-3">
-                <div
-                    class="space-y-2 rounded border border-red-100 bg-red-50 p-3 text-xs text-gray-700"
+                <GroupDeleteConfirm
+                    only-label="Delete group only"
+                    with-elements-label="Delete group + elements"
+                    @confirm="confirmDeleteGroup"
+                    @cancel="pendingGroupDelete = false"
                 >
-                    <p>
+                    <template #message>
                         Delete <strong>{{ group.name }}</strong
                         >? Choose whether to keep its elements.
-                    </p>
-                    <div class="flex flex-wrap gap-2">
-                        <button
-                            type="button"
-                            class="rounded border border-gray-200 bg-white px-2 py-1"
-                            @click="confirmDeleteGroup(false)"
-                        >
-                            Delete group only
-                        </button>
-                        <button
-                            type="button"
-                            class="rounded bg-red-600 px-2 py-1 text-white"
-                            @click="confirmDeleteGroup(true)"
-                        >
-                            Delete group + elements
-                        </button>
-                        <button
-                            type="button"
-                            class="rounded border border-gray-200 bg-white px-2 py-1"
-                            @click="pendingGroupDelete = false"
-                        >
-                            Cancel
-                        </button>
-                    </div>
-                </div>
+                    </template>
+                </GroupDeleteConfirm>
             </section>
         </div>
     </div>

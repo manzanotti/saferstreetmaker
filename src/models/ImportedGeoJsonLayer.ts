@@ -3,7 +3,7 @@ export interface ImportedGeoJsonLayer {
     name: string;
     nameProperty: string | null;
     visible?: boolean;
-    featureCollection: GeoJSON.FeatureCollection<GeoJSON.Geometry | null>;
+    featureCollection: GeoJSON.FeatureCollection;
 }
 
 export interface SerializedImportedGeoJsonLayer {
@@ -11,5 +11,5 @@ export interface SerializedImportedGeoJsonLayer {
     name: string;
     nameProperty: string | null;
     visible?: boolean;
-    featureCollection: GeoJSON.FeatureCollection<GeoJSON.Geometry | null>;
+    featureCollection: GeoJSON.FeatureCollection;
 }

@@ -10,13 +10,32 @@
 import LZString from 'lz-string';
 import type { IMapLayer } from '../composables/layers/IMapLayer';
 import type { Settings } from '../models/Settings';
-import type { Group, GroupMember, GroupPhase, GroupVersion } from '../models/Group';
+import type { Group, GroupMember } from '../models/Group';
 import { normalizeGroupDescription } from '../features/groups/groupDescription';
 import type {
     ImportedGeoJsonLayer,
     SerializedImportedGeoJsonLayer
 } from '../models/ImportedGeoJsonLayer';
 import { retainNameProperty } from '../features/map/importedGeoJson';
+import {
+    quantizeCoordinate,
+    encodeCoordinates,
+    decodeCoordinates,
+    encodeImportedLayers,
+    decodeImportedLayers,
+    encodeUrlProperties,
+    decodeUrlProperties,
+    geometryTypeFromCoordinates,
+    encodeUrlGroups,
+    decodeUrlGroups,
+    COORDINATE_PRECISION,
+    type CompactUrlFeature,
+    type CompactUrlMap
+} from './compactUrlEncoding';
+import type { CompactStoredMap } from './compactStorage';
+import { serializeMembers, serializeGroup, deserializeCompactMembers } from './groupSerialization';
+
+export type { CompactStoredMap } from './compactStorage';
 
 /**
  * Typed shape of the JSON document produced by `MapSerializer.toJSON` and
@@ -55,123 +74,7 @@ export interface SerializedMap {
     groups?: Group[];
 }
 
-interface CompactSettings {
-    t: string;
-    r: 0 | 1;
-    h: 0 | 1;
-    a: string[];
-    c: [number, number] | null;
-    z: number;
-    v: string;
-}
-
 const URL_SCHEMA_VERSION = 2;
-const COORDINATE_PRECISION = 1_000_000;
-
-type CompactUrlCoordinates = number[] | CompactUrlCoordinates[];
-type CompactUrlProperties = {
-    h?: number;
-    l?: string;
-    c?: string;
-    x?: Record<string, unknown>;
-};
-type CompactUrlFeature = [CompactUrlCoordinates, CompactUrlProperties?];
-interface CompactUrlImportedGeometry {
-    t: GeoJSON.Geometry['type'];
-    c?: CompactUrlCoordinates;
-    g?: CompactUrlImportedGeometry[];
-}
-type CompactUrlImportedFeature =
-    | [CompactUrlImportedGeometry | null, Record<string, unknown> | null | undefined]
-    | [
-          CompactUrlImportedGeometry | null,
-          Record<string, unknown> | null | undefined,
-          string | number
-      ];
-interface CompactUrlImportedLayer {
-    i: string;
-    n: string;
-    p: string | null;
-    v?: 0;
-    f: CompactUrlImportedFeature[];
-}
-interface CompactUrlMap {
-    v: 2;
-    s: CompactSettings;
-    i: string[];
-    l: Record<string, CompactUrlFeature[]>;
-    d: string;
-    g?: CompactUrlGroup[];
-    o?: CompactUrlImportedLayer[];
-}
-
-interface CompactUrlGroup {
-    i: string;
-    n: string;
-    c?: string;
-    d?: string;
-    p?: string;
-    m?: Array<[string, number]>;
-    v?: Array<{
-        i: string;
-        n: string;
-        m: Array<[string, number]>;
-        p?: Array<{ i: string; m: Array<[string, number]> }>;
-    }>;
-}
-
-/** Compact serialisation of a Group (short keys to minimise URL hash length). */
-interface CompactGroup {
-    i: string;
-    n: string;
-    c?: string;
-    m?: Array<[string, string]>;
-    d?: string;
-    p?: string;
-    v?: Array<{
-        i: string;
-        n: string;
-        m: Array<[string, string]>;
-        p?: Array<{ i: string; m: Array<[string, string]> }>;
-    }>;
-}
-
-function serializeMembers(members: GroupVersion['members']): Array<[string, string]> {
-    return members.map((member) => [member.layerId, member.historyId]);
-}
-
-function serializePhases(phases: GroupPhase[] | undefined): GroupPhase[] {
-    return (phases ?? []).map((phase) => ({
-        id: phase.id,
-        members: phase.members.map((member) => ({ ...member }))
-    }));
-}
-
-function serializeGroup(group: Group): Group {
-    const description = normalizeGroupDescription(group.description);
-    if (!group.versions) {
-        return {
-            id: group.id,
-            name: group.name,
-            ...(description ? { description } : {}),
-            ...(group.color ? { color: group.color } : {}),
-            members: (group.members ?? []).map((member) => ({ ...member }))
-        };
-    }
-    return {
-        id: group.id,
-        name: group.name,
-        ...(description ? { description } : {}),
-        ...(group.color ? { color: group.color } : {}),
-        defaultVersionId: group.defaultVersionId,
-        versions: group.versions.map((version) => ({
-            id: version.id,
-            name: version.name,
-            members: version.members.map((member) => ({ ...member })),
-            ...(version.phases !== undefined ? { phases: serializePhases(version.phases) } : {})
-        }))
-    };
-}
 
 function serializeImportedLayer(layer: ImportedGeoJsonLayer): SerializedImportedGeoJsonLayer {
     return {
@@ -184,292 +87,6 @@ function serializeImportedLayer(layer: ImportedGeoJsonLayer): SerializedImported
             layer.nameProperty
         )
     };
-}
-
-function deserializeCompactMembers(members: Array<[string, string]> | undefined) {
-    return (members ?? []).map(([layerId, historyId]) => ({ layerId, historyId }));
-}
-
-function quantizeCoordinate(value: number): number {
-    return Math.round(value * COORDINATE_PRECISION);
-}
-
-function isNumericCoordinateArray(value: CompactUrlCoordinates): value is number[] {
-    return value.length >= 2 && typeof value[0] === 'number' && typeof value[1] === 'number';
-}
-
-function encodeCoordinates(
-    coordinates: unknown,
-    state: { x: number; y: number }
-): CompactUrlCoordinates {
-    if (!Array.isArray(coordinates)) {
-        return [];
-    }
-    if (isNumericCoordinateArray(coordinates)) {
-        const x = quantizeCoordinate(coordinates[0]);
-        const y = quantizeCoordinate(coordinates[1]);
-        const encoded = [x - state.x, y - state.y];
-        state.x = x;
-        state.y = y;
-        for (let index = 2; index < coordinates.length; index += 1) {
-            const value = coordinates[index];
-            if (typeof value === 'number') {
-                encoded.push(quantizeCoordinate(value));
-            }
-        }
-        return encoded;
-    }
-    return coordinates.map((value) => encodeCoordinates(value, state));
-}
-
-function decodeCoordinates(
-    coordinates: CompactUrlCoordinates,
-    state: { x: number; y: number }
-): CompactUrlCoordinates {
-    if (isNumericCoordinateArray(coordinates)) {
-        state.x += coordinates[0];
-        state.y += coordinates[1];
-        return [
-            state.x / COORDINATE_PRECISION,
-            state.y / COORDINATE_PRECISION,
-            ...coordinates.slice(2).map((value) => value / COORDINATE_PRECISION)
-        ];
-    }
-    return coordinates.map((value) => decodeCoordinates(value, state));
-}
-
-function encodeImportedGeometry(
-    geometry: GeoJSON.Geometry,
-    state: { x: number; y: number }
-): CompactUrlImportedGeometry {
-    if (geometry.type === 'GeometryCollection') {
-        return {
-            t: geometry.type,
-            g: geometry.geometries.map((child) => encodeImportedGeometry(child, state))
-        };
-    }
-    return {
-        t: geometry.type,
-        c: encodeCoordinates(geometry.coordinates, state)
-    };
-}
-
-function decodeImportedGeometry(
-    geometry: CompactUrlImportedGeometry,
-    state: { x: number; y: number }
-): GeoJSON.Geometry {
-    if (geometry.t === 'GeometryCollection') {
-        return {
-            type: 'GeometryCollection',
-            geometries: (geometry.g ?? []).map((child) => decodeImportedGeometry(child, state))
-        };
-    }
-    return {
-        type: geometry.t,
-        coordinates: decodeCoordinates(geometry.c ?? [], state)
-    } as GeoJSON.Geometry;
-}
-
-function encodeImportedLayers(layers: ImportedGeoJsonLayer[]): CompactUrlImportedLayer[] {
-    return layers.map((layer) => ({
-        i: layer.id,
-        n: layer.name,
-        p: layer.nameProperty,
-        ...(layer.visible === false ? { v: 0 as const } : {}),
-        f: layer.featureCollection.features.map((feature) => {
-            const state = { x: 0, y: 0 };
-            const properties = feature.properties
-                ? JSON.parse(JSON.stringify(feature.properties))
-                : feature.properties;
-            const encodedGeometry =
-                feature.geometry === null ? null : encodeImportedGeometry(feature.geometry, state);
-            return feature.id === undefined
-                ? [encodedGeometry, properties]
-                : [encodedGeometry, properties, feature.id];
-        })
-    }));
-}
-
-function decodeImportedLayers(layers: CompactUrlImportedLayer[]): SerializedImportedGeoJsonLayer[] {
-    return layers.map((layer) => ({
-        id: layer.i,
-        name: layer.n,
-        nameProperty: layer.p,
-        ...(layer.v === 0 ? { visible: false } : {}),
-        featureCollection: {
-            type: 'FeatureCollection',
-            features: layer.f.map(([geometry, properties, id]) => ({
-                type: 'Feature',
-                ...(id !== undefined ? { id } : {}),
-                properties: properties ?? null,
-                geometry:
-                    geometry === null ? null : decodeImportedGeometry(geometry, { x: 0, y: 0 })
-            }))
-        }
-    }));
-}
-
-function encodeUrlProperties(
-    properties: Record<string, unknown> | null | undefined,
-    getHistoryIndex: (historyId: string) => number
-): CompactUrlProperties | undefined {
-    if (!properties || Object.keys(properties).length === 0) {
-        return undefined;
-    }
-    const compact: CompactUrlProperties = {};
-    const extra: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(properties)) {
-        if (key === 'historyId' && typeof value === 'string') {
-            compact.h = getHistoryIndex(value);
-        } else if (key === 'label' && typeof value === 'string') {
-            compact.l = value;
-        } else if (key === 'color' && typeof value === 'string') {
-            compact.c = value;
-        } else {
-            extra[key] = value;
-        }
-    }
-    if (Object.keys(extra).length > 0) {
-        compact.x = extra;
-    }
-    return compact;
-}
-
-function decodeUrlProperties(
-    properties: CompactUrlProperties | undefined,
-    historyIds: string[]
-): Record<string, unknown> {
-    const result: Record<string, unknown> = { ...(properties?.x ?? {}) };
-    if (properties?.h !== undefined && historyIds[properties.h] !== undefined) {
-        result.historyId = historyIds[properties.h];
-    }
-    if (properties?.l !== undefined) {
-        result.label = properties.l;
-    }
-    if (properties?.c !== undefined) {
-        result.color = properties.c;
-    }
-    return result;
-}
-
-function geometryTypeFromCoordinates(
-    coordinates: CompactUrlCoordinates
-): 'Point' | 'LineString' | 'Polygon' {
-    if (isNumericCoordinateArray(coordinates)) {
-        return 'Point';
-    }
-    if (Array.isArray(coordinates[0]) && typeof coordinates[0][0] === 'number') {
-        return 'LineString';
-    }
-    return 'Polygon';
-}
-
-function encodeUrlMembers(
-    members: GroupVersion['members'],
-    getHistoryIndex: (historyId: string) => number
-): Array<[string, number]> {
-    return members.map((member) => [member.layerId, getHistoryIndex(member.historyId)]);
-}
-
-function decodeUrlMembers(
-    members: Array<[string, number]> | undefined,
-    historyIds: string[]
-): GroupMember[] {
-    return (members ?? [])
-        .filter((member) => historyIds[member[1]] !== undefined)
-        .map(([layerId, historyIndex]) => ({
-            layerId,
-            historyId: historyIds[historyIndex]
-        }));
-}
-
-function encodeUrlGroups(
-    groups: Group[] | undefined,
-    getHistoryIndex: (historyId: string) => number
-): CompactUrlGroup[] | undefined {
-    if (!groups || groups.length === 0) {
-        return undefined;
-    }
-    return groups.map((group) => {
-        const description = normalizeGroupDescription(group.description);
-        if (!group.versions) {
-            return {
-                i: group.id,
-                n: group.name,
-                ...(description ? { p: description } : {}),
-                ...(group.color ? { c: group.color } : {}),
-                m: encodeUrlMembers(group.members ?? [], getHistoryIndex)
-            };
-        }
-        return {
-            i: group.id,
-            n: group.name,
-            ...(description ? { p: description } : {}),
-            ...(group.color ? { c: group.color } : {}),
-            d: group.defaultVersionId,
-            v: group.versions.map((version) => ({
-                i: version.id,
-                n: version.name,
-                m: encodeUrlMembers(version.members, getHistoryIndex),
-                ...(version.phases && version.phases.length > 0
-                    ? {
-                          p: version.phases.map((phase) => ({
-                              i: phase.id,
-                              m: encodeUrlMembers(phase.members, getHistoryIndex)
-                          }))
-                      }
-                    : {})
-            }))
-        };
-    });
-}
-
-function decodeUrlGroups(
-    groups: CompactUrlGroup[] | undefined,
-    historyIds: string[]
-): Group[] | undefined {
-    if (!groups || groups.length === 0) {
-        return undefined;
-    }
-    return groups.map((group) =>
-        group.v
-            ? {
-                  id: group.i,
-                  name: group.n,
-                  ...(group.p ? { description: group.p } : {}),
-                  ...(group.c ? { color: group.c } : {}),
-                  defaultVersionId: group.d,
-                  versions: group.v.map((version) => ({
-                      id: version.i,
-                      name: version.n,
-                      members: decodeUrlMembers(version.m, historyIds),
-                      ...(version.p
-                          ? {
-                                phases: version.p.map((phase) => ({
-                                    id: phase.i,
-                                    members: decodeUrlMembers(phase.m, historyIds)
-                                }))
-                            }
-                          : {})
-                  }))
-              }
-            : {
-                  id: group.i,
-                  name: group.n,
-                  ...(group.p ? { description: group.p } : {}),
-                  ...(group.c ? { color: group.c } : {}),
-                  members: decodeUrlMembers(group.m, historyIds)
-              }
-    );
-}
-
-export interface CompactStoredMap {
-    s: CompactSettings;
-    l: Record<string, unknown>;
-    d: string;
-    /** Compact groups — present only when at least one group exists. */
-    g?: CompactGroup[];
-    o?: SerializedImportedGeoJsonLayer[];
 }
 
 export class MapSerializer {

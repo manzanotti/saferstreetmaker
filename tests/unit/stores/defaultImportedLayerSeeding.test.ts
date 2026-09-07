@@ -63,45 +63,4 @@ describe('default imported layer seeding', () => {
         finishUserSave?.();
         await Promise.resolve();
     });
-
-    it('preserves the pending default seed after a duplicate map attempt', async () => {
-        const fileManager = new FileManager();
-        vi.spyOn(fileManager, 'loadMapListFromStorage').mockResolvedValue(['Existing map']);
-        const manager = setupMapManager(fileManager);
-        const initialGeneration = manager.getMapGeneration();
-
-        expect(await manager.createNewMap('Existing map')).toBe(false);
-        expect(manager.getMapGeneration()).toBe(initialGeneration);
-
-        await manager.initialiseDefaultImportedLayers([defaultLayer], {
-            expectedGeneration: initialGeneration,
-            allowInitialSeed: true
-        });
-
-        expect(useImportedLayerStore(pinia).layers).toEqual([defaultLayer]);
-    });
-
-    it('retries a pending default seed after a duplicate map attempt completes', async () => {
-        let releaseDuplicateCheck!: () => void;
-        const fileManager = new FileManager();
-        vi.spyOn(fileManager, 'loadMapListFromStorage').mockImplementation(
-            () =>
-                new Promise<string[]>((resolve) => {
-                    releaseDuplicateCheck = () => resolve(['Existing map']);
-                })
-        );
-        let defaultLayers: ImportedGeoJsonLayer[] = [];
-        const manager = setupMapManager(fileManager, () => defaultLayers);
-        const initialGeneration = manager.getMapGeneration();
-        const creation = manager.createNewMap('Existing map');
-
-        await Promise.resolve();
-        await Promise.resolve();
-        defaultLayers = [defaultLayer];
-        releaseDuplicateCheck();
-
-        expect(await creation).toBe(false);
-        expect(manager.getMapGeneration()).toBe(initialGeneration);
-        expect(useImportedLayerStore(pinia).layers).toEqual([defaultLayer]);
-    });
 });

@@ -164,8 +164,7 @@ a {
 }
 
 .point-features-small .imported-point-feature {
-    transform: scale(0.5);
-    transform-box: fill-box;
+    zoom: 0.5;
     transform-origin: center;
 }
 
@@ -427,7 +426,7 @@ ul.ltn-popup-buttons > li.feature-popup-group-content {
     width: 23px !important;
 }
 
-.leaflet-marker-icon.bus-gate-icon::before {
+.bus-gate-icon::before {
     background-image: url(../img/bus-gate.svg);
     background-repeat: no-repeat;
     background-size: 23px 23px;
@@ -441,7 +440,7 @@ ul.ltn-popup-buttons > li.feature-popup-group-content {
     width: 30px !important;
 }
 
-.leaflet-marker-icon.traffic-lights-icon::before {
+.traffic-lights-icon::before {
     background-image: url(../img/trafficlights-black1.svg);
     background-repeat: no-repeat;
     background-size: 30px 30px;
@@ -455,7 +454,7 @@ ul.ltn-popup-buttons > li.feature-popup-group-content {
     width: 30px !important;
 }
 
-.leaflet-marker-icon.pedestrian-lights-icon::before {
+.pedestrian-lights-icon::before {
     background-image: url(../img/UK-Traffic-Signal-Pedestrians-1975.svg);
     background-repeat: no-repeat;
     background-size: 30px 30px;
@@ -469,10 +468,10 @@ ul.ltn-popup-buttons > li.feature-popup-group-content {
     width: 32px !important;
 }
 
-.leaflet-marker-icon.zebra-crossing-icon::before {
+.zebra-crossing-icon::before {
     background-image: url(../img/zebra-crossing.svg);
     background-repeat: no-repeat;
-    background-size: 32px 21px;
+    background-size: 21px 32px;
     content: '';
     inset: 0;
     position: absolute;

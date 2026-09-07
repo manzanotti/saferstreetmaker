@@ -1,15 +1,19 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { useGroupStore } from '../../stores/groupStore';
-import { useUiStore } from '../../stores/uiStore';
-import { getActiveVersion, getGroupVersions, memberKey } from '../../features/groups/groupVersions';
+import { useGroupStore } from '../../../stores/groupStore';
+import { useUiStore } from '../../../stores/uiStore';
+import {
+    getActiveVersion,
+    getGroupVersions,
+    memberKey
+} from '../../../features/groups/groupVersions';
 import {
     deleteGroup,
     deleteGroupWithElements,
     openGroupDetails,
     setAllGroupsVisibility,
     toggleGroupVisibility
-} from '../../composables/useGroups';
+} from '../../../composables/useGroups';
 
 const groupStore = useGroupStore();
 const uiStore = useUiStore();

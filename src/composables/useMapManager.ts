@@ -195,15 +195,9 @@ export function setupMapManager(
         setImportedLayers: (layers) => importedLayerStore.setLayers(layers)
     });
     watch(
-        () =>
-            importedLayerStore.layers.map((layer) => [
-                layer.id,
-                layer.name,
-                layer.nameProperty,
-                layer.visible,
-                layer.featureCollection
-            ]),
-        () => importedLayerController.render(importedLayerStore.layers)
+        () => importedLayerStore.layers,
+        (layers) => importedLayerController.render(layers),
+        { deep: true }
     );
     const mapLoadSourceResolver = new MapLoadSourceResolver(fileManager, () => settingsStore.title);
     const storedMapLoader = new StoredMapLoader({
@@ -341,14 +335,21 @@ export function setupMapManager(
             historyStore.setBusy(busy);
         }
     };
-    let saveHistoryReplay: () => Promise<void> = async () => undefined;
     const historyReplayCoordinator = new HistoryReplayCoordinator({
         transactionEffects: historyReplayTransactionEffects,
         getLayers: () => mapStore.layers,
         clearAllLayers: () => clearAllLayers(),
         resetSettings: () => resetSettings(),
         loadMapData: (snapshot) => loadMapData(snapshot, null, null),
-        saveMap: () => saveHistoryReplay(),
+        saveMap: async () => {
+            const groupStore = useGroupStore(pinia);
+            await fileManager.saveMap(
+                settingsStore.toSettings(),
+                mapStore.toLayers(),
+                groupStore.groups,
+                importedLayerStore.layers
+            );
+        },
         buildSnapshot: () => buildCurrentSnapshot(),
         setLastSavedSnapshot: (snapshot) => {
             lastSavedSnapshot = snapshot;
@@ -423,13 +424,6 @@ export function setupMapManager(
         syncHistoryStatus,
         showErrors: (errors) => uiStore.showErrors(errors)
     });
-    saveHistoryReplay = async () => {
-        await persistenceCoordinator.persist({
-            recordHistory: false,
-            preserveMutation: true,
-            pruneDanglingGroupMembers: false
-        });
-    };
 
     let persistenceBarrier: Promise<void> | null = null;
     let defaultSeedingBlocked = false;
@@ -528,7 +522,6 @@ export function setupMapManager(
         zoom: string | null,
         centre: number[] | null
     ): Promise<boolean> => {
-        await persistenceCoordinator.flush();
         return await mapLoadCoordinator.load(remoteMapFile, hash, hideToolbar, zoom, centre);
     };
 
@@ -549,19 +542,9 @@ export function setupMapManager(
      * Returns true on success.
      */
     const createNewMap = async (title: string): Promise<boolean> => {
-        await persistenceCoordinator.flush();
-        const previousGeneration = mapGeneration;
         const creationGeneration = ++mapGeneration;
         const creationActionRevision = userActionRevision;
-        let created: boolean;
-        try {
-            created = await newMapCreator.create(title);
-        } catch (error) {
-            if (mapGeneration === creationGeneration) {
-                mapGeneration = previousGeneration;
-            }
-            throw error;
-        }
+        const created = await newMapCreator.create(title);
         if (created && mapGeneration === creationGeneration) {
             defaultSeedingBlocked = userActionRevision !== creationActionRevision;
             const availableDefaultLayers = getDefaultImportedLayers();
@@ -574,23 +557,13 @@ export function setupMapManager(
                 await initialiseDefaultImportedLayers(availableDefaultLayers);
             }
         } else {
-            if (!created && mapGeneration === creationGeneration) {
-                mapGeneration = previousGeneration;
-                const availableDefaultLayers = getDefaultImportedLayers();
-                if (availableDefaultLayers.length > 0) {
-                    await initialiseDefaultImportedLayers(availableDefaultLayers, {
-                        expectedGeneration: previousGeneration,
-                        allowInitialSeed: true
-                    });
-                }
-            }
+            newMapPendingDefaultLayers = false;
         }
         return created;
     };
 
     // ── loadMapFromStorage ────────────────────────────────────────────────────
     const loadMapFromStorage = async (mapName: string): Promise<boolean> => {
-        await persistenceCoordinator.flush();
         mapGeneration += 1;
         newMapPendingDefaultLayers = false;
         defaultSeedingBlocked = true;
@@ -616,7 +589,6 @@ export function setupMapManager(
         if (persistenceBarrier) {
             await persistenceBarrier;
         }
-        await persistenceCoordinator.flush();
         return await historyNavigationCoordinator.undo();
     };
 
@@ -625,7 +597,6 @@ export function setupMapManager(
         if (persistenceBarrier) {
             await persistenceBarrier;
         }
-        await persistenceCoordinator.flush();
         return await historyNavigationCoordinator.redo();
     };
 
@@ -697,9 +668,7 @@ export function setupMapManager(
         saveMap,
         showErrors: (errors) => uiStore.showErrors(errors)
     });
-    fileManager.setOnFileLoaded((data: unknown) => {
-        void persistenceCoordinator.flush().then(() => uploadedMapLoader.load(data));
-    });
+    fileManager.setOnFileLoaded((data: unknown) => uploadedMapLoader.load(data));
 
     // layerUpdateCount: watch Pinia counter incremented by layer composables.
     // Replaces PubSub.subscribe(EventTopics.layerUpdated, saveMap).
