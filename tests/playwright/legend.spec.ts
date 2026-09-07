@@ -46,6 +46,55 @@ test.describe('Legend', () => {
         await expect(page.locator('#MobilityLanes-legend')).toBeVisible();
     });
 
+    test('legend renders point icons and line layers at legend scale', async ({ page }) => {
+        const iconMetrics = await page.evaluate(() => {
+            const busGateIcon = document.querySelector<HTMLElement>(
+                '#BusGates-legend .legend-icon--point i'
+            );
+            const mobilityLaneIcon = document.querySelector<HTMLElement>(
+                '#MobilityLanes-legend .legend-icon--polyline i'
+            );
+            const busLaneIcon = document.querySelector<HTMLElement>(
+                '#BusLanes-legend .legend-icon--polyline i'
+            );
+
+            if (!busGateIcon || !mobilityLaneIcon || !busLaneIcon) {
+                return null;
+            }
+
+            const busGateStyle = getComputedStyle(busGateIcon);
+            const busGateBeforeStyle = getComputedStyle(busGateIcon, '::before');
+            const mobilityLaneStyle = getComputedStyle(mobilityLaneIcon);
+            const busLaneStyle = getComputedStyle(busLaneIcon);
+
+            return {
+                busGateBackgroundImage: busGateStyle.backgroundImage,
+                busGateHeight: busGateStyle.height,
+                busGateWidth: busGateStyle.width,
+                busGateBeforeBackgroundSize: busGateBeforeStyle.backgroundSize,
+                busLaneBackgroundColor: busLaneStyle.backgroundColor,
+                busLaneBackgroundImage: busLaneStyle.backgroundImage,
+                busLaneHeight: busLaneStyle.height,
+                busLaneWidth: busLaneStyle.width,
+                mobilityLaneHeight: mobilityLaneStyle.height,
+                mobilityLaneWidth: mobilityLaneStyle.width
+            };
+        });
+
+        expect(iconMetrics).toEqual({
+            busGateBackgroundImage: 'none',
+            busGateHeight: '15px',
+            busGateWidth: '15px',
+            busGateBeforeBackgroundSize: '15px 15px',
+            busLaneBackgroundColor: 'rgb(185, 28, 28)',
+            busLaneBackgroundImage: 'none',
+            busLaneHeight: '6px',
+            busLaneWidth: '22px',
+            mobilityLaneHeight: '6px',
+            mobilityLaneWidth: '22px'
+        });
+    });
+
     test('clicking a legend entry toggles layer visibility', async ({ page }) => {
         const legendEntry = page.locator('#ModalFilters-legend');
         await legendEntry.click();

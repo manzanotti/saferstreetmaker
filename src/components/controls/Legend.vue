@@ -64,7 +64,11 @@ function toggleCollapse() {
                     @keydown.space.prevent="mapStore.toggleLayerVisibility(layer.id)"
                 >
                     <!-- eslint-disable-next-line vue/no-v-html -->
-                    <span class="shrink-0" v-html="layer.iconHtml"></span>
+                    <span
+                        class="legend-icon shrink-0"
+                        :class="`legend-icon--${layer.kind}`"
+                        v-html="layer.iconHtml"
+                    ></span>
                     <span class="text-sm text-gray-700 truncate">{{ layer.title }}</span>
                 </li>
             </ul>
