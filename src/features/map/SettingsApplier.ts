@@ -14,6 +14,7 @@ export interface SettingsApplierOptions {
         payload?: unknown;
     }) => void;
     createMutationPayload: (before: Settings, after: Settings) => unknown;
+    clearReadOnlyPresentation?: () => void;
     applySettings: (settings: Settings) => void;
     removeAllLayers: () => void;
     addLayers: (layerIds: string[]) => void;
@@ -44,6 +45,10 @@ export class SettingsApplier {
             layerId: 'settings',
             payload: this.options.createMutationPayload(previousSettings, newSettings)
         });
+
+        if (previousSettings.readOnly && !newSettings.readOnly) {
+            this.options.clearReadOnlyPresentation?.();
+        }
 
         this.options.applySettings(newSettings);
         this.options.removeAllLayers();

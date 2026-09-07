@@ -22,6 +22,7 @@ import { useGroupStore } from '../stores/groupStore';
 import { useImportedLayerStore } from '../stores/importedLayerStore';
 import { cloneImportedLayers } from '../features/map/importedGeoJson';
 import {
+    clearReadOnlyGroupPresentation,
     pruneDanglingGroupMembers,
     recomputeFeatureVisibility,
     resetGroupVisibility,
@@ -296,6 +297,7 @@ export function setupMapManager(
             pendingHistoryMutation = mutation;
         },
         createMutationPayload: (before, after) => createSettingsMutationPayload(before, after),
+        clearReadOnlyPresentation: () => clearReadOnlyGroupPresentation(),
         applySettings: (settings) => {
             settingsStore.applyFromSettings({
                 title: settings.title,
