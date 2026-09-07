@@ -51,6 +51,15 @@ test.describe('Legend', () => {
             const busGateIcon = document.querySelector<HTMLElement>(
                 '#BusGates-legend .legend-icon--point i'
             );
+            const trafficLightsIcon = document.querySelector<HTMLElement>(
+                '#TrafficLights-legend .legend-icon--point i'
+            );
+            const pedestrianLightsIcon = document.querySelector<HTMLElement>(
+                '#PedestrianLights-legend .legend-icon--point i'
+            );
+            const zebraCrossingIcon = document.querySelector<HTMLElement>(
+                '#ZebraCrossing-legend .legend-icon--point i'
+            );
             const mobilityLaneIcon = document.querySelector<HTMLElement>(
                 '#MobilityLanes-legend .legend-icon--polyline i'
             );
@@ -58,12 +67,22 @@ test.describe('Legend', () => {
                 '#BusLanes-legend .legend-icon--polyline i'
             );
 
-            if (!busGateIcon || !mobilityLaneIcon || !busLaneIcon) {
+            if (
+                !busGateIcon ||
+                !trafficLightsIcon ||
+                !pedestrianLightsIcon ||
+                !zebraCrossingIcon ||
+                !mobilityLaneIcon ||
+                !busLaneIcon
+            ) {
                 return null;
             }
 
             const busGateStyle = getComputedStyle(busGateIcon);
             const busGateBeforeStyle = getComputedStyle(busGateIcon, '::before');
+            const trafficLightsBeforeStyle = getComputedStyle(trafficLightsIcon, '::before');
+            const pedestrianLightsBeforeStyle = getComputedStyle(pedestrianLightsIcon, '::before');
+            const zebraCrossingBeforeStyle = getComputedStyle(zebraCrossingIcon, '::before');
             const mobilityLaneStyle = getComputedStyle(mobilityLaneIcon);
             const busLaneStyle = getComputedStyle(busLaneIcon);
 
@@ -71,7 +90,15 @@ test.describe('Legend', () => {
                 busGateBackgroundImage: busGateStyle.backgroundImage,
                 busGateHeight: busGateStyle.height,
                 busGateWidth: busGateStyle.width,
+                busGateBeforeHasBackgroundImage: busGateBeforeStyle.backgroundImage !== 'none',
                 busGateBeforeBackgroundSize: busGateBeforeStyle.backgroundSize,
+                busGateBeforeContent: busGateBeforeStyle.content,
+                trafficLightsBeforeHasBackgroundImage:
+                    trafficLightsBeforeStyle.backgroundImage !== 'none',
+                pedestrianLightsBeforeHasBackgroundImage:
+                    pedestrianLightsBeforeStyle.backgroundImage !== 'none',
+                zebraCrossingBeforeHasBackgroundImage:
+                    zebraCrossingBeforeStyle.backgroundImage !== 'none',
                 busLaneBackgroundColor: busLaneStyle.backgroundColor,
                 busLaneBackgroundImage: busLaneStyle.backgroundImage,
                 busLaneHeight: busLaneStyle.height,
@@ -85,7 +112,12 @@ test.describe('Legend', () => {
             busGateBackgroundImage: 'none',
             busGateHeight: '15px',
             busGateWidth: '15px',
+            busGateBeforeHasBackgroundImage: true,
             busGateBeforeBackgroundSize: '15px 15px',
+            busGateBeforeContent: '""',
+            trafficLightsBeforeHasBackgroundImage: true,
+            pedestrianLightsBeforeHasBackgroundImage: true,
+            zebraCrossingBeforeHasBackgroundImage: true,
             busLaneBackgroundColor: 'rgb(185, 28, 28)',
             busLaneBackgroundImage: 'none',
             busLaneHeight: '6px',

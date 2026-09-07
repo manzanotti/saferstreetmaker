@@ -47,7 +47,11 @@
 }
 
 .legend-icon--point i::before {
+    background-repeat: no-repeat;
     background-position: center;
+    content: '';
+    inset: 0;
+    position: absolute;
 }
 
 .legend .bus-gate-icon {
@@ -58,6 +62,7 @@
 }
 
 .legend .bus-gate-icon::before {
+    background-image: url(../img/bus-gate.svg);
     background-size: 15px 15px;
 }
 
@@ -69,6 +74,7 @@
 }
 
 .legend .traffic-lights-icon::before {
+    background-image: url(../img/trafficlights-black1.svg);
     background-size: 15px 15px;
 }
 
@@ -80,6 +86,7 @@
 }
 
 .legend .pedestrian-lights-icon::before {
+    background-image: url(../img/UK-Traffic-Signal-Pedestrians-1975.svg);
     background-size: 15px 15px;
 }
 
@@ -91,5 +98,6 @@
 }
 
 .legend .zebra-crossing-icon::before {
+    background-image: url(../img/zebra-crossing.svg);
     background-size: 18px 12px;
 }
