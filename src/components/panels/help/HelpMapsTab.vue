@@ -25,7 +25,7 @@ defineProps<{
         <p class="mb-8">
             Your maps are currently automatically saved in the browser you are using every time you
             change the map, either the features or zooming/moving the map. You can use the map
-            management window to create new maps. copy or delete maps, download map files, and open
+            management window to create new maps, copy or delete maps, download map files, and open
             files.
         </p>
         <p class="mb-8">
@@ -105,7 +105,7 @@ defineProps<{
             Download the current map as a GeoJSON file
         </h2>
         <p class="mb-8">
-            Clicking on the Export to GeoJSON will save the map as a GeoJson file, which you can
+            Clicking on the Export to GeoJSON will save the map as a GeoJSON file, which you can
             import into most GIS software programs.
         </p>
         <h2>Maps stored in the browser</h2>

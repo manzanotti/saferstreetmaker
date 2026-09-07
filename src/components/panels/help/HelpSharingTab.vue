@@ -63,7 +63,7 @@ defineProps<{
         <p class="mb-8">
             With that done, you can click on the Share button in the toolbar. Here, you can enter
             the dimensions of the map, and whether the toolbar is visible, then hit the Create
-            button. The html needed to embed the map in your web page will be copied to your
+            button. The HTML needed to embed the map in your web page will be copied to your
             clipboard, so just go to your page and paste the html into the html of your page.
         </p>
         <p class="mb-8">

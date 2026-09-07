@@ -41,7 +41,7 @@ defineProps<{
             design of a lane (including being wide enough to allow passing).
         </p>
         <p class="mb-8">
-            To add a mobility lane , click on the Cycle button in the toolbar. You draw the lane by
+            To add a mobility lane, click on the Cycle button in the toolbar. You draw the lane by
             placing a series of points. When done, click on the last point added, and you will leave
             lane creation mode.
         </p>
@@ -74,7 +74,7 @@ defineProps<{
             These are streets that are not accessible to vehicles (with possible limited exceptions
             for deliveries). Again, these work in exactly the same way as mobility lanes. To add
             one, click on the No Vehicles button in the toolbar. You draw the lane by placing a
-            serious of points. When done, click on the last point added, and you will leave line
+            series of points. When done, click on the last point added, and you will leave line
             creation mode.
         </p>
         <HelpFeatureHeading icon="schoolStreet">School Streets</HelpFeatureHeading>

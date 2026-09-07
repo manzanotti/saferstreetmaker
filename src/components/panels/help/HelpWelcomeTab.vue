@@ -27,7 +27,7 @@ defineProps<{
             what I think a better scheme would be).
         </p>
         <p class="mb-8">
-            You can now also generate html to embed your map in another web page, so if you want to
+            You can now also generate HTML to embed your map in another web page, so if you want to
             illustrate a blog post with an infrastructure map, you now can.
         </p>
     </div>
