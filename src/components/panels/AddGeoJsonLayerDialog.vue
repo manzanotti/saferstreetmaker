@@ -1,14 +1,10 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue';
+import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import type { ImportedGeoJsonLayer } from '../../models/ImportedGeoJsonLayer';
-import {
-    createImportedLayerId,
-    getNamePropertyOptions,
-    getPropertyPreview,
-    parseGeoJson,
-    retainNameProperty,
-    type GeoJsonPropertyPreview
-} from '../../features/map/importedGeoJson';
+import { useGeoJsonLayerImport } from '../../composables/useGeoJsonLayerImport';
+import AddGeoJsonDialogFooter from './AddGeoJsonDialogFooter.vue';
+import AddGeoJsonLayerDetails from './AddGeoJsonLayerDetails.vue';
+import AddGeoJsonSourceSelector from './AddGeoJsonSourceSelector.vue';
 
 const props = defineProps<{
     existingNames: string[];
@@ -19,168 +15,31 @@ const emit = defineEmits<{
     cancel: [];
 }>();
 
-const source = ref<'file' | 'url'>('file');
-const dropZone = ref<HTMLButtonElement | null>(null);
+type SourceSelector = InstanceType<typeof AddGeoJsonSourceSelector>;
+
 const dialog = ref<HTMLDivElement | null>(null);
-const fileInput = ref<HTMLInputElement | null>(null);
 const opener = ref<HTMLElement | null>(null);
-const url = ref('');
-const layerName = ref('');
-const nameProperty = ref<string | null>(null);
-const parsedGeoJson = ref<GeoJSON.FeatureCollection | null>(null);
-const propertyPreview = ref<GeoJsonPropertyPreview[]>([]);
-const namePropertyOptions = ref<string[]>([]);
-const error = ref('');
-const loading = ref(false);
-let urlRequestId = 0;
-let fileRequestId = 0;
-
-const dialogInputId = computed(() => (source.value === 'file' ? 'geojson-file' : 'geojson-url'));
-
-function openFilePicker() {
-    fileInput.value?.click();
-}
-
-function resetError() {
-    error.value = '';
-}
-
-function invalidateUrlRequest() {
-    urlRequestId += 1;
-    loading.value = false;
-}
-
-function resetParsedImport() {
-    invalidateUrlRequest();
-    fileRequestId += 1;
-    parsedGeoJson.value = null;
-    propertyPreview.value = [];
-    namePropertyOptions.value = [];
-    nameProperty.value = null;
-    layerName.value = '';
-}
-
-watch(source, resetParsedImport);
-watch(url, resetParsedImport);
-
-function setParsedGeoJson(value: unknown, sourceName: string) {
-    const featureCollection = parseGeoJson(value);
-    parsedGeoJson.value = featureCollection;
-    propertyPreview.value = getPropertyPreview(featureCollection);
-    namePropertyOptions.value = getNamePropertyOptions(featureCollection);
-    nameProperty.value = null;
-    layerName.value = sourceName.replace(/\.(geojson|json)$/i, '');
-}
-
-async function onFileSelected(event: Event) {
-    resetError();
-    const requestId = ++fileRequestId;
-    const selectedSource = source.value;
-    parsedGeoJson.value = null;
-    propertyPreview.value = [];
-    namePropertyOptions.value = [];
-    const file = (event.target as HTMLInputElement).files?.[0];
-    if (!file) {
-        return;
-    }
-    try {
-        const value = JSON.parse(await file.text());
-        if (requestId !== fileRequestId || source.value !== selectedSource) {
-            return;
-        }
-        setParsedGeoJson(value, file.name);
-    } catch (e: unknown) {
-        if (requestId === fileRequestId && source.value === selectedSource) {
-            error.value =
-                e instanceof SyntaxError
-                    ? 'The file is not valid JSON.'
-                    : String((e as Error).message ?? e);
-        }
-    }
-}
-
-function onDrop(event: DragEvent) {
-    event.preventDefault();
-    const file = event.dataTransfer?.files?.[0];
-    if (!file) {
-        return;
-    }
-    const transfer = new DataTransfer();
-    transfer.items.add(file);
-    if (fileInput.value) {
-        fileInput.value.files = transfer.files;
-    }
-    void onFileSelected({ target: { files: [file] } } as unknown as Event);
-}
-
-async function loadFromUrl() {
-    if (loading.value) {
-        return;
-    }
-    resetError();
-    if (!url.value.trim()) {
-        error.value = 'Enter a GeoJSON URL.';
-        return;
-    }
-    const requestedUrl = url.value.trim();
-    const requestId = ++urlRequestId;
-    loading.value = true;
-    parsedGeoJson.value = null;
-    propertyPreview.value = [];
-    try {
-        const response = await fetch(requestedUrl);
-        if (!response.ok) {
-            throw new Error(`The URL returned ${response.status} ${response.statusText}.`);
-        }
-        const value = await response.json();
-        if (
-            requestId !== urlRequestId ||
-            source.value !== 'url' ||
-            url.value.trim() !== requestedUrl
-        ) {
-            return;
-        }
-        const sourceUrl = new URL(requestedUrl, window.location.href);
-        const encodedSourceName = sourceUrl.pathname.split('/').pop() || 'GeoJSON layer';
-        let sourceName = encodedSourceName;
-        try {
-            sourceName = decodeURIComponent(encodedSourceName);
-        } catch {
-            // Keep the encoded path segment when it is not valid URI encoding.
-        }
-        setParsedGeoJson(value, sourceName);
-    } catch (e: unknown) {
-        if (requestId === urlRequestId) {
-            error.value = `Could not load GeoJSON. ${String((e as Error).message ?? e)} Check that the URL allows browser CORS requests.`;
-        }
-    } finally {
-        if (requestId === urlRequestId) {
-            loading.value = false;
-        }
-    }
-}
+const sourceSelector = ref<SourceSelector | null>(null);
+const {
+    source,
+    url,
+    layerName,
+    nameProperty,
+    parsedGeoJson,
+    propertyPreview,
+    namePropertyOptions,
+    error,
+    loading,
+    buildLayer,
+    loadFile,
+    loadFromUrl
+} = useGeoJsonLayerImport(() => props.existingNames);
 
 function addLayer() {
-    if (!parsedGeoJson.value) {
-        error.value = 'Choose a file or load a URL before adding a layer.';
-        return;
+    const layer = buildLayer();
+    if (layer) {
+        emit('add', layer);
     }
-    const trimmedName = layerName.value.trim();
-    if (!trimmedName) {
-        error.value = 'Enter a name for this layer.';
-        return;
-    }
-    if (props.existingNames.includes(trimmedName)) {
-        error.value = 'A layer with this name already exists.';
-        return;
-    }
-    emit('add', {
-        id: createImportedLayerId(),
-        name: trimmedName,
-        nameProperty: nameProperty.value,
-        visible: true,
-        featureCollection: retainNameProperty(toRaw(parsedGeoJson.value), nameProperty.value)
-    });
 }
 
 function close() {
@@ -221,7 +80,7 @@ function onDialogKeydown(event: KeyboardEvent) {
 
 onMounted(() => {
     opener.value = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    void nextTick(() => dropZone.value?.focus());
+    void nextTick(() => sourceSelector.value?.focusDropZone());
 });
 
 onBeforeUnmount(() => {
@@ -261,159 +120,25 @@ onBeforeUnmount(() => {
                 </button>
             </div>
             <div class="px-5 py-4 space-y-4">
-                <div class="flex gap-2" role="group" aria-label="GeoJSON source">
-                    <button
-                        type="button"
-                        :aria-pressed="source === 'file'"
-                        class="rounded-lg px-3 py-2 text-sm"
-                        :class="
-                            source === 'file'
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-slate-50 text-gray-700'
-                        "
-                        @click="source = 'file'"
-                    >
-                        Upload file
-                    </button>
-                    <button
-                        type="button"
-                        :aria-pressed="source === 'url'"
-                        class="rounded-lg px-3 py-2 text-sm"
-                        :class="
-                            source === 'url'
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-slate-50 text-gray-700'
-                        "
-                        @click="source = 'url'"
-                    >
-                        Load URL
-                    </button>
-                </div>
+                <AddGeoJsonSourceSelector
+                    ref="sourceSelector"
+                    v-model:source="source"
+                    v-model:url="url"
+                    :loading="loading"
+                    @file-selected="loadFile"
+                    @load-url="loadFromUrl"
+                />
 
-                <div v-if="source === 'file'" class="space-y-2">
-                    <input
-                        ref="fileInput"
-                        id="geojson-file"
-                        type="file"
-                        accept=".geojson,.json,application/geo+json,application/json"
-                        class="sr-only"
-                        tabindex="-1"
-                        @change="onFileSelected"
-                    />
-                    <button
-                        ref="dropZone"
-                        id="geojson-drop-zone"
-                        type="button"
-                        tabindex="0"
-                        class="w-full border-2 border-dashed border-gray-300 rounded-xl px-4 py-8 text-center text-sm text-gray-600 focus-visible:ring-2 focus-visible:ring-green-500"
-                        @click="openFilePicker"
-                        @dragover.prevent
-                        @drop="onDrop"
-                    >
-                        Drop a GeoJSON file here or
-                        <span class="font-semibold text-green-700">choose a file</span>
-                    </button>
-                </div>
-                <div v-else class="space-y-2">
-                    <label for="geojson-url" class="block text-sm font-medium text-gray-700"
-                        >GeoJSON URL</label
-                    >
-                    <div class="flex gap-2">
-                        <input
-                            id="geojson-url"
-                            v-model="url"
-                            type="url"
-                            class="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:outline-none"
-                            @keydown.enter="loadFromUrl"
-                        />
-                        <button
-                            type="button"
-                            class="rounded-lg bg-slate-100 px-3 py-2 text-sm font-medium hover:bg-slate-200"
-                            :disabled="loading"
-                            @click="loadFromUrl"
-                        >
-                            {{ loading ? 'Loading...' : 'Load' }}
-                        </button>
-                    </div>
-                </div>
-
-                <div v-if="parsedGeoJson" class="space-y-3">
-                    <div>
-                        <label
-                            for="imported-layer-name"
-                            class="block text-sm font-medium text-gray-700 mb-1"
-                            >Layer name</label
-                        >
-                        <input
-                            id="imported-layer-name"
-                            v-model="layerName"
-                            type="text"
-                            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:outline-none"
-                        />
-                    </div>
-                    <div>
-                        <label
-                            for="imported-name-property"
-                            class="block text-sm font-medium text-gray-700 mb-1"
-                            >Feature name field</label
-                        >
-                        <select
-                            id="imported-name-property"
-                            v-model="nameProperty"
-                            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:outline-none"
-                        >
-                            <option :value="null">None</option>
-                            <option
-                                v-for="property in namePropertyOptions"
-                                :key="property"
-                                :value="property"
-                            >
-                                {{ property }}
-                            </option>
-                        </select>
-                    </div>
-                    <div
-                        v-if="propertyPreview.length"
-                        id="geojson-property-preview"
-                        class="rounded-lg bg-slate-50 p-3"
-                    >
-                        <p class="text-xs font-medium uppercase tracking-wide text-gray-500 mb-2">
-                            First feature properties
-                        </p>
-                        <dl class="space-y-1">
-                            <div
-                                v-for="property in propertyPreview"
-                                :key="property.key"
-                                class="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-2"
-                            >
-                                <dt class="font-medium text-gray-700 truncate">
-                                    {{ property.key }}
-                                </dt>
-                                <dd class="text-gray-600 wrap-break-word">
-                                    {{ property.displayValue }}
-                                </dd>
-                            </div>
-                        </dl>
-                    </div>
-                </div>
+                <AddGeoJsonLayerDetails
+                    v-if="parsedGeoJson"
+                    v-model:layer-name="layerName"
+                    v-model:name-property="nameProperty"
+                    :name-property-options="namePropertyOptions"
+                    :property-preview="propertyPreview"
+                />
                 <p v-if="error" role="alert" class="text-sm text-red-600">{{ error }}</p>
             </div>
-            <div class="flex justify-end gap-2 px-5 py-4 border-t border-gray-100">
-                <button
-                    type="button"
-                    class="rounded-lg bg-slate-50 hover:bg-slate-100 border border-gray-200 text-gray-700 px-4 py-2 text-sm font-medium"
-                    @click="close"
-                >
-                    Cancel
-                </button>
-                <button
-                    type="button"
-                    class="rounded-lg bg-green-700 hover:bg-green-800 text-white px-4 py-2 text-sm font-medium"
-                    @click="addLayer"
-                >
-                    Add layer
-                </button>
-            </div>
+            <AddGeoJsonDialogFooter @cancel="close" @add="addLayer" />
         </div>
     </div>
 </template>
