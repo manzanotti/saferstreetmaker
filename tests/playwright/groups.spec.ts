@@ -830,6 +830,27 @@ test.describe('Groups — Create group', () => {
         await expect(page.locator('.group-popup-title')).toHaveCount(0);
     });
 
+    test('turning read-only off restores features faded by a selected group', async ({ page }) => {
+        await placeTwoModalFilters(page, 70, -120);
+        await selectBothFilters(page, 0, -120);
+        await createGroup(page, 'Focused Group');
+        await placeModalFilter(page, 0, 120);
+
+        await page.locator('#settings-button').click();
+        await page.locator('#read-only').check();
+        await page.getByRole('button', { name: 'Save' }).click();
+
+        const markers = page.locator('.leaflet-filters-pane path.modal-filter-marker');
+        await markers.first().dispatchEvent('click');
+        await expect(markers.nth(2)).toHaveAttribute('stroke-opacity', '0.12');
+
+        await page.locator('#settings-button').click();
+        await page.locator('#read-only').uncheck();
+        await page.getByRole('button', { name: 'Save' }).click();
+
+        await expect(markers.nth(2)).toHaveAttribute('stroke-opacity', '1');
+    });
+
     test('clicking a simple group closes an open phased group viewer', async ({ page }) => {
         await placeTwoModalFilters(page, 70, -120);
         await selectBothFilters(page, 0, -120);

@@ -22,6 +22,7 @@ function createApplier(overrides: Partial<ConstructorParameters<typeof SettingsA
         activateHistory: vi.fn().mockResolvedValue(undefined),
         setPendingHistoryMutation: vi.fn(),
         createMutationPayload: vi.fn().mockReturnValue({ before: {}, after: {} }),
+        clearReadOnlyPresentation: vi.fn(),
         applySettings: vi.fn(),
         removeAllLayers: vi.fn(),
         addLayers: vi.fn(),
@@ -62,5 +63,30 @@ describe('SettingsApplier', () => {
 
         expect(state.options.activateHistory).toHaveBeenNthCalledWith(1, 'Current map');
         expect(state.options.activateHistory).toHaveBeenNthCalledWith(2, 'Renamed map');
+    });
+
+    it('clears read-only presentation before disabling read-only mode', async () => {
+        const currentSettings = createSettings('Current map', ['MobilityLanes']);
+        currentSettings.readOnly = true;
+        const nextSettings = createSettings('Renamed map', ['ModalFilters', 'MobilityLanes']);
+        nextSettings.readOnly = false;
+        const state = createApplier({
+            getCurrentSettings: vi.fn().mockReturnValue(currentSettings)
+        });
+
+        await state.applier.apply(nextSettings);
+
+        expect(state.options.clearReadOnlyPresentation).toHaveBeenCalledOnce();
+        expect(
+            vi.mocked(state.options.clearReadOnlyPresentation).mock.invocationCallOrder[0]
+        ).toBeLessThan(vi.mocked(state.options.applySettings).mock.invocationCallOrder[0]);
+    });
+
+    it('does not clear read-only presentation for other settings changes', async () => {
+        const state = createApplier();
+
+        await state.applier.apply(state.nextSettings);
+
+        expect(state.options.clearReadOnlyPresentation).not.toHaveBeenCalled();
     });
 });
