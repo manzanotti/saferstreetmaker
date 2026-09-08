@@ -10,7 +10,7 @@ import type { Group } from '../models/Group';
 import type { ImportedGeoJsonLayer } from '../models/ImportedGeoJsonLayer';
 import { MapDatabase, type StoredMapRecord } from './MapDatabase';
 import { MapSerializer, type SerializedMap } from './MapSerializer';
-import { LegacyMapStorageImporter } from './legacyMapStorageImport';
+import { LegacyMapStorageImporter } from './LegacyMapStorageImporter';
 
 const LAST_SELECTED_METADATA_KEY = 'lastSelectedMap';
 
