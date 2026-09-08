@@ -52,11 +52,9 @@ export {
 } from '../features/selection/featureSelection';
 
 /**
- * Build SelectedMarker entries for a single feature. For point markers this is
- * one entry at the marker's position; for polyline/polygon features it is one
- * entry per vertex. Used by popup-copy, click and modifier-click selection
- * paths so they produce the same SelectedMarker shape that executeCopy /
- * executeAreaDelete / grouping already understand.
+ * Set up area-selection mode for a map and return its cleanup function.
+ * Registers selection and active-layer watchers, discovers selectable features
+ * within the drag bounds, and disposes the controller and highlight state.
  */
 export function setupAreaSelection(map: L.Map): () => void {
     const selectionStore = useSelectionStore(pinia);
