@@ -554,7 +554,10 @@ export class MapSerializer {
             layers: data.l,
             lastSaved: data.d
         };
-        result.groups = deserializeCompactGroups(data.g);
+        const groups = deserializeCompactGroups(data.g);
+        if (groups) {
+            result.groups = groups;
+        }
         if (data.o && data.o.length > 0) {
             result.importedLayers = data.o;
         }
