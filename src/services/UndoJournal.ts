@@ -1,7 +1,7 @@
 import { MapDatabase } from './MapDatabase';
-import type { HistoryEntryRecord, HistoryImportedLayersRecord } from './MapDatabase';
+import type { HistoryEntryRecord } from './MapDatabase';
 import type { SerializedMap } from './MapSerializer';
-import type { SerializedImportedGeoJsonLayer } from '../models/ImportedGeoJsonLayer';
+import { HistorySnapshotStore } from './HistorySnapshotStore';
 
 export interface HistoryStatus {
     canUndo: boolean;
@@ -14,17 +14,9 @@ export interface HistoryReplayEntry {
     snapshot: SerializedMap;
 }
 
-type StoredHistorySnapshot = Omit<SerializedMap, 'importedLayers'> & {
-    importedLayersRef?: string;
-};
-
-interface StoredHistorySnapshotResult {
-    snapshot: StoredHistorySnapshot;
-    importedLayersRecord?: HistoryImportedLayersRecord;
-}
-
 export class UndoJournal {
     private readonly db: MapDatabase;
+    private readonly snapshotStore: HistorySnapshotStore;
 
     /** Maximum number of history entries kept per map. Oldest entries beyond
      * this limit are pruned after each checkpoint write. */
@@ -32,43 +24,7 @@ export class UndoJournal {
 
     constructor() {
         this.db = new MapDatabase();
-    }
-
-    private storeImportedLayersReference(snapshot: SerializedMap): StoredHistorySnapshotResult {
-        if (!snapshot.importedLayers || snapshot.importedLayers.length === 0) {
-            return { snapshot };
-        }
-
-        const serialized = JSON.stringify(snapshot.importedLayers);
-        const id = `v1-${hashString(serialized)}-${serialized.length}`;
-        const { importedLayers: _importedLayers, ...snapshotWithoutImportedLayers } = snapshot;
-        return {
-            snapshot: { ...snapshotWithoutImportedLayers, importedLayersRef: id },
-            importedLayersRecord: {
-                id,
-                importedLayers: snapshot.importedLayers
-            }
-        };
-    }
-
-    private async resolveSnapshotInTransaction(value: unknown): Promise<SerializedMap> {
-        if (!value || typeof value !== 'object') {
-            return value as SerializedMap;
-        }
-
-        const stored = value as StoredHistorySnapshot;
-        if (!stored.importedLayersRef) {
-            return stored as SerializedMap;
-        }
-
-        const importedLayersRecord = await this.db.historyImportedLayers.get(
-            stored.importedLayersRef
-        );
-        const { importedLayersRef: _importedLayersRef, ...snapshot } = stored;
-        return {
-            ...snapshot,
-            importedLayers: importedLayersRecord?.importedLayers ?? []
-        };
+        this.snapshotStore = new HistorySnapshotStore();
     }
 
     async clearHistory(mapTitle: string): Promise<void> {
@@ -162,8 +118,8 @@ export class UndoJournal {
         }
     ): Promise<void> {
         const [storedBefore, storedAfter] = await Promise.all([
-            this.storeImportedLayersReference(before),
-            this.storeImportedLayersReference(after)
+            this.snapshotStore.storeImportedLayersReference(before),
+            this.snapshotStore.storeImportedLayersReference(after)
         ]);
         await this.db.transaction(
             'rw',
@@ -283,7 +239,7 @@ export class UndoJournal {
                 return {
                     direction: 'undo',
                     entry,
-                    snapshot: await this.resolveSnapshotInTransaction(entry.before)
+                    snapshot: await this.snapshotStore.resolveSnapshot(this.db, entry.before)
                 };
             }
         );
@@ -317,7 +273,7 @@ export class UndoJournal {
                 return {
                     direction: 'redo',
                     entry,
-                    snapshot: await this.resolveSnapshotInTransaction(entry.after)
+                    snapshot: await this.snapshotStore.resolveSnapshot(this.db, entry.after)
                 };
             }
         );
@@ -434,13 +390,4 @@ export class UndoJournal {
             value: '1'
         });
     }
-}
-
-function hashString(value: string): string {
-    let hash = 2166136261;
-    for (let index = 0; index < value.length; index += 1) {
-        hash ^= value.charCodeAt(index);
-        hash = Math.imul(hash, 16777619);
-    }
-    return (hash >>> 0).toString(16).padStart(8, '0');
 }
