@@ -1,6 +1,6 @@
 import type * as L from 'leaflet';
 import { getPolylineLatLngs } from '../../geometry/leafletGeometry';
-import type { ClipboardEntry, SelectedMarker } from '../../stores/selectionStore';
+import type { ClipboardEntry } from '../../stores/selectionStore';
 import type { SelectionCommandContext } from './selectionCommands';
 import { buildClipboardFeature, selectedLatLngsByMarker } from './selectionClipboardHelpers';
 
