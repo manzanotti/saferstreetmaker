@@ -13,38 +13,14 @@ import {
     getGroupVersions,
     hasVersionName,
     memberKey,
-    normalizeGroup,
     reconcilePhases
 } from '../features/groups/groupVersions';
 import { normalizeGroupDescription } from '../features/groups/groupDescription';
-
-function uniqueMembers(members: GroupMember[]): GroupMember[] {
-    return Array.from(new Map(members.map((member) => [memberKey(member), member])).values());
-}
-
-function withMembers(version: GroupVersion, members: GroupMember[]): GroupVersion {
-    const nextMembers = uniqueMembers(members).map((member) => ({ ...member }));
-    return {
-        ...version,
-        members: nextMembers,
-        ...(version.phases !== undefined
-            ? { phases: reconcilePhases(version.phases, nextMembers) }
-            : {})
-    };
-}
-
-function normalizeStoredGroup(group: Group): Group {
-    if (group.versions) {
-        return normalizeGroup(group);
-    }
-
-    const description = normalizeGroupDescription(group.description);
-    return {
-        ...group,
-        ...(description ? { description } : { description: undefined }),
-        members: [...(group.members ?? [])]
-    };
-}
+import {
+    normalizeStoredGroup,
+    uniqueMembers,
+    withMembers
+} from '../features/groups/groupStoreHelpers';
 
 export const useGroupStore = defineStore('group', () => {
     /** Groups — part of the persisted map payload and included in undo snapshots. */
