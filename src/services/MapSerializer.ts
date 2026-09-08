@@ -12,6 +12,11 @@ import type { IMapLayer } from '../composables/layers/IMapLayer';
 import type { Settings } from '../models/Settings';
 import type { Group, GroupMember, GroupPhase, GroupVersion } from '../models/Group';
 import { normalizeGroupDescription } from '../features/groups/groupDescription';
+import {
+    deserializeCompactGroups,
+    serializeCompactGroups,
+    type CompactGroup
+} from './compactGroupSerialization';
 import type {
     ImportedGeoJsonLayer,
     SerializedImportedGeoJsonLayer
@@ -120,26 +125,6 @@ interface CompactUrlGroup {
     }>;
 }
 
-/** Compact serialisation of a Group (short keys to minimise URL hash length). */
-interface CompactGroup {
-    i: string;
-    n: string;
-    c?: string;
-    m?: Array<[string, string]>;
-    d?: string;
-    p?: string;
-    v?: Array<{
-        i: string;
-        n: string;
-        m: Array<[string, string]>;
-        p?: Array<{ i: string; m: Array<[string, string]> }>;
-    }>;
-}
-
-function serializeMembers(members: GroupVersion['members']): Array<[string, string]> {
-    return members.map((member) => [member.layerId, member.historyId]);
-}
-
 function serializePhases(phases: GroupPhase[] | undefined): GroupPhase[] {
     return (phases ?? []).map((phase) => ({
         id: phase.id,
@@ -184,10 +169,6 @@ function serializeImportedLayer(layer: ImportedGeoJsonLayer): SerializedImported
             layer.nameProperty
         )
     };
-}
-
-function deserializeCompactMembers(members: Array<[string, string]> | undefined) {
-    return (members ?? []).map(([layerId, historyId]) => ({ layerId, historyId }));
 }
 
 function quantizeCoordinate(value: number): number {
@@ -550,40 +531,7 @@ export class MapSerializer {
             l: layers,
             d: new Date().toISOString()
         };
-        if (groups && groups.length > 0) {
-            result.g = groups.map((group) => {
-                const description = normalizeGroupDescription(group.description);
-                if (!group.versions) {
-                    return {
-                        i: group.id,
-                        n: group.name,
-                        ...(description ? { p: description } : {}),
-                        ...(group.color ? { c: group.color } : {}),
-                        m: serializeMembers(group.members ?? [])
-                    };
-                }
-                return {
-                    i: group.id,
-                    n: group.name,
-                    ...(description ? { p: description } : {}),
-                    ...(group.color ? { c: group.color } : {}),
-                    d: group.defaultVersionId,
-                    v: group.versions.map((version) => ({
-                        i: version.id,
-                        n: version.name,
-                        m: serializeMembers(version.members),
-                        ...(version.phases && version.phases.length > 0
-                            ? {
-                                  p: version.phases.map((phase) => ({
-                                      i: phase.id,
-                                      m: serializeMembers(phase.members)
-                                  }))
-                              }
-                            : {})
-                    }))
-                };
-            });
-        }
+        result.g = serializeCompactGroups(groups);
         if (importedLayers && importedLayers.length > 0) {
             result.o = importedLayers.map(serializeImportedLayer);
         }
@@ -604,38 +552,7 @@ export class MapSerializer {
             layers: data.l,
             lastSaved: data.d
         };
-        if (data.g && data.g.length > 0) {
-            result.groups = data.g.map((group) =>
-                group.v
-                    ? {
-                          id: group.i,
-                          name: group.n,
-                          ...(group.p ? { description: group.p } : {}),
-                          ...(group.c ? { color: group.c } : {}),
-                          defaultVersionId: group.d,
-                          versions: group.v.map((version) => ({
-                              id: version.i,
-                              name: version.n,
-                              members: deserializeCompactMembers(version.m),
-                              ...(version.p
-                                  ? {
-                                        phases: version.p.map((phase) => ({
-                                            id: phase.i,
-                                            members: deserializeCompactMembers(phase.m)
-                                        }))
-                                    }
-                                  : {})
-                          }))
-                      }
-                    : {
-                          id: group.i,
-                          name: group.n,
-                          ...(group.p ? { description: group.p } : {}),
-                          ...(group.c ? { color: group.c } : {}),
-                          members: deserializeCompactMembers(group.m)
-                      }
-            );
-        }
+        result.groups = deserializeCompactGroups(data.g);
         if (data.o && data.o.length > 0) {
             result.importedLayers = data.o;
         }
@@ -674,40 +591,7 @@ export class MapSerializer {
             l: data.layers ?? {},
             d: data.lastSaved ?? new Date().toISOString()
         };
-        if (data.groups && data.groups.length > 0) {
-            fromSerializedResult.g = data.groups.map((group) => {
-                const description = normalizeGroupDescription(group.description);
-                if (!group.versions) {
-                    return {
-                        i: group.id,
-                        n: group.name,
-                        ...(description ? { p: description } : {}),
-                        ...(group.color ? { c: group.color } : {}),
-                        m: serializeMembers(group.members ?? [])
-                    };
-                }
-                return {
-                    i: group.id,
-                    n: group.name,
-                    ...(description ? { p: description } : {}),
-                    ...(group.color ? { c: group.color } : {}),
-                    d: group.defaultVersionId,
-                    v: group.versions.map((version) => ({
-                        i: version.id,
-                        n: version.name,
-                        m: serializeMembers(version.members),
-                        ...(version.phases && version.phases.length > 0
-                            ? {
-                                  p: version.phases.map((phase) => ({
-                                      i: phase.id,
-                                      m: serializeMembers(phase.members)
-                                  }))
-                              }
-                            : {})
-                    }))
-                };
-            });
-        }
+        fromSerializedResult.g = serializeCompactGroups(data.groups);
         if (data.importedLayers && data.importedLayers.length > 0) {
             fromSerializedResult.o = data.importedLayers;
         }
