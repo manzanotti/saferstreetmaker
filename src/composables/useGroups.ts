@@ -52,7 +52,7 @@ import {
     PhasePlaybackController,
     type PhasePlaybackUpdate
 } from '../features/groups/PhasePlaybackController';
-import { applyPhaseSelectionDelta } from '../features/groups/phaseMembership';
+import { useGroupPhaseEditing } from './groups/useGroupPhaseEditing';
 
 function findMarkerByHistoryId(layerId: string, historyId: string): L.Layer | null {
     return findLayerFeatureByHistoryId(useMapStore(pinia).layers, layerId, historyId);
@@ -83,8 +83,25 @@ const groupPolylineSplitter = new GroupPolylineSplitter({
 const phaseHighlighter = new PhaseHighlighter((member) =>
     findMarkerByHistoryId(member.layerId, member.historyId)
 );
-let previousPhaseSelectionKeys = new Set<string>();
 let phasePlayback: PhasePlaybackController | null = null;
+
+const groupPhaseEditing = useGroupPhaseEditing({
+    phaseHighlighter,
+    buildEntriesForMembers: (members) => buildEntriesForMembers(members),
+    markPhaseMutation,
+    recomputeFeatureVisibility,
+    stopReadOnlyGroupPlayback,
+    startNewGroupPhase
+});
+
+export const {
+    openGroupPhases,
+    refreshGroupPhasePresentation,
+    focusGroupPhase,
+    confirmEmptyGroupPhaseDeletion,
+    reorderGroupPhases,
+    closeGroupPhases
+} = groupPhaseEditing;
 
 function clonePhases(phases: GroupPhase[]): GroupPhase[] {
     return phases.map((phase) => ({
@@ -896,40 +913,6 @@ export function fitGroupPhaseFeatures(bottomPadding: number): boolean {
     }
 }
 
-export function openGroupPhases(groupId: string, versionId: string): boolean {
-    if (useSettingsStore(pinia).readOnly) {
-        return false;
-    }
-    const groupStore = useGroupStore(pinia);
-    const group = groupStore.groups.find((item) => item.id === groupId);
-    const version = group ? getGroupVersions(group).find((item) => item.id === versionId) : null;
-    if (!group || !version) {
-        return false;
-    }
-
-    const selectionStore = useSelectionStore(pinia);
-    const uiStore = useUiStore(pinia);
-    const mapStore = useMapStore(pinia);
-    groupStore.closeDetailsDialog();
-    removeMapCursor('group-edit');
-    applySelectionHighlights([], true, selectionStore.selected);
-    selectionStore.deactivate();
-    if (groupStore.activeVersionIds[groupId] !== versionId) {
-        groupStore.setActiveVersion(groupId, versionId);
-        recomputeFeatureVisibility();
-        mapStore.markLayerUpdated();
-    }
-    groupStore.openPhasesDialog(groupId, versionId);
-    uiStore.closePanel();
-    if (version.phases && version.phases.length > 0) {
-        phaseHighlighter.clear(version.members);
-        focusGroupPhase(version.phases[0].id);
-    } else {
-        startNewGroupPhase();
-    }
-    return true;
-}
-
 export function showReplayedGroupPhases(
     groupId: string,
     versionId: string,
@@ -985,235 +968,6 @@ export function startNewGroupPhase(): boolean {
     }
     markPhaseMutation(group.id, version.id, phaseId, before, after);
     return focusGroupPhase(phaseId);
-}
-
-export function refreshGroupPhasePresentation(): void {
-    const groupStore = useGroupStore(pinia);
-    const selectionStore = useSelectionStore(pinia);
-    const group = groupStore.phaseGroupId
-        ? groupStore.groups.find((item) => item.id === groupStore.phaseGroupId)
-        : null;
-    const version =
-        group && groupStore.phaseVersionId
-            ? getGroupVersions(group).find((item) => item.id === groupStore.phaseVersionId)
-            : null;
-    if (!version || !groupStore.phaseDraftActive || useSettingsStore(pinia).readOnly) {
-        return;
-    }
-    const versionMemberKeys = new Set(
-        version.members.map((member) => featureKey(member.layerId, member.historyId))
-    );
-    const selectedVersionEntries = selectionStore.selected.filter(
-        (entry) =>
-            entry.historyId !== null &&
-            versionMemberKeys.has(featureKey(entry.layerId, entry.historyId))
-    );
-    const selectedKeys = new Set(
-        selectedVersionEntries.map((entry) => featureKey(entry.layerId, entry.historyId!))
-    );
-    const editingId = groupStore.phaseEditingId;
-    if (editingId) {
-        const selectedMembers = Array.from(
-            new Map(
-                selectedVersionEntries
-                    .filter(
-                        (entry): entry is SelectedMarker & { historyId: string } =>
-                            entry.historyId !== null
-                    )
-                    .map((entry) => [
-                        featureKey(entry.layerId, entry.historyId),
-                        { layerId: entry.layerId, historyId: entry.historyId }
-                    ])
-            ).values()
-        );
-        const addedKeys = new Set(
-            Array.from(selectedKeys).filter((key) => !previousPhaseSelectionKeys.has(key))
-        );
-        const phases = (version.phases ?? []).map((phase) => ({
-            ...phase,
-            members:
-                phase.id === editingId
-                    ? applyPhaseSelectionDelta(
-                          phase.members,
-                          selectedMembers,
-                          previousPhaseSelectionKeys
-                      )
-                    : phase.members.filter(
-                          (member) => !addedKeys.has(featureKey(member.layerId, member.historyId))
-                      )
-        }));
-        const editedPhase = phases.find((phase) => phase.id === editingId);
-        const changed = phases.some((phase, index) => {
-            const previousMembers = version.phases?.[index]?.members ?? [];
-            return (
-                phase.members.length !== previousMembers.length ||
-                phase.members.some(
-                    (member, memberIndex) =>
-                        featureKey(member.layerId, member.historyId) !==
-                        featureKey(
-                            previousMembers[memberIndex]?.layerId ?? '',
-                            previousMembers[memberIndex]?.historyId ?? ''
-                        )
-                )
-            );
-        });
-        groupStore.pendingEmptyPhaseDeletionId = editedPhase?.members.length ? null : editingId;
-        if (
-            changed &&
-            groupStore.phaseGroupId &&
-            groupStore.phaseVersionId &&
-            groupStore.replaceVersionPhases(
-                groupStore.phaseGroupId,
-                groupStore.phaseVersionId,
-                phases
-            )
-        ) {
-            markPhaseMutation(
-                groupStore.phaseGroupId,
-                groupStore.phaseVersionId,
-                editingId,
-                version.phases ?? [],
-                phases
-            );
-        }
-    }
-    previousPhaseSelectionKeys = selectedKeys;
-    phaseHighlighter.dim(version.members, selectedKeys);
-}
-
-export function focusGroupPhase(phaseId: string | null): boolean {
-    const groupStore = useGroupStore(pinia);
-    const group = groupStore.phaseGroupId
-        ? groupStore.groups.find((item) => item.id === groupStore.phaseGroupId)
-        : null;
-    const version =
-        group && groupStore.phaseVersionId
-            ? getGroupVersions(group).find((item) => item.id === groupStore.phaseVersionId)
-            : null;
-    const phase = version?.phases?.find((item) => item.id === phaseId);
-    if (!group || !version || !phase) {
-        return false;
-    }
-    const selectionStore = useSelectionStore(pinia);
-    const previousEntries = selectionStore.selected;
-    const entries = buildEntriesForMembers(phase.members);
-    groupStore.phaseDraftActive = false;
-    selectionStore.setSelected(entries);
-    selectionStore.markGroupSelection(group.id);
-    selectionStore.setPhaseEditing(true);
-    applySelectionHighlights(entries, true, previousEntries);
-    previousPhaseSelectionKeys = new Set(
-        entries.map((entry) => featureKey(entry.layerId, entry.historyId ?? ''))
-    );
-    groupStore.phaseDraftActive = true;
-    groupStore.phaseEditingId = phaseId;
-    groupStore.pendingEmptyPhaseDeletionId = null;
-    groupStore.setFocusedPhase(phaseId);
-    phaseHighlighter.dim(
-        version.members,
-        new Set(phase.members.map((member) => featureKey(member.layerId, member.historyId)))
-    );
-    return true;
-}
-
-function finishGroupPhaseEditing(): void {
-    const groupStore = useGroupStore(pinia);
-    const selectionStore = useSelectionStore(pinia);
-    const group = groupStore.phaseGroupId
-        ? groupStore.groups.find((item) => item.id === groupStore.phaseGroupId)
-        : null;
-    const version =
-        group && groupStore.phaseVersionId
-            ? getGroupVersions(group).find((item) => item.id === groupStore.phaseVersionId)
-            : null;
-    if (version) {
-        phaseHighlighter.clear(version.members);
-    }
-    applySelectionHighlights([], true, selectionStore.selected);
-    selectionStore.deactivate();
-    previousPhaseSelectionKeys = new Set<string>();
-    groupStore.phaseDraftActive = false;
-    groupStore.phaseEditingId = null;
-    groupStore.pendingEmptyPhaseDeletionId = null;
-    groupStore.setFocusedPhase(null);
-}
-
-export function confirmEmptyGroupPhaseDeletion(deletePhase: boolean): boolean {
-    if (useSettingsStore(pinia).readOnly) {
-        return false;
-    }
-    const groupStore = useGroupStore(pinia);
-    const groupId = groupStore.phaseGroupId;
-    const versionId = groupStore.phaseVersionId;
-    const phaseId = groupStore.pendingEmptyPhaseDeletionId;
-    if (!deletePhase) {
-        groupStore.pendingEmptyPhaseDeletionId = null;
-        return false;
-    }
-    const group = groupId ? groupStore.groups.find((item) => item.id === groupId) : null;
-    const version =
-        group && versionId ? getGroupVersions(group).find((item) => item.id === versionId) : null;
-    if (!groupId || !versionId || !phaseId || !version) {
-        return false;
-    }
-    const before = version.phases ?? [];
-    const after = before.filter((phase) => phase.id !== phaseId);
-    if (!groupStore.replaceVersionPhases(groupId, versionId, after)) {
-        return false;
-    }
-    markPhaseMutation(groupId, versionId, phaseId, before, after);
-    finishGroupPhaseEditing();
-    return true;
-}
-
-export function reorderGroupPhases(phaseIds: string[]): boolean {
-    if (useSettingsStore(pinia).readOnly) {
-        return false;
-    }
-    const groupStore = useGroupStore(pinia);
-    const groupId = groupStore.phaseGroupId;
-    const versionId = groupStore.phaseVersionId;
-    if (!groupId || !versionId) {
-        return false;
-    }
-    const group = groupStore.groups.find((item) => item.id === groupId);
-    const version = group ? getGroupVersions(group).find((item) => item.id === versionId) : null;
-    const before = version?.phases ?? [];
-    const reordered = groupStore.reorderVersionPhases(groupId, versionId, phaseIds);
-    if (reordered) {
-        const updatedGroup = groupStore.groups.find((item) => item.id === groupId);
-        const updatedVersion = updatedGroup
-            ? getGroupVersions(updatedGroup).find((item) => item.id === versionId)
-            : null;
-        markPhaseMutation(
-            groupId,
-            versionId,
-            groupStore.phaseEditingId,
-            before,
-            updatedVersion?.phases ?? []
-        );
-    }
-    return reordered;
-}
-
-export function closeGroupPhases(): void {
-    stopReadOnlyGroupPlayback();
-    const groupStore = useGroupStore(pinia);
-    const selectionStore = useSelectionStore(pinia);
-    const group = groupStore.phaseGroupId
-        ? groupStore.groups.find((item) => item.id === groupStore.phaseGroupId)
-        : null;
-    const version =
-        group && groupStore.phaseVersionId
-            ? getGroupVersions(group).find((item) => item.id === groupStore.phaseVersionId)
-            : null;
-    if (version) {
-        phaseHighlighter.clear(version.members);
-    }
-    applySelectionHighlights([], true, selectionStore.selected);
-    selectionStore.deactivate();
-    removeMapCursor('group-edit');
-    groupStore.closePhasesDialog();
 }
 
 export function createGroupVersion(groupId: string, name: string): boolean {
