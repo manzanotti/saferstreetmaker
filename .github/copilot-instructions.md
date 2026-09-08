@@ -53,6 +53,7 @@
 
 ## Git Workflow
 
+- **Use standard Git commands and the GitHub CLI only**: Do not use GitKraken or any GitKraken MCP tools for repository operations.
 - **Start from current main**: Before making changes, fetch the remote and fast-forward the local `main` branch: `git fetch origin`, `git switch main`, and `git pull --ff-only origin main`.
 - **Work on a branch**: Create a normal feature branch from the updated `main` with `git switch -c <branch-name>` before editing files.
 - **Commit and push**: After validation, commit the focused changes and push the branch with `git push -u origin <branch-name>`.
