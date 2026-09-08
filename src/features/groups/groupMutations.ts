@@ -1,4 +1,4 @@
-import * as L from 'leaflet';
+import type * as L from 'leaflet';
 import { useMapStore } from '../../stores/mapStore';
 import { useSelectionStore } from '../../stores/selectionStore';
 import { useGroupStore } from '../../stores/groupStore';
@@ -6,7 +6,6 @@ import { pinia } from '../../stores/index';
 import { featureKey, getActiveVersion, getGroupVersions, hasVersionName } from './groupVersions';
 import { GroupVersionFeatureCloner } from './GroupVersionFeatureCloner';
 import { getFeatureHistoryId } from '../../composables/layers/layerUtils';
-import type { GroupMember } from '../../models/Group';
 
 export interface GroupMutationDependencies {
     clearFeatureHighlight: () => void;
