@@ -87,7 +87,7 @@ let phasePlayback: PhasePlaybackController | null = null;
 
 const groupPhaseEditing = useGroupPhaseEditing({
     phaseHighlighter,
-    buildEntriesForMembers: (members) => buildEntriesForMembers(members),
+    buildEntriesForMembers,
     markPhaseMutation,
     recomputeFeatureVisibility,
     stopReadOnlyGroupPlayback,
