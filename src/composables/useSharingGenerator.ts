@@ -32,6 +32,10 @@ export function useSharingGenerator(
         }
 
         const groupForShare = shareScopeGroup.value ?? selectedGroup;
+        if (scope === 'group' && !groupForShare) {
+            return;
+        }
+
         const layers =
             scope === 'group' && groupForShare
                 ? getGroupLayers(groupForShare)
