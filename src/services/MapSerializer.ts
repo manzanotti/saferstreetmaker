@@ -531,7 +531,9 @@ export class MapSerializer {
             l: layers,
             d: new Date().toISOString()
         };
-        result.g = serializeCompactGroups(groups);
+        if (groups && groups.length > 0) {
+            result.g = serializeCompactGroups(groups);
+        }
         if (importedLayers && importedLayers.length > 0) {
             result.o = importedLayers.map(serializeImportedLayer);
         }
@@ -591,7 +593,9 @@ export class MapSerializer {
             l: data.layers ?? {},
             d: data.lastSaved ?? new Date().toISOString()
         };
-        fromSerializedResult.g = serializeCompactGroups(data.groups);
+        if (data.groups && data.groups.length > 0) {
+            fromSerializedResult.g = serializeCompactGroups(data.groups);
+        }
         if (data.importedLayers && data.importedLayers.length > 0) {
             fromSerializedResult.o = data.importedLayers;
         }
