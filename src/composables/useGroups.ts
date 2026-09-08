@@ -22,7 +22,6 @@ import {
     getActiveVersion,
     getNewPhaseDraftMembers,
     getGroupVersions,
-    hasVersionName,
     needsReadOnlyGroupDetails
 } from '../features/groups/groupVersions';
 import { GroupVersionFeatureCloner } from '../features/groups/GroupVersionFeatureCloner';
@@ -53,6 +52,7 @@ import {
     type PhasePlaybackUpdate
 } from '../features/groups/PhasePlaybackController';
 import { useGroupPhaseEditing } from './groups/useGroupPhaseEditing';
+import { createGroupMutations } from '../features/groups/groupMutations';
 
 function findMarkerByHistoryId(layerId: string, historyId: string): L.Layer | null {
     return findLayerFeatureByHistoryId(useMapStore(pinia).layers, layerId, historyId);
@@ -970,256 +970,21 @@ export function startNewGroupPhase(): boolean {
     return focusGroupPhase(phaseId);
 }
 
-export function createGroupVersion(groupId: string, name: string): boolean {
-    const groupStore = useGroupStore(pinia);
-    const group = groupStore.groups.find((item) => item.id === groupId);
-    const source = group ? groupStore.getActiveGroupVersion(groupId) : null;
-    const mapStore = useMapStore(pinia);
-    if (!group || !source || !name.trim() || hasVersionName(group, name)) {
-        return false;
-    }
-
-    const cloner = new GroupVersionFeatureCloner({
-        getLayer: (layerId) => mapStore.layers.find((layer) => layer.id === layerId),
-        findFeature: (layer, historyId) => {
-            let found: any = null;
-            layer.getLayer().eachLayer((item: any) => {
-                if (getFeatureHistoryId(item) === historyId) {
-                    found = item.feature ?? item.toGeoJSON?.() ?? null;
-                }
-            });
-            return found;
-        }
-    });
-    const cloned = cloner.clone({ id: source.id, name: name.trim(), members: source.members });
-    if (!groupStore.addVersion(groupId, cloned)) {
-        return false;
-    }
-    mapStore.markLayerUpdated();
-    return switchGroupVersion(groupId, cloned.id);
-}
-
-export function renameGroupVersion(groupId: string, versionId: string, name: string): boolean {
-    const groupStore = useGroupStore(pinia);
-    const mapStore = useMapStore(pinia);
-    const renamed = groupStore.renameVersion(groupId, versionId, name);
-    if (renamed) {
-        mapStore.markLayerUpdated();
-    }
-    return renamed;
-}
-
-export function setGroupDefaultVersion(groupId: string, versionId: string): boolean {
-    const groupStore = useGroupStore(pinia);
-    const mapStore = useMapStore(pinia);
-    const changed = groupStore.setDefaultVersion(groupId, versionId);
-    if (changed) {
-        mapStore.markLayerUpdated();
-    }
-    return changed;
-}
-
-export function deleteGroupVersion(
-    groupId: string,
-    versionId: string,
-    deleteElements = false
-): boolean {
-    const groupStore = useGroupStore(pinia);
-    const selectionStore = useSelectionStore(pinia);
-    const detailsOpen = groupStore.detailsGroupId === groupId;
-    if (detailsOpen) {
-        groupStore.closeDetailsDialog();
-    }
-    if (selectionStore.selectedGroupId === groupId) {
-        clearFeatureHighlight();
-    }
-    const version = groupStore.removeVersion(groupId, versionId);
-    if (!version) {
-        return false;
-    }
-    const mapStore = useMapStore(pinia);
-    if (deleteElements) {
-        const remainingMembers = new Set(
-            groupStore.groups.flatMap((group) =>
-                getGroupVersions(group).flatMap((remainingVersion) =>
-                    remainingVersion.members.map((member) =>
-                        featureKey(member.layerId, member.historyId)
-                    )
-                )
-            )
-        );
-        for (const member of version.members) {
-            if (remainingMembers.has(featureKey(member.layerId, member.historyId))) {
-                continue;
-            }
-            const marker = findMarkerByHistoryId(member.layerId, member.historyId);
-            const layer = mapStore.layers.find((item) => item.id === member.layerId);
-            if (marker && layer) {
-                layer.getLayer().removeLayer(marker);
-            }
-        }
-    }
-    mapStore.markLayerUpdated();
-    recomputeFeatureVisibility();
-    return true;
-}
-
-/**
- * Delete a group AND all its member features from the map.
- * This is undoable via the snapshot journal.
- */
-export function deleteGroupWithElements(id: string): void {
-    const groupStore = useGroupStore(pinia);
-    const mapStore = useMapStore(pinia);
-
-    const group = groupStore.groups.find((g) => g.id === id);
-    if (!group) {
-        return;
-    }
-    const members = getGroupVersions(group).flatMap((version) => version.members);
-
-    // Restore visibility for any hidden members before removing them.
-    for (const member of members) {
-        const marker = findMarkerByHistoryId(member.layerId, member.historyId);
-        if (marker) {
-            groupVisibilityController.reveal(marker);
-        }
-    }
-
-    // Remove each member feature from its layer.
-    const seen = new Set<string>();
-    for (const member of members) {
-        const key = featureKey(member.layerId, member.historyId);
-        if (seen.has(key)) {
-            continue;
-        }
-        seen.add(key);
-
-        const marker = findMarkerByHistoryId(member.layerId, member.historyId);
-        const layerDef = mapStore.layers.find((l) => l.id === member.layerId);
-        if (marker && layerDef) {
-            layerDef.getLayer().removeLayer(marker as L.Layer);
-        }
-    }
-
-    groupStore.removeGroup(id);
-    // Clear any lingering highlights from having selected this group.
-    clearFeatureHighlight();
-    mapStore.markLayerUpdated();
-}
-
-/**
- * Remove all members from a group (elements stay on the map).
- * Undoable via the snapshot journal.
- */
-export function removeAllGroupElements(id: string): void {
-    const groupStore = useGroupStore(pinia);
-    const mapStore = useMapStore(pinia);
-    groupStore.clearGroupMembers(id);
-    // Clear any lingering highlights from having selected this group.
-    clearFeatureHighlight();
-    // Members removed from the group may no longer be hidden by any group.
-    recomputeFeatureVisibility();
-    mapStore.markLayerUpdated();
-}
-
-/**
- * Delete a group WITHOUT deleting its member features (the elements remain on
- * the map, just ungrouped). Undoable. Used both for the "delete group only"
- * choice and after removeAllGroupElements when the user confirms deletion of a
- * now-empty group.
- */
-export function deleteGroup(id: string): void {
-    const groupStore = useGroupStore(pinia);
-    const mapStore = useMapStore(pinia);
-    groupStore.removeGroup(id);
-    // Clear any lingering highlights from having selected this group so its
-    // (now ungrouped) elements are not left looking selected.
-    clearFeatureHighlight();
-    // Removing the group may leave formerly-hidden members visible again.
-    recomputeFeatureVisibility();
-    mapStore.markLayerUpdated();
-}
-
-/**
- * Toggle a group's visibility. Runtime only — not persisted, not undoable.
- */
-export function toggleGroupVisibility(id: string): void {
-    const groupStore = useGroupStore(pinia);
-    groupStore.toggleHidden(id);
-    recomputeFeatureVisibility();
-}
-
-/**
- * Show or hide ALL groups at once. Runtime only — not undoable.
- */
-export function setAllGroupsVisibility(hidden: boolean): void {
-    const groupStore = useGroupStore(pinia);
-    groupStore.setAllHidden(hidden);
-    recomputeFeatureVisibility();
-}
-
-/**
- * Prune group members whose underlying feature no longer exists on the map
- * (e.g. deleted via area-select, popup delete, or an individual marker click).
- *
- * Returns true if any member was removed. Called from the save pipeline and on
- * map load so groups do not retain dangling references. Because it runs before
- * the snapshot checkpoint is taken, the prune is folded into the same undo step
- * as the deletion that caused it, keeping undo/redo consistent.
- */
-export function pruneDanglingGroupMembers(): boolean {
-    const groupStore = useGroupStore(pinia);
-    const mapStore = useMapStore(pinia);
-
-    if (groupStore.groups.length === 0) {
-        return false;
-    }
-
-    // Build the set of (layerId:historyId) keys that currently exist.
-    const existing = new Set<string>();
-    for (const layer of mapStore.layers) {
-        layer.getLayer().eachLayer((m) => {
-            const historyId = getFeatureHistoryId(m);
-            if (historyId) {
-                existing.add(featureKey(layer.id, historyId));
-            }
-        });
-    }
-
-    let changed = false;
-    const nextGroups = groupStore.groups.map((group) => {
-        const versions = getGroupVersions(group).map((version) => ({
-            ...version,
-            members: version.members.filter((member) =>
-                existing.has(featureKey(member.layerId, member.historyId))
-            )
-        }));
-        const kept =
-            versions.find((version) => version.id === groupStore.activeVersionIds[group.id])
-                ?.members ??
-            versions.find((version) => version.id === group.defaultVersionId)?.members ??
-            versions[0]?.members ??
-            [];
-        const currentMembers = getActiveVersion(
-            group,
-            groupStore.activeVersionIds[group.id]
-        ).members;
-        if (
-            kept.length !== currentMembers.length ||
-            versions.some(
-                (version, index) =>
-                    version.members.length !== getGroupVersions(group)[index].members.length
-            )
-        ) {
-            changed = true;
-            return { ...group, versions, members: kept };
-        }
-        return group;
-    });
-
-    if (changed) {
-        groupStore.setGroups(nextGroups, true);
-    }
-    return changed;
-}
+export const {
+    createGroupVersion,
+    renameGroupVersion,
+    setGroupDefaultVersion,
+    deleteGroupVersion,
+    deleteGroupWithElements,
+    removeAllGroupElements,
+    deleteGroup,
+    toggleGroupVisibility,
+    setAllGroupsVisibility,
+    pruneDanglingGroupMembers
+} = createGroupMutations({
+    clearFeatureHighlight,
+    findMarkerByHistoryId,
+    recomputeFeatureVisibility,
+    revealMarker: (marker) => groupVisibilityController.reveal(marker),
+    switchGroupVersion
+});
