@@ -10,8 +10,9 @@ import type { Group } from '../models/Group';
 import type { ImportedGeoJsonLayer } from '../models/ImportedGeoJsonLayer';
 import { MapDatabase, type StoredMapRecord } from './MapDatabase';
 import { MapSerializer, type SerializedMap } from './MapSerializer';
-const LAST_SELECTED_METADATA_KEY = 'lastSelectedMap';
 import { LegacyMapStorageImporter } from './legacyMapStorageImport';
+
+const LAST_SELECTED_METADATA_KEY = 'lastSelectedMap';
 
 export class MapStorage {
     private readonly serializer: MapSerializer;
