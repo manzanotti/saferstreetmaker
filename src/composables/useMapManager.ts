@@ -8,7 +8,7 @@
  * fileLoaded is a FileManager callback.
  */
 import * as L from 'leaflet';
-import { nextTick, toRaw, watch } from 'vue';
+import { toRaw, watch } from 'vue';
 import { FileManager } from '../services/FileManager';
 import { UndoJournal } from '../services/UndoJournal';
 import type { SerializedMap } from '../services/MapSerializer';
@@ -49,6 +49,7 @@ import { MapPersistenceCoordinator } from '../features/map/MapPersistenceCoordin
 import { UploadedMapLoader } from '../features/map/UploadedMapLoader';
 import { MapViewCoordinator } from '../features/map/MapViewCoordinator';
 import { ImportedGeoJsonLayerController } from '../features/map/ImportedGeoJsonLayerController';
+import { DefaultImportedLayerSeeder } from '../features/map/DefaultImportedLayerSeeder';
 
 const APP_VERSION = '0.10.0';
 
@@ -115,7 +116,6 @@ export function setupMapManager(
     let suppressHistory = false;
     let pendingHistoryMutation: HistoryMutation | null = null;
     let mapGeneration = 0;
-    let newMapPendingDefaultLayers = false;
 
     const getMap = (): L.Map => {
         const m = mapStore.map;
@@ -433,15 +433,6 @@ export function setupMapManager(
         });
     };
 
-    let persistenceBarrier: Promise<void> | null = null;
-    let defaultSeedingBlocked = false;
-    let userActionRevision = 0;
-
-    const blockDefaultSeeding = (): void => {
-        defaultSeedingBlocked = true;
-        userActionRevision += 1;
-    };
-
     const persistImmediately = (options?: {
         throwOnFailure?: boolean;
         recordHistory?: boolean;
@@ -453,6 +444,7 @@ export function setupMapManager(
         recordHistory?: boolean;
         preserveMutation?: boolean;
     }) => {
+        const persistenceBarrier = defaultImportedLayerSeeder.waitForPersistenceBarrier();
         if (persistenceBarrier) {
             return persistenceBarrier.then(() => persistenceCoordinator.persist(options));
         }
@@ -460,12 +452,12 @@ export function setupMapManager(
     };
 
     const saveMap = async (): Promise<void> => {
-        blockDefaultSeeding();
+        defaultImportedLayerSeeder.block();
         await persistMap();
     };
 
     const saveMapOrThrow = async (): Promise<void> => {
-        blockDefaultSeeding();
+        defaultImportedLayerSeeder.block();
         await persistMap({ throwOnFailure: true });
     };
 
@@ -476,6 +468,17 @@ export function setupMapManager(
     const mapViewCoordinator = new MapViewCoordinator({
         getMap,
         saveMap: saveViewMap
+    });
+
+    const defaultImportedLayerSeeder = new DefaultImportedLayerSeeder({
+        getMapGeneration: () => mapGeneration,
+        getImportedLayerCount: () => importedLayerStore.layers.length,
+        setImportedLayers: (layers) => importedLayerStore.setLayers(layers),
+        flushPendingViewSave: () => mapViewCoordinator.flushPendingSave(),
+        persist: async () => {
+            await persistImmediately({ recordHistory: false, preserveMutation: true });
+        },
+        syncHistoryStatus
     });
 
     // Watch settingsStore.zoom/centre changes (set by useMapEngine on zoom/move events)
@@ -554,7 +557,7 @@ export function setupMapManager(
         await persistenceCoordinator.flush();
         const previousGeneration = mapGeneration;
         const creationGeneration = ++mapGeneration;
-        const creationActionRevision = userActionRevision;
+        const creationActionRevision = defaultImportedLayerSeeder.getUserActionRevision();
         let created: boolean;
         try {
             created = await newMapCreator.create(title);
@@ -565,12 +568,14 @@ export function setupMapManager(
             throw error;
         }
         if (created && mapGeneration === creationGeneration) {
-            defaultSeedingBlocked = userActionRevision !== creationActionRevision;
+            defaultImportedLayerSeeder.setBlocked(
+                defaultImportedLayerSeeder.getUserActionRevision() !== creationActionRevision
+            );
             const availableDefaultLayers = getDefaultImportedLayers();
-            newMapPendingDefaultLayers = importedLayerStore.layers.length === 0;
+            defaultImportedLayerSeeder.setPending(importedLayerStore.layers.length === 0);
             if (
-                newMapPendingDefaultLayers &&
-                !defaultSeedingBlocked &&
+                importedLayerStore.layers.length === 0 &&
+                defaultImportedLayerSeeder.getUserActionRevision() === creationActionRevision &&
                 availableDefaultLayers.length > 0
             ) {
                 await initialiseDefaultImportedLayers(availableDefaultLayers);
@@ -594,8 +599,8 @@ export function setupMapManager(
     const loadMapFromStorage = async (mapName: string): Promise<boolean> => {
         await persistenceCoordinator.flush();
         mapGeneration += 1;
-        newMapPendingDefaultLayers = false;
-        defaultSeedingBlocked = true;
+        defaultImportedLayerSeeder.setPending(false);
+        defaultImportedLayerSeeder.setBlocked(true);
         return await storedMapLoader.load(mapName);
     };
 
@@ -614,7 +619,8 @@ export function setupMapManager(
     };
 
     const undo = async (): Promise<boolean> => {
-        blockDefaultSeeding();
+        defaultImportedLayerSeeder.block();
+        const persistenceBarrier = defaultImportedLayerSeeder.waitForPersistenceBarrier();
         if (persistenceBarrier) {
             await persistenceBarrier;
         }
@@ -623,7 +629,8 @@ export function setupMapManager(
     };
 
     const redo = async (): Promise<boolean> => {
-        blockDefaultSeeding();
+        defaultImportedLayerSeeder.block();
+        const persistenceBarrier = defaultImportedLayerSeeder.waitForPersistenceBarrier();
         if (persistenceBarrier) {
             await persistenceBarrier;
         }
@@ -634,54 +641,7 @@ export function setupMapManager(
     const initialiseDefaultImportedLayers = async (
         layers: ImportedGeoJsonLayer[],
         options?: { expectedGeneration?: number; allowInitialSeed?: boolean }
-    ): Promise<void> => {
-        const seedGeneration = mapGeneration;
-        const canSeed = (): boolean => {
-            if (
-                defaultSeedingBlocked ||
-                mapGeneration !== seedGeneration ||
-                importedLayerStore.layers.length > 0
-            ) {
-                return false;
-            }
-            if (newMapPendingDefaultLayers) {
-                return true;
-            }
-            return (
-                options?.allowInitialSeed === true &&
-                (options.expectedGeneration === undefined ||
-                    options.expectedGeneration === mapGeneration)
-            );
-        };
-
-        if (!canSeed()) {
-            return;
-        }
-
-        await nextTick();
-        await mapViewCoordinator.flushPendingSave();
-        if (!canSeed()) {
-            return;
-        }
-
-        let releasePersistenceBarrier: () => void = () => undefined;
-        const seedBarrier = new Promise<void>((resolve) => {
-            releasePersistenceBarrier = resolve;
-        });
-        persistenceBarrier = seedBarrier;
-
-        try {
-            importedLayerStore.setLayers(layers);
-            newMapPendingDefaultLayers = false;
-            await persistImmediately({ recordHistory: false, preserveMutation: true });
-            await syncHistoryStatus();
-        } finally {
-            if (persistenceBarrier === seedBarrier) {
-                persistenceBarrier = null;
-            }
-            releasePersistenceBarrier();
-        }
-    };
+    ): Promise<void> => defaultImportedLayerSeeder.initialise(layers, options);
 
     // ── Wire event bridges (replaces PubSub subscriptions) ───────────────────
 
@@ -690,8 +650,8 @@ export function setupMapManager(
         closePanel: () => uiStore.closePanel(),
         clearAndReset: () => {
             mapGeneration += 1;
-            newMapPendingDefaultLayers = false;
-            defaultSeedingBlocked = true;
+            defaultImportedLayerSeeder.setPending(false);
+            defaultImportedLayerSeeder.setBlocked(true);
             clearAllLayers();
             resetSettings();
         },
