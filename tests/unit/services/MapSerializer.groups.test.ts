@@ -150,6 +150,7 @@ describe('MapSerializer — groups', () => {
         expect(compact.g).toBeUndefined();
         const restored = serializer.fromCompactStoredMap(compact);
         expect(restored.groups).toBeUndefined();
+        expect(Object.hasOwn(restored, 'groups')).toBe(false);
     });
 
     // ── toCompactStoredMapFromSerialized ──────────────────────────────────────
