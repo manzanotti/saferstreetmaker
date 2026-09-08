@@ -51,6 +51,14 @@
 - **Do not mark a task complete until all five checks above have been run successfully.**
 - **Tests**: `yarn test` (Playwright, config in `tests/playwright.config.ts`, test files in `tests/playwright/`), plus `yarn test:unit` for Vitest (config in `tests/vitest.config.ts`, tests in `tests/unit/`)
 
+## Git Workflow
+
+- **Start from current main**: Before making changes, fetch the remote and fast-forward the local `main` branch: `git fetch origin`, `git switch main`, and `git pull --ff-only origin main`.
+- **Work on a branch**: Create a normal feature branch from the updated `main` with `git switch -c <branch-name>` before editing files.
+- **Commit and push**: After validation, commit the focused changes and push the branch with `git push -u origin <branch-name>`.
+- **Create a pull request**: Use the GitHub CLI to open a PR targeting `main`, for example `gh pr create --base main --head <branch-name> --title "<title>" --body "<summary and validation>"`.
+- **Verify the pull request**: Confirm the PR URL, base branch, head branch, state, and body with `gh pr view <number> --json body,url,state,headRefName,baseRefName`.
+
 ## Testing Policy
 
 - **Always add tests for new work.** Every new feature and every bug fix must be accompanied by appropriate tests. Use Vitest unit tests for logic, composables, stores, and helpers; use Playwright E2E tests for user-visible behaviour (clicks, keyboard shortcuts, map interactions, persistence). If both apply, add both.
