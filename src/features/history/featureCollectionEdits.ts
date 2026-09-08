@@ -1,7 +1,7 @@
 import type { PolygonPointChangePayload, PolylinePointChangePayload } from './mutationPayload';
 
 export function cloneHistoryValue<T>(value: T): T {
-    return JSON.parse(JSON.stringify(value)) as T;
+    return structuredClone(value);
 }
 
 export function serialiseHistoryFeature(feature: unknown): string {
