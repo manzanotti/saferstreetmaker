@@ -1,7 +1,7 @@
 import { MapDatabase } from './MapDatabase';
 import type { HistoryEntryRecord } from './MapDatabase';
 import type { SerializedMap } from './MapSerializer';
-import { HistorySnapshotStore, type StoredHistorySnapshot } from './HistorySnapshotStore';
+import { HistorySnapshotStore } from './HistorySnapshotStore';
 
 export interface HistoryStatus {
     canUndo: boolean;
