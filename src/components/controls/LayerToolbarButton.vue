@@ -29,6 +29,23 @@ const emit = defineEmits<{
 const buttonEl = ref<HTMLButtonElement | null>(null);
 let registeredId: string | null = null;
 
+function onContextMenu(event: MouseEvent) {
+    if (!props.showSubmenuIndicator) {
+        return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    emit('showSubmenu');
+}
+
+function onArrowDown(event: KeyboardEvent) {
+    if (!props.showSubmenuIndicator) {
+        return;
+    }
+    event.preventDefault();
+    emit('showSubmenu');
+}
+
 function registerCurrentButton() {
     if (registeredId && registeredId !== props.button.id) {
         emit('register', registeredId, null);
@@ -72,8 +89,8 @@ onBeforeUnmount(() => {
             active ? 'bg-green-700 shadow-inner' : 'bg-slate-50 hover:bg-green-100'
         ]"
         @click.stop="emit('activate')"
-        @contextmenu.prevent.stop="emit('showSubmenu')"
-        @keydown.down.prevent="emit('showSubmenu')"
+        @contextmenu="onContextMenu"
+        @keydown.down="onArrowDown"
         @keydown.escape="emit('hideSubmenu')"
     >
         <img

@@ -28,6 +28,7 @@ export function useToolbarSubmenus(getMap: () => L.Map | null | undefined) {
     }
 
     function onTouchStart(groupName: string) {
+        cancelLongPress(groupName);
         longPressTimers[groupName] = setTimeout(() => {
             delete longPressTimers[groupName];
             showSubmenu(groupName);
@@ -45,6 +46,7 @@ export function useToolbarSubmenus(getMap: () => L.Map | null | undefined) {
     });
 
     onUnmounted(() => {
+        Object.keys(longPressTimers).forEach((groupName) => cancelLongPress(groupName));
         getMap()?.off('click', hideAllSubmenus);
         document.removeEventListener('keydown', onDocumentKeydown);
     });

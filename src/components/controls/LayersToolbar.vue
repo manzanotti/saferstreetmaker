@@ -80,6 +80,7 @@ function onLayerButtonClick(btn: ToolbarButton) {
                 class="group relative"
                 @touchstart="onTouchStart(item.groupName)"
                 @touchend="cancelLongPress(item.groupName)"
+                @touchcancel="cancelLongPress(item.groupName)"
                 @touchmove="cancelLongPress(item.groupName)"
             >
                 <!-- Parent button -->
