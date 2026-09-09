@@ -154,6 +154,8 @@ describe('LtnLayer (composable)', () => {
             const mapClosePopupSpy = vi.spyOn(map, 'closePopup');
             const mapRemoveLayerSpy = vi.spyOn(map, 'removeLayer');
             layer.visible = true;
+            const mapStore = useMapStore(pinia);
+            mapStore.visibleLayerIds = new Set(['LtnCells', 'MobilityLanes']);
             layer.loadFromGeoJSON(
                 polygonFeatureCollection([
                     [
@@ -169,6 +171,7 @@ describe('LtnLayer (composable)', () => {
             );
             const polygon = layer.getLayer().getLayers()[0] as any;
             const popup = polygon.__ltnPopup;
+            const polygonOffSpy = vi.spyOn(polygon, 'off');
             map.openPopup(popup);
 
             layer.dispose?.();
@@ -177,8 +180,11 @@ describe('LtnLayer (composable)', () => {
             expect(mapOffSpy).toHaveBeenCalledWith('zoomend', expect.any(Function));
             expect(mapClosePopupSpy).toHaveBeenCalledWith(popup);
             expect(mapRemoveLayerSpy).toHaveBeenCalledWith(layer.getLayer());
+            expect(polygonOffSpy).toHaveBeenCalledWith();
             expect(layer.getLayer().getLayers()).toHaveLength(0);
             expect(layer.selected).toBe(false);
+            expect(mapStore.visibleLayerIds).toEqual(new Set(['MobilityLanes']));
+            expect(() => layer.dispose?.()).not.toThrow();
         });
 
         it('resets edit state before the layer is reused', () => {

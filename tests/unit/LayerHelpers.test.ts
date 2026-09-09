@@ -529,6 +529,28 @@ describe('feature popups', () => {
         }
     });
 
+    it('disposes an active hover popup and cancels its scheduled close', () => {
+        vi.useFakeTimers();
+        try {
+            const popup = {
+                getElement: () => null,
+                remove: vi.fn()
+            } as unknown as L.Popup;
+            const controller = createFeatureHoverPopupController();
+
+            controller.set(popup);
+            controller.scheduleClose();
+            controller.dispose();
+            vi.runAllTimers();
+
+            expect(popup.remove).toHaveBeenCalledOnce();
+            controller.dispose();
+            expect(popup.remove).toHaveBeenCalledOnce();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it('uses the initial hover point only when the feature centre is outside the viewport', () => {
         const featureCenter = new L.LatLng(5, 5);
         const initialHoverLatLng = new L.LatLng(6, 6);

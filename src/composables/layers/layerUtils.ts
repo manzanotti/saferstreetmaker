@@ -678,36 +678,61 @@ export interface FeatureHoverPopupController {
     set(popup: L.Popup): void;
     close(popup: L.Popup): void;
     scheduleClose(): void;
+    dispose(): void;
 }
 
 export function createFeatureHoverPopupController(): FeatureHoverPopupController {
     let activePopup: L.Popup | null = null;
+    let closeTimeoutId: number | null = null;
 
     const close = (popup: L.Popup): void => {
         if (activePopup !== popup) {
             return;
         }
 
+        if (closeTimeoutId !== null) {
+            window.clearTimeout(closeTimeoutId);
+        }
         popup.remove();
         activePopup = null;
+        closeTimeoutId = null;
     };
 
     return {
         set(popup) {
+            if (closeTimeoutId !== null) {
+                window.clearTimeout(closeTimeoutId);
+                closeTimeoutId = null;
+            }
             activePopup = popup;
         },
         close,
         scheduleClose() {
+            if (closeTimeoutId !== null) {
+                window.clearTimeout(closeTimeoutId);
+            }
+
             const popup = activePopup;
             if (!popup) {
                 return;
             }
 
-            window.setTimeout(() => {
+            closeTimeoutId = window.setTimeout(() => {
+                closeTimeoutId = null;
                 if (activePopup === popup && !popup.getElement()?.matches(':hover')) {
                     close(popup);
                 }
             }, 0);
+        },
+        dispose() {
+            if (closeTimeoutId !== null) {
+                window.clearTimeout(closeTimeoutId);
+                closeTimeoutId = null;
+            }
+            if (activePopup) {
+                activePopup.remove();
+                activePopup = null;
+            }
         }
     };
 }
