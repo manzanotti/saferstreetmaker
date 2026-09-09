@@ -336,7 +336,15 @@ export function buildPopupActionControl(
 
     item.appendChild(control);
 
+    (item as any).__disposePopupListeners = () => {
+        control.removeEventListener('click', activate);
+    };
+
     return item;
+}
+
+export function disposePopupElement(element: HTMLElement | null | undefined): void {
+    (element as any)?.__disposePopupListeners?.();
 }
 
 function buildFeatureGroupRemoveControl(ariaLabel: string, onActivate: () => void): HTMLLIElement {
@@ -357,8 +365,13 @@ function buildFeatureGroupRemoveControl(ariaLabel: string, onActivate: () => voi
     icon.setAttribute('aria-hidden', 'true');
     icon.innerHTML = '<circle cx="12" cy="12" r="9" /><path d="M8 12h8" />';
     control.appendChild(icon);
-    control.addEventListener('click', onActivate);
+    const handleClick = () => onActivate();
+    control.addEventListener('click', handleClick);
     item.appendChild(control);
+
+    (item as any).__disposePopupListeners = () => {
+        control.removeEventListener('click', handleClick);
+    };
 
     return item;
 }
@@ -414,7 +427,14 @@ export function buildFeatureGroupMembershipContent(
 ): HTMLDivElement {
     const content = document.createElement('div');
     content.classList.add('feature-popup-content');
+    let disposeRenderedListeners: (() => void) | null = null;
+    let disposed = false;
     const renderGroups = (selectedGroupId?: string) => {
+        if (disposed) {
+            return;
+        }
+        disposeRenderedListeners?.();
+        const disposers: Array<() => void> = [];
         const groupStore = useGroupStore(pinia);
         const groups = findFeatureGroupMemberships(groupStore.groups, member);
         const groupsContent = document.createElement('section');
@@ -442,19 +462,21 @@ export function buildFeatureGroupMembershipContent(
                 if (group.versionCount > 1) {
                     groupButton.textContent += ` (${group.versionCount} versions)`;
                 }
-                groupButton.addEventListener('click', () => onOpenGroup?.(group.groupId));
+                const handleGroupClick = () => onOpenGroup?.(group.groupId);
+                groupButton.addEventListener('click', handleGroupClick);
+                disposers.push(() => groupButton.removeEventListener('click', handleGroupClick));
                 item.appendChild(groupButton);
 
                 if (onRemoveFromGroup) {
-                    item.appendChild(
-                        buildFeatureGroupRemoveControl(
-                            `Remove feature from ${group.groupName}`,
-                            () => {
-                                onRemoveFromGroup(group.groupId);
-                                renderGroups();
-                            }
-                        )
+                    const removeControl = buildFeatureGroupRemoveControl(
+                        `Remove feature from ${group.groupName}`,
+                        () => {
+                            onRemoveFromGroup(group.groupId);
+                            renderGroups();
+                        }
                     );
+                    item.appendChild(removeControl);
+                    disposers.push(() => disposePopupElement(removeControl));
                 }
 
                 groupList.appendChild(item);
@@ -495,7 +517,7 @@ export function buildFeatureGroupMembershipContent(
                 groupSelect.value = selectedGroupId;
             }
 
-            groupSelect.addEventListener('change', () => {
+            const handleGroupChange = () => {
                 if (!groupSelect.value) {
                     return;
                 }
@@ -505,7 +527,9 @@ export function buildFeatureGroupMembershipContent(
                     onAddToGroup(groupSelect.value);
                 }
                 renderGroups();
-            });
+            };
+            groupSelect.addEventListener('change', handleGroupChange);
+            disposers.push(() => groupSelect.removeEventListener('change', handleGroupChange));
 
             addControl.appendChild(groupSelect);
             groupsContent.appendChild(addControl);
@@ -517,9 +541,18 @@ export function buildFeatureGroupMembershipContent(
         } else {
             content.prepend(groupsContent);
         }
+        disposeRenderedListeners = () => {
+            disposers.forEach((dispose) => dispose());
+        };
     };
 
     renderGroups();
+
+    (content as any).__disposePopupListeners = () => {
+        disposed = true;
+        disposeRenderedListeners?.();
+        disposeRenderedListeners = null;
+    };
 
     return content;
 }
