@@ -19,6 +19,7 @@ import {
     addFeatureHoverPopup,
     getFeatureHoverLatLng,
     buildFeatureGroupMembershipContent,
+    disposePopupElement,
     isFeatureEditLayerButtonId,
     closeFeatureHoverPopups,
     createFeatureHoverPopupController,
@@ -868,36 +869,39 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
 
         const popupContent = document.createElement('div');
         popupContent.classList.add('feature-popup-content');
+        let groupContent: HTMLDivElement | null = null;
         const refreshGroupContent = () => {
+            if (groupContent) {
+                disposePopupElement(groupContent);
+            }
             controlList.querySelectorAll('.feature-popup-group-content').forEach((groupContent) => {
                 groupContent.remove();
             });
             const groupContentItem = document.createElement('li');
             groupContentItem.classList.add('feature-popup-group-content');
-            groupContentItem.appendChild(
-                buildFeatureGroupMembershipContent(
-                    { layerId: 'LtnCells', historyId: polygon.properties.historyId },
-                    openGroupDetails,
-                    (groupId) => {
-                        flushMetadataChanges();
-                        return removeFeatureFromGroup(groupId, {
-                            layerId: 'LtnCells',
-                            historyId: polygon.properties.historyId
-                        });
-                    },
-                    (groupId) => {
-                        flushMetadataChanges();
-                        return addFeatureToGroup(groupId, {
-                            layerId: 'LtnCells',
-                            historyId: polygon.properties.historyId
-                        });
-                    },
-                    (member, onCreated) => {
-                        flushMetadataChanges();
-                        createGroupFromFeature(member, onCreated);
-                    }
-                )
+            groupContent = buildFeatureGroupMembershipContent(
+                { layerId: 'LtnCells', historyId: polygon.properties.historyId },
+                openGroupDetails,
+                (groupId) => {
+                    flushMetadataChanges();
+                    return removeFeatureFromGroup(groupId, {
+                        layerId: 'LtnCells',
+                        historyId: polygon.properties.historyId
+                    });
+                },
+                (groupId) => {
+                    flushMetadataChanges();
+                    return addFeatureToGroup(groupId, {
+                        layerId: 'LtnCells',
+                        historyId: polygon.properties.historyId
+                    });
+                },
+                (member, onCreated) => {
+                    flushMetadataChanges();
+                    createGroupFromFeature(member, onCreated);
+                }
             );
+            groupContentItem.appendChild(groupContent);
             controlList.appendChild(groupContentItem);
         };
         popupContent.appendChild(controlList);
@@ -915,6 +919,9 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                 labelEl.removeEventListener('change', handleLabelChange);
                 colorEl.removeEventListener('change', handleColorChange);
                 labelEl.removeEventListener('keydown', handleLabelKeydown);
+                disposePopupElement(copyControl);
+                disposePopupElement(deleteControl);
+                disposePopupElement(groupContent);
             }
         };
     };
