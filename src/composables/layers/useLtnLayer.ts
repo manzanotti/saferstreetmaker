@@ -591,6 +591,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         (polygon as any).__ltnPopup = popup;
         (polygon as any).__ltnLabelEl = labelEl;
         (polygon as any).__disposeLtnPopup = disposePopup;
+        let removePopupFocusHandler: (() => void) | null = null;
 
         polygon.on('click', (e: any) => {
             closeFeatureHoverPopups(map);
@@ -707,13 +708,23 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                 }
 
                 map.off('popupopen', focusPopupLabel);
+                removePopupFocusHandler = null;
                 labelEl.focus();
+            };
+            removePopupFocusHandler = () => {
+                map.off('popupopen', focusPopupLabel);
+                removePopupFocusHandler = null;
             };
             refreshGroupContent();
             map.on('popupopen', focusPopupLabel);
             map.openPopup(popup);
             labelEl.focus();
         });
+
+        (polygon as any).__disposeLtnPopup = () => {
+            removePopupFocusHandler?.();
+            disposePopup();
+        };
 
         geoJsonLayer.addLayer(polygon);
 
@@ -889,6 +900,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             colorEl,
             refreshGroupContent,
             dispose: () => {
+                map.closePopup(popup);
                 labelEl.removeEventListener('input', handleLabelInput);
                 colorEl.removeEventListener('input', handleColorInput);
                 labelEl.removeEventListener('change', handleLabelChange);

@@ -122,11 +122,9 @@ describe('LtnLayer (composable)', () => {
 
             expect(mapStore.lastLayerMutation).toBeNull();
         });
-    });
 
-    describe('dispose()', () => {
-        it('removes layer-level listeners and clears terminal layer data', () => {
-            const mapOffSpy = vi.spyOn(map, 'off');
+        it('closes an open editor popup when its polygon is removed', () => {
+            const mapClosePopupSpy = vi.spyOn(map, 'closePopup');
             layer.loadFromGeoJSON(
                 polygonFeatureCollection([
                     [
@@ -140,11 +138,42 @@ describe('LtnLayer (composable)', () => {
                     ]
                 ]) as any
             );
+            const polygon = layer.getLayer().getLayers()[0] as any;
+            const popup = polygon.__ltnPopup;
+
+            map.openPopup(popup);
+            layer.getLayer().removeLayer(polygon);
+
+            expect(mapClosePopupSpy).toHaveBeenCalledWith(popup);
+        });
+    });
+
+    describe('dispose()', () => {
+        it('removes layer-level listeners and clears terminal layer data', () => {
+            const mapOffSpy = vi.spyOn(map, 'off');
+            const mapClosePopupSpy = vi.spyOn(map, 'closePopup');
+            layer.loadFromGeoJSON(
+                polygonFeatureCollection([
+                    [
+                        [
+                            [0, 0],
+                            [1, 0],
+                            [1, 1],
+                            [0, 1],
+                            [0, 0]
+                        ]
+                    ]
+                ]) as any
+            );
+            const polygon = layer.getLayer().getLayers()[0] as any;
+            const popup = polygon.__ltnPopup;
+            map.openPopup(popup);
 
             layer.dispose?.();
 
             expect(mapOffSpy).toHaveBeenCalledWith('popupclose', expect.any(Function));
             expect(mapOffSpy).toHaveBeenCalledWith('zoomend', expect.any(Function));
+            expect(mapClosePopupSpy).toHaveBeenCalledWith(popup);
             expect(layer.getLayer().getLayers()).toHaveLength(0);
             expect(layer.selected).toBe(false);
         });
