@@ -671,8 +671,12 @@ describe('buildFeatureGroupMembershipContent', () => {
         refreshedGroupSelect.dispatchEvent(new Event('change'));
         expect(onAddToGroup).toHaveBeenCalledWith('g1');
 
+        const currentGroupSelect = content.querySelector(
+            '.add-feature-to-group-select'
+        ) as HTMLSelectElement;
         disposePopupElement(content);
-        disposePopupElement(content);
+        currentGroupSelect.value = '__create-new-group__';
+        currentGroupSelect.dispatchEvent(new Event('change'));
         groupSelect.value = '__create-new-group__';
         groupSelect.dispatchEvent(new Event('change'));
         expect(onCreateNewGroup).toHaveBeenCalledOnce();
