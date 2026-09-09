@@ -59,4 +59,29 @@ describe('map snapshot history comparison', () => {
         expect(snapshotsEqualForHistory(null, null)).toBe(true);
         expect(snapshotsEqualForHistory(makeSnapshot(), null)).toBe(false);
     });
+
+    it('ignores object key order when comparing snapshots', () => {
+        const before = makeSnapshot();
+        const after = makeSnapshot();
+        after.layers = { ...before.layers };
+        after.settings = {
+            version: before.settings!.version,
+            zoom: before.settings!.zoom,
+            centre: before.settings!.centre,
+            title: before.settings!.title,
+            readOnly: before.settings!.readOnly,
+            hideToolbar: before.settings!.hideToolbar,
+            activeLayers: before.settings!.activeLayers
+        };
+
+        expect(snapshotsEqualForHistory(before, after)).toBe(true);
+    });
+
+    it('detects nested snapshot changes without serializing the whole snapshot', () => {
+        const before = makeSnapshot();
+        const after = makeSnapshot();
+        after.settings!.activeLayers = ['LtnCells'];
+
+        expect(snapshotsEqualForHistory(before, after)).toBe(false);
+    });
 });
