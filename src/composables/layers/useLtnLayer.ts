@@ -990,6 +990,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
 
     // Close the naming popup if the cell it belongs to is removed (undo/delete).
     const handleLayerRemove = (e: any) => {
+        e.layer?.editing?.disable?.();
         if (e.layer === editablePolygon) {
             editablePolygon = null;
         }
@@ -997,6 +998,8 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             closeDrawPopup();
         }
         e.layer?.__disposeLtnPopup?.();
+        e.layer?.__disposeLtnHoverPopup?.();
+        e.layer?.off?.();
     };
     geoJsonLayer.on('layerremove', handleLayerRemove);
 

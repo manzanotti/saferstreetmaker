@@ -109,6 +109,10 @@ describe('LtnLayer (composable)', () => {
                 ]) as any
             );
             const polygon = layer.getLayer().getLayers()[0] as any;
+            const disposeHoverPopup = vi.spyOn(polygon, '__disposeLtnHoverPopup');
+            const polygonOff = vi.spyOn(polygon, 'off');
+            const disableEditing = vi.fn();
+            polygon.editing = { disable: disableEditing };
             const input = polygon.__ltnPopup.setContent.mock.calls[0][0].querySelector(
                 '.label-editor'
             ) as HTMLInputElement;
@@ -121,6 +125,9 @@ describe('LtnLayer (composable)', () => {
             input.dispatchEvent(new Event('change', { bubbles: true }));
 
             expect(mapStore.lastLayerMutation).toBeNull();
+            expect(disposeHoverPopup).toHaveBeenCalledOnce();
+            expect(disableEditing).toHaveBeenCalledOnce();
+            expect(polygonOff).toHaveBeenCalledWith();
         });
 
         it('closes an open editor popup when its polygon is removed', () => {
