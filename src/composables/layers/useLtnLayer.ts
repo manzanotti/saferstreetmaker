@@ -27,7 +27,12 @@ import {
 } from './layerUtils';
 import type { IMapLayer } from './IMapLayer';
 import { type EditablePolylineLayer } from './usePolylineLayer';
-import { selectFeature, executeCopy, clearFeatureHighlight } from '../useAreaSelection';
+import {
+    selectFeature,
+    executeCopy,
+    clearFeatureHighlight,
+    applySelectionHighlights
+} from '../useAreaSelection';
 import { useSelectionStore } from '../../stores/selectionStore';
 import { useGroupStore } from '../../stores/groupStore';
 import {
@@ -1054,6 +1059,20 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
     };
 
     const dispose = (): void => {
+        const selectionStore = useSelectionStore(pinia);
+        const previousSelection = selectionStore.selected;
+        const ltnSelection = previousSelection.filter((entry) => entry.layerId === 'LtnCells');
+        const removedMarkers = new Set(ltnSelection.map((entry) => entry.marker));
+        for (const marker of removedMarkers) {
+            const entry = ltnSelection.find((selected) => selected.marker === marker);
+            if (entry) {
+                selectionStore.removeSelectedFeature(marker, entry);
+            }
+        }
+        if (ltnSelection.length > 0) {
+            applySelectionHighlights(selectionStore.selected, true, previousSelection);
+        }
+
         stopActiveLayerWatch();
         disableDrawMode();
         closeDrawPopup();
@@ -1065,6 +1084,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         map.off('mousemove', syncMouseMarkerCursor as L.LeafletEventHandlerFn);
         geoJsonLayer.off('layerremove', handleLayerRemove);
         geoJsonLayer.eachLayer((layer: any) => layer.__disposeLtnPopup?.());
+        map.removeLayer(geoJsonLayer);
         geoJsonLayer.clearLayers();
         if (cursorSyncFrameId !== null) {
             cancelAnimationFrame(cursorSyncFrameId);
