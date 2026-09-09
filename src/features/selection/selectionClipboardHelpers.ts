@@ -1,4 +1,5 @@
 import type * as L from 'leaflet';
+import { toRaw } from 'vue';
 import type { SelectedMarker } from '../../stores/selectionStore';
 
 export function selectedLatLngsByMarker(selected: SelectedMarker[]): Map<object, Set<L.LatLng>> {
@@ -41,7 +42,7 @@ export function buildClipboardFeature(
         return feature;
     }
 
-    const clipboardFeature = JSON.parse(JSON.stringify(feature)) as GeoJSON.Feature;
+    const clipboardFeature = structuredClone(toRaw(feature));
     clipboardFeature.properties = {
         ...(clipboardFeature.properties ?? {}),
         ...markerProperties
