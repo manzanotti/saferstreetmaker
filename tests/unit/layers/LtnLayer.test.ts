@@ -93,6 +93,61 @@ describe('LtnLayer (composable)', () => {
             layer.clearLayer();
             expect(layer.visible).toBe(false);
         });
+
+        it('removes popup handlers when a polygon is removed', () => {
+            layer.loadFromGeoJSON(
+                polygonFeatureCollection([
+                    [
+                        [
+                            [0, 0],
+                            [1, 0],
+                            [1, 1],
+                            [0, 1],
+                            [0, 0]
+                        ]
+                    ]
+                ]) as any
+            );
+            const polygon = layer.getLayer().getLayers()[0] as any;
+            const input = polygon.__ltnPopup.setContent.mock.calls[0][0].querySelector(
+                '.label-editor'
+            ) as HTMLInputElement;
+            const mapStore = useMapStore(pinia);
+
+            layer.getLayer().removeLayer(polygon);
+            mapStore.clearLastLayerMutation();
+            input.value = 'Removed polygon';
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+
+            expect(mapStore.lastLayerMutation).toBeNull();
+        });
+    });
+
+    describe('dispose()', () => {
+        it('removes layer-level listeners without clearing reusable data', () => {
+            const mapOffSpy = vi.spyOn(map, 'off');
+            layer.loadFromGeoJSON(
+                polygonFeatureCollection([
+                    [
+                        [
+                            [0, 0],
+                            [1, 0],
+                            [1, 1],
+                            [0, 1],
+                            [0, 0]
+                        ]
+                    ]
+                ]) as any
+            );
+
+            layer.dispose?.();
+
+            expect(mapOffSpy).toHaveBeenCalledWith('popupclose', expect.any(Function));
+            expect(mapOffSpy).toHaveBeenCalledWith('zoomend', expect.any(Function));
+            expect(layer.getLayer().getLayers()).toHaveLength(1);
+            expect(layer.selected).toBe(false);
+        });
     });
 
     describe('loadFromGeoJSON()', () => {

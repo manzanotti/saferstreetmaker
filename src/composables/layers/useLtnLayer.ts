@@ -579,11 +579,18 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             syncTooltipVisibility(polygon);
         });
 
-        const { popup, labelEl, colorEl, refreshGroupContent } = createLtnPopup(polygon, label);
+        const {
+            popup,
+            labelEl,
+            colorEl,
+            refreshGroupContent,
+            dispose: disposePopup
+        } = createLtnPopup(polygon, label);
         // Expose the popup + label input on the polygon so the draw-created
         // handler can open it to prompt for a title immediately after drawing.
         (polygon as any).__ltnPopup = popup;
         (polygon as any).__ltnLabelEl = labelEl;
+        (polygon as any).__disposeLtnPopup = disposePopup;
 
         polygon.on('click', (e: any) => {
             closeFeatureHoverPopups(map);
@@ -722,6 +729,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         labelEl: HTMLInputElement;
         colorEl: HTMLInputElement;
         refreshGroupContent: () => void;
+        dispose: () => void;
     } => {
         const popup = L.popup({
             minWidth: 30,
@@ -818,11 +826,11 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             recomputeFeatureVisibility();
         };
 
-        labelEl.addEventListener('input', saveMetadataChanges);
-        colorEl.addEventListener('input', saveMetadataChanges);
-        labelEl.addEventListener('change', flushMetadataChanges);
-        colorEl.addEventListener('change', flushMetadataChanges);
-        labelEl.addEventListener('keydown', (event: KeyboardEvent) => {
+        const handleLabelInput = () => saveMetadataChanges();
+        const handleColorInput = () => saveMetadataChanges();
+        const handleLabelChange = () => flushMetadataChanges();
+        const handleColorChange = () => flushMetadataChanges();
+        const handleLabelKeydown = (event: KeyboardEvent) => {
             if (event.key !== 'Enter') {
                 return;
             }
@@ -830,7 +838,13 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             event.preventDefault();
             flushMetadataChanges();
             map.closePopup(popup);
-        });
+        };
+
+        labelEl.addEventListener('input', handleLabelInput);
+        colorEl.addEventListener('input', handleColorInput);
+        labelEl.addEventListener('change', handleLabelChange);
+        colorEl.addEventListener('change', handleColorChange);
+        labelEl.addEventListener('keydown', handleLabelKeydown);
 
         const popupContent = document.createElement('div');
         popupContent.classList.add('feature-popup-content');
@@ -869,7 +883,19 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         popupContent.appendChild(controlList);
         refreshGroupContent();
         popup.setContent(popupContent);
-        return { popup, labelEl, colorEl, refreshGroupContent };
+        return {
+            popup,
+            labelEl,
+            colorEl,
+            refreshGroupContent,
+            dispose: () => {
+                labelEl.removeEventListener('input', handleLabelInput);
+                colorEl.removeEventListener('input', handleColorInput);
+                labelEl.removeEventListener('change', handleLabelChange);
+                colorEl.removeEventListener('change', handleColorChange);
+                labelEl.removeEventListener('keydown', handleLabelKeydown);
+            }
+        };
     };
 
     // ── draw:created handler ─────────────────────────────────────────────────
@@ -931,32 +957,36 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
     };
 
     // Close the naming popup if the cell it belongs to is removed (undo/delete).
-    geoJsonLayer.on('layerremove', (e: any) => {
+    const handleLayerRemove = (e: any) => {
         if (e.layer === editablePolygon) {
             editablePolygon = null;
         }
         if (_drawPopup && e.layer?.__ltnPopup === _drawPopup) {
             closeDrawPopup();
         }
-    });
+        e.layer?.__disposeLtnPopup?.();
+    };
+    geoJsonLayer.on('layerremove', handleLayerRemove);
 
     // Forget the naming popup once it closes for any reason (Enter, close
     // button, clicking away) so no stale reference is kept.
-    map.on('popupclose', (e: L.PopupEvent) => {
+    const handlePopupClose = (e: L.PopupEvent) => {
         if (e.popup === _drawPopup) {
             _drawPopup = null;
         }
-    });
+    };
+    map.on('popupclose', handlePopupClose);
 
     // ── Zoom-based tooltip visibility ────────────────────────────────────────
-    map.on('zoomend', () => {
+    const handleZoomEnd = () => {
         geoJsonLayer.eachLayer((l: any) => {
             syncTooltipVisibility(l);
         });
-    });
+    };
+    map.on('zoomend', handleZoomEnd);
 
     // ── Sync watch for selection state ───────────────────────────────────────
-    watch(
+    const stopActiveLayerWatch = watch(
         () => mapStore.activeLayerId,
         (newId) => {
             const shouldBeSelected = newId === BUTTON_ID;
@@ -1009,6 +1039,28 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         set visible(v: boolean) {
             _visible = v;
         }
+    };
+
+    const dispose = (): void => {
+        stopActiveLayerWatch();
+        disableDrawMode();
+        closeDrawPopup();
+        editablePolygon?.editing?.disable();
+        editablePolygon = null;
+        map.off('popupclose', handlePopupClose);
+        map.off('zoomend', handleZoomEnd);
+        map.off('mousemove', syncMouseMarkerCursor as L.LeafletEventHandlerFn);
+        geoJsonLayer.off('layerremove', handleLayerRemove);
+        geoJsonLayer.eachLayer((layer: any) => layer.__disposeLtnPopup?.());
+        if (cursorSyncFrameId !== null) {
+            cancelAnimationFrame(cursorSyncFrameId);
+            cursorSyncFrameId = null;
+        }
+        pendingCursorEvent = null;
+        setFeatureCursor(null, null);
+        setMouseMarkerCursor(null);
+        removeMapCursor(CURSOR_CSS);
+        _selected = false;
     };
 
     return {
@@ -1110,6 +1162,8 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             geoJsonLayer.clearLayers();
             _visible = false;
         },
+
+        dispose,
 
         selectForEdit
     };
