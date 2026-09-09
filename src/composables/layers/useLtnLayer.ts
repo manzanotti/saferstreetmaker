@@ -1047,6 +1047,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         closeDrawPopup();
         editablePolygon?.editing?.disable();
         editablePolygon = null;
+        recomputeFeatureVisibility();
         map.off('popupclose', handlePopupClose);
         map.off('zoomend', handleZoomEnd);
         map.off('mousemove', syncMouseMarkerCursor as L.LeafletEventHandlerFn);
@@ -1061,6 +1062,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         setMouseMarkerCursor(null);
         removeMapCursor(CURSOR_CSS);
         _selected = false;
+        selectionMode = 'draw';
     };
 
     return {

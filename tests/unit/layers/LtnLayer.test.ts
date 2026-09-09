@@ -148,6 +148,36 @@ describe('LtnLayer (composable)', () => {
             expect(layer.getLayer().getLayers()).toHaveLength(1);
             expect(layer.selected).toBe(false);
         });
+
+        it('resets edit state before the layer is reused', () => {
+            layer.loadFromGeoJSON(
+                polygonFeatureCollection([
+                    [
+                        [
+                            [0, 0],
+                            [1, 0],
+                            [1, 1],
+                            [0, 1],
+                            [0, 0]
+                        ]
+                    ]
+                ]) as any
+            );
+            const polygon = layer.getLayer().getLayers()[0] as any;
+            polygon.editing = { disable: vi.fn(), enable: vi.fn() };
+
+            polygon.fire('click', {
+                originalEvent: { clientX: 0, clientY: 0 },
+                target: polygon
+            });
+            layer.dispose?.();
+            useMapStore(pinia).setActiveLayer('ltn');
+
+            polygon.fire('mouseout', { target: polygon });
+
+            expect(polygon.editing.disable).toHaveBeenCalled();
+            expect(layer.selected).toBe(false);
+        });
     });
 
     describe('loadFromGeoJSON()', () => {
