@@ -11,6 +11,7 @@ import { createLtnLayer } from '../../../src/composables/layers/useLtnLayer';
 import { pinia } from '../../../src/stores/index';
 import { useMapStore } from '../../../src/stores/mapStore';
 import { useSelectionStore } from '../../../src/stores/selectionStore';
+import { useGroupStore } from '../../../src/stores/groupStore';
 import { selectFeature } from '../../../src/composables/useAreaSelection';
 
 function makeMockMap(): L.Map {
@@ -152,6 +153,53 @@ describe('LtnLayer (composable)', () => {
             layer.getLayer().removeLayer(polygon);
 
             expect(mapClosePopupSpy).toHaveBeenCalledWith(popup);
+        });
+
+        it('disposes popup action and group controls when a polygon is removed', () => {
+            const mapStore = useMapStore(pinia);
+            const selectionStore = useSelectionStore(pinia);
+            const groupStore = useGroupStore(pinia);
+            const historyId = 'ltn-popup-cleanup';
+            groupStore.setGroups([
+                {
+                    id: 'group-1',
+                    name: 'Group 1',
+                    members: [{ layerId: 'LtnCells', historyId }]
+                }
+            ]);
+            const featureCollection = polygonFeatureCollection([
+                [
+                    [
+                        [0, 0],
+                        [1, 0],
+                        [1, 1],
+                        [0, 1],
+                        [0, 0]
+                    ]
+                ]
+            ]);
+            featureCollection.features[0].properties.historyId = historyId;
+            layer.loadFromGeoJSON(featureCollection as any);
+
+            const polygon = layer.getLayer().getLayers()[0] as any;
+            const content = polygon.__ltnPopup.setContent.mock.calls[0][0] as HTMLElement;
+            const copyButton = content.querySelector('.copy-button') as HTMLButtonElement;
+            const deleteButton = content.querySelector('.delete-button') as HTMLButtonElement;
+            const groupRemoveButton = content.querySelector(
+                '.remove-feature-button'
+            ) as HTMLButtonElement;
+            const initialGroupMembers = groupStore.groups[0].members;
+
+            layer.getLayer().removeLayer(polygon);
+            mapStore.clearLastLayerMutation();
+
+            copyButton.click();
+            deleteButton.click();
+            groupRemoveButton.click();
+
+            expect(selectionStore.selected).toHaveLength(0);
+            expect(mapStore.lastLayerMutation).toBeNull();
+            expect(groupStore.groups[0].members).toEqual(initialGroupMembers);
         });
     });
 

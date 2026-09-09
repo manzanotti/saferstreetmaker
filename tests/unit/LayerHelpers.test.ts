@@ -18,6 +18,7 @@ import {
     createFeatureHoverPopupController,
     getFeatureHoverLatLng,
     buildFeatureGroupMembershipContent,
+    disposePopupElement,
     getFeatureHistoryId
 } from '../../src/composables/layers/layerUtils';
 import { useGroupStore } from '../../src/stores/groupStore';
@@ -614,6 +615,11 @@ describe('feature popups', () => {
         expect(onCopy).toHaveBeenCalledOnce();
         expect(onDelete).toHaveBeenCalledOnce();
         expect(map.closePopup).toHaveBeenCalledTimes(2);
+
+        disposePopupElement(content.querySelector('.copy-button')?.parentElement);
+        disposePopupElement(content.querySelector('.copy-button')?.parentElement);
+        (content.querySelector('.copy-button') as HTMLElement).click();
+        expect(onCopy).toHaveBeenCalledOnce();
     });
 
     it('does not build a description popup for an ungrouped feature', () => {
@@ -658,8 +664,21 @@ describe('buildFeatureGroupMembershipContent', () => {
         groupSelect.dispatchEvent(new Event('change'));
         expect(onCreateNewGroup).toHaveBeenCalledWith(member, expect.any(Function));
 
-        groupSelect.value = 'g1';
-        groupSelect.dispatchEvent(new Event('change'));
+        const refreshedGroupSelect = content.querySelector(
+            '.add-feature-to-group-select'
+        ) as HTMLSelectElement;
+        refreshedGroupSelect.value = 'g1';
+        refreshedGroupSelect.dispatchEvent(new Event('change'));
         expect(onAddToGroup).toHaveBeenCalledWith('g1');
+
+        const currentGroupSelect = content.querySelector(
+            '.add-feature-to-group-select'
+        ) as HTMLSelectElement;
+        disposePopupElement(content);
+        currentGroupSelect.value = '__create-new-group__';
+        currentGroupSelect.dispatchEvent(new Event('change'));
+        groupSelect.value = '__create-new-group__';
+        groupSelect.dispatchEvent(new Event('change'));
+        expect(onCreateNewGroup).toHaveBeenCalledOnce();
     });
 });
