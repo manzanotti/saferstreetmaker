@@ -617,6 +617,7 @@ describe('feature popups', () => {
         expect(map.closePopup).toHaveBeenCalledTimes(2);
 
         disposePopupElement(content.querySelector('.copy-button')?.parentElement);
+        disposePopupElement(content.querySelector('.copy-button')?.parentElement);
         (content.querySelector('.copy-button') as HTMLElement).click();
         expect(onCopy).toHaveBeenCalledOnce();
     });
@@ -670,6 +671,7 @@ describe('buildFeatureGroupMembershipContent', () => {
         refreshedGroupSelect.dispatchEvent(new Event('change'));
         expect(onAddToGroup).toHaveBeenCalledWith('g1');
 
+        disposePopupElement(content);
         disposePopupElement(content);
         groupSelect.value = '__create-new-group__';
         groupSelect.dispatchEvent(new Event('change'));

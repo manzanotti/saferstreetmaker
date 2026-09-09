@@ -344,7 +344,18 @@ export function buildPopupActionControl(
 }
 
 export function disposePopupElement(element: HTMLElement | null | undefined): void {
-    (element as any)?.__disposePopupListeners?.();
+    if (!element) {
+        return;
+    }
+
+    const disposableElement = element as any;
+    const dispose = disposableElement.__disposePopupListeners;
+    if (typeof dispose !== 'function') {
+        return;
+    }
+
+    delete disposableElement.__disposePopupListeners;
+    dispose();
 }
 
 function buildFeatureGroupRemoveControl(ariaLabel: string, onActivate: () => void): HTMLLIElement {
