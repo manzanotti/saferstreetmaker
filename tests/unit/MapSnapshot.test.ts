@@ -84,4 +84,12 @@ describe('map snapshot history comparison', () => {
 
         expect(snapshotsEqualForHistory(before, after)).toBe(false);
     });
+
+    it('matches JSON semantics for undefined object properties', () => {
+        const before = makeSnapshot();
+        const after = makeSnapshot();
+        (before.settings as Record<string, unknown>).optionalField = undefined;
+
+        expect(snapshotsEqualForHistory(before, after)).toBe(true);
+    });
 });

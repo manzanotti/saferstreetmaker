@@ -55,8 +55,8 @@ function areSnapshotsEqual(left: unknown, right: unknown): boolean {
 
     const leftRecord = left as Record<string, unknown>;
     const rightRecord = right as Record<string, unknown>;
-    const leftKeys = Object.keys(leftRecord);
-    const rightKeys = Object.keys(rightRecord);
+    const leftKeys = Object.keys(leftRecord).filter((key) => leftRecord[key] !== undefined);
+    const rightKeys = Object.keys(rightRecord).filter((key) => rightRecord[key] !== undefined);
     if (leftKeys.length !== rightKeys.length) {
         return false;
     }
