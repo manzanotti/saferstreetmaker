@@ -1,4 +1,5 @@
 import type * as L from 'leaflet';
+import { toRaw } from 'vue';
 import { getPolylineLatLngs } from '../../geometry/leafletGeometry';
 import type { ClipboardEntry } from '../../stores/selectionStore';
 import type { SelectionCommandContext } from './selectionCommands';
@@ -43,7 +44,7 @@ export function copySelection(context: SelectionCommandContext): void {
                 continue;
             }
 
-            const copiedFeature = JSON.parse(JSON.stringify(feature)) as GeoJSON.Feature;
+            const copiedFeature = structuredClone(feature);
             if (copiedFeature.geometry?.type === 'LineString') {
                 copiedFeature.geometry.coordinates = selectedCoordinates;
             }
@@ -78,7 +79,7 @@ export function pasteSelection(context: SelectionCommandContext): void {
 
         visibleLayerIds.add(layerId);
         const newFeatures = features.map((feature) => {
-            const cloned = JSON.parse(JSON.stringify(feature)) as GeoJSON.Feature;
+            const cloned = structuredClone(toRaw(feature));
             cloned.properties = cloned.properties ?? {};
             cloned.properties.historyId =
                 typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
