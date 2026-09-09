@@ -33,8 +33,37 @@ export function snapshotsEqualForHistory(
     left: SerializedMap | null,
     right: SerializedMap | null
 ): boolean {
-    return (
-        JSON.stringify(normaliseSnapshotForHistory(left)) ===
-        JSON.stringify(normaliseSnapshotForHistory(right))
+    return areSnapshotsEqual(normaliseSnapshotForHistory(left), normaliseSnapshotForHistory(right));
+}
+
+function areSnapshotsEqual(left: unknown, right: unknown): boolean {
+    if (Object.is(left, right)) {
+        return true;
+    }
+
+    if (typeof left !== 'object' || left === null || typeof right !== 'object' || right === null) {
+        return false;
+    }
+
+    if (Array.isArray(left) || Array.isArray(right)) {
+        if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) {
+            return false;
+        }
+
+        return left.every((value, index) => areSnapshotsEqual(value, right[index]));
+    }
+
+    const leftRecord = left as Record<string, unknown>;
+    const rightRecord = right as Record<string, unknown>;
+    const leftKeys = Object.keys(leftRecord).filter((key) => leftRecord[key] !== undefined);
+    const rightKeys = Object.keys(rightRecord).filter((key) => rightRecord[key] !== undefined);
+    if (leftKeys.length !== rightKeys.length) {
+        return false;
+    }
+
+    return leftKeys.every(
+        (key) =>
+            Object.prototype.hasOwnProperty.call(rightRecord, key) &&
+            areSnapshotsEqual(leftRecord[key], rightRecord[key])
     );
 }
