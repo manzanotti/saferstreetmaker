@@ -19,4 +19,5 @@ export interface IMapLayer {
     getLayer: () => L.GeoJSON;
     toGeoJSON: () => {};
     clearLayer: () => void;
+    dispose?: () => void;
 }

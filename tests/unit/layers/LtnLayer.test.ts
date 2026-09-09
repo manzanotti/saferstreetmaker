@@ -93,6 +93,140 @@ describe('LtnLayer (composable)', () => {
             layer.clearLayer();
             expect(layer.visible).toBe(false);
         });
+
+        it('removes popup handlers when a polygon is removed', () => {
+            layer.loadFromGeoJSON(
+                polygonFeatureCollection([
+                    [
+                        [
+                            [0, 0],
+                            [1, 0],
+                            [1, 1],
+                            [0, 1],
+                            [0, 0]
+                        ]
+                    ]
+                ]) as any
+            );
+            const polygon = layer.getLayer().getLayers()[0] as any;
+            const disposeHoverPopup = vi.spyOn(polygon, '__disposeLtnHoverPopup');
+            const polygonOff = vi.spyOn(polygon, 'off');
+            const disableEditing = vi.fn();
+            polygon.editing = { disable: disableEditing };
+            const input = polygon.__ltnPopup.setContent.mock.calls[0][0].querySelector(
+                '.label-editor'
+            ) as HTMLInputElement;
+            const mapStore = useMapStore(pinia);
+
+            layer.getLayer().removeLayer(polygon);
+            mapStore.clearLastLayerMutation();
+            input.value = 'Removed polygon';
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+
+            expect(mapStore.lastLayerMutation).toBeNull();
+            expect(disposeHoverPopup).toHaveBeenCalledOnce();
+            expect(disableEditing).toHaveBeenCalledOnce();
+            expect(polygonOff).toHaveBeenCalledWith();
+        });
+
+        it('closes an open editor popup when its polygon is removed', () => {
+            const mapClosePopupSpy = vi.spyOn(map, 'closePopup');
+            layer.loadFromGeoJSON(
+                polygonFeatureCollection([
+                    [
+                        [
+                            [0, 0],
+                            [1, 0],
+                            [1, 1],
+                            [0, 1],
+                            [0, 0]
+                        ]
+                    ]
+                ]) as any
+            );
+            const polygon = layer.getLayer().getLayers()[0] as any;
+            const popup = polygon.__ltnPopup;
+
+            map.openPopup(popup);
+            layer.getLayer().removeLayer(polygon);
+
+            expect(mapClosePopupSpy).toHaveBeenCalledWith(popup);
+        });
+    });
+
+    describe('dispose()', () => {
+        it('removes layer-level listeners and clears terminal layer data', () => {
+            const mapOffSpy = vi.spyOn(map, 'off');
+            const mapClosePopupSpy = vi.spyOn(map, 'closePopup');
+            const mapRemoveLayerSpy = vi.spyOn(map, 'removeLayer');
+            layer.visible = true;
+            const mapStore = useMapStore(pinia);
+            mapStore.visibleLayerIds = new Set(['LtnCells', 'MobilityLanes']);
+            layer.loadFromGeoJSON(
+                polygonFeatureCollection([
+                    [
+                        [
+                            [0, 0],
+                            [1, 0],
+                            [1, 1],
+                            [0, 1],
+                            [0, 0]
+                        ]
+                    ]
+                ]) as any
+            );
+            const polygon = layer.getLayer().getLayers()[0] as any;
+            const popup = polygon.__ltnPopup;
+            const polygonOffSpy = vi.spyOn(polygon, 'off');
+            map.openPopup(popup);
+
+            layer.dispose?.();
+
+            expect(mapOffSpy).toHaveBeenCalledWith('popupclose', expect.any(Function));
+            expect(mapOffSpy).toHaveBeenCalledWith('zoomend', expect.any(Function));
+            expect(mapClosePopupSpy).toHaveBeenCalledWith(popup);
+            expect(mapRemoveLayerSpy).toHaveBeenCalledWith(layer.getLayer());
+            expect(polygonOffSpy).toHaveBeenCalledWith();
+            expect(layer.getLayer().getLayers()).toHaveLength(0);
+            expect(layer.selected).toBe(false);
+            expect(mapStore.visibleLayerIds).toEqual(new Set(['MobilityLanes']));
+            expect(() => layer.dispose?.()).not.toThrow();
+        });
+
+        it('resets edit state before the layer is reused', () => {
+            layer.loadFromGeoJSON(
+                polygonFeatureCollection([
+                    [
+                        [
+                            [0, 0],
+                            [1, 0],
+                            [1, 1],
+                            [0, 1],
+                            [0, 0]
+                        ]
+                    ]
+                ]) as any
+            );
+            const polygon = layer.getLayer().getLayers()[0] as any;
+            polygon.editing = { disable: vi.fn(), enable: vi.fn() };
+
+            polygon.fire('click', {
+                originalEvent: { clientX: 0, clientY: 0 },
+                target: polygon
+            });
+            const mapStore = useMapStore(pinia);
+            const selectionStore = useSelectionStore(pinia);
+            expect(selectionStore.selected).toHaveLength(5);
+            layer.dispose?.();
+            expect(mapStore.activeLayerId).toBeNull();
+            expect(selectionStore.selected).toHaveLength(0);
+            mapStore.setActiveLayer(null);
+            mapStore.setActiveLayer('ltn');
+
+            expect(polygon.editing.disable).toHaveBeenCalled();
+            expect(layer.selected).toBe(false);
+        });
     });
 
     describe('loadFromGeoJSON()', () => {

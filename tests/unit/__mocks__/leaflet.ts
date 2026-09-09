@@ -91,9 +91,16 @@ class GeoJSON {
         (this._handlers[event] ??= []).push(fn);
         return this;
     }
-    off(event: string, fn: Function) {
-        if (this._handlers[event]) {
-            this._handlers[event] = this._handlers[event].filter((f) => f !== fn);
+
+    off(event?: string, fn?: Function) {
+        if (!event) {
+            this._handlers = {};
+        } else if (!fn) {
+            delete this._handlers[event];
+        } else {
+            this._handlers[event] = (this._handlers[event] ?? []).filter(
+                (handler) => handler !== fn
+            );
         }
         return this;
     }
@@ -204,6 +211,19 @@ class Polygon {
 
     on(event: string, fn: Function) {
         (this._handlers[event] ??= []).push(fn);
+        return this;
+    }
+
+    off(event?: string, fn?: Function) {
+        if (!event) {
+            this._handlers = {};
+        } else if (!fn) {
+            delete this._handlers[event];
+        } else {
+            this._handlers[event] = (this._handlers[event] ?? []).filter(
+                (handler) => handler !== fn
+            );
+        }
         return this;
     }
 
@@ -340,6 +360,9 @@ function popup(options?: any) {
             }
             return this;
         },
+        addTo: vi.fn().mockReturnThis(),
+        getElement: () => null,
+        remove: vi.fn(),
         setContent: vi.fn().mockReturnThis(),
         setLatLng: vi.fn().mockReturnThis()
     };
