@@ -125,7 +125,7 @@ describe('LtnLayer (composable)', () => {
     });
 
     describe('dispose()', () => {
-        it('removes layer-level listeners without clearing reusable data', () => {
+        it('removes layer-level listeners and clears terminal layer data', () => {
             const mapOffSpy = vi.spyOn(map, 'off');
             layer.loadFromGeoJSON(
                 polygonFeatureCollection([
@@ -145,7 +145,7 @@ describe('LtnLayer (composable)', () => {
 
             expect(mapOffSpy).toHaveBeenCalledWith('popupclose', expect.any(Function));
             expect(mapOffSpy).toHaveBeenCalledWith('zoomend', expect.any(Function));
-            expect(layer.getLayer().getLayers()).toHaveLength(1);
+            expect(layer.getLayer().getLayers()).toHaveLength(0);
             expect(layer.selected).toBe(false);
         });
 
@@ -170,10 +170,11 @@ describe('LtnLayer (composable)', () => {
                 originalEvent: { clientX: 0, clientY: 0 },
                 target: polygon
             });
+            const mapStore = useMapStore(pinia);
             layer.dispose?.();
-            useMapStore(pinia).setActiveLayer('ltn');
-
-            polygon.fire('mouseout', { target: polygon });
+            expect(mapStore.activeLayerId).toBeNull();
+            mapStore.setActiveLayer(null);
+            mapStore.setActiveLayer('ltn');
 
             expect(polygon.editing.disable).toHaveBeenCalled();
             expect(layer.selected).toBe(false);

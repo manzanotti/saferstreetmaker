@@ -1053,6 +1053,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         map.off('mousemove', syncMouseMarkerCursor as L.LeafletEventHandlerFn);
         geoJsonLayer.off('layerremove', handleLayerRemove);
         geoJsonLayer.eachLayer((layer: any) => layer.__disposeLtnPopup?.());
+        geoJsonLayer.clearLayers();
         if (cursorSyncFrameId !== null) {
             cancelAnimationFrame(cursorSyncFrameId);
             cursorSyncFrameId = null;
@@ -1063,6 +1064,13 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         removeMapCursor(CURSOR_CSS);
         _selected = false;
         selectionMode = 'draw';
+        _visible = false;
+        if (mapStore.activeLayerId === BUTTON_ID) {
+            mapStore.setActiveLayer(null);
+        }
+        if (mapStore.drawLayerId === BUTTON_ID) {
+            mapStore.setDrawLayer(null);
+        }
     };
 
     return {
