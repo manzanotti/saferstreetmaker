@@ -82,6 +82,7 @@ test.describe('Mobile map controls', () => {
         const lastTool = toolbar.locator('> li > button').last();
 
         await expect(toolbar).toBeVisible();
+        await expect(toolbar).toHaveAttribute('aria-orientation', 'horizontal');
         await expect(legendHeader).toBeVisible();
         await expect(firstLegendRow).toBeVisible();
         await expect(lastTool).toBeVisible();
@@ -107,16 +108,30 @@ test.describe('Mobile map controls', () => {
         await expect(legendHeader).toBeInViewport();
         await expect(page.locator('.legend li').last()).toBeInViewport();
 
+        const legendBounds = await page.locator('.legend').boundingBox();
+        expect(legendBounds).not.toBeNull();
+        await page.locator('#modal-filter-button').click({ button: 'right' });
+        const filtersMenu = toolbar.getByRole('group', { name: 'filters options' });
+        await expect(filtersMenu).toBeVisible();
+        const filtersBounds = await filtersMenu.boundingBox();
+        const nextRowBounds = await page.locator('#tram-line-button').boundingBox();
+        expect(filtersBounds).not.toBeNull();
+        expect(nextRowBounds).not.toBeNull();
+        expect(filtersBounds!.x).toBeGreaterThanOrEqual(nextRowBounds!.x + nextRowBounds!.width);
+        expect(filtersBounds!.x + filtersBounds!.width).toBeLessThan(legendBounds!.x);
+        await expect(page.locator('#tram-line-button')).toBeInViewport();
+
         await page.locator('#traffic-lights-button').click({ button: 'right' });
         const submenu = toolbar.getByRole('group', { name: 'traffic-controls options' });
         await expect(submenu).toBeVisible();
         const submenuBounds = await submenu.boundingBox();
-        const legendBounds = await page.locator('.legend').boundingBox();
         expect(submenuBounds).not.toBeNull();
-        expect(legendBounds).not.toBeNull();
         expect(submenuBounds!.y).toBeGreaterThanOrEqual(0);
         expect(submenuBounds!.y + submenuBounds!.height).toBeLessThanOrEqual(360);
         expect(submenuBounds!.x + submenuBounds!.width).toBeLessThan(legendBounds!.x);
+
+        await page.setViewportSize({ width: 800, height: 600 });
+        await expect(toolbar).toHaveAttribute('aria-orientation', 'vertical');
     });
 });
 

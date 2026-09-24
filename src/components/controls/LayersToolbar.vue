@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onMounted, onUnmounted, ref, shallowRef } from 'vue';
 import { useMapStore } from '../../stores/mapStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import type { ToolbarButton } from '../../models/ToolbarButton';
@@ -11,6 +11,22 @@ import LayerToolbarButton from './LayerToolbarButton.vue';
 const mapStore = useMapStore();
 const settingsStore = useSettingsStore();
 const lastSelectedByGroup = ref<Record<string, string>>({});
+const toolbarOrientation = shallowRef<'horizontal' | 'vertical'>('vertical');
+let mobileViewport: MediaQueryList;
+
+function updateToolbarOrientation() {
+    toolbarOrientation.value = mobileViewport.matches ? 'horizontal' : 'vertical';
+}
+
+onMounted(() => {
+    mobileViewport = window.matchMedia('(max-width: 639px)');
+    updateToolbarOrientation();
+    mobileViewport.addEventListener('change', updateToolbarOrientation);
+});
+
+onUnmounted(() => {
+    mobileViewport?.removeEventListener('change', updateToolbarOrientation);
+});
 const { layerItems } = useLayerToolbarItems(lastSelectedByGroup);
 const { openSubmenus, showSubmenu, hideSubmenu, onTouchStart, cancelLongPress } =
     useToolbarSubmenus(() => mapStore.map);
@@ -52,7 +68,7 @@ function onLayerButtonClick(btn: ToolbarButton) {
         ref="toolbarRef"
         role="toolbar"
         aria-label="Map tools"
-        aria-orientation="vertical"
+        :aria-orientation="toolbarOrientation"
         class="toolbar grid grid-cols-2 sm:flex sm:flex-col gap-1.5 p-[3px] rounded-2xl bg-white/[0.94] shadow-xl border border-white/60 w-fit overflow-visible"
         @mousemove="onDockMouseMove"
         @mouseleave="onDockMouseLeave"
@@ -111,7 +127,7 @@ function onLayerButtonClick(btn: ToolbarButton) {
                         role="group"
                         :aria-label="`${item.groupName} options`"
                         aria-orientation="horizontal"
-                        class="subToolbar absolute left-0 top-full mt-1.5 sm:left-full sm:-top-[3px] sm:mt-0 sm:ml-1.5 flex flex-row gap-1.5 p-[3px] rounded-xl bg-white/[0.94] shadow-xl border border-white/60"
+                        class="subToolbar absolute left-full -top-[3px] ml-1.5 flex flex-row gap-1.5 p-[3px] rounded-xl bg-white/[0.94] shadow-xl border border-white/60"
                     >
                         <li v-for="subBtn in item.sub" :key="subBtn.id">
                             <LayerToolbarButton
