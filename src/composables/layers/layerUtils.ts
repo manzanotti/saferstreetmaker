@@ -15,7 +15,7 @@
 import * as L from 'leaflet';
 import { ToolbarButton } from '../../models/ToolbarButton';
 
-export { getFeatureHistoryId, findLayerFeatureByHistoryId } from './featureLookup';
+export { getFeatureHistoryId, findLayerFeatureByHistoryId, buildHistoryId } from './featureLookup';
 export {
     buildPopupActionControl,
     buildDeletePopup,
@@ -76,14 +76,6 @@ export function isPointFeatureElement(element: Element): boolean {
 
 export function isFeatureEditLayerButtonId(id: string | null): boolean {
     return id !== null && FEATURE_EDIT_LAYER_BUTTON_IDS.has(id);
-}
-
-export function buildHistoryId(prefix: string): string {
-    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-        return crypto.randomUUID();
-    }
-
-    return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 // ---------------------------------------------------------------------------

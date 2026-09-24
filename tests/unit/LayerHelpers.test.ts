@@ -217,6 +217,23 @@ describe('setMouseMarkerCursor', () => {
 });
 
 describe('buildHistoryId', () => {
+    it('uses crypto.randomUUID when available', () => {
+        const originalRandomUuid = crypto.randomUUID;
+        Object.defineProperty(crypto, 'randomUUID', {
+            value: () => 'generated-uuid',
+            configurable: true
+        });
+
+        try {
+            expect(buildHistoryId('point')).toBe('generated-uuid');
+        } finally {
+            Object.defineProperty(crypto, 'randomUUID', {
+                value: originalRandomUuid,
+                configurable: true
+            });
+        }
+    });
+
     it('includes the requested prefix when crypto.randomUUID is unavailable', () => {
         const originalRandomUuid = crypto.randomUUID;
         Object.defineProperty(crypto, 'randomUUID', {
