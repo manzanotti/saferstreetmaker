@@ -17,6 +17,7 @@ import {
     addFeatureHoverPopup,
     createFeatureHoverPopupController,
     getFeatureHoverLatLng,
+    closeFeatureHoverPopups,
     buildFeatureGroupMembershipContent,
     disposePopupElement,
     getFeatureHistoryId
@@ -568,6 +569,22 @@ describe('feature popups', () => {
         expect(getFeatureHoverLatLng(offscreenMap, featureCenter, initialHoverLatLng)).toBe(
             initialHoverLatLng
         );
+    });
+
+    it('closes hover popups without removing other map layers', () => {
+        const hoverPopup = { options: { className: 'feature-popup-hover' } } as L.Popup;
+        const clickPopup = { options: { className: 'feature-popup-description' } } as L.Popup;
+        const map = {
+            eachLayer: (callback: (layer: L.Layer) => void) => {
+                callback(hoverPopup);
+                callback(clickPopup);
+            },
+            removeLayer: vi.fn()
+        } as unknown as L.Map;
+
+        closeFeatureHoverPopups(map);
+
+        expect(map.removeLayer).toHaveBeenCalledExactlyOnceWith(hoverPopup);
     });
 
     it('renders group version counts and action controls', () => {
