@@ -389,6 +389,19 @@ describe('buildLegendEntry', () => {
         expect(li.id).toBe('ModalFilters-legend');
     });
 
+    it('attaches the supplied icon and toggle tooltip', () => {
+        const icon = document.createElement('i');
+        const li = buildLegendEntry({
+            layerId: 'ModalFilters',
+            title: 'Modal Filters',
+            toggleTitle: 'Toggle modal filters',
+            iconEl: icon,
+            visibilityState: { visible: true }
+        });
+        expect(li.firstElementChild).toBe(icon);
+        expect(li.title).toBe('Toggle modal filters');
+    });
+
     it('contains the title text', () => {
         const icon = document.createElement('i');
         const li = buildLegendEntry({
