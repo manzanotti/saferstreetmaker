@@ -8,27 +8,20 @@ import * as L from 'leaflet';
 import { watch } from 'vue';
 import { useMapStore } from '../../stores/mapStore';
 import { pinia } from '../../stores/index';
+import { setMapCursor, removeMapCursor, setFeatureElementCursor } from './featureCursors';
+import { buildToolbarButton } from './toolbarButton';
+import { buildLegendEntry } from './legendEntry';
+import { buildHistoryId, getFeatureHistoryId } from './featureLookup';
+import { buildFeatureActionPopup } from './featureActionPopup';
+import { buildFeatureDescriptionPopup } from './featureDescriptionPopup';
 import {
-    setMapCursor,
-    removeMapCursor,
-    buildToolbarButton,
-    buildLegendEntry,
-    buildHistoryId,
-    getFeatureHistoryId,
-    buildFeatureActionPopup,
-    buildFeatureDescriptionPopup,
     addFeatureHoverPopup,
     getFeatureHoverLatLng,
     closeFeatureHoverPopups,
-    createFeatureHoverPopupController,
-    setFeatureElementCursor,
-    cacheFeatureGroupElement
-} from './layerUtils';
-import {
-    buildReadOnlyGroupPopup,
-    findFirstFeatureGroupId,
-    getReadOnlyGroupCenter
-} from './layerUtils';
+    createFeatureHoverPopupController
+} from './featureHoverPopups';
+import { cacheFeatureGroupElement, findFirstFeatureGroupId } from './featureGroupMembershipPopup';
+import { buildReadOnlyGroupPopup, getReadOnlyGroupCenter } from './readOnlyGroupPopup';
 import { useSelectionStore } from '../../stores/selectionStore';
 import { useGroupStore } from '../../stores/groupStore';
 import { executeAreaDelete, executeCopy, selectFeature } from '../useAreaSelection';

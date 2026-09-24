@@ -7,29 +7,41 @@ import {
     setMapCursor,
     removeMapCursor,
     setFeatureElementCursor,
+    setMouseMarkerCursor
+} from '../../src/composables/layers/featureCursors';
+import {
     isPointFeatureElement,
-    isFeatureEditLayerButtonId,
-    setMouseMarkerCursor,
+    isFeatureEditLayerButtonId
+} from '../../src/composables/layers/featureClassification';
+import {
     buildHistoryId,
-    buildToolbarButton,
-    buildLegendEntry,
+    getFeatureHistoryId,
+    findLayerFeatureByHistoryId
+} from '../../src/composables/layers/featureLookup';
+import { buildToolbarButton } from '../../src/composables/layers/toolbarButton';
+import { buildLegendEntry } from '../../src/composables/layers/legendEntry';
+import {
     buildDeletePopup,
-    buildFeatureActionPopup,
-    buildFeatureDescriptionPopup,
+    buildFeatureActionPopup
+} from '../../src/composables/layers/featureActionPopup';
+import { buildFeatureDescriptionPopup } from '../../src/composables/layers/featureDescriptionPopup';
+import {
     buildReadOnlyGroupPopup,
-    getReadOnlyGroupCenter,
+    getReadOnlyGroupCenter
+} from '../../src/composables/layers/readOnlyGroupPopup';
+import {
     addFeatureHoverPopup,
     createFeatureHoverPopupController,
     getFeatureHoverLatLng,
-    closeFeatureHoverPopups,
+    closeFeatureHoverPopups
+} from '../../src/composables/layers/featureHoverPopups';
+import {
     buildFeatureGroupMembershipContent,
     disposePopupElement,
     cacheFeatureGroupElement,
     findFeatureGroupIdByElement,
-    findFirstFeatureGroupId,
-    getFeatureHistoryId,
-    findLayerFeatureByHistoryId
-} from '../../src/composables/layers/layerUtils';
+    findFirstFeatureGroupId
+} from '../../src/composables/layers/featureGroupMembershipPopup';
 import { useGroupStore } from '../../src/stores/groupStore';
 import { pinia } from '../../src/stores';
 
