@@ -31,7 +31,9 @@ test.describe('Layer: Modal Filter (point, primary button)', () => {
         // Pan the map by dragging, then zoom in.
         const map = page.locator('.leaflet-container');
         const box = await map.boundingBox();
-        if (!box) throw new Error('Map bounding box not found');
+        if (!box) {
+            throw new Error('Map bounding box not found');
+        }
         const cx = box.x + box.width / 2;
         const cy = box.y + box.height / 2;
         await page.mouse.move(cx, cy);

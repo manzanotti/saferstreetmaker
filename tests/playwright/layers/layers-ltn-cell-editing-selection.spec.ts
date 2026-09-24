@@ -63,7 +63,9 @@ test.describe('Layer: LTN Cell (polygon): editing', () => {
         // Draw second polygon in the top-left quarter to avoid overlapping the first
         const map = page.locator('.leaflet-container');
         const box = await map.boundingBox();
-        if (!box) throw new Error('no map box');
+        if (!box) {
+            throw new Error('no map box');
+        }
         const cx = box.x + box.width / 4;
         const cy = box.y + box.height / 4;
         await page.waitForTimeout(200);

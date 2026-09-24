@@ -71,7 +71,9 @@ test.describe('Layer exclusivity', () => {
         // should place a modal filter, not open the LTN popup.
         const polygon = page.locator('.leaflet-ltns-pane path.ltn-cell.leaflet-interactive');
         const polygonBox = await polygon.first().boundingBox();
-        if (!polygonBox) throw new Error('LTN polygon bounding box not found');
+        if (!polygonBox) {
+            throw new Error('LTN polygon bounding box not found');
+        }
         await page.mouse.click(
             polygonBox.x + polygonBox.width / 2,
             polygonBox.y + polygonBox.height / 2

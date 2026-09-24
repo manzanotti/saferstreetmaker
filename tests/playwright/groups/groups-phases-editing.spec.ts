@@ -61,7 +61,9 @@ test.describe('Groups — Phases', () => {
         await page.locator('#modal-filter-button').click();
         const map = page.locator('.leaflet-container');
         const box = await map.boundingBox();
-        if (!box) throw new Error('Map bounding box not found');
+        if (!box) {
+            throw new Error('Map bounding box not found');
+        }
         const cx = box.x + box.width / 2;
         const cy = box.y + box.height / 2;
         await page.mouse.click(cx - 80, cy);
@@ -91,7 +93,9 @@ test.describe('Groups — Phases', () => {
         await expect(page.getByRole('listitem').getByText('3 features')).toBeVisible();
         await expect(page.locator('#select-area-button')).toHaveAttribute('aria-pressed', 'false');
         const firstFilterBox = await filters.first().boundingBox();
-        if (!firstFilterBox) throw new Error('Modal filter bounding box not found');
+        if (!firstFilterBox) {
+            throw new Error('Modal filter bounding box not found');
+        }
         await page.mouse.click(
             firstFilterBox.x + firstFilterBox.width / 2,
             firstFilterBox.y + firstFilterBox.height / 2
@@ -145,7 +149,9 @@ test.describe('Groups — Phases', () => {
             pinia?._s?.get('selection')?.setPhaseEditing(false);
         });
         const cellBox = await cell.boundingBox();
-        if (!cellBox) throw new Error('LTN cell bounding box not found');
+        if (!cellBox) {
+            throw new Error('LTN cell bounding box not found');
+        }
         await page.mouse.click(cellBox.x + 25, cellBox.y + 10);
         await page
             .locator('.leaflet-filters-pane path.modal-filter-marker')

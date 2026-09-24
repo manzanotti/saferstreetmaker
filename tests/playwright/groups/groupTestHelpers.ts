@@ -21,7 +21,9 @@ export async function placeModalFilter(page: Page, offsetX = 0, offsetY = 0): Pr
     await page.locator('#modal-filter-button').click();
     const map = page.locator('.leaflet-container');
     const box = await map.boundingBox();
-    if (!box) throw new Error('Map bounding box not found');
+    if (!box) {
+        throw new Error('Map bounding box not found');
+    }
     await page.mouse.click(box.x + box.width / 2 + offsetX, box.y + box.height / 2 + offsetY);
     await page.waitForTimeout(150);
 }
@@ -34,7 +36,9 @@ export async function dragSelectCenter(
 ): Promise<void> {
     const map = page.locator('.leaflet-container');
     const box = await map.boundingBox();
-    if (!box) throw new Error('Map bounding box not found');
+    if (!box) {
+        throw new Error('Map bounding box not found');
+    }
     const cx = box.x + box.width / 2 + offsetX;
     const cy = box.y + box.height / 2 + offsetY;
     await page.mouse.move(cx - halfSize, cy - halfSize);
@@ -54,7 +58,9 @@ export async function placeTwoModalFilters(page: Page, offset = 70, offsetY = 0)
     await page.locator('#modal-filter-button').click();
     const map = page.locator('.leaflet-container');
     const box = await map.boundingBox();
-    if (!box) throw new Error('Map bounding box not found');
+    if (!box) {
+        throw new Error('Map bounding box not found');
+    }
     const cx = box.x + box.width / 2;
     const cy = box.y + box.height / 2 + offsetY;
     await page.mouse.click(cx - offset, cy);
@@ -154,7 +160,9 @@ export async function drawNamedLtnCell(page: Page, name: string, offsetX = 0): P
     await page.locator('#ltn-button').click();
     const map = page.locator('.leaflet-container');
     const box = await map.boundingBox();
-    if (!box) throw new Error('Map bounding box not found');
+    if (!box) {
+        throw new Error('Map bounding box not found');
+    }
     const cx = box.x + box.width / 2;
     const cy = box.y + box.height / 2;
     await page.waitForTimeout(200);
@@ -177,7 +185,9 @@ export async function drawNamedMobilityLane(page: Page, name: string): Promise<v
     await page.locator('#mobility-lane-button').click();
     const map = page.locator('.leaflet-container');
     const box = await map.boundingBox();
-    if (!box) throw new Error('Map bounding box not found');
+    if (!box) {
+        throw new Error('Map bounding box not found');
+    }
     const cx = box.x + box.width / 2;
     const cy = box.y + box.height / 2;
     await page.waitForTimeout(200);

@@ -16,7 +16,9 @@ test.describe('Groups — Partial polyline split', () => {
         await page.locator('#mobility-lane-button').click();
         const map = page.locator('.leaflet-container');
         const box = await map.boundingBox();
-        if (!box) throw new Error('Map bounding box not found');
+        if (!box) {
+            throw new Error('Map bounding box not found');
+        }
         const cx = box.x + box.width / 2;
         const cy = box.y + box.height / 2;
         // 3 vertices: (cx-60,cy), (cx,cy), (cx+60,cy)

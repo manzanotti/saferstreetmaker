@@ -32,7 +32,9 @@ test.describe('Groups — Create group: editing', () => {
         await openGroupDetails(page, 'Single Member Group');
         const marker = page.locator('.leaflet-filters-pane path.modal-filter-marker').first();
         const markerBox = await marker.boundingBox();
-        if (!markerBox) throw new Error('Grouped modal filter not found');
+        if (!markerBox) {
+            throw new Error('Grouped modal filter not found');
+        }
         await page.mouse.click(
             markerBox.x + markerBox.width / 2,
             markerBox.y + markerBox.height / 2
@@ -57,7 +59,9 @@ test.describe('Groups — Create group: editing', () => {
         await openGroupDetails(page, 'Undo Empty Group');
         const marker = page.locator('.leaflet-filters-pane path.modal-filter-marker').first();
         const markerBox = await marker.boundingBox();
-        if (!markerBox) throw new Error('Grouped modal filter not found');
+        if (!markerBox) {
+            throw new Error('Grouped modal filter not found');
+        }
         await page.mouse.click(
             markerBox.x + markerBox.width / 2,
             markerBox.y + markerBox.height / 2
@@ -83,7 +87,9 @@ test.describe('Groups — Create group: editing', () => {
         const map = page.locator('.leaflet-container');
         const mapPane = page.locator('.leaflet-map-pane');
         const mapBox = await map.boundingBox();
-        if (!mapBox) throw new Error('Map bounding box not found');
+        if (!mapBox) {
+            throw new Error('Map bounding box not found');
+        }
         const beforeTransform = await mapPane.evaluate((pane) => pane.getAttribute('style'));
         const startX = mapBox.x + 90;
         const startY = mapBox.y + 120;

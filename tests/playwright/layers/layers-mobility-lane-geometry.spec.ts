@@ -38,7 +38,9 @@ test.describe('Layer: Mobility Lane (polyline): geometry', () => {
                 const app = (document.getElementById('app') as any).__vue_app__;
                 const pinia = app?.config?.globalProperties?.$pinia;
                 const map = pinia?._s?.get('map')?.map ?? null;
-                if (!map) return null;
+                if (!map) {
+                    return null;
+                }
                 const data: { historyId: string; coords: number[][] }[] = [];
                 map.eachLayer((l: any) => {
                     if (
@@ -70,7 +72,9 @@ test.describe('Layer: Mobility Lane (polyline): geometry', () => {
                 const app = (document.getElementById('app') as any).__vue_app__;
                 const pinia = app?.config?.globalProperties?.$pinia;
                 const map = pinia?._s?.get('map')?.map ?? null;
-                if (!map) return;
+                if (!map) {
+                    return;
+                }
                 map.eachLayer((l: any) => {
                     if (l.feature?.properties?.historyId === historyId && l.setLatLngs) {
                         l.setLatLngs(edited.map((c: number[]) => ({ lat: c[1], lng: c[0] })));
@@ -89,7 +93,9 @@ test.describe('Layer: Mobility Lane (polyline): geometry', () => {
             const app = (document.getElementById('app') as any).__vue_app__;
             const pinia = app?.config?.globalProperties?.$pinia;
             const map = pinia?._s?.get('map')?.map ?? null;
-            if (!map) return [];
+            if (!map) {
+                return [];
+            }
             let coords: number[][] = [];
             map.eachLayer((l: any) => {
                 if (l.feature?.properties?.historyId === historyId && l.getLatLngs) {
@@ -117,7 +123,9 @@ test.describe('Layer: Mobility Lane (polyline): geometry', () => {
             const app = (document.getElementById('app') as any).__vue_app__;
             const pinia = app?.config?.globalProperties?.$pinia;
             const map = pinia?._s?.get('map')?.map ?? null;
-            if (!map) return [];
+            if (!map) {
+                return [];
+            }
             let coords: number[][] = [];
             map.eachLayer((l: any) => {
                 if (l.feature?.properties?.historyId === historyId && l.getLatLngs) {

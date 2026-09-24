@@ -48,7 +48,9 @@ test.describe('Groups — Select and zoom', () => {
         await expect(selectedFilters).toHaveCount(2);
 
         const selectedFilterBox = await selectedFilters.first().boundingBox();
-        if (!selectedFilterBox) throw new Error('Selected modal filter not found');
+        if (!selectedFilterBox) {
+            throw new Error('Selected modal filter not found');
+        }
         await page.mouse.click(
             selectedFilterBox.x + selectedFilterBox.width / 2,
             selectedFilterBox.y + selectedFilterBox.height / 2

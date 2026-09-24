@@ -9,7 +9,9 @@ export async function getLayerFeatureCount(page: Page, layerId: string): Promise
 export async function clickMap(page: Page, offsetX = 0, offsetY = 0) {
     const map = page.locator('.leaflet-container');
     const box = await map.boundingBox();
-    if (!box) throw new Error('Map bounding box not found');
+    if (!box) {
+        throw new Error('Map bounding box not found');
+    }
     await page.mouse.click(box.x + box.width / 2 + offsetX, box.y + box.height / 2 + offsetY);
     // Layer click handlers call mapStore.markLayerUpdated() synchronously, which
     // triggers a save via a Pinia watch. The short pause lets the persistence
@@ -57,7 +59,9 @@ export async function waitForMapReady(page: Page) {
 export async function drawPolyline(page: Page) {
     const map = page.locator('.leaflet-container');
     const box = await map.boundingBox();
-    if (!box) throw new Error('Map bounding box not found');
+    if (!box) {
+        throw new Error('Map bounding box not found');
+    }
     const cx = box.x + box.width / 2;
     const cy = box.y + box.height / 2;
     await page.waitForTimeout(200); // let Vue reactivity settle after button click
@@ -73,7 +77,9 @@ export async function drawPolyline(page: Page) {
 export async function drawPolygon(page: Page) {
     const map = page.locator('.leaflet-container');
     const box = await map.boundingBox();
-    if (!box) throw new Error('Map bounding box not found');
+    if (!box) {
+        throw new Error('Map bounding box not found');
+    }
     const cx = box.x + box.width / 2;
     const cy = box.y + box.height / 2;
     await page.waitForTimeout(200);
@@ -91,7 +97,9 @@ export async function drawPolygon(page: Page) {
 export async function drawPolygonClosingAtFirstVertex(page: Page) {
     const map = page.locator('.leaflet-container');
     const box = await map.boundingBox();
-    if (!box) throw new Error('Map bounding box not found');
+    if (!box) {
+        throw new Error('Map bounding box not found');
+    }
     const cx = box.x + box.width / 2;
     const cy = box.y + box.height / 2;
     await page.waitForTimeout(200);

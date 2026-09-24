@@ -11,7 +11,9 @@ test.describe('Groups — mixed member types', () => {
     }) => {
         const map = page.locator('.leaflet-container');
         const box = await map.boundingBox();
-        if (!box) throw new Error('no box');
+        if (!box) {
+            throw new Error('no box');
+        }
         const cx = box.x + box.width / 2;
         const cy = box.y + box.height / 2;
 

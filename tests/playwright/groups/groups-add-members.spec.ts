@@ -19,7 +19,9 @@ test.describe('Groups — add features to an existing group', () => {
         await page.locator('#modal-filter-button').click();
         const map = page.locator('.leaflet-container');
         const box = await map.boundingBox();
-        if (!box) throw new Error('Map bounding box not found');
+        if (!box) {
+            throw new Error('Map bounding box not found');
+        }
         await page.mouse.click(box.x + box.width / 2 + offsetX, box.y + box.height / 2 + offsetY);
         await page.waitForTimeout(150);
         await page.locator('#modal-filter-button').click();
@@ -28,7 +30,9 @@ test.describe('Groups — add features to an existing group', () => {
     async function dragRegion(page: Page, offsetX: number, offsetY: number): Promise<void> {
         const map = page.locator('.leaflet-container');
         const box = await map.boundingBox();
-        if (!box) throw new Error('Map bounding box not found');
+        if (!box) {
+            throw new Error('Map bounding box not found');
+        }
         const cx = box.x + box.width / 2 + offsetX;
         const cy = box.y + box.height / 2 + offsetY;
         await page.mouse.move(cx - 40, cy - 40);
