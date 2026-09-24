@@ -12,9 +12,6 @@
  * those DOM subtrees directly and they live outside Vue's virtual DOM.
  * Do not replace these with Vue components; keep the boundary here.
  */
-import * as L from 'leaflet';
-import { ToolbarButton } from '../../models/ToolbarButton';
-
 export { getFeatureHistoryId, findLayerFeatureByHistoryId, buildHistoryId } from './featureLookup';
 export {
     buildPopupActionControl,
@@ -54,33 +51,8 @@ export { isPointFeatureElement, isFeatureEditLayerButtonId } from './featureClas
 export { buildFeatureDescriptionPopup } from './featureDescriptionPopup';
 export type { FeatureDescriptionPopupDetails } from './featureDescriptionPopup';
 
-// ---------------------------------------------------------------------------
-// Toolbar button builder
-// ---------------------------------------------------------------------------
-
-export interface ToolbarButtonOpts {
-    id: string;
-    tooltip: string;
-    groupName: string;
-    action: (e: Event, map: L.Map) => void;
-    selected: boolean;
-    isFirst?: boolean;
-    text?: string;
-    iconSrc?: string;
-}
-
-export function buildToolbarButton(opts: ToolbarButtonOpts): ToolbarButton {
-    return {
-        id: opts.id,
-        tooltip: opts.tooltip,
-        groupName: opts.groupName,
-        action: opts.action,
-        selected: opts.selected,
-        ...(opts.isFirst !== undefined ? { isFirst: opts.isFirst } : {}),
-        ...(opts.text !== undefined ? { text: opts.text } : {}),
-        ...(opts.iconSrc !== undefined ? { iconSrc: opts.iconSrc } : {})
-    };
-}
+export { buildToolbarButton } from './toolbarButton';
+export type { ToolbarButtonOpts } from './toolbarButton';
 
 // ---------------------------------------------------------------------------
 // Legend entry builder

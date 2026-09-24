@@ -352,6 +352,18 @@ describe('buildToolbarButton', () => {
         expect(btn.text).toBe('LTN');
     });
 
+    it('sets iconSrc when provided', () => {
+        const btn = buildToolbarButton({
+            id: 'modal-filter',
+            tooltip: 'Modal filter',
+            groupName: 'filters',
+            action: noop,
+            selected: false,
+            iconSrc: '/icons/modal-filter.svg'
+        });
+        expect(btn.iconSrc).toBe('/icons/modal-filter.svg');
+    });
+
     it('does not set isFirst when not provided', () => {
         const btn = buildToolbarButton({
             id: 'x',
