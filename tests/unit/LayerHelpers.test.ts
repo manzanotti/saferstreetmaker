@@ -390,12 +390,15 @@ describe('feature popups', () => {
             }
         ]);
 
+        const onOpenGroup = vi.fn();
         const popup = buildFeatureDescriptionPopup({ minWidth: 30 }, member, 'hover', {
-            onOpenGroup: vi.fn()
+            onOpenGroup
         }) as any;
         const heading = getPopupContent(popup).querySelector('.group-link') as HTMLButtonElement;
 
         expect(heading.type).toBe('button');
+        heading.click();
+        expect(onOpenGroup).toHaveBeenCalledExactlyOnceWith('g1');
     });
 
     it('orders toolbar icon, feature name, and group content', () => {
