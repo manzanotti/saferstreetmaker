@@ -29,6 +29,44 @@ export function buildPopupActionControl(
     return item;
 }
 
+/**
+ * Build a Leaflet popup containing optional Copy and mandatory Delete controls.
+ * Pass `onCopy` to render a Copy button before the Delete button.
+ * Both buttons close the popup after firing their callback.
+ */
+export function buildDeletePopup(
+    map: L.Map,
+    popupOptions: L.PopupOptions,
+    onDelete: () => void,
+    onCopy?: () => void
+): L.Popup {
+    const popup = L.popup(popupOptions);
+
+    const controlList = document.createElement('ul');
+    controlList.classList.add('popup-buttons');
+
+    if (onCopy) {
+        const copyControl = buildPopupActionControl('copy-button', 'Copy selected feature', () => {
+            onCopy();
+            map.closePopup(popup);
+        });
+        controlList.appendChild(copyControl);
+    }
+
+    const deleteControl = buildPopupActionControl(
+        'delete-button',
+        'Delete selected feature',
+        () => {
+            onDelete();
+            map.closePopup(popup);
+        }
+    );
+    controlList.appendChild(deleteControl);
+    popup.setContent(controlList);
+
+    return popup;
+}
+
 export interface FeatureActionPopupOptions {
     map: L.Map;
     popupOptions: L.PopupOptions;

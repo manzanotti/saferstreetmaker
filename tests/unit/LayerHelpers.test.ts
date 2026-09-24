@@ -280,6 +280,14 @@ describe('buildDeletePopup', () => {
         return { map, popup, content };
     }
 
+    it('renders only the delete control when copy is unavailable', () => {
+        const { content } = getPopupContent();
+
+        expect(content.tagName).toBe('UL');
+        expect(content.querySelector('.copy-button')).toBeNull();
+        expect(content.querySelectorAll('li > .delete-button')).toHaveLength(1);
+    });
+
     it('renders accessible copy and delete controls when copy is enabled', () => {
         const { content } = getPopupContent(vi.fn(), vi.fn());
         const items = content.querySelectorAll('li');

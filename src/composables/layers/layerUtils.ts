@@ -2,11 +2,11 @@
  * layerUtils.ts
  *
  * Shared helpers for layer composables (cursor, toolbar button, legend entry,
- * and popup builders). Hover, group-membership, action, and description popup behavior
+ * and group popup builders). Hover, group-membership, action, and description popup behavior
  * live in focused modules and are re-exported here for existing layer callers.
  * Extracted from LayerHelpers.ts — PubSub removed entirely.
  *
- * Note on DOM usage: `buildLegendEntry` and `buildDeletePopup` use
+ * Note on DOM usage: popup builders and `buildLegendEntry` use
  * `document.createElement` to construct HTML for Leaflet popups and the legacy
  * `getLegendEntry()` interface method. This is intentional — Leaflet manages
  * those DOM subtrees directly and they live outside Vue's virtual DOM.
@@ -25,10 +25,9 @@ import { useMapStore } from '../../stores/mapStore';
 import { pinia } from '../../stores/index';
 import type { GroupMember } from '../../models/Group';
 import type { IMapLayer } from './IMapLayer';
-import { buildPopupActionControl } from './featureActionPopup';
-
 export {
     buildPopupActionControl,
+    buildDeletePopup,
     setFeatureActionPopupContent,
     buildFeatureActionPopup
 } from './featureActionPopup';
@@ -318,46 +317,4 @@ export function buildLegendEntry(opts: LegendEntryOpts): HTMLElement {
     });
 
     return li;
-}
-
-// ---------------------------------------------------------------------------
-// Popup builder for polyline / polygon controls
-// ---------------------------------------------------------------------------
-
-/**
- * Build a Leaflet popup containing optional Copy and mandatory Delete controls.
- * Pass `onCopy` to render a Copy button before the Delete button.
- * Both buttons close the popup after firing their callback.
- */
-export function buildDeletePopup(
-    map: L.Map,
-    popupOptions: L.PopupOptions,
-    onDelete: () => void,
-    onCopy?: () => void
-): L.Popup {
-    const popup = L.popup(popupOptions);
-
-    const controlList = document.createElement('ul');
-    controlList.classList.add('popup-buttons');
-
-    if (onCopy) {
-        const copyControl = buildPopupActionControl('copy-button', 'Copy selected feature', () => {
-            onCopy();
-            map.closePopup(popup);
-        });
-        controlList.appendChild(copyControl);
-    }
-
-    const deleteControl = buildPopupActionControl(
-        'delete-button',
-        'Delete selected feature',
-        () => {
-            onDelete();
-            map.closePopup(popup);
-        }
-    );
-    controlList.appendChild(deleteControl);
-    popup.setContent(controlList);
-
-    return popup;
 }
