@@ -24,7 +24,22 @@ body {
 
 #map {
     height: 100vh;
+    height: 100dvh;
     z-index: 1;
+}
+
+@media (max-width: 639px) {
+    .toolbar > li:last-child .subToolbar {
+        top: auto;
+        bottom: 100%;
+        margin-top: 0;
+        margin-bottom: 0.375rem;
+    }
+
+    .legend-content {
+        max-height: calc(100dvh - 34px);
+        overflow-y: auto;
+    }
 }
 
 h1 {

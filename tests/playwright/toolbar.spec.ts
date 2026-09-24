@@ -71,6 +71,55 @@ test.describe('Toolbar', () => {
     });
 });
 
+test.describe('Mobile map controls', () => {
+    test.use({ viewport: { width: 320, height: 360 }, isMobile: true, hasTouch: true });
+
+    test('toolbar and legend remain accessible on a short phone screen', async ({ page }) => {
+        await page.goto('/');
+        const toolbar = page.locator('.leaflet-top.leaflet-left .toolbar');
+        const legendHeader = page.locator('.legend-title');
+        const firstLegendRow = page.locator('.legend li').first();
+        const lastTool = toolbar.locator('> li > button').last();
+
+        await expect(toolbar).toBeVisible();
+        await expect(legendHeader).toBeVisible();
+        await expect(firstLegendRow).toBeVisible();
+        await expect(lastTool).toBeVisible();
+        await expect(page.locator('meta[name="viewport"]')).toHaveAttribute(
+            'content',
+            'width=device-width, initial-scale=1.0'
+        );
+
+        for (const control of [toolbar, legendHeader, firstLegendRow, lastTool]) {
+            const bounds = await control.boundingBox();
+            expect(bounds).not.toBeNull();
+            expect(bounds!.y).toBeGreaterThanOrEqual(0);
+            expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(360);
+        }
+
+        const legendContent = page.locator('.legend-content');
+        await expect
+            .poll(() =>
+                legendContent.evaluate((element) => element.scrollHeight > element.clientHeight)
+            )
+            .toBe(true);
+        await legendContent.evaluate((element) => (element.scrollTop = element.scrollHeight));
+        await expect(legendHeader).toBeInViewport();
+        await expect(page.locator('.legend li').last()).toBeInViewport();
+
+        await page.locator('#traffic-lights-button').click({ button: 'right' });
+        const submenu = toolbar.getByRole('group', { name: 'traffic-controls options' });
+        await expect(submenu).toBeVisible();
+        const submenuBounds = await submenu.boundingBox();
+        const legendBounds = await page.locator('.legend').boundingBox();
+        expect(submenuBounds).not.toBeNull();
+        expect(legendBounds).not.toBeNull();
+        expect(submenuBounds!.y).toBeGreaterThanOrEqual(0);
+        expect(submenuBounds!.y + submenuBounds!.height).toBeLessThanOrEqual(360);
+        expect(submenuBounds!.x + submenuBounds!.width).toBeLessThan(legendBounds!.x);
+    });
+});
+
 test.describe('Toolbar button groups', () => {
     // Returns the index, among the toolbar's top-level <li> elements, of the
     // group whose collapsed button is currently any of the given member ids.
