@@ -6,24 +6,19 @@
  * Leaflet controls the popup DOM lifecycle and it lives outside Vue's virtual DOM.
  */
 import * as L from 'leaflet';
+import { buildFeatureActionPopup, setFeatureActionPopupContent } from './featureActionPopup';
+import { buildFeatureDescriptionPopup } from './featureDescriptionPopup';
 import {
-    buildFeatureActionPopup,
-    setFeatureActionPopupContent,
-    buildFeatureDescriptionPopup,
     addFeatureHoverPopup,
     getFeatureHoverLatLng,
-    removeMapCursor,
-    setMouseMarkerCursor,
-    buildHistoryId,
-    isFeatureEditLayerButtonId,
     closeFeatureHoverPopups,
-    createFeatureHoverPopupController,
-    buildReadOnlyGroupPopup,
-    findFirstFeatureGroupId,
-    getReadOnlyGroupCenter,
-    setFeatureElementCursor,
-    cacheFeatureGroupElement
-} from './layerUtils';
+    createFeatureHoverPopupController
+} from './featureHoverPopups';
+import { removeMapCursor, setMouseMarkerCursor, setFeatureElementCursor } from './featureCursors';
+import { buildHistoryId } from './featureLookup';
+import { isFeatureEditLayerButtonId } from './featureClassification';
+import { buildReadOnlyGroupPopup, getReadOnlyGroupCenter } from './readOnlyGroupPopup';
+import { findFirstFeatureGroupId, cacheFeatureGroupElement } from './featureGroupMembershipPopup';
 import { useMapStore } from '../../stores/mapStore';
 import { pinia } from '../../stores/index';
 import { selectFeature, executeAreaDelete, executeCopy } from '../useAreaSelection';
