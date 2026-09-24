@@ -1,0 +1,74 @@
+import { test, expect } from '@playwright/test';
+import { setupFreshPage } from './layerTestSetup';
+import {
+    getLayerFeatureCount,
+    clickMap,
+    deleteOpenFeaturePopup,
+    waitForHistoryButtons
+} from './layerMapTestHelpers';
+
+test.describe('Layer: Pedestrian Lights (point, submenu button)', () => {
+    setupFreshPage();
+
+    test('right-clicking traffic lights button reveals pedestrian lights button', async ({
+        page
+    }) => {
+        await page.locator('#traffic-lights-button').dispatchEvent('contextmenu');
+        await expect(page.locator('#pedestrian-lights-button')).toBeVisible();
+    });
+
+    test('clicking the map places a pedestrian light and persists it', async ({ page }) => {
+        await page.locator('#traffic-lights-button').dispatchEvent('contextmenu');
+        await page.locator('#pedestrian-lights-button').click();
+        await clickMap(page);
+        const count = await getLayerFeatureCount(page, 'PedestrianLights');
+        expect(count).toBe(1);
+        await expect(page.locator('.leaflet-marker-icon.pedestrian-lights-icon')).toHaveCount(1);
+    });
+
+    test('undo removes a newly placed pedestrian light and redo restores it', async ({ page }) => {
+        await page.locator('#traffic-lights-button').dispatchEvent('contextmenu');
+        await page.locator('#pedestrian-lights-button').click();
+        await clickMap(page);
+        expect(await getLayerFeatureCount(page, 'PedestrianLights')).toBe(1);
+
+        await waitForHistoryButtons(page, { canUndo: true, canRedo: false });
+
+        await page.locator('#undo-button').click();
+        await page.waitForTimeout(150);
+        expect(await getLayerFeatureCount(page, 'PedestrianLights')).toBe(0);
+
+        await waitForHistoryButtons(page, { canUndo: false, canRedo: true });
+        await page.locator('#redo-button').click();
+        await page.waitForTimeout(150);
+        expect(await getLayerFeatureCount(page, 'PedestrianLights')).toBe(1);
+        await waitForHistoryButtons(page, { canUndo: true, canRedo: false });
+    });
+
+    test('undo restores a deleted pedestrian light and redo removes it again', async ({ page }) => {
+        await page.locator('#traffic-lights-button').dispatchEvent('contextmenu');
+        await page.locator('#pedestrian-lights-button').click();
+        await clickMap(page);
+        expect(await getLayerFeatureCount(page, 'PedestrianLights')).toBe(1);
+
+        await page.locator('#pedestrian-lights-button').click(); // deactivate
+        await page.waitForSelector('.leaflet-marker-icon.pedestrian-lights-icon');
+        await page
+            .locator('.leaflet-marker-icon.pedestrian-lights-icon')
+            .first()
+            .dispatchEvent('click');
+        await deleteOpenFeaturePopup(page);
+        await page.waitForTimeout(100);
+        expect(await getLayerFeatureCount(page, 'PedestrianLights')).toBe(0);
+
+        await waitForHistoryButtons(page, { canUndo: true, canRedo: false });
+
+        await page.locator('#undo-button').click();
+        await page.waitForTimeout(150);
+        expect(await getLayerFeatureCount(page, 'PedestrianLights')).toBe(1);
+
+        await page.locator('#redo-button').click();
+        await page.waitForTimeout(150);
+        expect(await getLayerFeatureCount(page, 'PedestrianLights')).toBe(0);
+    });
+});
