@@ -6,6 +6,7 @@ import * as L from 'leaflet';
 import {
     setMapCursor,
     removeMapCursor,
+    setFeatureElementCursor,
     isPointFeatureElement,
     setMouseMarkerCursor,
     buildHistoryId,
@@ -132,6 +133,22 @@ describe('removeMapCursor', () => {
 
     it('is a no-op when the map element does not exist', () => {
         expect(() => removeMapCursor('modal-filter')).not.toThrow();
+    });
+});
+
+describe('setFeatureElementCursor', () => {
+    it('sets and clears the cursor on a marker icon and its children', () => {
+        const icon = document.createElement('div');
+        const child = document.createElement('span');
+        icon.appendChild(child);
+
+        setFeatureElementCursor({ _icon: icon }, 'pointer');
+        expect(icon.style.getPropertyValue('cursor')).toBe('pointer');
+        expect(child.style.getPropertyPriority('cursor')).toBe('important');
+
+        setFeatureElementCursor({ _icon: icon }, null);
+        expect(icon.style.getPropertyValue('cursor')).toBe('');
+        expect(child.style.getPropertyValue('cursor')).toBe('');
     });
 });
 
