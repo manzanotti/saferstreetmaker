@@ -15,12 +15,9 @@
 import * as L from 'leaflet';
 import { ToolbarButton } from '../../models/ToolbarButton';
 import { findFeatureGroupMemberships } from '../../features/groups/featureMemberships';
-import { getActiveVersion } from '../../features/groups/groupVersions';
 import { useGroupStore } from '../../stores/groupStore';
-import { useMapStore } from '../../stores/mapStore';
 import { pinia } from '../../stores/index';
 import type { GroupMember } from '../../models/Group';
-import { findLayerFeatureByHistoryId } from './featureLookup';
 
 export { getFeatureHistoryId, findLayerFeatureByHistoryId } from './featureLookup';
 export {
@@ -31,7 +28,7 @@ export {
 } from './featureActionPopup';
 export type { FeatureActionPopupOptions } from './featureActionPopup';
 
-export { buildReadOnlyGroupPopup } from './readOnlyGroupPopup';
+export { buildReadOnlyGroupPopup, getReadOnlyGroupCenter } from './readOnlyGroupPopup';
 
 export {
     buildFeatureGroupMembershipContent,
@@ -116,36 +113,6 @@ export type { FeatureDescriptionPopupDetails } from './featureDescriptionPopup';
 
 export function findFirstFeatureGroupId(member: GroupMember): string | null {
     return findFeatureGroupMemberships(useGroupStore(pinia).groups, member)[0]?.groupId ?? null;
-}
-
-export function getReadOnlyGroupCenter(groupId: string): L.LatLng | null {
-    const groupStore = useGroupStore(pinia);
-    const group = groupStore.groups.find((item) => item.id === groupId);
-    if (!group) {
-        return null;
-    }
-
-    const version = getActiveVersion(group, groupStore.activeVersionIds[groupId]);
-    const bounds = L.latLngBounds([]);
-    const layers = useMapStore(pinia).layers;
-    for (const member of version.members) {
-        const feature = findLayerFeatureByHistoryId(layers, member.layerId, member.historyId) as
-            | (L.Layer & {
-                  getBounds?: () => L.LatLngBounds;
-                  getLatLng?: () => L.LatLng;
-              })
-            | null;
-        if (!feature) {
-            continue;
-        }
-        if (typeof feature.getBounds === 'function') {
-            bounds.extend(feature.getBounds());
-        } else if (typeof feature.getLatLng === 'function') {
-            bounds.extend(feature.getLatLng());
-        }
-    }
-
-    return bounds.isValid() ? bounds.getCenter() : null;
 }
 
 export function isPointFeatureElement(element: Element): boolean {

@@ -15,6 +15,7 @@ import {
     buildFeatureActionPopup,
     buildFeatureDescriptionPopup,
     buildReadOnlyGroupPopup,
+    getReadOnlyGroupCenter,
     addFeatureHoverPopup,
     createFeatureHoverPopupController,
     getFeatureHoverLatLng,
@@ -97,6 +98,12 @@ describe('buildReadOnlyGroupPopup', () => {
         );
         heading.click();
         expect(onOpenGroup).toHaveBeenCalledExactlyOnceWith('g1');
+    });
+});
+
+describe('getReadOnlyGroupCenter', () => {
+    it('returns null when the group is missing', () => {
+        expect(getReadOnlyGroupCenter('missing')).toBeNull();
     });
 });
 

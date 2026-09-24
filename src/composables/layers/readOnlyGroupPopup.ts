@@ -1,7 +1,43 @@
 import * as L from 'leaflet';
-import { getGroupVersions, needsReadOnlyGroupDetails } from '../../features/groups/groupVersions';
+import {
+    getActiveVersion,
+    getGroupVersions,
+    needsReadOnlyGroupDetails
+} from '../../features/groups/groupVersions';
 import { useGroupStore } from '../../stores/groupStore';
+import { useMapStore } from '../../stores/mapStore';
 import { pinia } from '../../stores/index';
+import { findLayerFeatureByHistoryId } from './featureLookup';
+
+export function getReadOnlyGroupCenter(groupId: string): L.LatLng | null {
+    const groupStore = useGroupStore(pinia);
+    const group = groupStore.groups.find((item) => item.id === groupId);
+    if (!group) {
+        return null;
+    }
+
+    const version = getActiveVersion(group, groupStore.activeVersionIds[groupId]);
+    const bounds = L.latLngBounds([]);
+    const layers = useMapStore(pinia).layers;
+    for (const member of version.members) {
+        const feature = findLayerFeatureByHistoryId(layers, member.layerId, member.historyId) as
+            | (L.Layer & {
+                  getBounds?: () => L.LatLngBounds;
+                  getLatLng?: () => L.LatLng;
+              })
+            | null;
+        if (!feature) {
+            continue;
+        }
+        if (typeof feature.getBounds === 'function') {
+            bounds.extend(feature.getBounds());
+        } else if (typeof feature.getLatLng === 'function') {
+            bounds.extend(feature.getLatLng());
+        }
+    }
+
+    return bounds.isValid() ? bounds.getCenter() : null;
+}
 
 export function buildReadOnlyGroupPopup(
     groupId: string,
