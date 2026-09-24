@@ -8,6 +8,7 @@ import {
     removeMapCursor,
     setFeatureElementCursor,
     isPointFeatureElement,
+    isFeatureEditLayerButtonId,
     setMouseMarkerCursor,
     buildHistoryId,
     buildToolbarButton,
@@ -190,6 +191,15 @@ describe('isPointFeatureElement', () => {
         el.classList.add('leaflet-interactive');
 
         expect(isPointFeatureElement(el)).toBe(false);
+    });
+});
+
+describe('isFeatureEditLayerButtonId', () => {
+    it('recognizes editable layers but not point tools or null', () => {
+        expect(isFeatureEditLayerButtonId('mobility-lane')).toBe(true);
+        expect(isFeatureEditLayerButtonId('ltn')).toBe(true);
+        expect(isFeatureEditLayerButtonId('modal-filter')).toBe(false);
+        expect(isFeatureEditLayerButtonId(null)).toBe(false);
     });
 });
 
