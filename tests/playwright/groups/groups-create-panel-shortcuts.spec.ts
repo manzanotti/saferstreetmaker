@@ -27,7 +27,7 @@ test.describe('Groups — Create group: panel-shortcuts', () => {
         await createGroup(page, 'Versioned Group');
         await openGroupsPanel(page);
         await openGroupDetails(page, 'Versioned Group');
-        await createGroupVersion(page, 'Alternative');
+        await createGroupVersion(page, 'Versioned Group', 'Alternative');
         await page.getByRole('button', { name: 'Close group details' }).click();
 
         await page.locator('#settings-button').click();

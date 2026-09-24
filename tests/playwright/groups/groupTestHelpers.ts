@@ -126,7 +126,11 @@ export async function setGroupPhases(page: Page, phaseCount: number): Promise<vo
     }, phaseCount);
 }
 
-export async function createGroupVersion(page: Page, name: string): Promise<void> {
+export async function createGroupVersion(
+    page: Page,
+    groupName: string,
+    name: string
+): Promise<void> {
     const dialog = page.getByRole('dialog', { name: 'Group details' });
     await expect(dialog).toBeVisible();
     await dialog.getByRole('button', { name: 'Create version' }).click();
@@ -135,7 +139,7 @@ export async function createGroupVersion(page: Page, name: string): Promise<void
     await page.waitForTimeout(300);
     if (!(await dialog.isVisible())) {
         await openGroupsPanel(page);
-        await openGroupDetails(page, 'Versioned Group');
+        await openGroupDetails(page, groupName);
     }
 }
 

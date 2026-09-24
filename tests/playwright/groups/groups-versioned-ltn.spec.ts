@@ -19,7 +19,7 @@ test.describe('Groups — Version-specific LTN cells', () => {
         await createGroup(page, 'Versioned LTN');
         await openGroupsPanel(page);
         await openGroupDetails(page, 'Versioned LTN');
-        await createGroupVersion(page, 'Alternative');
+        await createGroupVersion(page, 'Versioned LTN', 'Alternative');
         const detailsDialog = page.getByRole('dialog', { name: 'Group details' });
         if (await detailsDialog.isVisible()) {
             await detailsDialog.getByRole('button', { name: 'Close group details' }).click();

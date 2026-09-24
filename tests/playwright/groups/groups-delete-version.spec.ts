@@ -19,7 +19,7 @@ test.describe('Groups — Delete version', () => {
         await createGroup(page, 'Versioned Group');
         await openGroupsPanel(page);
         await openGroupDetails(page, 'Versioned Group');
-        await createGroupVersion(page, 'Alternative');
+        await createGroupVersion(page, 'Versioned Group', 'Alternative');
         await expectSelectedVersion(page, 'Alternative');
         await expect(page.locator('.leaflet-filters-pane path[stroke="#3b82f6"]')).toHaveCount(2);
     });

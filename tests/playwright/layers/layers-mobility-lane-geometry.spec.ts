@@ -18,7 +18,7 @@ import {
     moveToMapOffset
 } from './layerCursorTestHelpers';
 
-test.describe('Layer: LTN Cell (polygon): lane-geometry', () => {
+test.describe('Layer: Mobility Lane (polyline): geometry', () => {
     setupFreshPage();
 
     test('undo restores an edited mobility lane geometry and redo reapplies it', async ({
