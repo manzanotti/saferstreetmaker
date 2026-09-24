@@ -639,6 +639,30 @@ describe('feature popups', () => {
         expect(onCopy).toHaveBeenCalledOnce();
     });
 
+    it('saves an edited feature name and closes the action popup', () => {
+        const map = { closePopup: vi.fn() } as any;
+        const onRename = vi.fn();
+        const popup = buildFeatureActionPopup({
+            map,
+            popupOptions: { minWidth: 30 },
+            member,
+            name: 'Old name',
+            onRename,
+            onDelete: vi.fn()
+        }) as any;
+        const content = getPopupContent(popup);
+        const input = content.querySelector('.name-editor') as HTMLInputElement;
+        expect(input.value).toBe('Old name');
+        input.value = 'New name';
+
+        (content.querySelector('.feature-name-editor') as HTMLFormElement).dispatchEvent(
+            new Event('submit', { cancelable: true })
+        );
+
+        expect(onRename).toHaveBeenCalledWith('New name');
+        expect(map.closePopup).toHaveBeenCalledWith(popup);
+    });
+
     it('does not build a description popup for an ungrouped feature', () => {
         const popup = buildFeatureDescriptionPopup({ minWidth: 30 }, member);
 
