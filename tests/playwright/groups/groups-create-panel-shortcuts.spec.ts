@@ -53,7 +53,9 @@ test.describe('Groups — Create group: panel-shortcuts', () => {
 
     test('Escape key closes the Groups panel', async ({ page }) => {
         await openGroupsPanel(page);
-        await expect(page.locator('#groups-button')).toHaveAttribute('title', 'Manage groups');
+        await expect(page.getByText('No groups yet')).toBeVisible();
+        await page.keyboard.press('Escape');
+        await expect(page.getByText('No groups yet')).not.toBeVisible();
     });
 
     test('the G key toggles the Groups popup', async ({ page }) => {

@@ -37,14 +37,14 @@ test.describe('Layer: LTN Cell (polygon): polygon-geometry', () => {
                 const data: { historyId: string; coords: number[][][] }[] = [];
                 map.eachLayer((l: any) => {
                     if (
-                        l.feature?.properties?.historyId &&
-                        l.feature?.geometry?.type === 'Polygon' &&
+                        l.properties?.historyId &&
                         l.getLatLngs &&
+                        Array.isArray(l.getLatLngs()[0]) &&
                         data.length === 0
                     ) {
                         const rings = l.getLatLngs() as any[][];
                         data.push({
-                            historyId: l.feature.properties.historyId,
+                            historyId: l.properties.historyId,
                             coords: rings.map((ring: any[]) =>
                                 ring.map((ll: any) => [ll.lng, ll.lat])
                             )
@@ -59,7 +59,7 @@ test.describe('Layer: LTN Cell (polygon): polygon-geometry', () => {
             originalData.coords.length === 0 ||
             originalData.coords[0].length < 3
         ) {
-            return;
+            throw new Error('Expected an LTN polygon with at least three outer-ring coordinates');
         }
 
         // Shift the last vertex of the outer ring by a small amount.
@@ -76,7 +76,7 @@ test.describe('Layer: LTN Cell (polygon): polygon-geometry', () => {
                 const map = pinia?._s?.get('map')?.map ?? null;
                 if (!map) return;
                 map.eachLayer((l: any) => {
-                    if (l.feature?.properties?.historyId === historyId && l.setLatLngs) {
+                    if (l.properties?.historyId === historyId && l.setLatLngs) {
                         l.setLatLngs(
                             edited.map((ring: number[][]) =>
                                 ring.map((c: number[]) => ({ lat: c[1], lng: c[0] }))
@@ -100,7 +100,7 @@ test.describe('Layer: LTN Cell (polygon): polygon-geometry', () => {
             if (!map) return [];
             let coords: number[][][] = [];
             map.eachLayer((l: any) => {
-                if (l.feature?.properties?.historyId === historyId && l.getLatLngs) {
+                if (l.properties?.historyId === historyId && l.getLatLngs) {
                     const rings = l.getLatLngs() as any[][];
                     coords = rings.map((ring: any[]) =>
                         ring.map((ll: any) => [
@@ -128,7 +128,7 @@ test.describe('Layer: LTN Cell (polygon): polygon-geometry', () => {
             if (!map) return [];
             let coords: number[][][] = [];
             map.eachLayer((l: any) => {
-                if (l.feature?.properties?.historyId === historyId && l.getLatLngs) {
+                if (l.properties?.historyId === historyId && l.getLatLngs) {
                     const rings = l.getLatLngs() as any[][];
                     coords = rings.map((ring: any[]) =>
                         ring.map((ll: any) => [

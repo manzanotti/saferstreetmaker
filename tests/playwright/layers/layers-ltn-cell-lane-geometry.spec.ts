@@ -58,7 +58,7 @@ test.describe('Layer: LTN Cell (polygon): lane-geometry', () => {
         );
 
         if (!originalData || originalData.coords.length < 2) {
-            return;
+            throw new Error('Expected a mobility lane with at least two coordinates');
         }
 
         const editedCoords = originalData.coords.map((c, i) =>
