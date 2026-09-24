@@ -2,7 +2,7 @@ import * as L from 'leaflet';
 import { useMapStore } from '../../stores/mapStore';
 import { useSelectionStore, type SelectedMarker } from '../../stores/selectionStore';
 import { pinia } from '../../stores/index';
-import { getFeatureHistoryId } from '../../composables/layers/layerUtils';
+import { getFeatureHistoryId } from '../../composables/layers/featureLookup';
 import { useGroupStore } from '../../stores/groupStore';
 import { useFeatureDeletionStore } from '../../stores/featureDeletionStore';
 import { findFeatureMemberships } from '../groups/featureMemberships';
