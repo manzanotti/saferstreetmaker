@@ -14,6 +14,7 @@ import {
     buildDeletePopup,
     buildFeatureActionPopup,
     buildFeatureDescriptionPopup,
+    buildReadOnlyGroupPopup,
     addFeatureHoverPopup,
     createFeatureHoverPopupController,
     getFeatureHoverLatLng,
@@ -49,6 +50,53 @@ beforeEach(() => {
     document.querySelector('.leaflet-mouse-marker')?.remove();
     vi.clearAllMocks();
     useGroupStore(pinia).setGroups([]);
+});
+
+describe('buildReadOnlyGroupPopup', () => {
+    it('returns null when the group is missing', () => {
+        expect(buildReadOnlyGroupPopup('missing')).toBeNull();
+    });
+
+    it('renders distinct feature counts across versions and opens group details', () => {
+        useGroupStore(pinia).setGroups([
+            {
+                id: 'g1',
+                name: 'Neighbourhood',
+                description: '<p>Safer routes</p>',
+                versions: [
+                    {
+                        id: 'v1',
+                        name: 'Current',
+                        members: [{ layerId: 'ModalFilters', historyId: 'f1' }]
+                    },
+                    {
+                        id: 'v2',
+                        name: 'Proposed',
+                        members: [
+                            { layerId: 'ModalFilters', historyId: 'f1' },
+                            { layerId: 'BusGates', historyId: 'b1' }
+                        ]
+                    }
+                ]
+            }
+        ]);
+        const onOpenGroup = vi.fn();
+        const popup = buildReadOnlyGroupPopup('g1', onOpenGroup) as any;
+        const content = popup.setContent.mock.calls[0][0] as HTMLElement;
+        const heading = content.querySelector('.group-link') as HTMLButtonElement;
+
+        expect(popup.options.className).toBe('group-popup');
+        expect(heading.type).toBe('button');
+        expect(heading.getAttribute('aria-label')).toBe('Open group Neighbourhood');
+        expect(content.querySelector('.feature-popup-description')?.textContent).toBe(
+            'Safer routes'
+        );
+        expect(content.querySelector('.group-popup-summary')?.textContent).toBe(
+            '2 features · 2 versions'
+        );
+        heading.click();
+        expect(onOpenGroup).toHaveBeenCalledExactlyOnceWith('g1');
+    });
 });
 
 describe('setMapCursor', () => {
