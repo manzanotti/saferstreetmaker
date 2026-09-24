@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import { setupPage, placeModalFilter, openGroupsPanel } from './groupTestHelpers';
 
 test.describe('Groups — Partial polyline split', () => {

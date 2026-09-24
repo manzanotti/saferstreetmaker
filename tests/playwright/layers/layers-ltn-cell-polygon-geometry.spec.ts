@@ -34,24 +34,24 @@ test.describe('Layer: LTN Cell (polygon): polygon-geometry', () => {
                 const pinia = app?.config?.globalProperties?.$pinia;
                 const map = pinia?._s?.get('map')?.map ?? null;
                 if (!map) return null;
-                let data: { historyId: string; coords: number[][][] } | null = null;
+                const data: { historyId: string; coords: number[][][] }[] = [];
                 map.eachLayer((l: any) => {
                     if (
                         l.feature?.properties?.historyId &&
                         l.feature?.geometry?.type === 'Polygon' &&
                         l.getLatLngs &&
-                        data == null
+                        data.length === 0
                     ) {
                         const rings = l.getLatLngs() as any[][];
-                        data = {
+                        data.push({
                             historyId: l.feature.properties.historyId,
                             coords: rings.map((ring: any[]) =>
                                 ring.map((ll: any) => [ll.lng, ll.lat])
                             )
-                        };
+                        });
                     }
                 });
-                return data;
+                return data[0] ?? null;
             });
 
         if (

@@ -39,21 +39,21 @@ test.describe('Layer: LTN Cell (polygon): lane-geometry', () => {
                 const pinia = app?.config?.globalProperties?.$pinia;
                 const map = pinia?._s?.get('map')?.map ?? null;
                 if (!map) return null;
-                let data: { historyId: string; coords: number[][] } | null = null;
+                const data: { historyId: string; coords: number[][] }[] = [];
                 map.eachLayer((l: any) => {
                     if (
                         l.feature?.properties?.historyId &&
                         l.feature?.geometry?.type === 'LineString' &&
                         l.getLatLngs &&
-                        data == null
+                        data.length === 0
                     ) {
-                        data = {
+                        data.push({
                             historyId: l.feature.properties.historyId,
                             coords: l.getLatLngs().map((ll: any) => [ll.lng, ll.lat])
-                        };
+                        });
                     }
                 });
-                return data;
+                return data[0] ?? null;
             }
         );
 
