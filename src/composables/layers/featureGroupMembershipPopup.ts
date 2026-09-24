@@ -3,6 +3,22 @@ import { findFeatureGroupMemberships } from '../../features/groups/featureMember
 import { useGroupStore } from '../../stores/groupStore';
 import { pinia } from '../../stores/index';
 
+const featureGroupIds = new WeakMap<Element, string | null>();
+
+export function cacheFeatureGroupElement(element: Element | null, groupId: string | null): void {
+    if (element) {
+        featureGroupIds.set(element, groupId);
+    }
+}
+
+export function findFeatureGroupIdByElement(element: Element): string | null {
+    return featureGroupIds.get(element) ?? null;
+}
+
+export function findFirstFeatureGroupId(member: GroupMember): string | null {
+    return findFeatureGroupMemberships(useGroupStore(pinia).groups, member)[0]?.groupId ?? null;
+}
+
 export function disposePopupElement(element: HTMLElement | null | undefined): void {
     if (!element) {
         return;

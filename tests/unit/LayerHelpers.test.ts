@@ -23,6 +23,9 @@ import {
     closeFeatureHoverPopups,
     buildFeatureGroupMembershipContent,
     disposePopupElement,
+    cacheFeatureGroupElement,
+    findFeatureGroupIdByElement,
+    findFirstFeatureGroupId,
     getFeatureHistoryId,
     findLayerFeatureByHistoryId
 } from '../../src/composables/layers/layerUtils';
@@ -53,6 +56,28 @@ beforeEach(() => {
     document.querySelector('.leaflet-mouse-marker')?.remove();
     vi.clearAllMocks();
     useGroupStore(pinia).setGroups([]);
+});
+
+describe('feature group lookups', () => {
+    it('finds the first group containing a feature', () => {
+        const member = { layerId: 'ModalFilters', historyId: 'filter-1' };
+        useGroupStore(pinia).setGroups([{ id: 'g1', name: 'Centre', members: [member] }]);
+
+        expect(findFirstFeatureGroupId(member)).toBe('g1');
+        expect(findFirstFeatureGroupId({ layerId: 'ModalFilters', historyId: 'other' })).toBeNull();
+    });
+
+    it('caches group ids per element, including a cleared membership', () => {
+        const element = document.createElement('div');
+        const other = document.createElement('div');
+
+        cacheFeatureGroupElement(element, 'g1');
+        expect(findFeatureGroupIdByElement(element)).toBe('g1');
+        expect(findFeatureGroupIdByElement(other)).toBeNull();
+
+        cacheFeatureGroupElement(element, null);
+        expect(findFeatureGroupIdByElement(element)).toBeNull();
+    });
 });
 
 describe('buildReadOnlyGroupPopup', () => {

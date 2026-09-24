@@ -14,10 +14,6 @@
  */
 import * as L from 'leaflet';
 import { ToolbarButton } from '../../models/ToolbarButton';
-import { findFeatureGroupMemberships } from '../../features/groups/featureMemberships';
-import { useGroupStore } from '../../stores/groupStore';
-import { pinia } from '../../stores/index';
-import type { GroupMember } from '../../models/Group';
 
 export { getFeatureHistoryId, findLayerFeatureByHistoryId } from './featureLookup';
 export {
@@ -32,7 +28,10 @@ export { buildReadOnlyGroupPopup, getReadOnlyGroupCenter } from './readOnlyGroup
 
 export {
     buildFeatureGroupMembershipContent,
-    disposePopupElement
+    disposePopupElement,
+    cacheFeatureGroupElement,
+    findFeatureGroupIdByElement,
+    findFirstFeatureGroupId
 } from './featureGroupMembershipPopup';
 
 export {
@@ -49,18 +48,6 @@ export {
     setFeatureElementCursor,
     setMouseMarkerCursor
 } from './featureCursors';
-
-const featureGroupIds = new WeakMap<Element, string | null>();
-
-export function cacheFeatureGroupElement(element: Element | null, groupId: string | null): void {
-    if (element) {
-        featureGroupIds.set(element, groupId);
-    }
-}
-
-export function findFeatureGroupIdByElement(element: Element): string | null {
-    return featureGroupIds.get(element) ?? null;
-}
 
 const POINT_FEATURE_CLASSES = [
     'modal-filter-marker',
@@ -82,10 +69,6 @@ const FEATURE_EDIT_LAYER_BUTTON_IDS = new Set([
 
 export { buildFeatureDescriptionPopup } from './featureDescriptionPopup';
 export type { FeatureDescriptionPopupDetails } from './featureDescriptionPopup';
-
-export function findFirstFeatureGroupId(member: GroupMember): string | null {
-    return findFeatureGroupMemberships(useGroupStore(pinia).groups, member)[0]?.groupId ?? null;
-}
 
 export function isPointFeatureElement(element: Element): boolean {
     return POINT_FEATURE_CLASSES.some((className) => element.classList.contains(className));
