@@ -21,7 +21,8 @@ import {
     closeFeatureHoverPopups,
     buildFeatureGroupMembershipContent,
     disposePopupElement,
-    getFeatureHistoryId
+    getFeatureHistoryId,
+    findLayerFeatureByHistoryId
 } from '../../src/composables/layers/layerUtils';
 import { useGroupStore } from '../../src/stores/groupStore';
 import { pinia } from '../../src/stores';
@@ -209,6 +210,27 @@ describe('getFeatureHistoryId', () => {
         expect(getFeatureHistoryId(null)).toBeNull();
         expect(getFeatureHistoryId({ feature: { properties: {} } })).toBeNull();
         expect(getFeatureHistoryId({ properties: { historyId: '' } })).toBeNull();
+    });
+});
+
+describe('findLayerFeatureByHistoryId', () => {
+    it('finds a polygon by its properties id in the requested layer', () => {
+        const target = { properties: { historyId: 'ltn-1' } };
+        const other = { feature: { properties: { historyId: 'point-1' } } };
+        const layers = [
+            {
+                id: 'Points',
+                getLayer: () => ({ eachLayer: (visit: (item: any) => void) => visit(other) })
+            },
+            {
+                id: 'LtnCells',
+                getLayer: () => ({ eachLayer: (visit: (item: any) => void) => visit(target) })
+            }
+        ] as any;
+
+        expect(findLayerFeatureByHistoryId(layers, 'LtnCells', 'ltn-1')).toBe(target);
+        expect(findLayerFeatureByHistoryId(layers, 'Points', 'ltn-1')).toBeNull();
+        expect(findLayerFeatureByHistoryId(layers, 'missing', 'ltn-1')).toBeNull();
     });
 });
 
