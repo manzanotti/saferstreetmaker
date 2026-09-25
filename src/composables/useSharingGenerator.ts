@@ -51,8 +51,11 @@ export function useSharingGenerator(
             importedLayersForShare
         );
         const baseUrl = window.location.origin + window.location.pathname;
-        const params = new URLSearchParams({ 'hide-toolbar': String(hideToolbar.value) });
-        if (groupForShare) {
+        const params = new URLSearchParams({
+            'hide-toolbar': String(hideToolbar.value),
+            share: '1'
+        });
+        if (scope === 'group' && groupForShare) {
             const versions = getGroupVersions(groupForShare);
             const activeVersionId = groupStore.activeVersionIds[groupForShare.id];
             const versionIndex = versions.findIndex((version) => version.id === activeVersionId);

@@ -60,7 +60,7 @@ export interface MapManager {
         hideToolbar: boolean,
         zoom: string | null,
         centre: number[] | null,
-        sharedGroup?: boolean
+        sharedView?: boolean
     ) => Promise<boolean>;
     saveMap: () => Promise<void>;
     applySettings: (newSettings: Settings) => Promise<void>;
@@ -539,10 +539,10 @@ export function setupMapManager(
         hideToolbar: boolean,
         zoom: string | null,
         centre: number[] | null,
-        sharedGroup = false
+        sharedView = false
     ): Promise<boolean> => {
         await persistenceCoordinator.flush();
-        suppressAutomaticSaves = remoteMapFile === null && hash !== '' && sharedGroup;
+        suppressAutomaticSaves = remoteMapFile === null && hash !== '' && sharedView;
         return await mapLoadCoordinator.load(remoteMapFile, hash, hideToolbar, zoom, centre);
     };
 

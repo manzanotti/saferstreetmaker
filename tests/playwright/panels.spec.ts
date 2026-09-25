@@ -699,9 +699,13 @@ test.describe('Sharing Panel', () => {
         await page.locator('button:has-text("Create")').click();
 
         await expect(page.locator('#messageRow')).toBeVisible();
-        await expect(page.evaluate(() => (window as any).__clipboardText)).resolves.toContain(
-            'iframe'
+        const iframeUrl = await page.evaluate(
+            () => (window as any).__clipboardText.match(/src="([^"]+)"/)?.[1] as string
         );
+        const params = new URL(iframeUrl).searchParams;
+        expect(params.get('share')).toBe('1');
+        expect(params.has('group')).toBe(false);
+        expect(params.has('version')).toBe(false);
     });
 
     test('shared group URLs select the active version in read-only mode', async ({ page }) => {
@@ -750,6 +754,7 @@ test.describe('Sharing Panel', () => {
         });
         expect(iframeUrl).toContain('group=shared-group');
         expect(iframeUrl).toContain('version=2');
+        expect(iframeUrl).toContain('share=1');
 
         await page.goto(iframeUrl);
         await expect(page.getByRole('dialog', { name: 'Shared Group' })).toBeVisible();
@@ -761,6 +766,14 @@ test.describe('Sharing Panel', () => {
         await waitForFreshStorage(page);
         await page.waitForSelector('.toolbar');
         await page.evaluate(() => {
+            Object.defineProperty(navigator, 'clipboard', {
+                value: {
+                    writeText: async (text: string) => {
+                        (window as any).__clipboardText = text;
+                    }
+                },
+                configurable: true
+            });
             const app = (document.getElementById('app') as any).__vue_app__;
             const pinia = app.config.globalProperties.$pinia;
             const groupStore = pinia._s.get('group');
@@ -769,6 +782,12 @@ test.describe('Sharing Panel', () => {
                 id: 'scope-group',
                 name: 'Cycle Route',
                 versions: [{ id: 'scope-version', name: 'Current', members: [] }],
+                members: []
+            });
+            groupStore.addGroup({
+                id: 'other-group',
+                name: 'Other Group',
+                versions: [{ id: 'other-version', name: 'Current', members: [] }],
                 members: []
             });
             selectionStore.markGroupSelection('scope-group');
@@ -782,6 +801,22 @@ test.describe('Sharing Panel', () => {
         await expect(prompt.getByRole('button', { name: 'Whole map' })).toBeVisible();
         await expect(prompt.getByRole('button', { name: 'Just Cycle Route' })).toBeVisible();
         await expect(prompt.getByRole('button', { name: 'Cancel' })).toBeVisible();
+
+        await prompt.getByRole('button', { name: 'Whole map' }).click();
+        const iframeUrl = await page.evaluate(
+            () => (window as any).__clipboardText.match(/src="([^"]+)"/)?.[1] as string
+        );
+        const params = new URL(iframeUrl).searchParams;
+        expect(params.has('group')).toBe(false);
+        expect(params.has('version')).toBe(false);
+        expect(params.get('share')).toBe('1');
+
+        await page.goto(iframeUrl);
+        await page.waitForFunction(() => {
+            const app = (document.getElementById('app') as any).__vue_app__;
+            return app?.config.globalProperties.$pinia._s.get('group').groups.length === 2;
+        });
+        await expect(page.locator('#groups-button')).toBeVisible();
     });
 
     test('opening a group-only share does not replace the stored map', async ({

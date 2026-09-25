@@ -110,7 +110,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         hideToolbar,
         zoom,
         centre,
-        params.has('group')
+        params.get('share') === '1' || params.has('group')
     );
     const initialMapGeneration = getMapGeneration();
 
