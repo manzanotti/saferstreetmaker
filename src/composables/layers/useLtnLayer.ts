@@ -2,24 +2,11 @@ import * as L from 'leaflet';
 import { watch } from 'vue';
 import { useMapStore } from '../../stores/mapStore';
 import { pinia } from '../../stores/index';
-import { setFeatureElementCursor } from './featureCursors';
 import { buildToolbarButton } from './toolbarButton';
 import { buildLegendEntry } from './legendEntry';
-import { isPointFeatureElement, isFeatureEditLayerButtonId } from './featureClassification';
+import { isPointFeatureElement } from './featureClassification';
 import { buildHistoryId } from './featureLookup';
-import { buildFeatureDescriptionPopup } from './featureDescriptionPopup';
-import { buildReadOnlyGroupPopup, getReadOnlyGroupCenter } from './readOnlyGroupPopup';
-import {
-    findFirstFeatureGroupId,
-    findFeatureGroupIdByElement,
-    cacheFeatureGroupElement
-} from './featureGroupMembershipPopup';
-import {
-    addFeatureHoverPopup,
-    getFeatureHoverLatLng,
-    closeFeatureHoverPopups,
-    createFeatureHoverPopupController
-} from './featureHoverPopups';
+import { findFeatureGroupIdByElement } from './featureGroupMembershipPopup';
 import type { IMapLayer } from './IMapLayer';
 import { type EditablePolylineLayer } from './usePolylineLayer';
 import {
@@ -29,7 +16,6 @@ import {
     applySelectionHighlights
 } from '../useAreaSelection';
 import { useSelectionStore } from '../../stores/selectionStore';
-import { useGroupStore } from '../../stores/groupStore';
 import {
     addFeatureToGroup,
     createGroupFromFeature,
@@ -42,6 +28,7 @@ import { isFeatureGroupHidden } from '../../features/groups/featureVisibility';
 import { getPolygonMutationPayload } from './ltnPolygonMutation';
 import { createLtnPopup } from './ltnPopup';
 import { createLtnCursorController } from './ltnCursorController';
+import { attachLtnPolygonInteractions } from './ltnPolygonInteractions';
 
 const COLOUR = '#cc00cc';
 const BUTTON_ID = 'ltn';
@@ -140,94 +127,6 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             (polygon as any)['historyFeature'] = nextFeature;
         });
 
-        polygon.on('mousedown', () => {
-            if (
-                mapStore.activeLayerId !== null &&
-                mapStore.activeLayerId !== BUTTON_ID &&
-                _drawingTool !== null &&
-                mapStore.drawLayerId === BUTTON_ID
-            ) {
-                disableDrawMode();
-            }
-        });
-
-        polygon.on('mousemove', (e: any) => {
-            ltnCursorController.syncPolygonEditCursor(
-                (e.target as any)?._path ?? null,
-                e.originalEvent.clientX,
-                e.originalEvent.clientY
-            );
-        });
-
-        const hoverPopupController = createFeatureHoverPopupController();
-        (polygon as any).__disposeLtnHoverPopup = () => hoverPopupController.dispose();
-
-        polygon.on('mouseover', (event: L.LeafletMouseEvent) => {
-            if (map.hasLayer(popup)) {
-                return;
-            }
-
-            closeFeatureHoverPopups(map);
-
-            const groupId = findFirstFeatureGroupId({ layerId: 'LtnCells', historyId });
-            cacheFeatureGroupElement(event.originalEvent.target as Element | null, groupId);
-            if (groupId) {
-                if (useSettingsStore(pinia).readOnly) {
-                    setFeatureElementCursor(polygon, 'pointer');
-                    const groupPopup = buildReadOnlyGroupPopup(groupId, openGroupDetails);
-                    if (groupPopup) {
-                        const groupCenter =
-                            getReadOnlyGroupCenter(groupId) ?? polygon.getBounds().getCenter();
-                        hoverPopupController.set(groupPopup);
-                        addFeatureHoverPopup(
-                            map,
-                            groupPopup,
-                            getFeatureHoverLatLng(map, groupCenter, event.latlng),
-                            () => hoverPopupController.close(groupPopup)
-                        );
-                    }
-                    return;
-                }
-            } else {
-                if (useSettingsStore(pinia).readOnly) {
-                    setFeatureElementCursor(polygon, 'default');
-                }
-                return;
-            }
-
-            const descriptionPopup = buildFeatureDescriptionPopup(
-                { minWidth: 30, keepInView: true },
-                { layerId: 'LtnCells', historyId },
-                'hover',
-                {
-                    featureName: polygon.properties.label ?? '',
-                    text: 'LTN',
-                    onOpenGroup: openGroupDetails
-                }
-            );
-            if (descriptionPopup) {
-                const featureCenter = polygon.getBounds().getCenter();
-                hoverPopupController.set(descriptionPopup);
-                addFeatureHoverPopup(
-                    map,
-                    descriptionPopup,
-                    getFeatureHoverLatLng(map, featureCenter, event.latlng),
-                    () => hoverPopupController.close(descriptionPopup)
-                );
-            }
-        });
-
-        polygon.on('mouseout', (e: any) => {
-            setFeatureElementCursor(polygon, null);
-            hoverPopupController.scheduleClose();
-
-            if (selectionMode !== 'edit' || mapStore.activeLayerId !== BUTTON_ID) {
-                return;
-            }
-
-            ltnCursorController.resetPolygonCursor();
-        });
-
         (polygon as any)['properties'] = { label, historyId };
         (polygon as any)['historyFeature'] = getPolygonHistoryFeature(polygon);
 
@@ -289,141 +188,27 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         // handler can open it to prompt for a title immediately after drawing.
         (polygon as any).__ltnPopup = popup;
         (polygon as any).__ltnLabelEl = labelEl;
-        (polygon as any).__disposeLtnPopup = disposePopup;
-        let removePopupFocusHandler: (() => void) | null = null;
-
-        polygon.on('click', (e: any) => {
-            closeFeatureHoverPopups(map);
-            if (useSettingsStore(pinia).readOnly) {
-                L.DomEvent.stopPropagation(e.originalEvent ?? e);
-                const groupId = findFirstFeatureGroupId({ layerId: 'LtnCells', historyId });
-                if (groupId) {
-                    openGroupDetails(groupId);
-                    return;
-                }
-                const descriptionPopup = buildFeatureDescriptionPopup(
-                    { minWidth: 30, keepInView: true },
-                    { layerId: 'LtnCells', historyId },
-                    'click',
-                    {
-                        featureName: polygon.properties.label ?? '',
-                        text: 'LTN',
-                        onOpenGroup: openGroupDetails
-                    }
-                );
-                if (descriptionPopup) {
-                    descriptionPopup.setLatLng(e.latlng ?? polygon.getBounds().getCenter());
-                    map.openPopup(descriptionPopup);
-                }
-                return;
-            }
-
-            const isModifierClick =
-                (e.originalEvent?.shiftKey ||
-                    e.originalEvent?.ctrlKey ||
-                    e.originalEvent?.metaKey) ??
-                false;
-            const selectionStore = useSelectionStore(pinia);
-            const groupStore = useGroupStore(pinia);
-            const isPhaseSelection = groupStore.phaseDraftActive;
-            const isGroupEditing =
-                selectionStore.isGroupSelection && selectionStore.selectedGroupId !== null;
-
-            if (
-                isPhaseSelection ||
-                (isModifierClick && (selectionStore.isActive || selectionStore.isGroupSelection))
-            ) {
-                L.DomEvent.stopPropagation(e.originalEvent ?? e);
-                if (isPhaseSelection) {
-                    if (groupStore.phaseGroupId) {
-                        selectionStore.markGroupSelection(groupStore.phaseGroupId);
-                    }
-                    selectionStore.setPhaseEditing(true);
-                }
-                selectFeature(
-                    polygon as unknown as L.Layer,
-                    'LtnCells',
-                    true,
-                    isPhaseSelection,
-                    true
-                );
-                return;
-            }
-
-            if (isGroupEditing) {
-                selectFeature(polygon as unknown as L.Layer, 'LtnCells', true, true, true);
-                return;
-            }
-
-            // Let an explicitly armed draw tool own the click instead of
-            // forcing LTN edit mode underneath it. Existing-feature edit mode
-            // keeps drawLayerId=null, so cross-layer clicks can switch
-            // selection.
-            if (
-                (mapStore.drawLayerId !== null && mapStore.activeLayerId !== BUTTON_ID) ||
-                (mapStore.drawLayerId === null &&
-                    mapStore.activeLayerId !== null &&
-                    mapStore.activeLayerId !== BUTTON_ID &&
-                    !isFeatureEditLayerButtonId(mapStore.activeLayerId))
-            ) {
-                return;
-            }
-
-            L.DomEvent.stopPropagation(e.originalEvent ?? e);
-
-            if (isModifierClick) {
-                // Additive selection: merge this polygon into the current
-                // selection without opening the popup or entering edit mode.
-                selectFeature(polygon as unknown as L.Layer, 'LtnCells', true, false, true);
-                return;
-            }
-
-            // Non-modifier click: replace any previously remembered polygon
-            // with this one so switching between polygons clears the old
-            // selection immediately.
-            selectFeature(polygon as unknown as L.Layer, 'LtnCells', false, true);
-
-            if (editablePolygon && editablePolygon !== e.target) {
-                editablePolygon.editing?.disable();
-            }
-            map.closePopup();
-            // Switch to this layer for editing (deselects any active point/polyline layer).
-            selectForEdit();
-            ltnCursorController.enterEditMode();
-            labelEl.value = polygon.properties.label ?? '';
-            colorEl.value = polygon.options.color ?? COLOUR;
-            ltnCursorController.syncPolygonEditCursor(
-                (e.target as any)?._path ?? null,
-                e.originalEvent.clientX,
-                e.originalEvent.clientY
-            );
-            e.target.editing.enable();
-            editablePolygon = e.target;
-            recomputeFeatureVisibility();
-            popup.setLatLng(e.target.getBounds().getCenter());
-            const focusPopupLabel = (event: L.PopupEvent): void => {
-                if (event.popup !== popup) {
-                    return;
-                }
-
-                map.off('popupopen', focusPopupLabel);
-                removePopupFocusHandler = null;
-                labelEl.focus();
-            };
-            removePopupFocusHandler = () => {
-                map.off('popupopen', focusPopupLabel);
-                removePopupFocusHandler = null;
-            };
-            refreshGroupContent();
-            map.on('popupopen', focusPopupLabel);
-            map.openPopup(popup);
-            labelEl.focus();
+        attachLtnPolygonInteractions({
+            map,
+            polygon,
+            historyId,
+            popup,
+            labelEl,
+            colorEl,
+            refreshGroupContent,
+            disposePopup,
+            recomputeFeatureVisibility,
+            getSelectionMode: () => selectionMode,
+            isDrawingToolEnabled: () => _drawingTool !== null,
+            disableDrawMode,
+            getEditablePolygon: () => editablePolygon,
+            setEditablePolygon: (nextPolygon) => {
+                editablePolygon = nextPolygon;
+            },
+            selectForEdit,
+            cursorController: ltnCursorController,
+            defaultColor: COLOUR
         });
-
-        (polygon as any).__disposeLtnPopup = () => {
-            removePopupFocusHandler?.();
-            disposePopup();
-        };
 
         geoJsonLayer.addLayer(polygon);
 
