@@ -5,27 +5,29 @@ import { pinia } from '../../stores/index';
 import {
     setMapCursor,
     removeMapCursor,
-    buildToolbarButton,
-    buildLegendEntry,
-    buildPopupActionControl,
-    isPointFeatureElement,
     setMouseMarkerCursor,
-    buildHistoryId,
-    buildFeatureDescriptionPopup,
-    buildReadOnlyGroupPopup,
+    setFeatureElementCursor
+} from './featureCursors';
+import { buildToolbarButton } from './toolbarButton';
+import { buildLegendEntry } from './legendEntry';
+import { buildPopupActionControl } from './featureActionPopup';
+import { isPointFeatureElement, isFeatureEditLayerButtonId } from './featureClassification';
+import { buildHistoryId } from './featureLookup';
+import { buildFeatureDescriptionPopup } from './featureDescriptionPopup';
+import { buildReadOnlyGroupPopup, getReadOnlyGroupCenter } from './readOnlyGroupPopup';
+import {
     findFirstFeatureGroupId,
     findFeatureGroupIdByElement,
-    getReadOnlyGroupCenter,
-    addFeatureHoverPopup,
-    getFeatureHoverLatLng,
     buildFeatureGroupMembershipContent,
     disposePopupElement,
-    isFeatureEditLayerButtonId,
-    closeFeatureHoverPopups,
-    createFeatureHoverPopupController,
-    setFeatureElementCursor,
     cacheFeatureGroupElement
-} from './layerUtils';
+} from './featureGroupMembershipPopup';
+import {
+    addFeatureHoverPopup,
+    getFeatureHoverLatLng,
+    closeFeatureHoverPopups,
+    createFeatureHoverPopupController
+} from './featureHoverPopups';
 import type { IMapLayer } from './IMapLayer';
 import { type EditablePolylineLayer } from './usePolylineLayer';
 import {

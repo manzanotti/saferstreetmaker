@@ -1,55 +1,79 @@
 import { expect, type Page } from '@playwright/test';
 
+export function probeSvgPath(element: Element, mode: string) {
+    const path = element as SVGPathElement;
+    const screenMatrix = path.getScreenCTM();
+
+    if (!screenMatrix) {
+        throw new Error('SVG path screen transform unavailable');
+    }
+
+    const toScreenPoint = (distance: number, offsetX: number, offsetY: number) => {
+        const pointAtDistance = path.getPointAtLength(distance);
+        return {
+            x:
+                pointAtDistance.x * screenMatrix.a +
+                pointAtDistance.y * screenMatrix.c +
+                screenMatrix.e +
+                offsetX,
+            y:
+                pointAtDistance.x * screenMatrix.b +
+                pointAtDistance.y * screenMatrix.d +
+                screenMatrix.f +
+                offsetY
+        };
+    };
+
+    const length = path.getTotalLength();
+    const distances = [0.25, 0.5, 0.75].map((fraction) => length * fraction);
+    const offsets =
+        mode === 'stroke'
+            ? [
+                  { x: -2, y: 0 },
+                  { x: 2, y: 0 },
+                  { x: 0, y: -2 },
+                  { x: 0, y: 2 },
+                  { x: -3, y: 0 },
+                  { x: 3, y: 0 },
+                  { x: 0, y: -3 },
+                  { x: 0, y: 3 }
+              ]
+            : [
+                  { x: 0, y: 0 },
+                  { x: -2, y: 0 },
+                  { x: 2, y: 0 },
+                  { x: 0, y: -2 },
+                  { x: 0, y: 2 }
+              ];
+
+    for (const distance of distances) {
+        for (const offset of offsets) {
+            const point = toScreenPoint(distance, offset.x, offset.y);
+            const hit = document.elementFromPoint(point.x, point.y);
+            if (
+                mode === 'stroke'
+                    ? hit === path
+                    : document.elementsFromPoint(point.x, point.y).includes(path)
+            ) {
+                return { ...point, cursor: hit ? getComputedStyle(hit).cursor : null };
+            }
+        }
+    }
+
+    if (mode === 'stroke') {
+        throw new Error('No path stroke point found');
+    }
+
+    const point = toScreenPoint(length / 2, 0, 0);
+    const hit = document.elementFromPoint(point.x, point.y);
+    return { ...point, cursor: hit ? getComputedStyle(hit).cursor : null };
+}
+
 export async function hoverSvgPath(
     page: Page,
     locator: ReturnType<Page['locator']>
 ): Promise<void> {
-    const point = await locator.first().evaluate((element) => {
-        const path = element as SVGPathElement;
-        const screenMatrix = path.getScreenCTM();
-
-        if (!screenMatrix) {
-            throw new Error('SVG path screen transform unavailable');
-        }
-
-        const toScreenPoint = (distance: number, offsetX: number, offsetY: number) => {
-            const pointAtDistance = path.getPointAtLength(distance);
-            return {
-                x:
-                    pointAtDistance.x * screenMatrix.a +
-                    pointAtDistance.y * screenMatrix.c +
-                    screenMatrix.e +
-                    offsetX,
-                y:
-                    pointAtDistance.x * screenMatrix.b +
-                    pointAtDistance.y * screenMatrix.d +
-                    screenMatrix.f +
-                    offsetY
-            };
-        };
-
-        const length = path.getTotalLength();
-        const distances = [0.25, 0.5, 0.75].map((fraction) => length * fraction);
-        const offsets = [
-            { x: 0, y: 0 },
-            { x: -2, y: 0 },
-            { x: 2, y: 0 },
-            { x: 0, y: -2 },
-            { x: 0, y: 2 }
-        ];
-
-        for (const distance of distances) {
-            for (const offset of offsets) {
-                const point = toScreenPoint(distance, offset.x, offset.y);
-                const stack = document.elementsFromPoint(point.x, point.y);
-                if (stack.includes(path)) {
-                    return point;
-                }
-            }
-        }
-
-        return toScreenPoint(length / 2, 0, 0);
-    });
+    const point = await locator.first().evaluate(probeSvgPath, 'path');
 
     await page.mouse.move(point.x, point.y);
     await page.waitForTimeout(100);
@@ -59,52 +83,7 @@ export async function clickSvgPath(
     page: Page,
     locator: ReturnType<Page['locator']>
 ): Promise<void> {
-    const point = await locator.first().evaluate((element) => {
-        const path = element as SVGPathElement;
-        const screenMatrix = path.getScreenCTM();
-
-        if (!screenMatrix) {
-            throw new Error('SVG path screen transform unavailable');
-        }
-
-        const toScreenPoint = (distance: number, offsetX: number, offsetY: number) => {
-            const pointAtDistance = path.getPointAtLength(distance);
-            return {
-                x:
-                    pointAtDistance.x * screenMatrix.a +
-                    pointAtDistance.y * screenMatrix.c +
-                    screenMatrix.e +
-                    offsetX,
-                y:
-                    pointAtDistance.x * screenMatrix.b +
-                    pointAtDistance.y * screenMatrix.d +
-                    screenMatrix.f +
-                    offsetY
-            };
-        };
-
-        const length = path.getTotalLength();
-        const distances = [0.25, 0.5, 0.75].map((fraction) => length * fraction);
-        const offsets = [
-            { x: 0, y: 0 },
-            { x: -2, y: 0 },
-            { x: 2, y: 0 },
-            { x: 0, y: -2 },
-            { x: 0, y: 2 }
-        ];
-
-        for (const distance of distances) {
-            for (const offset of offsets) {
-                const point = toScreenPoint(distance, offset.x, offset.y);
-                const stack = document.elementsFromPoint(point.x, point.y);
-                if (stack.includes(path)) {
-                    return point;
-                }
-            }
-        }
-
-        return toScreenPoint(length / 2, 0, 0);
-    });
+    const point = await locator.first().evaluate(probeSvgPath, 'path');
 
     await page.mouse.click(point.x, point.y);
     await page.waitForTimeout(200);
@@ -137,55 +116,7 @@ export async function hoverSvgPathStroke(
     page: Page,
     locator: ReturnType<Page['locator']>
 ): Promise<void> {
-    const point = await locator.first().evaluate((element) => {
-        const path = element as SVGPathElement;
-        const screenMatrix = path.getScreenCTM();
-
-        if (!screenMatrix) {
-            throw new Error('SVG path screen transform unavailable');
-        }
-
-        const toScreenPoint = (distance: number, offsetX: number, offsetY: number) => {
-            const pointAtDistance = path.getPointAtLength(distance);
-            return {
-                x:
-                    pointAtDistance.x * screenMatrix.a +
-                    pointAtDistance.y * screenMatrix.c +
-                    screenMatrix.e +
-                    offsetX,
-                y:
-                    pointAtDistance.x * screenMatrix.b +
-                    pointAtDistance.y * screenMatrix.d +
-                    screenMatrix.f +
-                    offsetY
-            };
-        };
-
-        const length = path.getTotalLength();
-        const distances = [0.25, 0.5, 0.75].map((fraction) => length * fraction);
-        const offsets = [
-            { x: -2, y: 0 },
-            { x: 2, y: 0 },
-            { x: 0, y: -2 },
-            { x: 0, y: 2 },
-            { x: -3, y: 0 },
-            { x: 3, y: 0 },
-            { x: 0, y: -3 },
-            { x: 0, y: 3 }
-        ];
-
-        for (const distance of distances) {
-            for (const offset of offsets) {
-                const point = toScreenPoint(distance, offset.x, offset.y);
-                const hit = document.elementFromPoint(point.x, point.y);
-                if (hit === path) {
-                    return point;
-                }
-            }
-        }
-
-        throw new Error('No path stroke point found for hover probe');
-    });
+    const point = await locator.first().evaluate(probeSvgPath, 'stroke');
 
     await page.mouse.move(point.x, point.y);
     await page.waitForTimeout(100);

@@ -22,7 +22,7 @@ import { watch } from 'vue';
 import { useMapStore } from '../stores/mapStore';
 import { useSelectionStore, type SelectedMarker } from '../stores/selectionStore';
 import { pinia } from '../stores/index';
-import { getFeatureHistoryId } from './layers/layerUtils';
+import { getFeatureHistoryId } from './layers/featureLookup';
 import { useGroupStore } from '../stores/groupStore';
 import { isFeatureGroupHidden } from '../features/groups/featureVisibility';
 import { getPolylineLatLngs, polygonIntersectsBounds } from '../geometry/leafletGeometry';

@@ -6,21 +6,42 @@ import * as L from 'leaflet';
 import {
     setMapCursor,
     removeMapCursor,
+    setFeatureElementCursor,
+    setMouseMarkerCursor
+} from '../../src/composables/layers/featureCursors';
+import {
     isPointFeatureElement,
-    setMouseMarkerCursor,
+    isFeatureEditLayerButtonId
+} from '../../src/composables/layers/featureClassification';
+import {
     buildHistoryId,
-    buildToolbarButton,
-    buildLegendEntry,
+    getFeatureHistoryId,
+    findLayerFeatureByHistoryId
+} from '../../src/composables/layers/featureLookup';
+import { buildToolbarButton } from '../../src/composables/layers/toolbarButton';
+import { buildLegendEntry } from '../../src/composables/layers/legendEntry';
+import {
     buildDeletePopup,
-    buildFeatureActionPopup,
-    buildFeatureDescriptionPopup,
+    buildFeatureActionPopup
+} from '../../src/composables/layers/featureActionPopup';
+import { buildFeatureDescriptionPopup } from '../../src/composables/layers/featureDescriptionPopup';
+import {
+    buildReadOnlyGroupPopup,
+    getReadOnlyGroupCenter
+} from '../../src/composables/layers/readOnlyGroupPopup';
+import {
     addFeatureHoverPopup,
     createFeatureHoverPopupController,
     getFeatureHoverLatLng,
+    closeFeatureHoverPopups
+} from '../../src/composables/layers/featureHoverPopups';
+import {
     buildFeatureGroupMembershipContent,
     disposePopupElement,
-    getFeatureHistoryId
-} from '../../src/composables/layers/layerUtils';
+    cacheFeatureGroupElement,
+    findFeatureGroupIdByElement,
+    findFirstFeatureGroupId
+} from '../../src/composables/layers/featureGroupMembershipPopup';
 import { useGroupStore } from '../../src/stores/groupStore';
 import { pinia } from '../../src/stores';
 
@@ -48,6 +69,81 @@ beforeEach(() => {
     document.querySelector('.leaflet-mouse-marker')?.remove();
     vi.clearAllMocks();
     useGroupStore(pinia).setGroups([]);
+});
+
+describe('feature group lookups', () => {
+    it('finds the first group containing a feature', () => {
+        const member = { layerId: 'ModalFilters', historyId: 'filter-1' };
+        useGroupStore(pinia).setGroups([{ id: 'g1', name: 'Centre', members: [member] }]);
+
+        expect(findFirstFeatureGroupId(member)).toBe('g1');
+        expect(findFirstFeatureGroupId({ layerId: 'ModalFilters', historyId: 'other' })).toBeNull();
+    });
+
+    it('caches group ids per element, including a cleared membership', () => {
+        const element = document.createElement('div');
+        const other = document.createElement('div');
+
+        cacheFeatureGroupElement(element, 'g1');
+        expect(findFeatureGroupIdByElement(element)).toBe('g1');
+        expect(findFeatureGroupIdByElement(other)).toBeNull();
+
+        cacheFeatureGroupElement(element, null);
+        expect(findFeatureGroupIdByElement(element)).toBeNull();
+    });
+});
+
+describe('buildReadOnlyGroupPopup', () => {
+    it('returns null when the group is missing', () => {
+        expect(buildReadOnlyGroupPopup('missing')).toBeNull();
+    });
+
+    it('renders distinct feature counts across versions and opens group details', () => {
+        useGroupStore(pinia).setGroups([
+            {
+                id: 'g1',
+                name: 'Neighbourhood',
+                description: '<p>Safer routes</p>',
+                versions: [
+                    {
+                        id: 'v1',
+                        name: 'Current',
+                        members: [{ layerId: 'ModalFilters', historyId: 'f1' }]
+                    },
+                    {
+                        id: 'v2',
+                        name: 'Proposed',
+                        members: [
+                            { layerId: 'ModalFilters', historyId: 'f1' },
+                            { layerId: 'BusGates', historyId: 'b1' }
+                        ]
+                    }
+                ]
+            }
+        ]);
+        const onOpenGroup = vi.fn();
+        const popup = buildReadOnlyGroupPopup('g1', onOpenGroup) as any;
+        const content = popup.setContent.mock.calls[0][0] as HTMLElement;
+        const heading = content.querySelector('.group-link') as HTMLButtonElement;
+
+        expect(popup.options.className).toBe('group-popup');
+        expect(heading.type).toBe('button');
+        expect(heading.getAttribute('aria-label')).toBe('Open group Neighbourhood');
+        expect(content.querySelector('.feature-popup-description')?.textContent).toBe(
+            'Safer routes'
+        );
+        expect(content.querySelector('.group-popup-summary')?.textContent).toBe(
+            '2 features · 2 versions'
+        );
+        heading.click();
+        expect(onOpenGroup).toHaveBeenCalledExactlyOnceWith('g1');
+    });
+});
+
+describe('getReadOnlyGroupCenter', () => {
+    it('returns null when the group is missing', () => {
+        expect(getReadOnlyGroupCenter('missing')).toBeNull();
+    });
 });
 
 describe('setMapCursor', () => {
@@ -78,6 +174,22 @@ describe('removeMapCursor', () => {
     });
 });
 
+describe('setFeatureElementCursor', () => {
+    it('sets and clears the cursor on a marker icon and its children', () => {
+        const icon = document.createElement('div');
+        const child = document.createElement('span');
+        icon.appendChild(child);
+
+        setFeatureElementCursor({ _icon: icon }, 'pointer');
+        expect(icon.style.getPropertyValue('cursor')).toBe('pointer');
+        expect(child.style.getPropertyPriority('cursor')).toBe('important');
+
+        setFeatureElementCursor({ _icon: icon }, null);
+        expect(icon.style.getPropertyValue('cursor')).toBe('');
+        expect(child.style.getPropertyValue('cursor')).toBe('');
+    });
+});
+
 describe('isPointFeatureElement', () => {
     it('returns true for known point feature classes', () => {
         const el = document.createElement('div');
@@ -91,6 +203,15 @@ describe('isPointFeatureElement', () => {
         el.classList.add('leaflet-interactive');
 
         expect(isPointFeatureElement(el)).toBe(false);
+    });
+});
+
+describe('isFeatureEditLayerButtonId', () => {
+    it('recognizes editable layers but not point tools or null', () => {
+        expect(isFeatureEditLayerButtonId('mobility-lane')).toBe(true);
+        expect(isFeatureEditLayerButtonId('ltn')).toBe(true);
+        expect(isFeatureEditLayerButtonId('modal-filter')).toBe(false);
+        expect(isFeatureEditLayerButtonId(null)).toBe(false);
     });
 });
 
@@ -118,6 +239,23 @@ describe('setMouseMarkerCursor', () => {
 });
 
 describe('buildHistoryId', () => {
+    it('uses crypto.randomUUID when available', () => {
+        const originalRandomUuid = crypto.randomUUID;
+        Object.defineProperty(crypto, 'randomUUID', {
+            value: () => 'generated-uuid',
+            configurable: true
+        });
+
+        try {
+            expect(buildHistoryId('point')).toBe('generated-uuid');
+        } finally {
+            Object.defineProperty(crypto, 'randomUUID', {
+                value: originalRandomUuid,
+                configurable: true
+            });
+        }
+    });
+
     it('includes the requested prefix when crypto.randomUUID is unavailable', () => {
         const originalRandomUuid = crypto.randomUUID;
         Object.defineProperty(crypto, 'randomUUID', {
@@ -163,6 +301,27 @@ describe('getFeatureHistoryId', () => {
     });
 });
 
+describe('findLayerFeatureByHistoryId', () => {
+    it('finds a polygon by its properties id in the requested layer', () => {
+        const target = { properties: { historyId: 'ltn-1' } };
+        const other = { feature: { properties: { historyId: 'point-1' } } };
+        const layers = [
+            {
+                id: 'Points',
+                getLayer: () => ({ eachLayer: (visit: (item: any) => void) => visit(other) })
+            },
+            {
+                id: 'LtnCells',
+                getLayer: () => ({ eachLayer: (visit: (item: any) => void) => visit(target) })
+            }
+        ] as any;
+
+        expect(findLayerFeatureByHistoryId(layers, 'LtnCells', 'ltn-1')).toBe(target);
+        expect(findLayerFeatureByHistoryId(layers, 'Points', 'ltn-1')).toBeNull();
+        expect(findLayerFeatureByHistoryId(layers, 'missing', 'ltn-1')).toBeNull();
+    });
+});
+
 describe('buildToolbarButton', () => {
     const noop = () => {};
 
@@ -205,6 +364,18 @@ describe('buildToolbarButton', () => {
         expect(btn.text).toBe('LTN');
     });
 
+    it('sets iconSrc when provided', () => {
+        const btn = buildToolbarButton({
+            id: 'modal-filter',
+            tooltip: 'Modal filter',
+            groupName: 'filters',
+            action: noop,
+            selected: false,
+            iconSrc: '/icons/modal-filter.svg'
+        });
+        expect(btn.iconSrc).toBe('/icons/modal-filter.svg');
+    });
+
     it('does not set isFirst when not provided', () => {
         const btn = buildToolbarButton({
             id: 'x',
@@ -228,6 +399,19 @@ describe('buildLegendEntry', () => {
             visibilityState: { visible: false }
         });
         expect(li.id).toBe('ModalFilters-legend');
+    });
+
+    it('attaches the supplied icon and toggle tooltip', () => {
+        const icon = document.createElement('i');
+        const li = buildLegendEntry({
+            layerId: 'ModalFilters',
+            title: 'Modal Filters',
+            toggleTitle: 'Toggle modal filters',
+            iconEl: icon,
+            visibilityState: { visible: true }
+        });
+        expect(li.firstElementChild).toBe(icon);
+        expect(li.title).toBe('Toggle modal filters');
     });
 
     it('contains the title text', () => {
@@ -278,6 +462,14 @@ describe('buildDeletePopup', () => {
         const content = popup.setContent.mock.calls[0][0] as HTMLElement;
         return { map, popup, content };
     }
+
+    it('renders only the delete control when copy is unavailable', () => {
+        const { content } = getPopupContent();
+
+        expect(content.tagName).toBe('UL');
+        expect(content.querySelector('.copy-button')).toBeNull();
+        expect(content.querySelectorAll('li > .delete-button')).toHaveLength(1);
+    });
 
     it('renders accessible copy and delete controls when copy is enabled', () => {
         const { content } = getPopupContent(vi.fn(), vi.fn());
@@ -389,12 +581,15 @@ describe('feature popups', () => {
             }
         ]);
 
+        const onOpenGroup = vi.fn();
         const popup = buildFeatureDescriptionPopup({ minWidth: 30 }, member, 'hover', {
-            onOpenGroup: vi.fn()
+            onOpenGroup
         }) as any;
         const heading = getPopupContent(popup).querySelector('.group-link') as HTMLButtonElement;
 
         expect(heading.type).toBe('button');
+        heading.click();
+        expect(onOpenGroup).toHaveBeenCalledExactlyOnceWith('g1');
     });
 
     it('orders toolbar icon, feature name, and group content', () => {
@@ -570,6 +765,22 @@ describe('feature popups', () => {
         );
     });
 
+    it('closes hover popups without removing other map layers', () => {
+        const hoverPopup = { options: { className: 'feature-popup-hover' } } as L.Popup;
+        const clickPopup = { options: { className: 'feature-popup-description' } } as L.Popup;
+        const map = {
+            eachLayer: (callback: (layer: L.Layer) => void) => {
+                callback(hoverPopup);
+                callback(clickPopup);
+            },
+            removeLayer: vi.fn()
+        } as unknown as L.Map;
+
+        closeFeatureHoverPopups(map);
+
+        expect(map.removeLayer).toHaveBeenCalledExactlyOnceWith(hoverPopup);
+    });
+
     it('renders group version counts and action controls', () => {
         useGroupStore(pinia).setGroups([
             {
@@ -620,6 +831,30 @@ describe('feature popups', () => {
         disposePopupElement(content.querySelector('.copy-button')?.parentElement);
         (content.querySelector('.copy-button') as HTMLElement).click();
         expect(onCopy).toHaveBeenCalledOnce();
+    });
+
+    it('saves an edited feature name and closes the action popup', () => {
+        const map = { closePopup: vi.fn() } as any;
+        const onRename = vi.fn();
+        const popup = buildFeatureActionPopup({
+            map,
+            popupOptions: { minWidth: 30 },
+            member,
+            name: 'Old name',
+            onRename,
+            onDelete: vi.fn()
+        }) as any;
+        const content = getPopupContent(popup);
+        const input = content.querySelector('.name-editor') as HTMLInputElement;
+        expect(input.value).toBe('Old name');
+        input.value = 'New name';
+
+        (content.querySelector('.feature-name-editor') as HTMLFormElement).dispatchEvent(
+            new Event('submit', { cancelable: true })
+        );
+
+        expect(onRename).toHaveBeenCalledWith('New name');
+        expect(map.closePopup).toHaveBeenCalledWith(popup);
     });
 
     it('does not build a description popup for an ungrouped feature', () => {

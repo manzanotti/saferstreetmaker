@@ -1,7 +1,7 @@
 import * as L from 'leaflet';
 import { createPolylineLayer, type EditablePolylineLayer } from './usePolylineLayer';
 import { addPolylineToLayer, loadPolylineGeoJSON } from './polylineHelpers';
-import { buildHistoryId } from './layerUtils';
+import { buildHistoryId } from './featureLookup';
 import type { IMapLayer } from './IMapLayer';
 
 const COLOUR = '#2222ff';

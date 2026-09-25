@@ -29,10 +29,9 @@ import { pinia } from '../stores/index';
 import {
     buildHistoryId,
     findLayerFeatureByHistoryId,
-    getFeatureHistoryId,
-    removeMapCursor,
-    setMapCursor
-} from './layers/layerUtils';
+    getFeatureHistoryId
+} from './layers/featureLookup';
+import { removeMapCursor, setMapCursor } from './layers/featureCursors';
 import {
     buildFeatureSelectionEntries,
     applySelectionHighlights,
