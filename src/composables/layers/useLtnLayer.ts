@@ -88,6 +88,14 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         return feature;
     };
 
+    const recordPolygonEdit = (beforeFeature: any, afterFeature: any): void => {
+        mapStore.markLayerUpdated({
+            kind: 'polygon-edit',
+            layerId: 'LtnCells',
+            payload: getPolygonMutationPayload(beforeFeature, afterFeature, COLOUR)
+        });
+    };
+
     const shouldShowLabel = (label: string): boolean => {
         return map.getZoom() >= 14 && label.length > 0;
     };
@@ -332,11 +340,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                 (polygon as any)['historyFeature'] ?? getPolygonHistoryFeature(polygon);
             syncPolygonTooltip(polygon);
             const nextFeature = getPolygonHistoryFeature(polygon);
-            mapStore.markLayerUpdated({
-                kind: 'polygon-edit',
-                layerId: 'LtnCells',
-                payload: getPolygonMutationPayload(previousFeature, nextFeature, COLOUR)
-            });
+            recordPolygonEdit(previousFeature, nextFeature);
             (polygon as any)['historyFeature'] = nextFeature;
         });
 
@@ -452,13 +456,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         } = createLtnPopup(map, polygon, label, {
             defaultColor: COLOUR,
             getHistoryFeature: () => getPolygonHistoryFeature(polygon),
-            markMetadataChange: (beforeFeature, afterFeature) => {
-                mapStore.markLayerUpdated({
-                    kind: 'polygon-edit',
-                    layerId: 'LtnCells',
-                    payload: getPolygonMutationPayload(beforeFeature, afterFeature, COLOUR)
-                });
-            },
+            onPolygonMutation: recordPolygonEdit,
             syncTooltip: (nextLabel) => syncPolygonTooltip(polygon, nextLabel),
             recomputeFeatureVisibility,
             onCopy: (popup) => {

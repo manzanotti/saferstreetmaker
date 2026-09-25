@@ -9,7 +9,7 @@ import {
 interface LtnPopupOptions {
     defaultColor: string;
     getHistoryFeature: () => any;
-    markMetadataChange: (beforeFeature: any, afterFeature: any) => void;
+    onPolygonMutation: (beforeFeature: any, afterFeature: any) => void;
     syncTooltip: (label: string) => void;
     recomputeFeatureVisibility: () => void;
     onCopy: (popup: L.Popup) => void;
@@ -51,6 +51,7 @@ export function createLtnPopup(
     labelEl.type = 'text';
     labelEl.value = initialLabel;
     labelEl.classList.add('label-editor');
+    labelEl.setAttribute('aria-label', 'LTN cell label');
     labelControl.appendChild(labelEl);
     currentControlsContent.appendChild(labelControl);
 
@@ -76,7 +77,7 @@ export function createLtnPopup(
             return;
         }
 
-        options.markMetadataChange(metadataBeforeFeature, options.getHistoryFeature());
+        options.onPolygonMutation(metadataBeforeFeature, options.getHistoryFeature());
         metadataBeforeFeature = null;
     };
 
