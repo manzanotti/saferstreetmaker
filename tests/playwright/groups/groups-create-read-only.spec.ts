@@ -144,6 +144,7 @@ test.describe('Groups — Create group: read-only', () => {
         await placeTwoModalFilters(page);
         await selectBothFilters(page);
         await createGroup(page, 'Read-only Group');
+        await setGroupPhases(page, 1);
 
         await page.locator('#settings-button').click();
         await page.locator('#read-only').check();
@@ -154,6 +155,7 @@ test.describe('Groups — Create group: read-only', () => {
             .dispatchEvent('click');
 
         const dialog = page.getByRole('dialog', { name: 'Read-only Group' });
+        await expect(dialog).toBeVisible();
         await expect(dialog.getByRole('textbox')).toHaveCount(0);
         await expect(dialog.getByRole('heading', { name: 'Versions' })).toHaveCount(0);
         await expect(dialog.getByRole('button', { name: /Phases for version/ })).toHaveCount(0);
