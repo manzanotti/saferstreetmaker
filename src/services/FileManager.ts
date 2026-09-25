@@ -67,9 +67,10 @@ export class FileManager {
         settings: Settings,
         layersData: Map<string, IMapLayer>,
         groups?: Group[],
-        importedLayers?: ImportedGeoJsonLayer[]
+        importedLayers?: ImportedGeoJsonLayer[],
+        snapshot?: SerializedMap
     ): Promise<void> {
-        await this.storage.saveMap(settings, layersData, groups, importedLayers);
+        await this.storage.saveMap(settings, layersData, groups, importedLayers, snapshot);
     }
 
     async loadMapFromStorage(mapName: string): Promise<SerializedMap | null> {

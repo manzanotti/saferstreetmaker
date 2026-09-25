@@ -31,7 +31,7 @@ describe('MapPersistenceCoordinator', () => {
         await expect(state.coordinator.persist()).resolves.toBe(true);
 
         expect(state.options.pruneDanglingGroupMembers).toHaveBeenCalledOnce();
-        expect(state.options.saveMap).toHaveBeenCalledOnce();
+        expect(state.options.saveMap).toHaveBeenCalledWith(state.after);
         expect(state.options.recordCheckpoint).toHaveBeenCalledWith(
             'Map',
             state.before,
