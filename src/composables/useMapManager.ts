@@ -59,7 +59,8 @@ export interface MapManager {
         hash: string,
         hideToolbar: boolean,
         zoom: string | null,
-        centre: number[] | null
+        centre: number[] | null,
+        sharedGroup?: boolean
     ) => Promise<boolean>;
     saveMap: () => Promise<void>;
     applySettings: (newSettings: Settings) => Promise<void>;
@@ -116,6 +117,7 @@ export function setupMapManager(
     let suppressHistory = false;
     let pendingHistoryMutation: HistoryMutation | null = null;
     let mapGeneration = 0;
+    let suppressAutomaticSaves = false;
 
     const getMap = (): L.Map => {
         const m = mapStore.map;
@@ -463,7 +465,9 @@ export function setupMapManager(
     };
 
     const saveViewMap = async (): Promise<void> => {
-        await persistMap();
+        if (!suppressAutomaticSaves) {
+            await persistMap();
+        }
     };
 
     const mapViewCoordinator = new MapViewCoordinator({
@@ -485,7 +489,9 @@ export function setupMapManager(
     // Watch settingsStore.zoom/centre changes (set by useMapEngine on zoom/move events)
     // to trigger a debounced save. Replaces the PubSub mapZoomChanged subscription.
     watch([() => settingsStore.zoom, () => settingsStore.centre], () => {
-        mapViewCoordinator.scheduleSave();
+        if (!suppressAutomaticSaves) {
+            mapViewCoordinator.scheduleSave();
+        }
     });
 
     // ── Layer helpers ─────────────────────────────────────────────────────────
@@ -532,9 +538,11 @@ export function setupMapManager(
         hash: string,
         hideToolbar: boolean,
         zoom: string | null,
-        centre: number[] | null
+        centre: number[] | null,
+        sharedGroup = false
     ): Promise<boolean> => {
         await persistenceCoordinator.flush();
+        suppressAutomaticSaves = remoteMapFile === null && hash !== '' && sharedGroup;
         return await mapLoadCoordinator.load(remoteMapFile, hash, hideToolbar, zoom, centre);
     };
 
@@ -569,6 +577,7 @@ export function setupMapManager(
             throw error;
         }
         if (created && mapGeneration === creationGeneration) {
+            suppressAutomaticSaves = false;
             defaultImportedLayerSeeder.setBlocked(
                 defaultImportedLayerSeeder.getUserActionRevision() !== creationActionRevision
             );
@@ -602,7 +611,11 @@ export function setupMapManager(
         mapGeneration += 1;
         defaultImportedLayerSeeder.setPending(false);
         defaultImportedLayerSeeder.setBlocked(true);
-        return await storedMapLoader.load(mapName);
+        const loaded = await storedMapLoader.load(mapName);
+        if (loaded) {
+            suppressAutomaticSaves = false;
+        }
+        return loaded;
     };
 
     // ── Geolocation helpers ───────────────────────────────────────────────────
@@ -669,7 +682,9 @@ export function setupMapManager(
     watch(
         () => mapStore.layerUpdateCount,
         () => {
-            void saveMap();
+            if (!suppressAutomaticSaves) {
+                void saveMap();
+            }
         }
     );
 

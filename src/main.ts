@@ -104,7 +104,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    const mapLoaded = await loadMap(remoteMapFile, hash, hideToolbar, zoom, centre);
+    const mapLoaded = await loadMap(
+        remoteMapFile,
+        hash,
+        hideToolbar,
+        zoom,
+        centre,
+        params.has('group')
+    );
     const initialMapGeneration = getMapGeneration();
 
     void defaultLayerPromise.then((defaultLayer) => {

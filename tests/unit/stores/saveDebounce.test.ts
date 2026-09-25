@@ -18,7 +18,7 @@ import { pinia } from '../../../src/stores/index';
 import { useMapStore } from '../../../src/stores/mapStore';
 import { useSettingsStore } from '../../../src/stores/settingsStore';
 import { useUiStore } from '../../../src/stores/uiStore';
-import { setupMapManager } from '../../../src/composables/useMapManager';
+import { getMapManager, setupMapManager } from '../../../src/composables/useMapManager';
 import { FileManager } from '../../../src/services/FileManager';
 
 // ---------------------------------------------------------------------------
@@ -199,5 +199,47 @@ describe('useMapManager – save debounce', () => {
             'There was a problem saving the map:',
             'save failed'
         ]);
+    });
+
+    it('keeps autosaving an ordinary hash-loaded map', async () => {
+        vi.spyOn(fm, 'loadMapFromHash').mockReturnValue({ layers: {} });
+
+        await getMapManager().loadMap(null, '#ordinary', false, null, null);
+        useMapStore(pinia).markLayerUpdated();
+        await nextTick();
+
+        expect(fm.saveMap).toHaveBeenCalledOnce();
+    });
+
+    it('does not autosave a hash-loaded map, then resumes after loading storage', async () => {
+        const snapshot = {
+            settings: {
+                title: 'Shared Map',
+                readOnly: false,
+                hideToolbar: false,
+                activeLayers: [],
+                centre: { lat: 52.5, lng: -1.9 },
+                zoom: 12,
+                version: '0.10.0'
+            },
+            layers: {}
+        };
+        vi.spyOn(fm, 'loadMapFromHash').mockReturnValue(snapshot);
+        vi.spyOn(fm, 'loadMapFromStorage').mockResolvedValue(snapshot);
+
+        await getMapManager().loadMap(null, '#shared', false, null, null, true);
+        const mapStore = useMapStore(pinia);
+        const settingsStore = useSettingsStore(pinia);
+        mapStore.markLayerUpdated();
+        settingsStore.zoom = 13;
+        await nextTick();
+        await vi.runAllTimersAsync();
+        expect(fm.saveMap).not.toHaveBeenCalled();
+
+        await getMapManager().loadMapFromStorage('Shared Map');
+        vi.mocked(fm.saveMap).mockClear();
+        mapStore.markLayerUpdated();
+        await nextTick();
+        expect(fm.saveMap).toHaveBeenCalledOnce();
     });
 });
