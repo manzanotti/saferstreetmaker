@@ -1,5 +1,4 @@
 import * as L from 'leaflet';
-import { findFeatureGroupMemberships } from '../../features/groups/featureMemberships';
 import type { GroupMember } from '../../models/Group';
 import { useGroupStore } from '../../stores/groupStore';
 import { pinia } from '../../stores/index';
@@ -35,7 +34,7 @@ export function buildFeatureDescriptionPopup(
     const content = document.createElement('div');
     content.classList.add('feature-popup-content');
     content.classList.add('feature-popup-hover-content');
-    const groups = findFeatureGroupMemberships(useGroupStore(pinia).groups, member);
+    const groups = useGroupStore(pinia).getFeatureGroupMemberships(member);
 
     const featureTypeName = FEATURE_TYPE_NAMES[member.layerId] ?? member.layerId;
     if (groups.length === 0 && !details?.featureName) {

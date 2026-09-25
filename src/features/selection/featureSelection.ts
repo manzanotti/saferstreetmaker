@@ -5,7 +5,6 @@ import { pinia } from '../../stores/index';
 import { getFeatureHistoryId } from '../../composables/layers/featureLookup';
 import { useGroupStore } from '../../stores/groupStore';
 import { useFeatureDeletionStore } from '../../stores/featureDeletionStore';
-import { findFeatureMemberships } from '../groups/featureMemberships';
 import { getPolylineLatLngs } from '../../geometry/leafletGeometry';
 import { SelectionHighlighter } from './SelectionHighlighter';
 import {
@@ -179,11 +178,7 @@ export function executeAreaDelete(): void {
             vertices.every((vertex) => selectedVertices.has(vertex))
         ) {
             const groupStore = useGroupStore(pinia);
-            const memberships = findFeatureMemberships(
-                groupStore.groups,
-                groupStore.activeVersionIds,
-                { layerId, historyId }
-            );
+            const memberships = groupStore.getFeatureMemberships({ layerId, historyId });
             if (memberships.length > 0) {
                 useFeatureDeletionStore(pinia).open({ layerId, historyId, memberships });
                 return;
