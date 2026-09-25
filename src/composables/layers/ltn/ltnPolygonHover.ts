@@ -1,18 +1,21 @@
 import * as L from 'leaflet';
-import { pinia } from '../../stores/index';
-import { useMapStore } from '../../stores/mapStore';
-import { useSettingsStore } from '../../stores/settingsStore';
-import { openGroupDetails } from '../useGroups';
-import { setFeatureElementCursor } from './featureCursors';
-import { buildFeatureDescriptionPopup } from './featureDescriptionPopup';
+import { pinia } from '../../../stores/index';
+import { useMapStore } from '../../../stores/mapStore';
+import { useSettingsStore } from '../../../stores/settingsStore';
+import { openGroupDetails } from '../../useGroups';
+import { setFeatureElementCursor } from '../features/featureCursors';
+import { buildFeatureDescriptionPopup } from '../features/featureDescriptionPopup';
 import {
     addFeatureHoverPopup,
     closeFeatureHoverPopups,
     createFeatureHoverPopupController,
     getFeatureHoverLatLng
-} from './featureHoverPopups';
-import { cacheFeatureGroupElement, findFirstFeatureGroupId } from './featureGroupMembershipPopup';
-import { buildReadOnlyGroupPopup, getReadOnlyGroupCenter } from './readOnlyGroupPopup';
+} from '../features/featureHoverPopups';
+import {
+    cacheFeatureGroupElement,
+    findFirstFeatureGroupId
+} from '../features/featureGroupMembershipPopup';
+import { buildReadOnlyGroupPopup, getReadOnlyGroupCenter } from '../features/readOnlyGroupPopup';
 import type { createLtnCursorController } from './ltnCursorController';
 
 const LAYER_ID = 'LtnCells';

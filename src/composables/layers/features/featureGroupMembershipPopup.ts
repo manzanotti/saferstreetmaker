@@ -1,6 +1,6 @@
-import type { GroupMember } from '../../models/Group';
-import { useGroupStore } from '../../stores/groupStore';
-import { pinia } from '../../stores/index';
+import type { GroupMember } from '../../../models/Group';
+import { useGroupStore } from '../../../stores/groupStore';
+import { pinia } from '../../../stores/index';
 
 const featureGroupIds = new WeakMap<Element, string | null>();
 

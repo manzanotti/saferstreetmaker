@@ -6,19 +6,29 @@
  * Leaflet controls the popup DOM lifecycle and it lives outside Vue's virtual DOM.
  */
 import * as L from 'leaflet';
-import { buildFeatureActionPopup, setFeatureActionPopupContent } from './featureActionPopup';
-import { buildFeatureDescriptionPopup } from './featureDescriptionPopup';
+import {
+    buildFeatureActionPopup,
+    setFeatureActionPopupContent
+} from './features/featureActionPopup';
+import { buildFeatureDescriptionPopup } from './features/featureDescriptionPopup';
 import {
     addFeatureHoverPopup,
     getFeatureHoverLatLng,
     closeFeatureHoverPopups,
     createFeatureHoverPopupController
-} from './featureHoverPopups';
-import { removeMapCursor, setMouseMarkerCursor, setFeatureElementCursor } from './featureCursors';
-import { buildHistoryId } from './featureLookup';
-import { isFeatureEditLayerButtonId } from './featureClassification';
-import { buildReadOnlyGroupPopup, getReadOnlyGroupCenter } from './readOnlyGroupPopup';
-import { findFirstFeatureGroupId, cacheFeatureGroupElement } from './featureGroupMembershipPopup';
+} from './features/featureHoverPopups';
+import {
+    removeMapCursor,
+    setMouseMarkerCursor,
+    setFeatureElementCursor
+} from './features/featureCursors';
+import { buildHistoryId } from './features/featureLookup';
+import { isFeatureEditLayerButtonId } from './features/featureClassification';
+import { buildReadOnlyGroupPopup, getReadOnlyGroupCenter } from './features/readOnlyGroupPopup';
+import {
+    findFirstFeatureGroupId,
+    cacheFeatureGroupElement
+} from './features/featureGroupMembershipPopup';
 import { useMapStore } from '../../stores/mapStore';
 import { pinia } from '../../stores/index';
 import { selectFeature, executeAreaDelete, executeCopy } from '../useAreaSelection';

@@ -1,7 +1,7 @@
 import type * as GeoJSON from 'geojson';
 import type { GroupMember, GroupVersion } from '../../models/Group';
 import type { IMapLayer } from '../../composables/layers/IMapLayer';
-import { buildHistoryId } from '../../composables/layers/featureLookup';
+import { buildHistoryId } from '../../composables/layers/features/featureLookup';
 
 export interface GroupVersionCloneOptions {
     getLayer: (layerId: string) => IMapLayer | undefined;

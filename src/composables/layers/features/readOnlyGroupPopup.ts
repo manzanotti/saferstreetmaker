@@ -3,10 +3,10 @@ import {
     getActiveVersion,
     getGroupVersions,
     needsReadOnlyGroupDetails
-} from '../../features/groups/groupVersions';
-import { useGroupStore } from '../../stores/groupStore';
-import { useMapStore } from '../../stores/mapStore';
-import { pinia } from '../../stores/index';
+} from '../../../features/groups/groupVersions';
+import { useGroupStore } from '../../../stores/groupStore';
+import { useMapStore } from '../../../stores/mapStore';
+import { pinia } from '../../../stores/index';
 import { findLayerFeatureByHistoryId } from './featureLookup';
 
 export function getReadOnlyGroupCenter(groupId: string): L.LatLng | null {

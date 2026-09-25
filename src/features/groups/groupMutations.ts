@@ -5,7 +5,7 @@ import { useGroupStore } from '../../stores/groupStore';
 import { pinia } from '../../stores/index';
 import { featureKey, getActiveVersion, getGroupVersions, hasVersionName } from './groupVersions';
 import { GroupVersionFeatureCloner } from './GroupVersionFeatureCloner';
-import { getFeatureHistoryId } from '../../composables/layers/featureLookup';
+import { getFeatureHistoryId } from '../../composables/layers/features/featureLookup';
 
 export interface GroupMutationDependencies {
     clearFeatureHighlight: () => void;

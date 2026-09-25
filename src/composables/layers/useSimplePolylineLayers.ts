@@ -7,7 +7,7 @@ import * as L from 'leaflet';
 import { createPolylineLayer, type EditablePolylineLayer } from './usePolylineLayer';
 import { addPolylineToLayer, loadPolylineGeoJSON } from './polylineHelpers';
 import type { IMapLayer } from './IMapLayer';
-import { buildHistoryId } from './featureLookup';
+import { buildHistoryId } from './features/featureLookup';
 
 interface SimplePolylineConfig {
     id: string;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getPolygonMutationPayload } from '../../../src/composables/layers/ltnPolygonMutation';
+import { getPolygonMutationPayload } from '../../../src/composables/layers/ltn/ltnPolygonMutation';
 
 const defaultColor = '#cc00cc';
 

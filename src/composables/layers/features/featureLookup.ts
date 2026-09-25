@@ -1,5 +1,5 @@
 import * as L from 'leaflet';
-import type { IMapLayer } from './IMapLayer';
+import type { IMapLayer } from '../IMapLayer';
 
 /**
  * Read a feature's history id from a Leaflet layer, tolerating the two storage

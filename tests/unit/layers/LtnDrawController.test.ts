@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('leaflet', () => import('../__mocks__/leaflet'));
 
 import * as L from 'leaflet';
-import { createLtnDrawController } from '../../../src/composables/layers/ltnDrawController';
+import { createLtnDrawController } from '../../../src/composables/layers/ltn/ltnDrawController';
 
 describe('createLtnDrawController', () => {
     let map: L.Map;

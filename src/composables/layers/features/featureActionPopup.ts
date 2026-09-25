@@ -1,5 +1,5 @@
 import * as L from 'leaflet';
-import type { GroupMember } from '../../models/Group';
+import type { GroupMember } from '../../../models/Group';
 import { buildFeatureGroupMembershipContent } from './featureGroupMembershipPopup';
 
 export function buildPopupActionControl(

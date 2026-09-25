@@ -1,6 +1,6 @@
 import type * as L from 'leaflet';
 import type { IMapLayer } from '../../composables/layers/IMapLayer';
-import { getFeatureHistoryId } from '../../composables/layers/featureLookup';
+import { getFeatureHistoryId } from '../../composables/layers/features/featureLookup';
 import type { LayerMutationEvent } from '../../models/LayerMutation';
 import type { ClipboardEntry, SelectedMarker } from '../../stores/selectionStore';
 import { selectedLatLngsByMarker } from './selectionClipboardHelpers';

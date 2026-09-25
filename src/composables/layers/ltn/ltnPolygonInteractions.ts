@@ -1,6 +1,6 @@
 import * as L from 'leaflet';
-import { pinia } from '../../stores/index';
-import { useMapStore } from '../../stores/mapStore';
+import { pinia } from '../../../stores/index';
+import { useMapStore } from '../../../stores/mapStore';
 import { attachLtnPolygonHoverInteractions } from './ltnPolygonHover';
 import { attachLtnPolygonClickHandler } from './ltnPolygonClickHandler';
 import type { createLtnCursorController } from './ltnCursorController';

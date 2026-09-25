@@ -5,7 +5,7 @@ import { useGroupStore } from '../stores/groupStore';
 import { useMapStore } from '../stores/mapStore';
 import { useSelectionStore } from '../stores/selectionStore';
 import { getGroupVersions } from '../features/groups/groupVersions';
-import { findLayerFeatureByHistoryId } from './layers/featureLookup';
+import { findLayerFeatureByHistoryId } from './layers/features/featureLookup';
 import { applySelectionHighlights } from './useAreaSelection';
 import { recomputeFeatureVisibility } from './useGroups';
 

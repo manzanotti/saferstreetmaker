@@ -1,7 +1,7 @@
 import * as L from 'leaflet';
-import type { GroupMember } from '../../models/Group';
-import { useGroupStore } from '../../stores/groupStore';
-import { pinia } from '../../stores/index';
+import type { GroupMember } from '../../../models/Group';
+import { useGroupStore } from '../../../stores/groupStore';
+import { pinia } from '../../../stores/index';
 
 const FEATURE_TYPE_NAMES: Record<string, string> = {
     ModalFilters: 'Modal filter',

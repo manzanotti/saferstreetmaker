@@ -1,10 +1,10 @@
 import * as L from 'leaflet';
-import type { GroupMember } from '../../models/Group';
-import { buildPopupActionControl } from './featureActionPopup';
+import type { GroupMember } from '../../../models/Group';
+import { buildPopupActionControl } from '../features/featureActionPopup';
 import {
     buildFeatureGroupMembershipContent,
     disposePopupElement
-} from './featureGroupMembershipPopup';
+} from '../features/featureGroupMembershipPopup';
 
 interface LtnPopupOptions {
     defaultColor: string;
