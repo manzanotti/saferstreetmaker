@@ -257,4 +257,31 @@ describe('useMapManager – save debounce', () => {
         expect(redoEntry).not.toHaveBeenCalled();
         expect(fm.saveMap).not.toHaveBeenCalled();
     });
+
+    it('resumes autosave and history navigation after creating a map from a group share', async () => {
+        vi.spyOn(fm, 'loadMapFromHash').mockReturnValue({ layers: {} });
+        vi.spyOn(fm, 'loadMapListFromStorage').mockResolvedValue([]);
+        vi.spyOn(UndoJournal.prototype, 'clearHistory').mockResolvedValue();
+        vi.spyOn(UndoJournal.prototype, 'getStatus').mockResolvedValue({
+            canUndo: false,
+            canRedo: false
+        });
+        const undoEntry = vi.spyOn(UndoJournal.prototype, 'undoEntry').mockResolvedValue(null);
+        const redoEntry = vi.spyOn(UndoJournal.prototype, 'redoEntry').mockResolvedValue(null);
+        const manager = getMapManager();
+
+        await manager.loadMap(null, '#shared', false, null, null, true);
+        expect(await manager.createNewMap('New Map')).toBe(true);
+        expect(fm.saveMap).toHaveBeenCalledOnce();
+        vi.mocked(fm.saveMap).mockClear();
+
+        useMapStore(pinia).markLayerUpdated();
+        await nextTick();
+        expect(fm.saveMap).toHaveBeenCalledOnce();
+
+        await manager.undo();
+        await manager.redo();
+        expect(undoEntry).toHaveBeenCalledWith('New Map');
+        expect(redoEntry).toHaveBeenCalledWith('New Map');
+    });
 });
