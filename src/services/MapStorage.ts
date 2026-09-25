@@ -35,10 +35,11 @@ export class MapStorage {
         settings: Settings,
         layersData: Map<string, IMapLayer>,
         groups?: Group[],
-        importedLayers?: ImportedGeoJsonLayer[]
+        importedLayers?: ImportedGeoJsonLayer[],
+        snapshot?: SerializedMap
     ): Promise<void> {
         await this.enqueueWrite(() =>
-            this.saveMapNow(settings, layersData, groups, importedLayers)
+            this.saveMapNow(settings, layersData, groups, importedLayers, snapshot)
         );
     }
 
@@ -46,16 +47,14 @@ export class MapStorage {
         settings: Settings,
         layersData: Map<string, IMapLayer>,
         groups?: Group[],
-        importedLayers?: ImportedGeoJsonLayer[]
+        importedLayers?: ImportedGeoJsonLayer[],
+        snapshot?: SerializedMap
     ): Promise<void> {
         await this.ready;
 
-        const payload = this.serializer.toCompactStoredMap(
-            settings,
-            layersData,
-            groups,
-            importedLayers
-        );
+        const payload = snapshot
+            ? this.serializer.toCompactStoredMapFromSerialized(snapshot)
+            : this.serializer.toCompactStoredMap(settings, layersData, groups, importedLayers);
 
         await this.db.transaction('rw', this.db.maps, this.db.metadata, async () => {
             const sortOrder = await this.getNextSortOrder();

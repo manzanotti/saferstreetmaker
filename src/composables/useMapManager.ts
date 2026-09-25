@@ -397,13 +397,14 @@ export function setupMapManager(
 
     // ── saveMap ───────────────────────────────────────────────────────────────
     const persistenceCoordinator = new MapPersistenceCoordinator({
-        saveMap: async () => {
+        saveMap: async (snapshot) => {
             const groupStore = useGroupStore(pinia);
             await fileManager.saveMap(
                 settingsStore.toSettings(),
                 mapStore.toLayers(),
                 groupStore.groups,
-                importedLayerStore.layers
+                importedLayerStore.layers,
+                snapshot
             );
         },
         buildSnapshot: () => buildCurrentSnapshot(),

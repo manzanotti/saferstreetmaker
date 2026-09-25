@@ -9,7 +9,7 @@ export interface PersistenceMutation {
 }
 
 export interface MapPersistenceCoordinatorOptions {
-    saveMap: () => Promise<void>;
+    saveMap: (snapshot: SerializedMap) => Promise<void>;
     buildSnapshot: () => SerializedMap;
     getLastSavedSnapshot: () => SerializedMap | null;
     setLastSavedSnapshot: (snapshot: SerializedMap) => void;
@@ -72,7 +72,7 @@ export class MapPersistenceCoordinator {
         const mutation = this.options.getMutation();
 
         try {
-            await this.options.saveMap();
+            await this.options.saveMap(afterSnapshot);
 
             const activeHistoryTitle = this.options.getActiveHistoryTitle();
             const beforeHistorySnapshot = beforeSnapshot

@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { FileManager } from '../../src/services/FileManager';
 import { Settings } from '../../src/models/Settings';
 import { IMapLayer } from '../../src/composables/layers/IMapLayer';
+import type { ImportedGeoJsonLayer } from '../../src/models/ImportedGeoJsonLayer';
 
 // --------------------------------------------------------------------------
 // Leaflet LatLng stub (needed by Settings default)
@@ -200,6 +201,48 @@ describe('FileManager', () => {
 
             const loaded = await fm.loadMapFromStorage('CityTest');
             expect((loaded?.layers as any).ModalFilters.features).toHaveLength(1);
+        });
+
+        it('saves an existing snapshot without serializing layers twice', async () => {
+            const settings = makeSettings('SnapshotCity');
+            const layer = makeLayer('ModalFilters', [
+                {
+                    type: 'Feature',
+                    geometry: { type: 'Point', coordinates: [-1.9, 52.5] },
+                    properties: { historyId: 'point-1' }
+                }
+            ]);
+            const layers = new Map([['ModalFilters', layer]]);
+            const groups = [
+                {
+                    id: 'g1',
+                    name: 'Zone',
+                    members: [{ layerId: 'ModalFilters', historyId: 'point-1' }]
+                }
+            ];
+            const importedLayers: ImportedGeoJsonLayer[] = [
+                {
+                    id: 'wards',
+                    name: 'Wards',
+                    nameProperty: 'name',
+                    visible: false,
+                    featureCollection: { type: 'FeatureCollection', features: [] }
+                }
+            ];
+            const toGeoJSON = vi.spyOn(layer, 'toGeoJSON');
+            const snapshot = fm.buildSerializedMap(settings, layers, groups, importedLayers);
+            expect(toGeoJSON).toHaveBeenCalledOnce();
+            toGeoJSON.mockImplementation(() => {
+                throw new Error('Layer was serialized again');
+            });
+
+            await fm.saveMap(settings, layers, groups, importedLayers, snapshot);
+
+            expect(toGeoJSON).toHaveBeenCalledOnce();
+            expect(await fm.loadMapFromStorage('SnapshotCity')).toEqual(snapshot);
+            expect((await fm.loadRawMapFromStorage('SnapshotCity'))?.updatedAt).toBe(
+                snapshot.lastSaved
+            );
         });
 
         it('loads the raw stored record without deserialising it', async () => {

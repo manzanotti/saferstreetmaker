@@ -884,6 +884,29 @@ test.describe('Reload Persistence', () => {
         await expect(page.getByLabel('Rename Birmingham Wards')).toBeVisible();
     });
 
+    test('saving Birmingham preserves LTN cells through undo, redo and reload', async ({
+        page
+    }) => {
+        await page.goto('/?map=Birmingham.json');
+        await expect(page.locator('.leaflet-ltns-pane path')).toHaveCount(80);
+
+        await page.locator('#settings-button').click();
+        await page.locator('#title').fill('Birmingham Saved');
+        await page.locator('button:has-text("Save")').click();
+        await expect(page.locator('#undo-button')).toBeEnabled();
+        await expect(page.locator('.leaflet-ltns-pane path')).toHaveCount(80);
+
+        await page.locator('#undo-button').click();
+        await expect(page.locator('#redo-button')).toBeEnabled();
+        await expect(page.locator('.leaflet-ltns-pane path')).toHaveCount(80);
+
+        await page.locator('#redo-button').click();
+        await expect(page.locator('.leaflet-ltns-pane path')).toHaveCount(80);
+        await page.goto('/');
+        await waitForFreshStorage(page);
+        await expect(page.locator('.leaflet-ltns-pane path')).toHaveCount(80);
+    });
+
     test('Escape from the layer rename input closes the panel', async ({ page }) => {
         await page.locator('#layers-button').click();
         const renameInput = page.locator('#layers-list input').first();
