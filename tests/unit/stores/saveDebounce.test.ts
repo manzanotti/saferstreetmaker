@@ -18,8 +18,9 @@ import { pinia } from '../../../src/stores/index';
 import { useMapStore } from '../../../src/stores/mapStore';
 import { useSettingsStore } from '../../../src/stores/settingsStore';
 import { useUiStore } from '../../../src/stores/uiStore';
-import { setupMapManager } from '../../../src/composables/useMapManager';
+import { getMapManager, setupMapManager } from '../../../src/composables/useMapManager';
 import { FileManager } from '../../../src/services/FileManager';
+import { UndoJournal } from '../../../src/services/UndoJournal';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -199,5 +200,88 @@ describe('useMapManager – save debounce', () => {
             'There was a problem saving the map:',
             'save failed'
         ]);
+    });
+
+    it('keeps autosaving an ordinary hash-loaded map', async () => {
+        vi.spyOn(fm, 'loadMapFromHash').mockReturnValue({ layers: {} });
+
+        await getMapManager().loadMap(null, '#ordinary', false, null, null);
+        useMapStore(pinia).markLayerUpdated();
+        await nextTick();
+
+        expect(fm.saveMap).toHaveBeenCalledOnce();
+    });
+
+    it('does not autosave a hash-loaded map, then resumes after loading storage', async () => {
+        const snapshot = {
+            settings: {
+                title: 'Shared Map',
+                readOnly: false,
+                hideToolbar: false,
+                activeLayers: [],
+                centre: { lat: 52.5, lng: -1.9 },
+                zoom: 12,
+                version: '0.10.0'
+            },
+            layers: {}
+        };
+        vi.spyOn(fm, 'loadMapFromHash').mockReturnValue(snapshot);
+        vi.spyOn(fm, 'loadMapFromStorage').mockResolvedValue(snapshot);
+
+        await getMapManager().loadMap(null, '#shared', false, null, null, true);
+        const mapStore = useMapStore(pinia);
+        const settingsStore = useSettingsStore(pinia);
+        mapStore.markLayerUpdated();
+        settingsStore.zoom = 13;
+        await nextTick();
+        await vi.runAllTimersAsync();
+        expect(fm.saveMap).not.toHaveBeenCalled();
+
+        await getMapManager().loadMapFromStorage('Shared Map');
+        vi.mocked(fm.saveMap).mockClear();
+        mapStore.markLayerUpdated();
+        await nextTick();
+        expect(fm.saveMap).toHaveBeenCalledOnce();
+    });
+
+    it('does not navigate stored history from a group-only shared view', async () => {
+        vi.spyOn(fm, 'loadMapFromHash').mockReturnValue({ layers: {} });
+        const undoEntry = vi.spyOn(UndoJournal.prototype, 'undoEntry');
+        const redoEntry = vi.spyOn(UndoJournal.prototype, 'redoEntry');
+
+        await getMapManager().loadMap(null, '#shared', false, null, null, true);
+        await expect(getMapManager().undo()).resolves.toBe(false);
+        await expect(getMapManager().redo()).resolves.toBe(false);
+
+        expect(undoEntry).not.toHaveBeenCalled();
+        expect(redoEntry).not.toHaveBeenCalled();
+        expect(fm.saveMap).not.toHaveBeenCalled();
+    });
+
+    it('resumes autosave and history navigation after creating a map from a group share', async () => {
+        vi.spyOn(fm, 'loadMapFromHash').mockReturnValue({ layers: {} });
+        vi.spyOn(fm, 'loadMapListFromStorage').mockResolvedValue([]);
+        vi.spyOn(UndoJournal.prototype, 'clearHistory').mockResolvedValue();
+        vi.spyOn(UndoJournal.prototype, 'getStatus').mockResolvedValue({
+            canUndo: false,
+            canRedo: false
+        });
+        const undoEntry = vi.spyOn(UndoJournal.prototype, 'undoEntry').mockResolvedValue(null);
+        const redoEntry = vi.spyOn(UndoJournal.prototype, 'redoEntry').mockResolvedValue(null);
+        const manager = getMapManager();
+
+        await manager.loadMap(null, '#shared', false, null, null, true);
+        expect(await manager.createNewMap('New Map')).toBe(true);
+        expect(fm.saveMap).toHaveBeenCalledOnce();
+        vi.mocked(fm.saveMap).mockClear();
+
+        useMapStore(pinia).markLayerUpdated();
+        await nextTick();
+        expect(fm.saveMap).toHaveBeenCalledOnce();
+
+        await manager.undo();
+        await manager.redo();
+        expect(undoEntry).toHaveBeenCalledWith('New Map');
+        expect(redoEntry).toHaveBeenCalledWith('New Map');
     });
 });
