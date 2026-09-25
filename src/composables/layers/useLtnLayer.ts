@@ -2,12 +2,7 @@ import * as L from 'leaflet';
 import { watch } from 'vue';
 import { useMapStore } from '../../stores/mapStore';
 import { pinia } from '../../stores/index';
-import {
-    setMapCursor,
-    removeMapCursor,
-    setMouseMarkerCursor,
-    setFeatureElementCursor
-} from './featureCursors';
+import { setFeatureElementCursor } from './featureCursors';
 import { buildToolbarButton } from './toolbarButton';
 import { buildLegendEntry } from './legendEntry';
 import { isPointFeatureElement, isFeatureEditLayerButtonId } from './featureClassification';
@@ -46,10 +41,10 @@ import { useSettingsStore } from '../../stores/settingsStore';
 import { isFeatureGroupHidden } from '../../features/groups/featureVisibility';
 import { getPolygonMutationPayload } from './ltnPolygonMutation';
 import { createLtnPopup } from './ltnPopup';
+import { createLtnCursorController } from './ltnCursorController';
 
 const COLOUR = '#cc00cc';
 const BUTTON_ID = 'ltn';
-const CURSOR_CSS = 'ltn-cell';
 
 export function createLtnLayer(map: L.Map): EditablePolylineLayer {
     const mapStore = useMapStore(pinia);
@@ -65,9 +60,6 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
      */
     let _drawPopup: L.Popup | null = null;
     let selectionMode: 'draw' | 'edit' = 'draw';
-    let pendingCursorEvent: L.LeafletMouseEvent | null = null;
-    let cursorSyncFrameId: number | null = null;
-    let lastCursorStyledElement: HTMLElement | SVGElement | null = null;
     let editablePolygon: any = null;
     let drawPopupTimeoutId: number | null = null;
     let removeDrawPopupFocusHandler: (() => void) | null = null;
@@ -96,6 +88,14 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         });
     };
 
+    const ltnCursorController = createLtnCursorController(map, {
+        getSelectionMode: () => selectionMode,
+        isLayerActive: () => mapStore.activeLayerId === BUTTON_ID,
+        isReadOnly: () => useSettingsStore(pinia).readOnly,
+        isPointFeatureElement,
+        isGroupedFeatureElement: (element) => findFeatureGroupIdByElement(element) !== null
+    });
+
     const shouldShowLabel = (label: string): boolean => {
         return map.getZoom() >= 14 && label.length > 0;
     };
@@ -114,210 +114,6 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         polygon.setTooltipContent?.(nextLabel);
         polygon.getTooltip?.()?.setLatLng?.(polygon.getBounds().getCenter());
         syncTooltipVisibility(polygon);
-    };
-
-    const setFeatureCursor = (element: Element | null, cursor: string | null): void => {
-        if (
-            lastCursorStyledElement &&
-            lastCursorStyledElement !== element &&
-            'style' in lastCursorStyledElement
-        ) {
-            lastCursorStyledElement.style.removeProperty('cursor');
-        }
-
-        if (element && (element instanceof HTMLElement || element instanceof SVGElement)) {
-            if (cursor === null) {
-                element.style.removeProperty('cursor');
-                lastCursorStyledElement = null;
-            } else {
-                element.style.cursor = cursor;
-                lastCursorStyledElement = element;
-            }
-        } else {
-            lastCursorStyledElement = null;
-        }
-    };
-
-    const toLocalSvgPoint = (path: SVGGeometryElement, clientX: number, clientY: number) => {
-        const svg = path.ownerSVGElement;
-        const matrix = path.getScreenCTM();
-        if (!svg || !matrix) {
-            return null;
-        }
-
-        const point = svg.createSVGPoint();
-        point.x = clientX;
-        point.y = clientY;
-        return point.matrixTransform(matrix.inverse());
-    };
-
-    const isHoveringPolygonStroke = (
-        element: Element,
-        clientX: number,
-        clientY: number
-    ): boolean => {
-        if (!(element instanceof SVGGeometryElement) || !('isPointInStroke' in element)) {
-            return false;
-        }
-
-        const localPoint = toLocalSvgPoint(element, clientX, clientY);
-        if (!localPoint) {
-            return false;
-        }
-
-        return element.isPointInStroke(localPoint);
-    };
-
-    const isHoveringPolygonFill = (element: Element, clientX: number, clientY: number): boolean => {
-        if (!(element instanceof SVGGeometryElement) || !('isPointInFill' in element)) {
-            return false;
-        }
-
-        const localPoint = toLocalSvgPoint(element, clientX, clientY);
-        if (!localPoint) {
-            return false;
-        }
-
-        return element.isPointInFill(localPoint);
-    };
-
-    const applyMouseMarkerCursor = (event: L.LeafletMouseEvent): void => {
-        const hoverStack = document.elementsFromPoint(
-            event.originalEvent.clientX,
-            event.originalEvent.clientY
-        );
-        const mouseMarker = document.querySelector('.leaflet-mouse-marker') as HTMLElement | null;
-        if (!mouseMarker) {
-            return;
-        }
-
-        if (useSettingsStore(pinia).readOnly) {
-            setFeatureCursor(null, null);
-            const hoveredFeature = hoverStack.find(
-                (element) =>
-                    element.classList.contains('leaflet-interactive') ||
-                    isPointFeatureElement(element)
-            );
-            if (!hoveredFeature || !findFeatureGroupIdByElement(hoveredFeature)) {
-                mouseMarker.style.cursor = 'default';
-                return;
-            }
-        }
-
-        const isHoveringPointFeature = hoverStack.some((element) => {
-            return element !== mouseMarker && isPointFeatureElement(element);
-        });
-
-        if (isHoveringPointFeature && selectionMode !== 'draw') {
-            setFeatureCursor(null, null);
-            mouseMarker.style.cursor = 'pointer';
-            return;
-        }
-
-        const isHoveringLtnFeature = hoverStack.some((element) => {
-            return (
-                element !== mouseMarker &&
-                element.classList.contains('leaflet-interactive') &&
-                element.classList.contains(CURSOR_CSS)
-            );
-        });
-
-        if (selectionMode === 'edit') {
-            const hoveredLtnFeature = hoverStack.find((element) => {
-                return (
-                    element !== mouseMarker &&
-                    element.classList.contains('leaflet-interactive') &&
-                    element.classList.contains(CURSOR_CSS)
-                );
-            });
-
-            if (hoveredLtnFeature) {
-                const isStrokeHit = isHoveringPolygonStroke(
-                    hoveredLtnFeature,
-                    event.originalEvent.clientX,
-                    event.originalEvent.clientY
-                );
-                const isFillHit = isHoveringPolygonFill(
-                    hoveredLtnFeature,
-                    event.originalEvent.clientX,
-                    event.originalEvent.clientY
-                );
-
-                if (isStrokeHit) {
-                    setFeatureCursor(hoveredLtnFeature, 'crosshair');
-                    mouseMarker.style.cursor = 'crosshair';
-                } else if (isFillHit) {
-                    setFeatureCursor(hoveredLtnFeature, 'pointer');
-                    mouseMarker.style.cursor = 'pointer';
-                } else {
-                    setFeatureCursor(hoveredLtnFeature, null);
-                    mouseMarker.style.cursor = 'grab';
-                }
-                return;
-            }
-
-            setFeatureCursor(null, null);
-
-            const isHoveringAnyInteractiveShape = hoverStack.some((element) => {
-                return (
-                    element !== mouseMarker &&
-                    (element.classList.contains('leaflet-interactive') ||
-                        element.classList.contains('leaflet-marker-icon'))
-                );
-            });
-
-            mouseMarker.style.cursor = isHoveringAnyInteractiveShape ? 'pointer' : 'grab';
-            return;
-        }
-
-        if (isHoveringLtnFeature) {
-            setFeatureCursor(null, null);
-            mouseMarker.style.cursor = 'pointer';
-        } else {
-            setFeatureCursor(null, null);
-            mouseMarker.style.removeProperty('cursor');
-        }
-    };
-
-    const syncPolygonEditCursor = (
-        polygonElement: Element | null,
-        clientX: number,
-        clientY: number
-    ): void => {
-        if (selectionMode !== 'edit' || mapStore.activeLayerId !== BUTTON_ID || !polygonElement) {
-            return;
-        }
-
-        const isStrokeHit = isHoveringPolygonStroke(polygonElement, clientX, clientY);
-        const isFillHit = isHoveringPolygonFill(polygonElement, clientX, clientY);
-
-        if (isStrokeHit) {
-            setFeatureCursor(polygonElement, 'crosshair');
-            setMouseMarkerCursor('crosshair');
-        } else if (isFillHit) {
-            setFeatureCursor(polygonElement, 'pointer');
-            setMouseMarkerCursor('pointer');
-        } else {
-            setFeatureCursor(polygonElement, null);
-            setMouseMarkerCursor('grab');
-        }
-    };
-
-    const syncMouseMarkerCursor = (event: L.LeafletMouseEvent): void => {
-        pendingCursorEvent = event;
-        if (cursorSyncFrameId !== null) {
-            return;
-        }
-
-        cursorSyncFrameId = requestAnimationFrame(() => {
-            cursorSyncFrameId = null;
-            const latestEvent = pendingCursorEvent;
-            pendingCursorEvent = null;
-
-            if (latestEvent) {
-                applyMouseMarkerCursor(latestEvent);
-            }
-        });
     };
 
     // ── Add a single LTN polygon ─────────────────────────────────────────────
@@ -356,7 +152,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         });
 
         polygon.on('mousemove', (e: any) => {
-            syncPolygonEditCursor(
+            ltnCursorController.syncPolygonEditCursor(
                 (e.target as any)?._path ?? null,
                 e.originalEvent.clientX,
                 e.originalEvent.clientY
@@ -429,8 +225,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                 return;
             }
 
-            setFeatureCursor((e.target as any)?._path ?? null, null);
-            setMouseMarkerCursor('grab');
+            ltnCursorController.resetPolygonCursor();
         });
 
         (polygon as any)['properties'] = { label, historyId };
@@ -594,10 +389,10 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             map.closePopup();
             // Switch to this layer for editing (deselects any active point/polyline layer).
             selectForEdit();
-            removeMapCursor(CURSOR_CSS);
+            ltnCursorController.enterEditMode();
             labelEl.value = polygon.properties.label ?? '';
             colorEl.value = polygon.options.color ?? COLOUR;
-            syncPolygonEditCursor(
+            ltnCursorController.syncPolygonEditCursor(
                 (e.target as any)?._path ?? null,
                 e.originalEvent.clientX,
                 e.originalEvent.clientY
@@ -743,8 +538,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             const shouldBeSelected = newId === BUTTON_ID;
             if (shouldBeSelected && !_selected) {
                 _selected = true;
-                setMapCursor(CURSOR_CSS);
-                map.on('mousemove', syncMouseMarkerCursor as L.LeafletEventHandlerFn);
+                ltnCursorController.start();
                 if (selectionMode === 'draw') {
                     enableDrawMode();
                 }
@@ -755,15 +549,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                 editablePolygon?.editing?.disable();
                 editablePolygon = null;
                 recomputeFeatureVisibility();
-                map.off('mousemove', syncMouseMarkerCursor as L.LeafletEventHandlerFn);
-                if (cursorSyncFrameId !== null) {
-                    cancelAnimationFrame(cursorSyncFrameId);
-                    cursorSyncFrameId = null;
-                }
-                pendingCursorEvent = null;
-                setFeatureCursor(null, null);
-                setMouseMarkerCursor(null);
-                removeMapCursor(CURSOR_CSS);
+                ltnCursorController.stop();
                 selectionMode = 'draw';
             }
         },
@@ -819,21 +605,13 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         recomputeFeatureVisibility();
         map.off('popupclose', handlePopupClose);
         map.off('zoomend', handleZoomEnd);
-        map.off('mousemove', syncMouseMarkerCursor as L.LeafletEventHandlerFn);
         geoJsonLayer.off('layerremove', handleLayerRemove);
         geoJsonLayer.eachLayer((layer: any) => layer.__disposeLtnPopup?.());
         geoJsonLayer.eachLayer((layer: any) => layer.__disposeLtnHoverPopup?.());
         geoJsonLayer.eachLayer((layer: any) => layer.off?.());
         map.removeLayer(geoJsonLayer);
         geoJsonLayer.clearLayers();
-        if (cursorSyncFrameId !== null) {
-            cancelAnimationFrame(cursorSyncFrameId);
-            cursorSyncFrameId = null;
-        }
-        pendingCursorEvent = null;
-        setFeatureCursor(null, null);
-        setMouseMarkerCursor(null);
-        removeMapCursor(CURSOR_CSS);
+        ltnCursorController.stop();
         _selected = false;
         selectionMode = 'draw';
         _visible = false;
