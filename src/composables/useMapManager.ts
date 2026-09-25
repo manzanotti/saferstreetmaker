@@ -633,6 +633,9 @@ export function setupMapManager(
     };
 
     const undo = async (): Promise<boolean> => {
+        if (suppressAutomaticSaves) {
+            return false;
+        }
         defaultImportedLayerSeeder.block();
         const persistenceBarrier = defaultImportedLayerSeeder.waitForPersistenceBarrier();
         if (persistenceBarrier) {
@@ -643,6 +646,9 @@ export function setupMapManager(
     };
 
     const redo = async (): Promise<boolean> => {
+        if (suppressAutomaticSaves) {
+            return false;
+        }
         defaultImportedLayerSeeder.block();
         const persistenceBarrier = defaultImportedLayerSeeder.waitForPersistenceBarrier();
         if (persistenceBarrier) {

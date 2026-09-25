@@ -20,6 +20,7 @@ import { useSettingsStore } from '../../../src/stores/settingsStore';
 import { useUiStore } from '../../../src/stores/uiStore';
 import { getMapManager, setupMapManager } from '../../../src/composables/useMapManager';
 import { FileManager } from '../../../src/services/FileManager';
+import { UndoJournal } from '../../../src/services/UndoJournal';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -241,5 +242,19 @@ describe('useMapManager – save debounce', () => {
         mapStore.markLayerUpdated();
         await nextTick();
         expect(fm.saveMap).toHaveBeenCalledOnce();
+    });
+
+    it('does not navigate stored history from a group-only shared view', async () => {
+        vi.spyOn(fm, 'loadMapFromHash').mockReturnValue({ layers: {} });
+        const undoEntry = vi.spyOn(UndoJournal.prototype, 'undoEntry');
+        const redoEntry = vi.spyOn(UndoJournal.prototype, 'redoEntry');
+
+        await getMapManager().loadMap(null, '#shared', false, null, null, true);
+        await expect(getMapManager().undo()).resolves.toBe(false);
+        await expect(getMapManager().redo()).resolves.toBe(false);
+
+        expect(undoEntry).not.toHaveBeenCalled();
+        expect(redoEntry).not.toHaveBeenCalled();
+        expect(fm.saveMap).not.toHaveBeenCalled();
     });
 });

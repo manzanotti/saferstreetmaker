@@ -856,6 +856,15 @@ test.describe('Sharing Panel', () => {
             const app = (document.getElementById('app') as any).__vue_app__;
             return app?.config.globalProperties.$pinia._s.get('group').groups.length === 1;
         });
+        await sharedPage.keyboard.press('Control+z');
+        await sharedPage.keyboard.press('Control+y');
+        await sharedPage.waitForTimeout(100);
+        const sharedGroupCount = await sharedPage.evaluate(() => {
+            const app = (document.getElementById('app') as any).__vue_app__;
+            return app.config.globalProperties.$pinia._s.get('group').groups.length;
+        });
+        expect(sharedGroupCount).toBe(1);
+        expect(await readStoredMap(sharedPage)).toEqual(originalMap);
         await sharedPage.evaluate(() => {
             const app = (document.getElementById('app') as any).__vue_app__;
             const mapStore = app.config.globalProperties.$pinia._s.get('map');
