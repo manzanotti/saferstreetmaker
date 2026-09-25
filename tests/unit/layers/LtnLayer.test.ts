@@ -830,6 +830,7 @@ describe('LtnLayer feature clicks', () => {
         const content = popup.setContent.mock.calls[0][0] as HTMLElement;
         const input = content.querySelector('.label-editor') as HTMLInputElement;
 
+        expect(input.getAttribute('aria-label')).toBe('LTN cell label');
         mapStore.clearLastLayerMutation();
         input.value = 'Updated LTN';
         input.dispatchEvent(new Event('input', { bubbles: true }));

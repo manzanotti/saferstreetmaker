@@ -10,7 +10,6 @@ import {
 } from './featureCursors';
 import { buildToolbarButton } from './toolbarButton';
 import { buildLegendEntry } from './legendEntry';
-import { buildPopupActionControl } from './featureActionPopup';
 import { isPointFeatureElement, isFeatureEditLayerButtonId } from './featureClassification';
 import { buildHistoryId } from './featureLookup';
 import { buildFeatureDescriptionPopup } from './featureDescriptionPopup';
@@ -18,8 +17,6 @@ import { buildReadOnlyGroupPopup, getReadOnlyGroupCenter } from './readOnlyGroup
 import {
     findFirstFeatureGroupId,
     findFeatureGroupIdByElement,
-    buildFeatureGroupMembershipContent,
-    disposePopupElement,
     cacheFeatureGroupElement
 } from './featureGroupMembershipPopup';
 import {
@@ -48,6 +45,7 @@ import {
 import { useSettingsStore } from '../../stores/settingsStore';
 import { isFeatureGroupHidden } from '../../features/groups/featureVisibility';
 import { getPolygonMutationPayload } from './ltnPolygonMutation';
+import { createLtnPopup } from './ltnPopup';
 
 const COLOUR = '#cc00cc';
 const BUTTON_ID = 'ltn';
@@ -88,6 +86,14 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         feature.properties.color = polygon.options?.color ?? COLOUR;
         feature.properties.historyId = polygon['properties']?.historyId ?? '';
         return feature;
+    };
+
+    const recordPolygonEdit = (beforeFeature: any, afterFeature: any): void => {
+        mapStore.markLayerUpdated({
+            kind: 'polygon-edit',
+            layerId: 'LtnCells',
+            payload: getPolygonMutationPayload(beforeFeature, afterFeature, COLOUR)
+        });
     };
 
     const shouldShowLabel = (label: string): boolean => {
@@ -334,11 +340,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                 (polygon as any)['historyFeature'] ?? getPolygonHistoryFeature(polygon);
             syncPolygonTooltip(polygon);
             const nextFeature = getPolygonHistoryFeature(polygon);
-            mapStore.markLayerUpdated({
-                kind: 'polygon-edit',
-                layerId: 'LtnCells',
-                payload: getPolygonMutationPayload(previousFeature, nextFeature, COLOUR)
-            });
+            recordPolygonEdit(previousFeature, nextFeature);
             (polygon as any)['historyFeature'] = nextFeature;
         });
 
@@ -451,7 +453,43 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             colorEl,
             refreshGroupContent,
             dispose: disposePopup
-        } = createLtnPopup(polygon, label);
+        } = createLtnPopup(map, polygon, label, {
+            defaultColor: COLOUR,
+            getHistoryFeature: () => getPolygonHistoryFeature(polygon),
+            onPolygonMutation: recordPolygonEdit,
+            syncTooltip: (nextLabel) => syncPolygonTooltip(polygon, nextLabel),
+            recomputeFeatureVisibility,
+            onCopy: (popup) => {
+                map.closePopup(popup);
+                selectFeature(polygon as unknown as L.Layer, 'LtnCells', false);
+                executeCopy();
+            },
+            onDelete: (popup) => {
+                geoJsonLayer.removeLayer(polygon);
+                mapStore.markLayerUpdated({
+                    kind: 'polygon-delete',
+                    layerId: 'LtnCells',
+                    payload: {
+                        before:
+                            (polygon as any)['historyFeature'] ?? getPolygonHistoryFeature(polygon)
+                    }
+                });
+                map.closePopup(popup);
+                clearFeatureHighlight();
+            },
+            onOpenGroup: openGroupDetails,
+            onRemoveFromGroup: (groupId) =>
+                removeFeatureFromGroup(groupId, {
+                    layerId: 'LtnCells',
+                    historyId: polygon.properties.historyId
+                }),
+            onAddToGroup: (groupId) =>
+                addFeatureToGroup(groupId, {
+                    layerId: 'LtnCells',
+                    historyId: polygon.properties.historyId
+                }),
+            onCreateNewGroup: createGroupFromFeature
+        });
         // Expose the popup + label input on the polygon so the draw-created
         // handler can open it to prompt for a title immediately after drawing.
         (polygon as any).__ltnPopup = popup;
@@ -595,191 +633,6 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         geoJsonLayer.addLayer(polygon);
 
         return polygon;
-    };
-
-    // ── Popup with label editor + copy + delete buttons ──────────────────────
-    const createLtnPopup = (
-        polygon: any,
-        initialLabel: string
-    ): {
-        popup: L.Popup;
-        labelEl: HTMLInputElement;
-        colorEl: HTMLInputElement;
-        refreshGroupContent: () => void;
-        dispose: () => void;
-    } => {
-        const popup = L.popup({
-            minWidth: 30,
-            keepInView: true,
-            className: 'feature-popup-editor'
-        });
-        const controlList = document.createElement('ul');
-        controlList.classList.add('popup-buttons', 'ltn-popup-buttons');
-        const currentControls = document.createElement('li');
-        currentControls.classList.add('current-controls');
-        const currentControlsContent = document.createElement('ul');
-        currentControlsContent.classList.add('current-controls-content');
-        currentControls.appendChild(currentControlsContent);
-        controlList.appendChild(currentControls);
-
-        const labelControl = document.createElement('li');
-        const labelEl = document.createElement('input');
-        labelEl.type = 'text';
-        labelEl.value = initialLabel;
-        labelEl.classList.add('label-editor');
-        labelControl.appendChild(labelEl);
-        currentControlsContent.appendChild(labelControl);
-
-        const colorControl = document.createElement('li');
-        const colorEl = document.createElement('input');
-        colorEl.type = 'color';
-        colorEl.value = polygon.options.color ?? COLOUR;
-        colorEl.classList.add('colour-swatch');
-        colorEl.setAttribute('aria-label', 'Change cell colour');
-        colorEl.title = 'Change cell colour';
-        colorControl.appendChild(colorEl);
-        currentControlsContent.appendChild(colorControl);
-
-        const copyControl = buildPopupActionControl('copy-button', 'Copy selected feature', () => {
-            map.closePopup(popup);
-            selectFeature(polygon as unknown as L.Layer, 'LtnCells', false);
-            executeCopy();
-        });
-        currentControlsContent.appendChild(copyControl);
-
-        const deleteControl = buildPopupActionControl(
-            'delete-button',
-            'Delete selected feature',
-            () => {
-                flushMetadataChanges();
-                geoJsonLayer.removeLayer(polygon);
-                mapStore.markLayerUpdated({
-                    kind: 'polygon-delete',
-                    layerId: 'LtnCells',
-                    payload: {
-                        before:
-                            (polygon as any)['historyFeature'] ?? getPolygonHistoryFeature(polygon)
-                    }
-                });
-                map.closePopup(popup);
-                // Remove the selection vertex handles left from clicking the
-                // polygon so they don't linger after it is deleted.
-                clearFeatureHighlight();
-            }
-        );
-        currentControlsContent.appendChild(deleteControl);
-
-        let metadataBeforeFeature: any = null;
-
-        const flushMetadataChanges = (): void => {
-            if (!metadataBeforeFeature) {
-                return;
-            }
-
-            const nextFeature = getPolygonHistoryFeature(polygon);
-            mapStore.markLayerUpdated({
-                kind: 'polygon-edit',
-                layerId: 'LtnCells',
-                payload: getPolygonMutationPayload(metadataBeforeFeature, nextFeature, COLOUR)
-            });
-            metadataBeforeFeature = null;
-        };
-
-        const saveMetadataChanges = (): void => {
-            const currentLabel = polygon['properties'].label ?? '';
-            const currentColor = polygon.options.color ?? COLOUR;
-            if (labelEl.value === currentLabel && colorEl.value === currentColor) {
-                return;
-            }
-
-            const previousFeature =
-                (polygon as any)['historyFeature'] ?? getPolygonHistoryFeature(polygon);
-            metadataBeforeFeature ??= previousFeature;
-            polygon['properties'].label = labelEl.value;
-            syncPolygonTooltip(polygon, labelEl.value);
-            polygon.setStyle({ color: colorEl.value });
-            const nextFeature = getPolygonHistoryFeature(polygon);
-            (polygon as any)['historyFeature'] = nextFeature;
-            recomputeFeatureVisibility();
-        };
-
-        const handleLabelInput = () => saveMetadataChanges();
-        const handleColorInput = () => saveMetadataChanges();
-        const handleLabelChange = () => flushMetadataChanges();
-        const handleColorChange = () => flushMetadataChanges();
-        const handleLabelKeydown = (event: KeyboardEvent) => {
-            if (event.key !== 'Enter') {
-                return;
-            }
-
-            event.preventDefault();
-            flushMetadataChanges();
-            map.closePopup(popup);
-        };
-
-        labelEl.addEventListener('input', handleLabelInput);
-        colorEl.addEventListener('input', handleColorInput);
-        labelEl.addEventListener('change', handleLabelChange);
-        colorEl.addEventListener('change', handleColorChange);
-        labelEl.addEventListener('keydown', handleLabelKeydown);
-
-        const popupContent = document.createElement('div');
-        popupContent.classList.add('feature-popup-content');
-        let groupContent: HTMLDivElement | null = null;
-        const refreshGroupContent = () => {
-            if (groupContent) {
-                disposePopupElement(groupContent);
-            }
-            controlList.querySelectorAll('.feature-popup-group-content').forEach((groupContent) => {
-                groupContent.remove();
-            });
-            const groupContentItem = document.createElement('li');
-            groupContentItem.classList.add('feature-popup-group-content');
-            groupContent = buildFeatureGroupMembershipContent(
-                { layerId: 'LtnCells', historyId: polygon.properties.historyId },
-                openGroupDetails,
-                (groupId) => {
-                    flushMetadataChanges();
-                    return removeFeatureFromGroup(groupId, {
-                        layerId: 'LtnCells',
-                        historyId: polygon.properties.historyId
-                    });
-                },
-                (groupId) => {
-                    flushMetadataChanges();
-                    return addFeatureToGroup(groupId, {
-                        layerId: 'LtnCells',
-                        historyId: polygon.properties.historyId
-                    });
-                },
-                (member, onCreated) => {
-                    flushMetadataChanges();
-                    createGroupFromFeature(member, onCreated);
-                }
-            );
-            groupContentItem.appendChild(groupContent);
-            controlList.appendChild(groupContentItem);
-        };
-        popupContent.appendChild(controlList);
-        refreshGroupContent();
-        popup.setContent(popupContent);
-        return {
-            popup,
-            labelEl,
-            colorEl,
-            refreshGroupContent,
-            dispose: () => {
-                map.closePopup(popup);
-                labelEl.removeEventListener('input', handleLabelInput);
-                colorEl.removeEventListener('input', handleColorInput);
-                labelEl.removeEventListener('change', handleLabelChange);
-                colorEl.removeEventListener('change', handleColorChange);
-                labelEl.removeEventListener('keydown', handleLabelKeydown);
-                disposePopupElement(copyControl);
-                disposePopupElement(deleteControl);
-                disposePopupElement(groupContent);
-            }
-        };
     };
 
     // ── draw:created handler ─────────────────────────────────────────────────
