@@ -1,5 +1,4 @@
 import * as L from 'leaflet';
-import { watch } from 'vue';
 import { useMapStore } from '../../stores/mapStore';
 import { pinia } from '../../stores/index';
 import { buildToolbarButton } from './toolbarButton';
@@ -9,13 +8,11 @@ import { buildHistoryId } from './featureLookup';
 import { findFeatureGroupIdByElement } from './featureGroupMembershipPopup';
 import type { IMapLayer } from './IMapLayer';
 import { type EditablePolylineLayer } from './usePolylineLayer';
-import { applySelectionHighlights } from '../useAreaSelection';
-import { useSelectionStore } from '../../stores/selectionStore';
-import { recomputeFeatureVisibility } from '../useGroups';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { createLtnCursorController } from './ltnCursorController';
 import { createLtnDrawController } from './ltnDrawController';
 import { createLtnPolygonFactory } from './ltnPolygonFactory';
+import { createLtnLayerLifecycle, type LtnLayerState } from './ltnLayerLifecycle';
 
 const COLOUR = '#cc00cc';
 const BUTTON_ID = 'ltn';
@@ -23,15 +20,17 @@ const BUTTON_ID = 'ltn';
 export function createLtnLayer(map: L.Map): EditablePolylineLayer {
     const mapStore = useMapStore(pinia);
     const geoJsonLayer = new L.GeoJSON(undefined, { pane: 'ltns' });
-    let _selected = false;
-    let _visible = false;
+    const state: LtnLayerState = {
+        selected: false,
+        visible: false,
+        selectionMode: 'draw',
+        editablePolygon: null,
+        disposed: false
+    };
     let _ltnTitle = '1';
-    let selectionMode: 'draw' | 'edit' = 'draw';
-    let editablePolygon: any = null;
-    let _disposed = false;
 
     const ltnCursorController = createLtnCursorController(map, {
-        getSelectionMode: () => selectionMode,
+        getSelectionMode: () => state.selectionMode,
         isLayerActive: () => mapStore.activeLayerId === BUTTON_ID,
         isReadOnly: () => useSettingsStore(pinia).readOnly,
         isPointFeatureElement,
@@ -43,12 +42,12 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             map,
             geoJsonLayer,
             defaultColor: COLOUR,
-            getSelectionMode: () => selectionMode,
+            getSelectionMode: () => state.selectionMode,
             isDrawingToolEnabled: () => ltnDrawController.isEnabled(),
             disableDrawMode: () => ltnDrawController.disable(),
-            getEditablePolygon: () => editablePolygon,
+            getEditablePolygon: () => state.editablePolygon,
             setEditablePolygon: (nextPolygon) => {
-                editablePolygon = nextPolygon;
+                state.editablePolygon = nextPolygon;
             },
             selectForEdit: () => selectForEdit(),
             cursorController: ltnCursorController
@@ -58,8 +57,8 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
     const ltnDrawController = createLtnDrawController({
         map,
         color: COLOUR,
-        isSelected: () => _selected,
-        isDisposed: () => _disposed,
+        isSelected: () => state.selected,
+        isDisposed: () => state.disposed,
         onDrawCreated: (layer) => {
             const polygon = addLtnCell(layer.getLatLngs()[0], _ltnTitle, COLOUR) as any;
             mapStore.markLayerUpdated({
@@ -71,60 +70,24 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         }
     });
 
-    // Close the naming popup if the cell it belongs to is removed (undo/delete).
-    const handleLayerRemove = (e: any) => {
-        e.layer?.editing?.disable?.();
-        if (e.layer === editablePolygon) {
-            editablePolygon = null;
-        }
-        ltnDrawController.handleLayerRemoved(e.layer);
-        e.layer?.__disposeLtnPopup?.();
-        e.layer?.__disposeLtnHoverPopup?.();
-        e.layer?.off?.();
-    };
-    geoJsonLayer.on('layerremove', handleLayerRemove);
-
-    // ── Zoom-based tooltip visibility ────────────────────────────────────────
-    const handleZoomEnd = () => {
-        geoJsonLayer.eachLayer((l: any) => {
-            syncTooltipVisibility(l);
-        });
-    };
-    map.on('zoomend', handleZoomEnd);
-
-    // ── Sync watch for selection state ───────────────────────────────────────
-    const stopActiveLayerWatch = watch(
-        () => mapStore.activeLayerId,
-        (newId) => {
-            const shouldBeSelected = newId === BUTTON_ID;
-            if (shouldBeSelected && !_selected) {
-                _selected = true;
-                ltnCursorController.start();
-                if (selectionMode === 'draw') {
-                    ltnDrawController.enable();
-                }
-            } else if (!shouldBeSelected && _selected) {
-                _selected = false;
-                ltnDrawController.disable();
-                ltnDrawController.closeNamingPopup();
-                editablePolygon?.editing?.disable();
-                editablePolygon = null;
-                recomputeFeatureVisibility();
-                ltnCursorController.stop();
-                selectionMode = 'draw';
-            }
-        },
-        { flush: 'sync' }
-    );
+    const lifecycle = createLtnLayerLifecycle({
+        map,
+        geoJsonLayer,
+        buttonId: BUTTON_ID,
+        state,
+        drawController: ltnDrawController,
+        cursorController: ltnCursorController,
+        syncTooltipVisibility
+    });
 
     const action = (_e: Event, _m: L.Map): void => {
-        selectionMode = 'draw';
+        state.selectionMode = 'draw';
     };
 
     /** Switch to this layer for editing an existing polygon without enabling draw mode. */
     const selectForEdit = (): void => {
-        selectionMode = 'edit';
-        if (_selected) {
+        state.selectionMode = 'edit';
+        if (state.selected) {
             ltnDrawController.disable();
         }
         mapStore.setActiveLayer(BUTTON_ID);
@@ -132,57 +95,11 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
 
     const visibilityProxy = {
         get visible() {
-            return _visible;
+            return state.visible;
         },
         set visible(v: boolean) {
-            _visible = v;
+            state.visible = v;
         }
-    };
-
-    const dispose = (): void => {
-        if (_disposed) {
-            return;
-        }
-        _disposed = true;
-        const selectionStore = useSelectionStore(pinia);
-        const previousSelection = selectionStore.selected;
-        const ltnSelection = previousSelection.filter((entry) => entry.layerId === 'LtnCells');
-        const removedMarkers = new Set(ltnSelection.map((entry) => entry.marker));
-        for (const marker of removedMarkers) {
-            const entry = ltnSelection.find((selected) => selected.marker === marker);
-            if (entry) {
-                selectionStore.removeSelectedFeature(marker, entry);
-            }
-        }
-        if (ltnSelection.length > 0) {
-            applySelectionHighlights(selectionStore.selected, true, previousSelection);
-        }
-
-        stopActiveLayerWatch();
-        ltnDrawController.dispose();
-        editablePolygon?.editing?.disable();
-        editablePolygon = null;
-        recomputeFeatureVisibility();
-        map.off('zoomend', handleZoomEnd);
-        geoJsonLayer.off('layerremove', handleLayerRemove);
-        geoJsonLayer.eachLayer((layer: any) => layer.__disposeLtnPopup?.());
-        geoJsonLayer.eachLayer((layer: any) => layer.__disposeLtnHoverPopup?.());
-        geoJsonLayer.eachLayer((layer: any) => layer.off?.());
-        map.removeLayer(geoJsonLayer);
-        geoJsonLayer.clearLayers();
-        ltnCursorController.stop();
-        _selected = false;
-        selectionMode = 'draw';
-        _visible = false;
-        if (mapStore.activeLayerId === BUTTON_ID) {
-            mapStore.setActiveLayer(null);
-        }
-        if (mapStore.drawLayerId === BUTTON_ID) {
-            mapStore.setDrawLayer(null);
-        }
-        mapStore.visibleLayerIds = new Set(
-            [...mapStore.visibleLayerIds].filter((id) => id !== 'LtnCells')
-        );
     };
 
     return {
@@ -191,16 +108,16 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         groupName: '',
         kind: 'polygon' as const,
         get selected() {
-            return _selected;
+            return state.selected;
         },
         set selected(v: boolean) {
-            _selected = v;
+            state.selected = v;
         },
         get visible() {
-            return _visible;
+            return state.visible;
         },
         set visible(v: boolean) {
-            _visible = v;
+            state.visible = v;
         },
         iconHtml: (() => {
             const icon = document.createElement('i');
@@ -214,7 +131,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                 tooltip: 'Add LTNs to the map',
                 groupName: '',
                 action,
-                selected: _selected,
+                selected: state.selected,
                 text: 'LTN'
             });
         },
@@ -232,7 +149,7 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         },
 
         loadFromGeoJSON(geoJson: any): void {
-            if (_disposed || !geoJson?.features) {
+            if (state.disposed || !geoJson?.features) {
                 return;
             }
             geoJson.features.forEach((feature: any) => {
@@ -248,14 +165,18 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
                 );
             });
 
-            if (_selected && selectionMode === 'draw' && mapStore.drawLayerId === BUTTON_ID) {
+            if (
+                state.selected &&
+                state.selectionMode === 'draw' &&
+                mapStore.drawLayerId === BUTTON_ID
+            ) {
                 ltnDrawController.disable();
                 ltnDrawController.enable();
             }
         },
 
         loadFeature(feature: any, historyId?: string): string | null {
-            if (_disposed || feature?.geometry?.type !== 'Polygon') {
+            if (state.disposed || feature?.geometry?.type !== 'Polygon') {
                 return null;
             }
             const points = (feature.geometry.coordinates[0] ?? []).map(
@@ -282,10 +203,10 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
 
         clearLayer(): void {
             geoJsonLayer.clearLayers();
-            _visible = false;
+            state.visible = false;
         },
 
-        dispose,
+        dispose: lifecycle.dispose,
 
         selectForEdit
     };
