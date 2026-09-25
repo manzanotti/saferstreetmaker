@@ -170,7 +170,7 @@ describe('createLtnCursorController', () => {
 
         mouseMarker.style.cursor = 'crosshair';
         hoverStack = [mouseMarker];
-        moveMouse(controller);
+        moveMouse();
         expect(mouseMarker.style.cursor).toBe('');
     });
 
