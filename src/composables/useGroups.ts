@@ -30,8 +30,8 @@ import {
     buildHistoryId,
     findLayerFeatureByHistoryId,
     getFeatureHistoryId
-} from './layers/featureLookup';
-import { removeMapCursor, setMapCursor } from './layers/featureCursors';
+} from './layers/features/featureLookup';
+import { removeMapCursor, setMapCursor } from './layers/features/featureCursors';
 import {
     buildFeatureSelectionEntries,
     applySelectionHighlights,

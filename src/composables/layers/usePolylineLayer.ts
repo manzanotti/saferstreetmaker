@@ -9,10 +9,10 @@ import * as L from 'leaflet';
 import { watch } from 'vue';
 import { useMapStore } from '../../stores/mapStore';
 import { pinia } from '../../stores/index';
-import { setMapCursor, removeMapCursor } from './featureCursors';
+import { setMapCursor, removeMapCursor } from './features/featureCursors';
 import { buildToolbarButton } from './toolbarButton';
 import { buildLegendEntry } from './legendEntry';
-import { isPointFeatureElement } from './featureClassification';
+import { isPointFeatureElement } from './features/featureClassification';
 import type { IMapLayer } from './IMapLayer';
 
 export interface PolylineLayerConfig {

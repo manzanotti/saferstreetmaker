@@ -8,7 +8,7 @@ import { featureKey, getGroupVersions } from '../../features/groups/groupVersion
 import { PhaseHighlighter } from '../../features/groups/PhaseHighlighter';
 import { applyPhaseSelectionDelta } from '../../features/groups/phaseMembership';
 import { applySelectionHighlights } from '../useAreaSelection';
-import { removeMapCursor } from '../layers/featureCursors';
+import { removeMapCursor } from '../layers/features/featureCursors';
 import type { GroupMember, GroupPhase } from '../../models/Group';
 
 export interface GroupPhaseEditingContext {

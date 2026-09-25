@@ -8,20 +8,23 @@ import * as L from 'leaflet';
 import { watch } from 'vue';
 import { useMapStore } from '../../stores/mapStore';
 import { pinia } from '../../stores/index';
-import { setMapCursor, removeMapCursor, setFeatureElementCursor } from './featureCursors';
+import { setMapCursor, removeMapCursor, setFeatureElementCursor } from './features/featureCursors';
 import { buildToolbarButton } from './toolbarButton';
 import { buildLegendEntry } from './legendEntry';
-import { buildHistoryId, getFeatureHistoryId } from './featureLookup';
-import { buildFeatureActionPopup } from './featureActionPopup';
-import { buildFeatureDescriptionPopup } from './featureDescriptionPopup';
+import { buildHistoryId, getFeatureHistoryId } from './features/featureLookup';
+import { buildFeatureActionPopup } from './features/featureActionPopup';
+import { buildFeatureDescriptionPopup } from './features/featureDescriptionPopup';
 import {
     addFeatureHoverPopup,
     getFeatureHoverLatLng,
     closeFeatureHoverPopups,
     createFeatureHoverPopupController
-} from './featureHoverPopups';
-import { cacheFeatureGroupElement, findFirstFeatureGroupId } from './featureGroupMembershipPopup';
-import { buildReadOnlyGroupPopup, getReadOnlyGroupCenter } from './readOnlyGroupPopup';
+} from './features/featureHoverPopups';
+import {
+    cacheFeatureGroupElement,
+    findFirstFeatureGroupId
+} from './features/featureGroupMembershipPopup';
+import { buildReadOnlyGroupPopup, getReadOnlyGroupCenter } from './features/readOnlyGroupPopup';
 import { useSelectionStore } from '../../stores/selectionStore';
 import { useGroupStore } from '../../stores/groupStore';
 import { executeAreaDelete, executeCopy, selectFeature } from '../useAreaSelection';

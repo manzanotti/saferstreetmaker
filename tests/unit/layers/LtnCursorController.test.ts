@@ -1,17 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('leaflet', () => import('../__mocks__/leaflet'));
-vi.mock('../../../src/composables/layers/ltnSvgHitTesting', () => ({
+vi.mock('../../../src/composables/layers/ltn/ltnSvgHitTesting', () => ({
     isHoveringPolygonFill: vi.fn(),
     isHoveringPolygonStroke: vi.fn()
 }));
 
 import * as L from 'leaflet';
-import { createLtnCursorController } from '../../../src/composables/layers/ltnCursorController';
+import { createLtnCursorController } from '../../../src/composables/layers/ltn/ltnCursorController';
 import {
     isHoveringPolygonFill,
     isHoveringPolygonStroke
-} from '../../../src/composables/layers/ltnSvgHitTesting';
+} from '../../../src/composables/layers/ltn/ltnSvgHitTesting';
 
 interface CursorState {
     selectionMode: 'draw' | 'edit';

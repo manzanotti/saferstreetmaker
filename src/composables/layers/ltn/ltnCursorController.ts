@@ -1,5 +1,5 @@
 import * as L from 'leaflet';
-import { removeMapCursor, setMapCursor, setMouseMarkerCursor } from './featureCursors';
+import { removeMapCursor, setMapCursor, setMouseMarkerCursor } from '../features/featureCursors';
 import { isHoveringPolygonFill, isHoveringPolygonStroke } from './ltnSvgHitTesting';
 
 export const LTN_CURSOR_CSS = 'ltn-cell';

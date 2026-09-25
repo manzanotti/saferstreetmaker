@@ -1,15 +1,15 @@
 import * as L from 'leaflet';
-import { pinia } from '../../stores/index';
-import { useGroupStore } from '../../stores/groupStore';
-import { useMapStore } from '../../stores/mapStore';
-import { useSelectionStore } from '../../stores/selectionStore';
-import { useSettingsStore } from '../../stores/settingsStore';
-import { selectFeature } from '../useAreaSelection';
-import { openGroupDetails } from '../useGroups';
-import { isFeatureEditLayerButtonId } from './featureClassification';
-import { buildFeatureDescriptionPopup } from './featureDescriptionPopup';
-import { closeFeatureHoverPopups } from './featureHoverPopups';
-import { findFirstFeatureGroupId } from './featureGroupMembershipPopup';
+import { pinia } from '../../../stores/index';
+import { useGroupStore } from '../../../stores/groupStore';
+import { useMapStore } from '../../../stores/mapStore';
+import { useSelectionStore } from '../../../stores/selectionStore';
+import { useSettingsStore } from '../../../stores/settingsStore';
+import { selectFeature } from '../../useAreaSelection';
+import { openGroupDetails } from '../../useGroups';
+import { isFeatureEditLayerButtonId } from '../features/featureClassification';
+import { buildFeatureDescriptionPopup } from '../features/featureDescriptionPopup';
+import { closeFeatureHoverPopups } from '../features/featureHoverPopups';
+import { findFirstFeatureGroupId } from '../features/featureGroupMembershipPopup';
 import type { createLtnCursorController } from './ltnCursorController';
 
 const BUTTON_ID = 'ltn';

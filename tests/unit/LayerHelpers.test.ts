@@ -8,40 +8,40 @@ import {
     removeMapCursor,
     setFeatureElementCursor,
     setMouseMarkerCursor
-} from '../../src/composables/layers/featureCursors';
+} from '../../src/composables/layers/features/featureCursors';
 import {
     isPointFeatureElement,
     isFeatureEditLayerButtonId
-} from '../../src/composables/layers/featureClassification';
+} from '../../src/composables/layers/features/featureClassification';
 import {
     buildHistoryId,
     getFeatureHistoryId,
     findLayerFeatureByHistoryId
-} from '../../src/composables/layers/featureLookup';
+} from '../../src/composables/layers/features/featureLookup';
 import { buildToolbarButton } from '../../src/composables/layers/toolbarButton';
 import { buildLegendEntry } from '../../src/composables/layers/legendEntry';
 import {
     buildDeletePopup,
     buildFeatureActionPopup
-} from '../../src/composables/layers/featureActionPopup';
-import { buildFeatureDescriptionPopup } from '../../src/composables/layers/featureDescriptionPopup';
+} from '../../src/composables/layers/features/featureActionPopup';
+import { buildFeatureDescriptionPopup } from '../../src/composables/layers/features/featureDescriptionPopup';
 import {
     buildReadOnlyGroupPopup,
     getReadOnlyGroupCenter
-} from '../../src/composables/layers/readOnlyGroupPopup';
+} from '../../src/composables/layers/features/readOnlyGroupPopup';
 import {
     addFeatureHoverPopup,
     createFeatureHoverPopupController,
     getFeatureHoverLatLng,
     closeFeatureHoverPopups
-} from '../../src/composables/layers/featureHoverPopups';
+} from '../../src/composables/layers/features/featureHoverPopups';
 import {
     buildFeatureGroupMembershipContent,
     disposePopupElement,
     cacheFeatureGroupElement,
     findFeatureGroupIdByElement,
     findFirstFeatureGroupId
-} from '../../src/composables/layers/featureGroupMembershipPopup';
+} from '../../src/composables/layers/features/featureGroupMembershipPopup';
 import { useGroupStore } from '../../src/stores/groupStore';
 import { pinia } from '../../src/stores';
 

@@ -1,16 +1,16 @@
 import * as L from 'leaflet';
-import { pinia } from '../../stores/index';
-import { useMapStore } from '../../stores/mapStore';
-import { selectFeature, executeCopy, clearFeatureHighlight } from '../useAreaSelection';
+import { pinia } from '../../../stores/index';
+import { useMapStore } from '../../../stores/mapStore';
+import { selectFeature, executeCopy, clearFeatureHighlight } from '../../useAreaSelection';
 import {
     addFeatureToGroup,
     createGroupFromFeature,
     openGroupDetails,
     recomputeFeatureVisibility,
     removeFeatureFromGroup
-} from '../useGroups';
-import { isFeatureGroupHidden } from '../../features/groups/featureVisibility';
-import { buildHistoryId } from './featureLookup';
+} from '../../useGroups';
+import { isFeatureGroupHidden } from '../../../features/groups/featureVisibility';
+import { buildHistoryId } from '../features/featureLookup';
 import { getPolygonMutationPayload } from './ltnPolygonMutation';
 import { createLtnPopup } from './ltnPopup';
 import { attachLtnPolygonInteractions } from './ltnPolygonInteractions';

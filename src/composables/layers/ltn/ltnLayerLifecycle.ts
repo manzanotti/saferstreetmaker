@@ -1,10 +1,10 @@
 import * as L from 'leaflet';
 import { watch } from 'vue';
-import { pinia } from '../../stores/index';
-import { useMapStore } from '../../stores/mapStore';
-import { useSelectionStore } from '../../stores/selectionStore';
-import { applySelectionHighlights } from '../useAreaSelection';
-import { recomputeFeatureVisibility } from '../useGroups';
+import { pinia } from '../../../stores/index';
+import { useMapStore } from '../../../stores/mapStore';
+import { useSelectionStore } from '../../../stores/selectionStore';
+import { applySelectionHighlights } from '../../useAreaSelection';
+import { recomputeFeatureVisibility } from '../../useGroups';
 import type { createLtnCursorController } from './ltnCursorController';
 import type { createLtnDrawController } from './ltnDrawController';
 
