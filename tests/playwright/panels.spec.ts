@@ -431,6 +431,31 @@ test.describe('Map Manager Panel', () => {
         await expect(page.getByLabel('Rename History layer')).toBeVisible();
     });
 
+    test('showing a hidden imported layer reuses its rendered geometry', async ({ page }) => {
+        await page.evaluate(() => {
+            const leaflet = (window as any).L;
+            const originalGeoJSON = leaflet.geoJSON;
+            (window as any).__geoJSONBuilds = 0;
+            leaflet.geoJSON = (...args: any[]) => {
+                (window as any).__geoJSONBuilds++;
+                return originalGeoJSON(...args);
+            };
+        });
+
+        await page.locator('#layers-button').click();
+        await page.getByLabel('Show layer Birmingham Wards').click();
+        await expect(page.getByLabel('Hide layer Birmingham Wards')).toBeVisible();
+        const buildsAfterFirstShow = await page.evaluate(() => (window as any).__geoJSONBuilds);
+        expect(buildsAfterFirstShow).toBeGreaterThan(0);
+
+        await page.getByLabel('Hide layer Birmingham Wards').click();
+        await page.getByLabel('Show layer Birmingham Wards').click();
+        await expect(page.getByLabel('Hide layer Birmingham Wards')).toBeVisible();
+        expect(await page.evaluate(() => (window as any).__geoJSONBuilds)).toBe(
+            buildsAfterFirstShow
+        );
+    });
+
     test('ignores a URL response that resolves after switching to file upload', async ({
         page
     }) => {
