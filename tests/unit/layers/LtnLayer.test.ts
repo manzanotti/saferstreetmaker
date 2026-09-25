@@ -233,6 +233,7 @@ describe('LtnLayer (composable)', () => {
 
             expect(mapOffSpy).toHaveBeenCalledWith('popupclose', expect.any(Function));
             expect(mapOffSpy).toHaveBeenCalledWith('zoomend', expect.any(Function));
+            expect(mapOffSpy).toHaveBeenCalledWith('mousemove', expect.any(Function));
             expect(mapClosePopupSpy).toHaveBeenCalledWith(popup);
             expect(mapRemoveLayerSpy).toHaveBeenCalledWith(layer.getLayer());
             expect(polygonOffSpy).toHaveBeenCalledWith();
