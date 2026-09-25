@@ -17,6 +17,65 @@ export interface FeatureGroupMembershipSummary {
     versions: Array<{ id: string; name: string }>;
 }
 
+export type FeatureMembershipIndex = Map<string, FeatureGroupMembershipSummary[]>;
+
+export function createFeatureMembershipIndex(groups: Group[]): FeatureMembershipIndex {
+    const index: FeatureMembershipIndex = new Map();
+
+    for (const group of groups) {
+        const versions = getGroupVersions(group);
+        const membershipsByMember = new Map<string, Array<{ id: string; name: string }>>();
+        for (const version of versions) {
+            const versionMembers = new Set(version.members.map(memberKey));
+            for (const key of versionMembers) {
+                const containingVersions = membershipsByMember.get(key) ?? [];
+                containingVersions.push({ id: version.id, name: version.name });
+                membershipsByMember.set(key, containingVersions);
+            }
+        }
+
+        for (const [key, containingVersions] of membershipsByMember) {
+            const summaries = index.get(key) ?? [];
+            summaries.push({
+                groupId: group.id,
+                groupName: group.name,
+                ...(group.description ? { description: group.description } : {}),
+                versionCount: versions.length,
+                versions: containingVersions
+            });
+            index.set(key, summaries);
+        }
+    }
+
+    return index;
+}
+
+export function findFeatureMembershipsInIndex(
+    index: FeatureMembershipIndex,
+    activeVersionIds: Record<string, string>,
+    member: GroupMember
+): FeatureMembershipLocation[] {
+    return (index.get(memberKey(member)) ?? []).flatMap((group) =>
+        group.versions.map((version) => ({
+            groupId: group.groupId,
+            groupName: group.groupName,
+            versionId: version.id,
+            versionName: version.name,
+            isActive: activeVersionIds[group.groupId] === version.id
+        }))
+    );
+}
+
+export function findFeatureGroupMembershipsInIndex(
+    index: FeatureMembershipIndex,
+    member: GroupMember
+): FeatureGroupMembershipSummary[] {
+    return (index.get(memberKey(member)) ?? []).map((group) => ({
+        ...group,
+        versions: group.versions.map((version) => ({ ...version }))
+    }));
+}
+
 export function findFeatureMemberships(
     groups: Group[],
     activeVersionIds: Record<string, string>,

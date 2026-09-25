@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, shallowRef } from 'vue';
+import { computed, ref, shallowRef } from 'vue';
 import type {
     Group,
     GroupMember,
@@ -15,6 +15,11 @@ import {
     memberKey,
     reconcilePhases
 } from '../features/groups/groupVersions';
+import {
+    createFeatureMembershipIndex,
+    findFeatureGroupMembershipsInIndex,
+    findFeatureMembershipsInIndex
+} from '../features/groups/featureMemberships';
 import { normalizeGroupDescription } from '../features/groups/groupDescription';
 import {
     normalizeStoredGroup,
@@ -25,6 +30,7 @@ import {
 export const useGroupStore = defineStore('group', () => {
     /** Groups — part of the persisted map payload and included in undo snapshots. */
     const groups = ref<Group[]>([]);
+    const featureMembershipIndex = computed(() => createFeatureMembershipIndex(groups.value));
 
     /** Runtime-only active version per group. Defaults are restored on load. */
     const activeVersionIds = ref<Record<string, string>>({});
@@ -64,6 +70,18 @@ export const useGroupStore = defineStore('group', () => {
     const playbackPlaying = ref(false);
     const playbackComplete = ref(false);
     const playbackPhaseIndex = ref<number | null>(null);
+
+    function getFeatureMemberships(member: GroupMember) {
+        return findFeatureMembershipsInIndex(
+            featureMembershipIndex.value,
+            activeVersionIds.value,
+            member
+        );
+    }
+
+    function getFeatureGroupMemberships(member: GroupMember) {
+        return findFeatureGroupMembershipsInIndex(featureMembershipIndex.value, member);
+    }
 
     // ── Group mutations ───────────────────────────────────────────────────────
 
@@ -687,6 +705,8 @@ export const useGroupStore = defineStore('group', () => {
         playbackPlaying,
         playbackComplete,
         playbackPhaseIndex,
+        getFeatureMemberships,
+        getFeatureGroupMemberships,
         setGroups,
         addGroup,
         renameGroup,

@@ -43,6 +43,50 @@ describe('groupStore', () => {
             expect(store.groups).toHaveLength(0);
         });
 
+        it('refreshes feature membership lookups after version membership changes', () => {
+            const store = useGroupStore();
+            const member = { layerId: 'ModalFilters', historyId: 'feature-1' };
+            store.setGroups([
+                {
+                    id: 'g1',
+                    name: 'Group 1',
+                    defaultVersionId: 'v2',
+                    versions: [
+                        { id: 'v1', name: 'Current', members: [member] },
+                        { id: 'v2', name: 'Alternative', members: [] }
+                    ]
+                }
+            ]);
+
+            const firstSummaries = store.getFeatureGroupMemberships(member);
+            expect(firstSummaries[0]?.versions).toEqual([{ id: 'v1', name: 'Current' }]);
+            firstSummaries[0]?.versions.push({ id: 'corrupt', name: 'Corrupt' });
+            expect(store.getFeatureGroupMemberships(member)[0]?.versions).toEqual([
+                { id: 'v1', name: 'Current' }
+            ]);
+            store.addMembersToGroup('g1', [member]);
+            expect(store.getFeatureGroupMemberships(member)[0]?.versions).toEqual([
+                { id: 'v1', name: 'Current' },
+                { id: 'v2', name: 'Alternative' }
+            ]);
+            expect(
+                store.getFeatureMemberships(member).map(({ versionId, isActive }) => ({
+                    versionId,
+                    isActive
+                }))
+            ).toEqual([
+                { versionId: 'v1', isActive: false },
+                { versionId: 'v2', isActive: true }
+            ]);
+
+            store.removeMemberFromVersions('g1', ['v1'], member);
+            expect(store.getFeatureGroupMemberships(member)[0]?.versions).toEqual([
+                { id: 'v2', name: 'Alternative' }
+            ]);
+            store.removeMemberFromVersions('g1', ['v2'], member);
+            expect(store.getFeatureGroupMemberships(member)).toEqual([]);
+        });
+
         it('clears a pending empty-group deletion when restored members make it invalid', () => {
             const store = useGroupStore();
             store.setGroups([makeGroup('g1', 'Group 1')]);

@@ -1,5 +1,4 @@
 import type { GroupMember } from '../../models/Group';
-import { findFeatureGroupMemberships } from '../../features/groups/featureMemberships';
 import { useGroupStore } from '../../stores/groupStore';
 import { pinia } from '../../stores/index';
 
@@ -16,7 +15,7 @@ export function findFeatureGroupIdByElement(element: Element): string | null {
 }
 
 export function findFirstFeatureGroupId(member: GroupMember): string | null {
-    return findFeatureGroupMemberships(useGroupStore(pinia).groups, member)[0]?.groupId ?? null;
+    return useGroupStore(pinia).getFeatureGroupMemberships(member)[0]?.groupId ?? null;
 }
 
 export function disposePopupElement(element: HTMLElement | null | undefined): void {
@@ -81,7 +80,7 @@ export function buildFeatureGroupMembershipContent(
         disposeRenderedListeners?.();
         const disposers: Array<() => void> = [];
         const groupStore = useGroupStore(pinia);
-        const groups = findFeatureGroupMemberships(groupStore.groups, member);
+        const groups = groupStore.getFeatureGroupMemberships(member);
         const groupsContent = document.createElement('section');
         groupsContent.classList.add('feature-popup-groups');
 
