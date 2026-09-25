@@ -128,6 +128,7 @@ describe('LtnLayer (composable)', () => {
             expect(mapStore.lastLayerMutation).toBeNull();
             expect(disposeHoverPopup).toHaveBeenCalledOnce();
             expect(disableEditing).toHaveBeenCalledOnce();
+            expect(polygonOff).toHaveBeenCalledWith('click', expect.any(Function));
             expect(polygonOff).toHaveBeenCalledWith();
         });
 
