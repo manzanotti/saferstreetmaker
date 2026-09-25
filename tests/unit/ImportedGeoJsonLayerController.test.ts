@@ -180,6 +180,79 @@ describe('ImportedGeoJsonLayerController', () => {
         expect(map.removeLayer).not.toHaveBeenCalled();
     });
 
+    it('reattaches unchanged geometry after hiding and showing an imported layer', () => {
+        const layer = makeLayer();
+        const controller = new ImportedGeoJsonLayerController({
+            getMap: () => map,
+            onFeaturePropertyChange: vi.fn(),
+            isReadOnly: () => false,
+            getActiveLayerId: () => null
+        });
+
+        controller.render([layer]);
+        const zoomHandler = vi.mocked(map.on).mock.calls[0][1] as () => void;
+        layer.visible = false;
+        controller.render([layer]);
+        featureLayer.setStyle.mockClear();
+        zoomHandler();
+        expect(featureLayer.setStyle).not.toHaveBeenCalled();
+        layer.visible = true;
+        controller.render([layer]);
+
+        expect(map.removeLayer).toHaveBeenCalledOnce();
+        expect(fakeLeafletLayer.addTo).toHaveBeenCalledTimes(2);
+        expect(L.geoJSON).toHaveBeenCalledOnce();
+        expect(featureLayer.setStyle).toHaveBeenCalledOnce();
+    });
+
+    it('rebuilds changed geometry while hidden and releases deleted geometry', () => {
+        const layer = makeLayer();
+        const controller = new ImportedGeoJsonLayerController({
+            getMap: () => map,
+            onFeaturePropertyChange: vi.fn(),
+            isReadOnly: () => false,
+            getActiveLayerId: () => null
+        });
+
+        controller.render([layer]);
+        layer.visible = false;
+        controller.render([layer]);
+        layer.featureCollection = makeLayer().featureCollection;
+        controller.render([layer]);
+        layer.visible = true;
+        controller.render([layer]);
+        expect(L.geoJSON).toHaveBeenCalledTimes(2);
+
+        controller.render([]);
+        controller.render([layer]);
+        expect(L.geoJSON).toHaveBeenCalledTimes(3);
+    });
+
+    it('uses current metadata in popups after reattaching an imported layer', () => {
+        const layer = makeLayer();
+        const onFeaturePropertyChange = vi.fn();
+        const controller = new ImportedGeoJsonLayerController({
+            getMap: () => map,
+            onFeaturePropertyChange,
+            isReadOnly: () => false,
+            getActiveLayerId: () => null
+        });
+
+        controller.render([layer]);
+        controller.render([{ ...layer, name: 'Renamed wards', visible: false }]);
+        controller.render([{ ...layer, name: 'Renamed wards', nameProperty: null }]);
+        const popup = featureLayer.bindPopup.mock.calls[0][0]();
+        expect(popup.querySelector('span')?.textContent).toBe('Renamed wards');
+
+        controller.render([{ ...layer, nameProperty: 'newName' }]);
+        const updatedPopup = featureLayer.bindPopup.mock.calls[0][0]();
+        const input = updatedPopup.querySelector('input') as HTMLInputElement;
+        input.value = 'Updated';
+        input.dispatchEvent(new Event('blur'));
+        expect(onFeaturePropertyChange).toHaveBeenCalledWith('layer-1', 0, 'newName', 'Updated');
+        expect(L.geoJSON).toHaveBeenCalledOnce();
+    });
+
     it('forwards feature clicks to the active map tool and closes the popup', () => {
         let activeLayerId: string | null = 'modal-filter';
         const controller = new ImportedGeoJsonLayerController({
