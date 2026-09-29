@@ -98,7 +98,14 @@ test.describe('Help Panel', () => {
 
     test('clicking the help modal close button hides the modal', async ({ page }) => {
         await page.locator('#help-button').click();
-        await page.locator('button[name="closeHelp"]').first().click();
+        await page.getByRole('button', { name: 'Close help panel' }).click();
+
+        await expect(page.locator('#help')).not.toBeVisible();
+    });
+
+    test('pressing Escape closes the help modal', async ({ page }) => {
+        await page.locator('#help-button').click();
+        await page.keyboard.press('Escape');
 
         await expect(page.locator('#help')).not.toBeVisible();
     });

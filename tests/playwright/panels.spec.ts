@@ -53,9 +53,16 @@ test.describe('Settings Panel', () => {
         await expect(page.locator('#settings-button')).toBeVisible();
     });
 
-    test('clicking the settings Cancel button closes the panel', async ({ page }) => {
+    test('clicking the settings header X closes without saving', async ({ page }) => {
         await page.locator('#settings-button').click();
-        await page.locator('button:has-text("Cancel")').click();
+        await page.getByRole('button', { name: 'Close settings panel' }).click();
+        await expect(page.locator('#read-only')).not.toBeAttached();
+    });
+
+    test('pressing Escape closes the settings panel', async ({ page }) => {
+        await page.locator('#settings-button').click();
+        await page.locator('#title').press('Escape');
+
         await expect(page.locator('#read-only')).not.toBeAttached();
     });
 
@@ -70,7 +77,7 @@ test.describe('Settings Panel', () => {
                 ''
         );
 
-        await page.locator('button:has-text("Cancel")').dblclick();
+        await page.getByRole('button', { name: 'Close settings panel' }).dblclick();
 
         await page.waitForTimeout(200);
 
@@ -112,7 +119,7 @@ test.describe('Settings Panel', () => {
 
         await page.locator('#settings-button').click();
         await expect(page.locator('#title')).toHaveValue('Hello Cleveland');
-        await page.locator('button:has-text("Cancel")').click();
+        await page.getByRole('button', { name: 'Close settings panel' }).click();
 
         await expect(page.locator('#redo-button')).toBeEnabled();
         await page.locator('#redo-button').click();
@@ -165,13 +172,13 @@ test.describe('Settings Panel', () => {
         await page.waitForTimeout(150);
         await page.locator('#settings-button').click();
         await expect(page.locator('#BusLanes')).toBeChecked();
-        await page.locator('button:has-text("Cancel")').click();
+        await page.getByRole('button', { name: 'Close settings panel' }).click();
 
         await page.locator('#redo-button').click();
         await page.waitForTimeout(150);
         await page.locator('#settings-button').click();
         await expect(page.locator('#BusLanes')).not.toBeChecked();
-        await page.locator('button:has-text("Cancel")').click();
+        await page.getByRole('button', { name: 'Close settings panel' }).click();
     });
 
     test('switching stored maps restores the correct independent undo state', async ({
@@ -194,7 +201,7 @@ test.describe('Settings Panel', () => {
 
         await page.locator('#settings-button').click();
         await expect(page.locator('#title')).toHaveValue('Second Map');
-        await page.locator('button:has-text("Cancel")').click();
+        await page.getByRole('button', { name: 'Close settings panel' }).click();
 
         // Switch back to the first map and verify its history is still available.
         // The map name is rendered as a <span> inside the <li> — click the span.
@@ -212,7 +219,7 @@ test.describe('Settings Panel', () => {
 
         await page.locator('#settings-button').click();
         await expect(page.locator('#title')).toHaveValue('Hello Cleveland');
-        await page.locator('button:has-text("Cancel")').click();
+        await page.getByRole('button', { name: 'Close settings panel' }).click();
 
         await expect(page.locator('#redo-button')).toBeEnabled();
     });
@@ -233,6 +240,13 @@ test.describe('Map Manager Panel', () => {
     test('clicking map manager button opens the panel', async ({ page }) => {
         await page.locator('#map-manager-button').click();
         await expect(page.locator('#map-manager')).toBeVisible();
+    });
+
+    test('pressing Escape closes the map manager panel', async ({ page }) => {
+        await page.locator('#map-manager-button').click();
+        await page.keyboard.press('Escape');
+
+        await expect(page.locator('#map-manager')).not.toBeAttached();
     });
 
     test('L toggles the Layers panel', async ({ page }) => {
@@ -597,6 +611,40 @@ test.describe('Sharing Panel', () => {
         await expect(page.locator('#sharing')).toBeVisible();
     });
 
+    test('pressing Escape closes the sharing panel', async ({ page }) => {
+        await page.locator('#share-button').click();
+        await page.locator('#width').press('Escape');
+
+        await expect(page.locator('#sharing')).not.toBeAttached();
+    });
+
+    test('sharing format buttons replace the toggles and close from the header X', async ({
+        page
+    }) => {
+        await expect(page.locator('#image-export-button')).not.toBeAttached();
+        await page.locator('#share-button').click();
+        await expect(page.locator('#export-as')).toContainText('Image');
+        await expect(page.locator('#export-as')).toContainText('HTML');
+        await expect(page.locator('#export-as')).toContainText('Url');
+        await expect(page.locator('#export-as-html')).toHaveAttribute('aria-pressed', 'true');
+        await expect(page.locator('#hide-toolbar')).not.toBeAttached();
+        await expect(page.getByRole('button', { name: 'Close sharing panel' })).toBeVisible();
+        await expect(page.locator('#html-export-description')).toBeVisible();
+
+        await page.locator('#export-as-image').click();
+
+        await expect(page.locator('#image-export-description')).toBeVisible();
+        await expect(page.locator('#width')).toBeVisible();
+        await expect(page.locator('#height')).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Export PNG' })).toBeVisible();
+
+        await page.locator('#export-as-url').click();
+        await expect(page.locator('#url-export-description')).toBeVisible();
+
+        await page.getByRole('button', { name: 'Close sharing panel' }).click();
+        await expect(page.locator('#sharing')).not.toBeAttached();
+    });
+
     test('hidden imported layers are excluded from the shared URL', async ({ page }) => {
         await page.evaluate(() => {
             (window as any).__clipboardText = '';
@@ -615,7 +663,7 @@ test.describe('Sharing Panel', () => {
             return src.length;
         });
 
-        await page.locator('#sharing button:has-text("Close")').click();
+        await page.locator('#sharing button[aria-label="Close sharing panel"]').click();
         await page.locator('#layers-button').click();
         await page.getByLabel('Show layer Birmingham Wards').click();
         await expect(page.getByLabel('Hide layer Birmingham Wards')).toBeVisible();
@@ -657,23 +705,56 @@ test.describe('Sharing Panel', () => {
         await expect(page.locator('#sharing')).not.toBeAttached();
     });
 
-    test('share toggle stays inside the sharing panel bounds', async ({ page }) => {
+    test('format selector stays inside the sharing panel bounds', async ({ page }) => {
         await page.locator('#share-button').click();
 
-        const toggleBox = await page.locator('#hide-toolbar').boundingBox();
+        const selectorBox = await page.locator('#export-as').boundingBox();
         const panelBox = await page.locator('#sharing').boundingBox();
 
-        expect(toggleBox).not.toBeNull();
+        expect(selectorBox).not.toBeNull();
         expect(panelBox).not.toBeNull();
 
-        if (toggleBox && panelBox) {
-            expect(toggleBox.x).toBeGreaterThanOrEqual(panelBox.x);
-            expect(toggleBox.x + toggleBox.width).toBeLessThanOrEqual(panelBox.x + panelBox.width);
-            expect(toggleBox.y).toBeGreaterThanOrEqual(panelBox.y);
-            expect(toggleBox.y + toggleBox.height).toBeLessThanOrEqual(
+        if (selectorBox && panelBox) {
+            expect(selectorBox.x).toBeGreaterThanOrEqual(panelBox.x);
+            expect(selectorBox.x + selectorBox.width).toBeLessThanOrEqual(
+                panelBox.x + panelBox.width
+            );
+            expect(selectorBox.y).toBeGreaterThanOrEqual(panelBox.y);
+            expect(selectorBox.y + selectorBox.height).toBeLessThanOrEqual(
                 panelBox.y + panelBox.height
             );
         }
+    });
+
+    test('Url mode copies a direct share link', async ({ page }) => {
+        await page.addInitScript(() => {
+            (window as any).__clipboardText = '';
+            Object.defineProperty(navigator, 'clipboard', {
+                value: {
+                    writeText: (text: string) => (
+                        ((window as any).__clipboardText = text),
+                        Promise.resolve()
+                    )
+                },
+                configurable: true
+            });
+        });
+        await page.goto('/');
+        await waitForFreshStorage(page);
+        await page.waitForSelector('.toolbar');
+
+        await page.locator('#share-button').click();
+        await page.locator('#export-as-url').click();
+        await page.getByRole('button', { name: 'Create' }).click();
+
+        await expect(page.locator('#messageRow')).toBeVisible();
+        const copiedText = await page.evaluate(() => (window as any).__clipboardText as string);
+        expect(copiedText).not.toContain('<iframe');
+
+        const shareUrl = new URL(copiedText);
+        expect(shareUrl.searchParams.get('share')).toBe('1');
+        expect(shareUrl.searchParams.get('hide-toolbar')).toBe('false');
+        expect(shareUrl.hash.length).toBeGreaterThan(1);
     });
 
     test('clicking the share Create button shows the copied-message path', async ({ page }) => {
@@ -802,6 +883,12 @@ test.describe('Sharing Panel', () => {
         await expect(prompt.getByRole('button', { name: 'Just Cycle Route' })).toBeVisible();
         await expect(prompt.getByRole('button', { name: 'Cancel' })).toBeVisible();
 
+        await page.keyboard.press('Escape');
+        await expect(prompt).not.toBeVisible();
+        await expect(page.locator('#sharing')).toBeVisible();
+
+        await page.getByRole('button', { name: 'Create' }).click();
+        await expect(prompt).toBeVisible();
         await prompt.getByRole('button', { name: 'Whole map' }).click();
         const iframeUrl = await page.evaluate(
             () => (window as any).__clipboardText.match(/src="([^"]+)"/)?.[1] as string
@@ -985,7 +1072,7 @@ test.describe('Sharing Panel', () => {
 
     test('clicking the share Close button closes the sharing panel', async ({ page }) => {
         await page.locator('#share-button').click();
-        await page.locator('#sharing button:has-text("Close")').click();
+        await page.getByRole('button', { name: 'Close sharing panel' }).click();
         await expect(page.locator('#sharing')).not.toBeAttached();
     });
 });

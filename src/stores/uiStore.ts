@@ -8,6 +8,8 @@ export const useUiStore = defineStore('ui', () => {
     const errorMessages = ref<string[]>([]);
     const showDownloadStorageLink = ref(false);
     const legendLayerIds = ref<Set<string> | null>(null);
+    const imageExportInProgress = ref(false);
+    const imageExportLegendLayerIds = ref<Set<string> | null>(null);
 
     function openPanel(id: PanelId) {
         activePanel.value = id;
@@ -31,15 +33,23 @@ export const useUiStore = defineStore('ui', () => {
         legendLayerIds.value = layerIds;
     }
 
+    function setImageExportState(inProgress: boolean, layerIds: Set<string> | null) {
+        imageExportInProgress.value = inProgress;
+        imageExportLegendLayerIds.value = layerIds;
+    }
+
     return {
         activePanel,
         errorMessages,
         showDownloadStorageLink,
         legendLayerIds,
+        imageExportInProgress,
+        imageExportLegendLayerIds,
         openPanel,
         closePanel,
         showErrors,
         clearErrors,
-        setLegendLayerIds
+        setLegendLayerIds,
+        setImageExportState
     };
 });

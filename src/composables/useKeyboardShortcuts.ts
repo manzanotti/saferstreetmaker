@@ -58,6 +58,10 @@ export function setupKeyboardShortcuts(map: L.Map): void {
     const mapElement = map.getContainer();
 
     const handleKeydown = async (event: KeyboardEvent): Promise<void> => {
+        if (uiStore.imageExportInProgress) {
+            return;
+        }
+
         if (event.key === 'Escape') {
             // LTN editing takes precedence and remains available after a popup
             // moved focus away from the map.

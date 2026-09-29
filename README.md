@@ -23,6 +23,8 @@ It's still very basic at the moment as I just wanted to get something up and run
 
 The map is zipped and saved to the browser's local storage every time a change is made to it. You can choose to download a JSON version of the map to your device. Additionally, you can download a GeoJSON version of the map, if you wish to import it to more traditional mapping software.
 
+Open **Share** in the toolbar and choose **Image**, **HTML**, or **Url** under **Export as**. Image downloads a PNG; HTML copies an embeddable iframe; Url copies a direct share link. Width and height default to the map's current on-screen size and set the PNG or iframe dimensions. Image exports keep the current map scale and center, so changing the aspect ratio changes the visible map area. The PNG includes map attribution and a legend for built-in layers with visible features in the exported view. Images are limited to 8192 pixels per side and 16,777,216 total pixels.
+
 Additionally, you can load a JSON version of a map.
 
 If I was developing this for a client, then I would write a backend and database to store the maps, as this would allow for user accounts, map sharing, collaborative working. As this would not be free to run, I've not gone down that route, though if any organisation would like to sponsor this project, I have plenty of ideas for functionality that could unlock.

@@ -65,10 +65,18 @@ function onCancel() {
         class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[10002] rounded-2xl bg-white shadow-xl border border-gray-100 w-80 flex flex-col overflow-hidden max-h-[90vh]"
         @dblclick.stop
     >
-        <div class="flex items-center px-5 py-4 border-b border-gray-100 shrink-0">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
             <h2 id="settings-panel-title" class="text-base font-semibold text-gray-800">
                 Settings
             </h2>
+            <button
+                type="button"
+                aria-label="Close settings panel"
+                class="rounded text-gray-400 hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600"
+                @click="onCancel"
+            >
+                <span aria-hidden="true" class="text-xl leading-none">&times;</span>
+            </button>
         </div>
         <div class="px-5 py-4 space-y-4 overflow-y-auto">
             <div>
@@ -142,13 +150,6 @@ function onCancel() {
         <div
             class="flex items-center justify-end gap-2 px-5 py-4 border-t border-gray-100 shrink-0"
         >
-            <button
-                type="button"
-                class="rounded-lg bg-slate-50 hover:bg-slate-100 border border-gray-200 text-gray-700 px-4 py-2 text-sm font-medium focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-1 focus-visible:outline-none [touch-action:manipulation]"
-                @click="onCancel"
-            >
-                Cancel
-            </button>
             <button
                 type="button"
                 class="rounded-lg bg-green-700 hover:bg-green-800 text-white px-4 py-2 text-sm font-medium focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-1 focus-visible:outline-none [touch-action:manipulation]"

@@ -68,6 +68,9 @@ async function onRedo() {
 }
 
 function onPanelButtonClick(panelId: PanelId) {
+    if (uiStore.imageExportInProgress) {
+        return;
+    }
     if (uiStore.activePanel === panelId) {
         uiStore.closePanel();
     } else {
@@ -80,7 +83,7 @@ function onPanelButtonClick(panelId: PanelId) {
     <ul
         role="toolbar"
         aria-label="Map controls"
-        class="flex flex-wrap sm:flex-nowrap gap-1 sm:gap-1.5 p-[3px] rounded-2xl bg-white/[0.94] shadow-xl border border-white/60 w-fit"
+        class="flex flex-wrap sm:flex-nowrap gap-1 sm:gap-1.5 p-[3px] rounded-2xl bg-white/94 shadow-xl border border-white/60 w-fit"
     >
         <!-- Map manager — first button in the bar -->
         <li v-if="!settingsStore.readOnly">
@@ -94,7 +97,7 @@ function onPanelButtonClick(panelId: PanelId) {
                     'w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center',
                     'transition-transform duration-150 ease-out',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-1',
-                    '[touch-action:manipulation] cursor-pointer select-none',
+                    'touch-manipulation cursor-pointer select-none',
                     uiStore.activePanel === 'mapManager'
                         ? 'bg-green-700 shadow-inner'
                         : 'bg-slate-50 hover:bg-green-100'
@@ -120,7 +123,7 @@ function onPanelButtonClick(panelId: PanelId) {
                 aria-label="Undo"
                 title="Undo"
                 :disabled="historyStore.busy || !historyStore.canUndo"
-                class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center text-xl sm:text-2xl font-semibold bg-slate-50 hover:bg-green-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-1 [touch-action:manipulation] cursor-pointer select-none transition-transform duration-150 ease-out disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-slate-50"
+                class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center text-xl sm:text-2xl font-semibold bg-slate-50 hover:bg-green-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-1 touch-manipulation cursor-pointer select-none transition-transform duration-150 ease-out disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-slate-50"
                 @click.stop="onUndo"
             >
                 <span aria-hidden="true">&#x21B6;</span>
@@ -134,7 +137,7 @@ function onPanelButtonClick(panelId: PanelId) {
                 aria-label="Redo"
                 title="Redo"
                 :disabled="historyStore.busy || !historyStore.canRedo"
-                class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center text-xl sm:text-2xl font-semibold bg-slate-50 hover:bg-green-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-1 [touch-action:manipulation] cursor-pointer select-none transition-transform duration-150 ease-out disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-slate-50"
+                class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center text-xl sm:text-2xl font-semibold bg-slate-50 hover:bg-green-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-1 touch-manipulation cursor-pointer select-none transition-transform duration-150 ease-out disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-slate-50"
                 @click.stop="onRedo"
             >
                 <span aria-hidden="true">&#x21B7;</span>
@@ -152,7 +155,7 @@ function onPanelButtonClick(panelId: PanelId) {
                     'w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center',
                     'transition-transform duration-150 ease-out',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-1',
-                    '[touch-action:manipulation] cursor-pointer select-none',
+                    'touch-manipulation cursor-pointer select-none',
                     selectionStore.isActive
                         ? 'bg-green-700 shadow-inner'
                         : 'bg-slate-50 hover:bg-green-100'
@@ -188,7 +191,7 @@ function onPanelButtonClick(panelId: PanelId) {
                     'w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center',
                     'transition-transform duration-150 ease-out',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-1',
-                    '[touch-action:manipulation] cursor-pointer select-none',
+                    'touch-manipulation cursor-pointer select-none',
                     uiStore.activePanel === mb.panelId
                         ? 'bg-green-700 shadow-inner'
                         : 'bg-slate-50 hover:bg-green-100'

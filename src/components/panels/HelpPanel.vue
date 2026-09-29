@@ -46,7 +46,6 @@ function close() {
             v-if="uiStore.activePanel === 'help'"
             id="help"
             class="fixed inset-0 z-[10002] flex items-center justify-center pointer-events-none"
-            @keydown.escape.window="close"
             @dblclick.stop
         >
             <div
@@ -60,6 +59,14 @@ function close() {
                     <h2 id="help-panel-title" class="text-base font-semibold text-gray-800">
                         Using Safer Street Maker
                     </h2>
+                    <button
+                        type="button"
+                        aria-label="Close help panel"
+                        class="rounded text-gray-400 hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600"
+                        @click="close"
+                    >
+                        <span aria-hidden="true" class="text-xl leading-none">&times;</span>
+                    </button>
                 </div>
 
                 <div class="flex-1 overflow-y-auto px-5 py-4">
@@ -97,19 +104,6 @@ function close() {
                         <HelpTechTab :active-tab="activeTab" :tab-panel-class="tabPanelClass" />
                         <HelpSupportTab :active-tab="activeTab" :tab-panel-class="tabPanelClass" />
                     </div>
-                </div>
-
-                <div
-                    class="flex shrink-0 items-center justify-end px-5 py-4 border-t border-gray-100"
-                >
-                    <button
-                        type="button"
-                        name="closeHelp"
-                        class="rounded-lg bg-slate-50 hover:bg-slate-100 border border-gray-200 text-gray-700 px-4 py-2 text-sm font-medium focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-1 focus-visible:outline-none [touch-action:manipulation]"
-                        @click="close"
-                    >
-                        Close
-                    </button>
                 </div>
             </div>
         </div>

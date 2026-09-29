@@ -12,7 +12,6 @@ import type { IMapLayer } from './layers/IMapLayer';
 export function useSharingGenerator(
     width: Ref<number | null>,
     height: Ref<number | null>,
-    hideToolbar: Ref<boolean>,
     shareScopeGroup: Ref<Group | null>
 ) {
     const settingsStore = useSettingsStore();
@@ -21,7 +20,11 @@ export function useSharingGenerator(
     const importedLayerStore = useImportedLayerStore();
     const showCopiedMessage = ref(false);
 
-    function createShare(scope: 'all' | 'group', selectedGroup: Group | undefined) {
+    function createShare(
+        scope: 'all' | 'group',
+        selectedGroup: Group | undefined,
+        format: 'html' | 'url' = 'html'
+    ) {
         if (
             width.value === null ||
             height.value === null ||
@@ -52,7 +55,7 @@ export function useSharingGenerator(
         );
         const baseUrl = window.location.origin + window.location.pathname;
         const params = new URLSearchParams({
-            'hide-toolbar': String(hideToolbar.value),
+            'hide-toolbar': 'false',
             share: '1'
         });
         if (scope === 'group' && groupForShare) {
@@ -64,7 +67,9 @@ export function useSharingGenerator(
                 params.set('version', String(versionIndex + 1));
             }
         }
-        const html = `<iframe src="${baseUrl}?${params.toString()}#${mapHash}" width="${width.value}" height="${height.value}" title="Safer Street Maker map"></iframe>`;
+        const shareUrl = `${baseUrl}?${params.toString()}#${mapHash}`;
+        const html = `<iframe src="${shareUrl}" width="${width.value}" height="${height.value}" title="Safer Street Maker map"></iframe>`;
+        const clipboardText = format === 'url' ? shareUrl : html;
 
         if (!navigator.clipboard) {
             showCopiedMessage.value = false;
@@ -72,7 +77,7 @@ export function useSharingGenerator(
         }
 
         navigator.clipboard
-            .writeText(html)
+            .writeText(clipboardText)
             .then(() => {
                 shareScopeGroup.value = null;
                 showCopiedMessage.value = true;

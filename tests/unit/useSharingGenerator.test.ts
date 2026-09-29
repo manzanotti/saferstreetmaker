@@ -22,7 +22,6 @@ describe('useSharingGenerator', () => {
         const { createShare, showCopiedMessage } = useSharingGenerator(
             ref(320),
             ref(240),
-            ref(false),
             shareScopeGroup
         );
 

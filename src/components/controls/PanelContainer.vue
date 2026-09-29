@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { onBeforeUnmount, onMounted } from 'vue';
 import { useUiStore } from '../../stores/uiStore';
 import SettingsPanel from '../panels/SettingsPanel.vue';
 import MapManagerPanel from '../panels/MapManagerPanel.vue';
@@ -7,6 +8,29 @@ import GroupsPanel from '../panels/group/GroupsPanel.vue';
 import LayersPanel from '../panels/LayersPanel.vue';
 
 const uiStore = useUiStore();
+
+function closePanelOnEscape(event: KeyboardEvent) {
+    if (
+        event.key !== 'Escape' ||
+        uiStore.imageExportInProgress ||
+        (event.target instanceof Element && event.target.closest('[role="alertdialog"]'))
+    ) {
+        return;
+    }
+
+    if (
+        uiStore.activePanel === 'settings' ||
+        uiStore.activePanel === 'mapManager' ||
+        uiStore.activePanel === 'sharing' ||
+        uiStore.activePanel === 'help'
+    ) {
+        event.preventDefault();
+        uiStore.closePanel();
+    }
+}
+
+onMounted(() => window.addEventListener('keydown', closePanelOnEscape, true));
+onBeforeUnmount(() => window.removeEventListener('keydown', closePanelOnEscape, true));
 </script>
 
 <template>
