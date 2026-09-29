@@ -101,6 +101,30 @@ test.describe('Image export from Share panel', () => {
         });
     });
 
+    test('shows static legend entries after the interactive legend was collapsed', async ({
+        page
+    }) => {
+        const interactiveLegend = page.locator('.legend');
+        await interactiveLegend.getByRole('button', { name: 'Legend' }).click();
+        await expect(interactiveLegend.locator('.legend-content')).toHaveClass(/hidden/);
+
+        await page.evaluate(() => {
+            const app = (document.getElementById('app') as any).__vue_app__;
+            app.config.globalProperties.$pinia._s
+                .get('ui')
+                .setImageExportState(true, new Set(['LtnCells']));
+        });
+
+        const exportLegend = page.locator('[data-image-export-legend]');
+        await expect(exportLegend.locator('.legend-content')).toBeVisible();
+        await expect(exportLegend.locator('li').first()).toBeVisible();
+
+        await page.evaluate(() => {
+            const app = (document.getElementById('app') as any).__vue_app__;
+            app.config.globalProperties.$pinia._s.get('ui').setImageExportState(false, null);
+        });
+    });
+
     test('uses the sharing panel dimensions and closes from the toolbar', async ({ page }) => {
         const mapBox = await page.locator('#map').boundingBox();
         expect(mapBox).not.toBeNull();

@@ -245,7 +245,7 @@ function onClose() {
                     Copies a direct link to this map. Width and height do not apply.
                 </p>
                 <p v-if="isBusy" role="status" aria-live="polite" class="text-sm text-gray-600">
-                    Preparing PNG...
+                    Preparing PNG…
                 </p>
                 <p
                     v-else-if="exportFormat === 'image' && (errorMessage || exportValidationError)"

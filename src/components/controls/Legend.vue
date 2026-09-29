@@ -67,7 +67,10 @@ function toggleCollapse() {
         </div>
         <div
             class="legend-content"
-            :class="{ 'border-t border-gray-100': !isImageExport, hidden: isCollapsed }"
+            :class="{
+                'border-t border-gray-100': !isImageExport,
+                hidden: isCollapsed && !isImageExport
+            }"
         >
             <ul class="px-2 sm:px-3 pt-1 pb-1 space-y-0 m-0">
                 <li
