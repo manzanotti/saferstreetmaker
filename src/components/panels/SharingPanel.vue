@@ -63,7 +63,10 @@ async function onCreate() {
         return;
     }
 
-    if (width.value === null || height.value === null || width.value <= 0 || height.value <= 0) {
+    if (
+        exportFormat.value !== 'url' &&
+        (width.value === null || height.value === null || width.value <= 0 || height.value <= 0)
+    ) {
         return;
     }
 
@@ -133,7 +136,7 @@ function onClose() {
             </div>
 
             <div class="px-5 py-4 space-y-4">
-                <div>
+                <div v-if="exportFormat !== 'url'">
                     <label for="width" class="block text-sm font-medium text-gray-700 mb-1"
                         >Width</label
                     >
@@ -153,7 +156,7 @@ function onClose() {
                     </div>
                 </div>
 
-                <div>
+                <div v-if="exportFormat !== 'url'">
                     <label for="height" class="block text-sm font-medium text-gray-700 mb-1"
                         >Height</label
                     >

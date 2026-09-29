@@ -48,8 +48,37 @@ export function buildImageExportFilename(title: string): string {
     return `${safeTitle || 'map'}.png`;
 }
 
-function nextFrame(): Promise<void> {
-    return new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
+export function waitForExportFrame(): Promise<void> {
+    if (document.visibilityState === 'hidden') {
+        return Promise.resolve();
+    }
+
+    return new Promise((resolve) => {
+        let frameId: number | undefined;
+        let timeoutId: number | undefined;
+        const cleanup = () => {
+            if (frameId !== undefined) {
+                window.cancelAnimationFrame(frameId);
+            }
+            if (timeoutId !== undefined) {
+                window.clearTimeout(timeoutId);
+            }
+            document.removeEventListener('visibilitychange', onVisibilityChange);
+        };
+        const finish = () => {
+            cleanup();
+            resolve();
+        };
+        const onVisibilityChange = () => {
+            if (document.visibilityState === 'hidden') {
+                finish();
+            }
+        };
+
+        document.addEventListener('visibilitychange', onVisibilityChange);
+        frameId = window.requestAnimationFrame(finish);
+        timeoutId = window.setTimeout(finish, 1000);
+    });
 }
 
 function intersects(a: DOMRect, b: DOMRect): boolean {
@@ -91,9 +120,14 @@ async function waitForImage(image: HTMLImageElement, signal: AbortSignal): Promi
 async function waitForMapAssets(mapElement: HTMLElement): Promise<void> {
     await document.fonts?.ready;
     const mapRect = mapElement.getBoundingClientRect();
-    const images = [...mapElement.querySelectorAll('img')].filter((image) =>
-        intersects(image.getBoundingClientRect(), mapRect)
-    );
+    const images = [...mapElement.querySelectorAll('img')].filter((image) => {
+        const control = image.closest('.leaflet-control');
+        const controlIsExported =
+            !control ||
+            control.classList.contains('leaflet-control-attribution') ||
+            Boolean(image.closest('[data-image-export-legend]'));
+        return controlIsExported && intersects(image.getBoundingClientRect(), mapRect);
+    });
     const timeoutController = new AbortController();
     let timeoutId: number | undefined;
 
@@ -201,8 +235,7 @@ export async function exportMapAsPng(width: number, height: number): Promise<voi
     const originalStyle = mapElement.getAttribute('style');
     const originalAriaBusy = mapElement.getAttribute('aria-busy');
     const originalPointerEvents = mapElement.style.pointerEvents;
-    const originalCenter = map.getCenter();
-    const originalZoom = map.getZoom();
+    const originalInert = mapElement.inert;
     const selectedFeatures = [...selectionStore.selected];
     let selectionCleared = false;
     exportInProgress = true;
@@ -211,6 +244,7 @@ export async function exportMapAsPng(width: number, height: number): Promise<voi
         uiStore.setImageExportState(true, new Set());
         mapElement.setAttribute('aria-busy', 'true');
         mapElement.style.pointerEvents = 'none';
+        mapElement.inert = true;
 
         if (selectedFeatures.length > 0) {
             applySelectionHighlights([], true, selectedFeatures);
@@ -220,9 +254,9 @@ export async function exportMapAsPng(width: number, height: number): Promise<voi
         mapElement.style.width = `${width}px`;
         mapElement.style.height = `${height}px`;
         mapElement.style.setProperty('--image-export-width', `${width}px`);
-        map.invalidateSize({ pan: false, debounceMoveend: true });
-        await nextFrame();
-        await nextFrame();
+        map.invalidateSize({ pan: true, debounceMoveend: false });
+        await waitForExportFrame();
+        await waitForExportFrame();
 
         const visibleLayers = getVisibleLegendLayers({
             map,
@@ -233,7 +267,7 @@ export async function exportMapAsPng(width: number, height: number): Promise<voi
         });
         uiStore.setImageExportState(true, new Set(visibleLayers.map((layer) => layer.id)));
         await nextTick();
-        await nextFrame();
+        await waitForExportFrame();
 
         const legend = mapElement.querySelector<HTMLElement>('[data-image-export-legend]');
         if (legend) {
@@ -274,6 +308,7 @@ export async function exportMapAsPng(width: number, height: number): Promise<voi
     } finally {
         try {
             mapElement.style.pointerEvents = originalPointerEvents;
+            mapElement.inert = originalInert;
             if (originalStyle === null) {
                 mapElement.removeAttribute('style');
             } else {
@@ -284,8 +319,7 @@ export async function exportMapAsPng(width: number, height: number): Promise<voi
             } else {
                 mapElement.setAttribute('aria-busy', originalAriaBusy);
             }
-            map.invalidateSize({ pan: false, debounceMoveend: true });
-            map.setView(originalCenter, originalZoom, { animate: false });
+            map.invalidateSize({ pan: true, debounceMoveend: false });
             if (selectionCleared) {
                 applySelectionHighlights(selectedFeatures, true, []);
             }

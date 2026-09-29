@@ -61,9 +61,68 @@ test.describe('Settings Panel', () => {
 
     test('pressing Escape closes the settings panel', async ({ page }) => {
         await page.locator('#settings-button').click();
+        await page.evaluate(() => {
+            const app = (document.getElementById('app') as any).__vue_app__;
+            app.config.globalProperties.$pinia._s.get('map').activeLayerId = 'ltn';
+        });
         await page.locator('#title').press('Escape');
 
         await expect(page.locator('#read-only')).not.toBeAttached();
+        const activeLayerId = await page.evaluate(() => {
+            const app = (document.getElementById('app') as any).__vue_app__;
+            return app.config.globalProperties.$pinia._s.get('map').activeLayerId;
+        });
+        expect(activeLayerId).toBe('ltn');
+    });
+
+    test('Escape does not close a panel or cancel map tools behind an error dialog', async ({
+        page
+    }) => {
+        await page.locator('#settings-button').click();
+        await page.evaluate(() => {
+            const app = (document.getElementById('app') as any).__vue_app__;
+            const pinia = app.config.globalProperties.$pinia;
+            pinia._s.get('map').activeLayerId = 'ltn';
+            pinia._s.get('ui').showErrors(['A recoverable test error.']);
+        });
+
+        const errorDialog = page.getByRole('dialog', { name: 'An error has occurred' });
+        await expect(errorDialog).toBeVisible();
+        await errorDialog.getByRole('button', { name: 'Dismiss' }).focus();
+        await page.keyboard.press('Escape');
+
+        await expect(page.locator('#read-only')).toBeVisible();
+        await expect(errorDialog).toBeVisible();
+        const activeLayerId = await page.evaluate(() => {
+            const app = (document.getElementById('app') as any).__vue_app__;
+            return app.config.globalProperties.$pinia._s.get('map').activeLayerId;
+        });
+        expect(activeLayerId).toBe('ltn');
+    });
+
+    test('a lost Escape keyup after closing a panel does not swallow the next Escape', async ({
+        page
+    }) => {
+        await page.locator('#settings-button').click();
+        await expect(page.locator('#read-only')).toBeVisible();
+        await page.locator('#title').dispatchEvent('keydown', { key: 'Escape', bubbles: true });
+        await expect(page.locator('#read-only')).not.toBeAttached();
+
+        await page.evaluate(() => {
+            const app = (document.getElementById('app') as any).__vue_app__;
+            app.config.globalProperties.$pinia._s.get('map').activeLayerId = 'ModalFilters';
+        });
+        await page.locator('#map').focus();
+        await page.keyboard.press('Escape');
+
+        await expect
+            .poll(() =>
+                page.evaluate(() => {
+                    const app = (document.getElementById('app') as any).__vue_app__;
+                    return app.config.globalProperties.$pinia._s.get('map').activeLayerId;
+                })
+            )
+            .toBeNull();
     });
 
     test('double-clicking a panel control does not zoom the map', async ({ page }) => {

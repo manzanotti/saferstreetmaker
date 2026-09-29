@@ -26,10 +26,8 @@ export function useSharingGenerator(
         format: 'html' | 'url' = 'html'
     ) {
         if (
-            width.value === null ||
-            height.value === null ||
-            width.value <= 0 ||
-            height.value <= 0
+            format === 'html' &&
+            (width.value === null || height.value === null || width.value <= 0 || height.value <= 0)
         ) {
             return;
         }
@@ -68,7 +66,7 @@ export function useSharingGenerator(
             }
         }
         const shareUrl = `${baseUrl}?${params.toString()}#${mapHash}`;
-        const html = `<iframe src="${shareUrl}" width="${width.value}" height="${height.value}" title="Safer Street Maker map"></iframe>`;
+        const html = `<iframe src="${shareUrl}" width="${width.value ?? ''}" height="${height.value ?? ''}" title="Safer Street Maker map"></iframe>`;
         const clipboardText = format === 'url' ? shareUrl : html;
 
         if (!navigator.clipboard) {

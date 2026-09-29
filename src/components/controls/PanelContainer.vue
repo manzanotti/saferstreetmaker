@@ -8,11 +8,18 @@ import GroupsPanel from '../panels/group/GroupsPanel.vue';
 import LayersPanel from '../panels/LayersPanel.vue';
 
 const uiStore = useUiStore();
+let suppressEscapeKeyup = false;
 
 function closePanelOnEscape(event: KeyboardEvent) {
+    if (event.key === 'Escape' && !event.repeat) {
+        // A keyup lost to focus changes must not swallow a later Escape.
+        suppressEscapeKeyup = false;
+    }
+
     if (
         event.key !== 'Escape' ||
         uiStore.imageExportInProgress ||
+        uiStore.errorMessages.length > 0 ||
         (event.target instanceof Element && event.target.closest('[role="alertdialog"]'))
     ) {
         return;
@@ -25,12 +32,26 @@ function closePanelOnEscape(event: KeyboardEvent) {
         uiStore.activePanel === 'help'
     ) {
         event.preventDefault();
+        event.stopPropagation();
+        suppressEscapeKeyup = true;
         uiStore.closePanel();
     }
 }
 
+function suppressHandledEscapeKeyup(event: KeyboardEvent) {
+    if (event.key === 'Escape' && suppressEscapeKeyup) {
+        event.preventDefault();
+        event.stopPropagation();
+        suppressEscapeKeyup = false;
+    }
+}
+
 onMounted(() => window.addEventListener('keydown', closePanelOnEscape, true));
-onBeforeUnmount(() => window.removeEventListener('keydown', closePanelOnEscape, true));
+onMounted(() => window.addEventListener('keyup', suppressHandledEscapeKeyup, true));
+onBeforeUnmount(() => {
+    window.removeEventListener('keydown', closePanelOnEscape, true);
+    window.removeEventListener('keyup', suppressHandledEscapeKeyup, true);
+});
 </script>
 
 <template>

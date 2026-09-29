@@ -128,6 +128,53 @@ describe('getVisibleLegendLayers', () => {
         ).toEqual([expect.objectContaining({ id: 'enclosing' })]);
     });
 
+    it('includes a MultiPolygon when any nested component intersects the viewport', () => {
+        const multiPolygon = new L.Polygon([]);
+        multiPolygon.getLatLngs = () =>
+            [
+                [
+                    [
+                        new L.LatLng(120, 120),
+                        new L.LatLng(120, 130),
+                        new L.LatLng(130, 130),
+                        new L.LatLng(130, 120)
+                    ]
+                ],
+                [
+                    [
+                        new L.LatLng(-10, -10),
+                        new L.LatLng(-10, 110),
+                        new L.LatLng(110, 110),
+                        new L.LatLng(110, -10)
+                    ]
+                ]
+            ] as never;
+
+        expect(filter([createLayer('multi', multiPolygon)])).toEqual([
+            expect.objectContaining({ id: 'multi' })
+        ]);
+    });
+
+    it('counts a line stroke that reaches into the viewport but excludes a thinner offscreen line', () => {
+        const thick = new L.Polyline([new L.LatLng(50, -4), new L.LatLng(50, -3)], { weight: 6 });
+        const thin = new L.Polyline([new L.LatLng(50, -4), new L.LatLng(50, -3)], { weight: 2 });
+
+        expect(filter([createLayer('thick', thick), createLayer('thin', thin)])).toEqual([
+            expect.objectContaining({ id: 'thick' })
+        ]);
+    });
+
+    it('recurses through deeper nested line geometry without bridging components', () => {
+        const nested = new L.Polyline([
+            [[new L.LatLng(50, -20), new L.LatLng(50, -10)]],
+            [[new L.LatLng(50, -5), new L.LatLng(50, 5)]]
+        ] as never);
+
+        expect(filter([createLayer('nested', nested)])).toEqual([
+            expect.objectContaining({ id: 'nested' })
+        ]);
+    });
+
     it('omits group-hidden features, disabled layers, and features hidden at the current zoom', () => {
         const hidden = createPoint(50, 50);
         setFeatureGroupHidden(hidden, true);

@@ -51,7 +51,7 @@ export function setupMapEngine(): MapEngineResult {
 
     // ── Keyboard: Escape deselects active layer ───────────────────────────────
     map.on('keyup', (e: L.LeafletKeyboardEvent) => {
-        if (uiStore.imageExportInProgress) {
+        if (uiStore.imageExportInProgress || uiStore.errorMessages.length > 0) {
             return;
         }
         if (e.originalEvent.key === 'Escape') {
