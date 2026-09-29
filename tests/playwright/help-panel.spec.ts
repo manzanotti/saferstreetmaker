@@ -98,16 +98,25 @@ test.describe('Help Panel', () => {
 
     test('clicking the help modal close button hides the modal', async ({ page }) => {
         await page.locator('#help-button').click();
-        await page.getByRole('button', { name: 'Close help panel' }).click();
+        const closeButton = page.getByRole('button', { name: 'Close help panel' });
+        const hitArea = await closeButton.evaluate((element) => {
+            const { width, height } = element.getBoundingClientRect();
+            return { width, height };
+        });
+        expect(hitArea.width).toBeGreaterThanOrEqual(44);
+        expect(hitArea.height).toBeGreaterThanOrEqual(44);
+        await closeButton.click();
 
         await expect(page.locator('#help')).not.toBeVisible();
     });
 
     test('pressing Escape closes the help modal', async ({ page }) => {
         await page.locator('#help-button').click();
+        await page.getByRole('button', { name: 'Close help panel' }).focus();
         await page.keyboard.press('Escape');
 
         await expect(page.locator('#help')).not.toBeVisible();
+        await expect(page.locator('#help-button')).toBeFocused();
     });
 
     test('opening another modal closes the help popup first', async ({ page }) => {

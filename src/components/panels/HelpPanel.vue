@@ -62,7 +62,7 @@ function close() {
                     <button
                         type="button"
                         aria-label="Close help panel"
-                        class="rounded text-gray-400 hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600"
+                        class="flex h-11 w-11 shrink-0 items-center justify-center rounded text-gray-400 hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600"
                         @click="close"
                     >
                         <span aria-hidden="true" class="text-xl leading-none">&times;</span>

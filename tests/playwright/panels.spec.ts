@@ -68,6 +68,7 @@ test.describe('Settings Panel', () => {
         await page.locator('#title').press('Escape');
 
         await expect(page.locator('#read-only')).not.toBeAttached();
+        await expect(page.locator('#settings-button')).toBeFocused();
         const activeLayerId = await page.evaluate(() => {
             const app = (document.getElementById('app') as any).__vue_app__;
             return app.config.globalProperties.$pinia._s.get('map').activeLayerId;
@@ -303,9 +304,11 @@ test.describe('Map Manager Panel', () => {
 
     test('pressing Escape closes the map manager panel', async ({ page }) => {
         await page.locator('#map-manager-button').click();
+        await page.locator('#map-manager button').first().focus();
         await page.keyboard.press('Escape');
 
         await expect(page.locator('#map-manager')).not.toBeAttached();
+        await expect(page.locator('#map-manager-button')).toBeFocused();
     });
 
     test('L toggles the Layers panel', async ({ page }) => {
@@ -675,6 +678,7 @@ test.describe('Sharing Panel', () => {
         await page.locator('#width').press('Escape');
 
         await expect(page.locator('#sharing')).not.toBeAttached();
+        await expect(page.locator('#share-button')).toBeFocused();
     });
 
     test('sharing format buttons replace the toggles and close from the header X', async ({

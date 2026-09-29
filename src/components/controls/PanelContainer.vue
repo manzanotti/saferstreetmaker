@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted } from 'vue';
-import { useUiStore } from '../../stores/uiStore';
+import { nextTick, onBeforeUnmount, onMounted } from 'vue';
+import { useUiStore, type PanelId } from '../../stores/uiStore';
 import SettingsPanel from '../panels/SettingsPanel.vue';
 import MapManagerPanel from '../panels/MapManagerPanel.vue';
 import SharingPanel from '../panels/SharingPanel.vue';
@@ -9,6 +9,12 @@ import LayersPanel from '../panels/LayersPanel.vue';
 
 const uiStore = useUiStore();
 let suppressEscapeKeyup = false;
+const panelOpenerIds: Partial<Record<PanelId, string>> = {
+    settings: 'settings-button',
+    mapManager: 'map-manager-button',
+    sharing: 'share-button',
+    help: 'help-button'
+};
 
 function closePanelOnEscape(event: KeyboardEvent) {
     if (event.key === 'Escape' && !event.repeat) {
@@ -34,7 +40,11 @@ function closePanelOnEscape(event: KeyboardEvent) {
         event.preventDefault();
         event.stopPropagation();
         suppressEscapeKeyup = true;
+        const openerId = uiStore.activePanel ? panelOpenerIds[uiStore.activePanel] : undefined;
         uiStore.closePanel();
+        if (openerId) {
+            void nextTick(() => document.getElementById(openerId)?.focus());
+        }
     }
 }
 
