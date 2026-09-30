@@ -35,6 +35,7 @@ const {
         <GroupsMasterVisibilityToggle
             v-if="groupStore.groups.length > 0"
             :all-hidden="allHidden"
+            :solo-active="groupStore.soloGroupId !== null"
             @toggle="setAllGroupsVisibility(!allHidden)"
         />
 
@@ -44,7 +45,8 @@ const {
                 v-else
                 :groups="groupStore.groups"
                 :member-count-by-group-id="memberCountByGroupId"
-                :hidden-group-ids="groupStore.hiddenGroupIds"
+                :hidden-group-ids="groupStore.effectiveHiddenGroupIds"
+                :solo-group-id="groupStore.soloGroupId"
                 :pending-delete-group-id="pendingDeleteGroupId"
                 :pending-empty-group-deletion-id="pendingEmptyGroupDeletionId"
                 @select="openGroupDetails"

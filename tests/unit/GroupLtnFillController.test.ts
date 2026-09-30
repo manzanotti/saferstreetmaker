@@ -30,6 +30,27 @@ function makeMarker(historyId: string, svg?: SVGSVGElement) {
 }
 
 describe('GroupLtnFillController', () => {
+    it('restores shared-cell stripes after isolation ends', () => {
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        const marker = makeMarker('cell-1', svg);
+        const groups = [group('first', '#00aa00', 'cell-1'), group('second', '#aa0000', 'cell-1')];
+        let hidden = new Set<string>();
+        const controller = new GroupLtnFillController({
+            getGroups: () => groups,
+            getHiddenGroupIds: () => hidden,
+            getActiveVersionIds: () => ({}),
+            getLayer: () =>
+                ({ eachLayer: (callback: (layer: unknown) => void) => callback(marker) }) as any
+        });
+        controller.recompute();
+        expect(marker.options.fillColor).toMatch(/^url\(/);
+        hidden = new Set(['second']);
+        controller.recompute();
+        expect(marker.options.fillColor).toBe('#00aa00');
+        hidden.clear();
+        controller.recompute();
+        expect(marker.options.fillColor).toMatch(/^url\(/);
+    });
     it('resolves no group colours to the cell colour', () => {
         expect(resolveLtnFill([], '#cc00cc')).toEqual({
             kind: 'fallback',

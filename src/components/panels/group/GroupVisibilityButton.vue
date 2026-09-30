@@ -1,8 +1,21 @@
 <script setup lang="ts">
-defineProps<{
+import { computed } from 'vue';
+
+const props = defineProps<{
     groupName: string;
     hidden: boolean;
+    solo?: boolean;
+    soloActive?: boolean;
+    canSolo?: boolean;
 }>();
+
+const actionLabel = computed(() =>
+    props.soloActive
+        ? 'Show all groups'
+        : props.hidden
+          ? `${props.canSolo ? 'Show only group' : 'Show group'} ${props.groupName}`
+          : `Hide group ${props.groupName}`
+);
 
 const emit = defineEmits<{
     toggle: [];
@@ -12,9 +25,13 @@ const emit = defineEmits<{
 <template>
     <button
         type="button"
-        :aria-label="hidden ? `Show group ${groupName}` : `Hide group ${groupName}`"
-        :title="hidden ? `Show group ${groupName}` : `Hide group ${groupName}`"
-        class="flex h-7 w-7 shrink-0 items-center justify-center rounded text-gray-500 hover:bg-slate-100"
+        :aria-label="actionLabel"
+        :title="actionLabel"
+        :data-visibility="solo ? 'solo' : hidden ? 'hidden' : 'visible'"
+        :class="[
+            'flex h-7 w-7 shrink-0 items-center justify-center rounded hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-700',
+            solo ? 'text-green-700' : 'text-gray-500'
+        ]"
         @click="emit('toggle')"
     >
         <svg
@@ -45,8 +62,17 @@ const emit = defineEmits<{
             class="h-4 w-4"
             aria-hidden="true"
         >
-            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
-            <circle cx="12" cy="12" r="3" />
+            <path
+                d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"
+                :fill="solo ? 'currentColor' : 'none'"
+            />
+            <circle
+                cx="12"
+                cy="12"
+                r="3"
+                :fill="solo ? 'white' : 'none'"
+                :stroke="solo ? 'white' : 'currentColor'"
+            />
         </svg>
     </button>
 </template>

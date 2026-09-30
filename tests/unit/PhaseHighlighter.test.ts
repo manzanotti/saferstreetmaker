@@ -1,8 +1,41 @@
 import { describe, expect, it, vi } from 'vitest';
 import type * as L from 'leaflet';
 import { PhaseHighlighter } from '../../src/features/groups/PhaseHighlighter';
+import { GroupVisibilityController } from '../../src/features/groups/GroupVisibilityController';
 
 describe('PhaseHighlighter', () => {
+    it('does not reveal hidden paths during phase playback and restores undimmed styles on exit', () => {
+        const marker = {
+            options: { opacity: 0.7, fillOpacity: 0.2 },
+            setStyle: vi.fn(function (this: any, style: object) {
+                Object.assign(this.options, style);
+            })
+        } as unknown as L.Layer & { options: L.PathOptions };
+        const member = { layerId: 'LtnCells', historyId: 'outside' };
+        const highlighter = new PhaseHighlighter(() => marker);
+        let solo: string | null = null;
+        const visibility = new GroupVisibilityController({
+            getGroups: () => [{ id: 'g1', name: 'One', members: [] }],
+            getHiddenGroupIds: () => new Set(),
+            getSoloGroupId: () => solo,
+            getAllMarkers: () => [marker],
+            beforeHide: (feature) => highlighter.clearMarker(feature),
+            findMarker: () => null
+        });
+        highlighter.dimOutside([member], new Set());
+        solo = 'g1';
+        visibility.recompute();
+        highlighter.dim([member], new Set());
+        highlighter.dimOutside([member], new Set());
+        highlighter.setProgress([member], new Set(), 1, new Set(), new Set(), new Set());
+        highlighter.clear([member]);
+        expect(marker.options.opacity).toBe(0);
+        solo = null;
+        visibility.recompute();
+        highlighter.clear([member]);
+        expect(marker.options).toMatchObject({ opacity: 0.7, fillOpacity: 0.2 });
+    });
+
     it('restores path opacity after clearing a dimmed feature', () => {
         const syncGroupStyle = vi.fn();
         const element = document.createElementNS('http://www.w3.org/2000/svg', 'path');

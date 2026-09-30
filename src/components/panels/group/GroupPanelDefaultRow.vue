@@ -7,6 +7,8 @@ defineProps<{
     group: Group;
     memberCount: number;
     hidden: boolean;
+    solo?: boolean;
+    soloActive?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -33,6 +35,9 @@ const emit = defineEmits<{
         <GroupVisibilityButton
             :group-name="group.name"
             :hidden="hidden"
+            :solo="solo"
+            :solo-active="soloActive"
+            :can-solo="memberCount > 0"
             @toggle="emit('toggleVisibility')"
         />
         <GroupDeleteButton :group-name="group.name" @delete-request="emit('deleteRequest')" />

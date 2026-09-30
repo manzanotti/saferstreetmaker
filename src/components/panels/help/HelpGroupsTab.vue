@@ -37,10 +37,13 @@ defineProps<{
         <h2>Using groups</h2>
         <p class="mb-8">
             Click a group name to select and highlight all of its active features and fit the map to
-            them. Use the eye button to hide or show a group. The plus button lets you select
-            additional features and add them to the group. You can rename a group, remove its
-            members without deleting the map features, or delete the group and its features. Group
-            changes can be restored with Undo.
+            them. Click the eye button once to hide a group, then again to show only that group. A
+            solid eye marks the isolated group. Click any eye, or the master visibility toggle, to
+            show all groups again. Isolation also hides ungrouped features and imported overlays;
+            disabled layers remain disabled. The plus button lets you select additional features and
+            add them to the group. You can rename a group, remove its members without deleting the
+            map features, or delete the group and its features. Group changes can be restored with
+            Undo.
         </p>
         <h2>Group colours</h2>
         <p class="mb-8">

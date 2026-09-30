@@ -134,6 +134,7 @@ export function setupMapManager(
     });
     const importedLayerController = new ImportedGeoJsonLayerController({
         getMap,
+        isSuppressed: () => useGroupStore(pinia).soloGroupId !== null,
         isReadOnly: () => settingsStore.readOnly,
         getActiveLayerId: () => mapStore.activeLayerId,
         onFeaturePropertyChange: (layerId, featureIndex, key, value) => {
@@ -198,14 +199,16 @@ export function setupMapManager(
         setImportedLayers: (layers) => importedLayerStore.setLayers(layers)
     });
     watch(
-        () =>
-            importedLayerStore.layers.map((layer) => [
+        () => [
+            useGroupStore(pinia).soloGroupId,
+            ...importedLayerStore.layers.map((layer) => [
                 layer.id,
                 layer.name,
                 layer.nameProperty,
                 layer.visible,
                 layer.featureCollection
-            ]),
+            ])
+        ],
         () => importedLayerController.render(importedLayerStore.layers)
     );
     const mapLoadSourceResolver = new MapLoadSourceResolver(fileManager, () => settingsStore.title);
@@ -688,6 +691,7 @@ export function setupMapManager(
     watch(
         () => mapStore.layerUpdateCount,
         () => {
+            recomputeFeatureVisibility();
             if (!suppressAutomaticSaves) {
                 void saveMap();
             }

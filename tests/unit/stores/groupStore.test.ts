@@ -13,6 +13,53 @@ function makeGroup(id: string, name: string, memberHistoryIds: string[] = []): G
 }
 
 describe('groupStore', () => {
+    it('cycles visible, hidden, solo and shows everything when any eye is clicked', () => {
+        const store = useGroupStore(pinia);
+        store.setAllHidden(false);
+        store.setGroups([makeGroup('g1', 'One', ['one']), makeGroup('g2', 'Two', ['two'])]);
+        store.cycleVisibility('g1');
+        expect(store.hiddenGroupIds.has('g1')).toBe(true);
+        store.cycleVisibility('g1');
+        expect(store.soloGroupId).toBe('g1');
+        expect([...store.effectiveHiddenGroupIds]).toEqual(['g2']);
+        expect(store.hiddenGroupIds.size).toBe(0);
+        store.cycleVisibility('g2');
+        expect(store.soloGroupId).toBeNull();
+        expect(store.effectiveHiddenGroupIds.size).toBe(0);
+    });
+
+    it('clears solo when its group disappears or loses its final member', () => {
+        const store = useGroupStore(pinia);
+        store.setGroups([makeGroup('g1', 'One', ['one'])]);
+        store.cycleVisibility('g1');
+        store.cycleVisibility('g1');
+        store.clearGroupMembers('g1');
+        expect(store.soloGroupId).toBeNull();
+        store.setGroups([makeGroup('g1', 'One', ['one'])]);
+        store.cycleVisibility('g1');
+        store.cycleVisibility('g1');
+        store.removeGroup('g1');
+        expect(store.soloGroupId).toBeNull();
+        expect(store.hiddenGroupIds.size).toBe(0);
+    });
+
+    it('retains solo across same-map group updates but resets with master visibility', () => {
+        const store = useGroupStore(pinia);
+        store.setGroups([makeGroup('g1', 'One', ['one'])]);
+        store.cycleVisibility('g1');
+        store.cycleVisibility('g1');
+        store.setGroups([makeGroup('g1', 'Updated', ['one', 'two'])], true);
+        expect(store.soloGroupId).toBe('g1');
+        store.setAllHidden(false);
+        expect(store.soloGroupId).toBeNull();
+        store.cycleVisibility('missing');
+        expect(store.hiddenGroupIds.size).toBe(0);
+        store.setGroups([makeGroup('empty', 'Empty')]);
+        store.cycleVisibility('empty');
+        store.cycleVisibility('empty');
+        expect(store.soloGroupId).toBeNull();
+    });
+
     beforeEach(() => {
         setActivePinia(pinia);
         useGroupStore(pinia).setGroups([]);

@@ -6,6 +6,7 @@ defineProps<{
     groups: Group[];
     memberCountByGroupId: Record<string, number>;
     hiddenGroupIds: Set<string>;
+    soloGroupId?: string | null;
     pendingDeleteGroupId: string | null;
     pendingEmptyGroupDeletionId: string | null;
 }>();
@@ -29,6 +30,8 @@ const emit = defineEmits<{
             :group="group"
             :member-count="memberCountByGroupId[group.id] ?? 0"
             :hidden="hiddenGroupIds.has(group.id)"
+            :solo="soloGroupId === group.id"
+            :solo-active="!!soloGroupId"
             :delete-confirmation-open="pendingDeleteGroupId === group.id"
             :empty-deletion-open="pendingEmptyGroupDeletionId === group.id"
             @select="emit('select', group.id)"

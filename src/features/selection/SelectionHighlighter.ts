@@ -1,5 +1,6 @@
 import * as L from 'leaflet';
 import type { SelectedMarker } from '../../stores/selectionStore';
+import { isFeatureGroupHidden } from '../groups/featureVisibility';
 
 const HIGHLIGHT_STYLE: L.PathOptions = {
     color: '#3b82f6',
@@ -29,6 +30,9 @@ export class SelectionHighlighter {
         }
 
         for (const { marker, latLng } of markers) {
+            if (isFeatureGroupHidden(marker)) {
+                continue;
+            }
             const pointMarker = marker as L.Layer & {
                 getLatLng?: () => L.LatLng;
                 getElement?: () => HTMLElement | undefined;

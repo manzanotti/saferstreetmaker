@@ -1,11 +1,22 @@
 <script setup lang="ts">
-defineProps<{
+import { nextTick } from 'vue';
+
+const props = defineProps<{
     allHidden: boolean;
+    soloActive?: boolean;
 }>();
 
 const emit = defineEmits<{
     toggle: [];
 }>();
+
+async function toggle(event: Event) {
+    const input = event.target as HTMLInputElement;
+    emit('toggle');
+    await nextTick();
+    input.checked = props.allHidden;
+    input.indeterminate = !!props.soloActive;
+}
 </script>
 
 <template>
@@ -17,8 +28,10 @@ const emit = defineEmits<{
                     id="groups-master-toggle"
                     type="checkbox"
                     :checked="allHidden"
-                    aria-label="Hide all groups"
-                    @change="emit('toggle')"
+                    :indeterminate="!!soloActive"
+                    :aria-checked="soloActive ? 'mixed' : allHidden ? 'true' : 'false'"
+                    :aria-label="soloActive ? 'Show all groups' : 'Hide all groups'"
+                    @change="toggle"
                 />
                 <label for="groups-master-toggle" class="sr-only">Hide all groups</label>
             </div>

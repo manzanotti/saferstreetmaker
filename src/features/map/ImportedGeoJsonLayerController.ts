@@ -13,6 +13,7 @@ export interface ImportedGeoJsonLayerControllerOptions {
     ) => void;
     isReadOnly: () => boolean;
     getActiveLayerId: () => string | null;
+    isSuppressed?: () => boolean;
 }
 
 export class ImportedGeoJsonLayerController {
@@ -20,6 +21,7 @@ export class ImportedGeoJsonLayerController {
     private readonly onFeaturePropertyChange: ImportedGeoJsonLayerControllerOptions['onFeaturePropertyChange'];
     private readonly isReadOnly: () => boolean;
     private readonly getActiveLayerId: () => string | null;
+    private readonly isSuppressed: () => boolean;
     private readonly leafletLayers = new Map<string, L.GeoJSON>();
     private readonly renderedFeatureCollections = new Map<
         string,
@@ -37,6 +39,7 @@ export class ImportedGeoJsonLayerController {
         this.onFeaturePropertyChange = options.onFeaturePropertyChange;
         this.isReadOnly = options.isReadOnly;
         this.getActiveLayerId = options.getActiveLayerId;
+        this.isSuppressed = options.isSuppressed ?? (() => false);
         this.map.on('zoomend', () => this.updatePointFeatureVisibility());
     }
 
@@ -73,11 +76,12 @@ export class ImportedGeoJsonLayerController {
     private renderLayer(layer: ImportedGeoJsonLayer): void {
         this.currentLayers.set(layer.id, layer);
         const previous = this.leafletLayers.get(layer.id);
+        const visible = layer.visible !== false && !this.isSuppressed();
 
         if (previous && this.renderedFeatureCollections.get(layer.id) === layer.featureCollection) {
-            if (layer.visible === false && this.visibleLayerIds.delete(layer.id)) {
+            if (!visible && this.visibleLayerIds.delete(layer.id)) {
                 this.map.removeLayer(previous);
-            } else if (layer.visible !== false && !this.visibleLayerIds.has(layer.id)) {
+            } else if (visible && !this.visibleLayerIds.has(layer.id)) {
                 previous.addTo(this.map);
                 this.visibleLayerIds.add(layer.id);
                 this.updatePointFeatureVisibility();
@@ -93,7 +97,7 @@ export class ImportedGeoJsonLayerController {
             this.pointFeatureLayers.delete(layer.id);
         }
 
-        if (layer.visible === false) {
+        if (!visible) {
             return;
         }
 

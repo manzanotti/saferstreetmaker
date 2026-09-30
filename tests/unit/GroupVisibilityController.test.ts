@@ -32,14 +32,18 @@ describe('GroupVisibilityController', () => {
     let hiddenGroupIds: Set<string>;
     let markers: Map<string, L.Layer>;
     let controller: GroupVisibilityController;
+    let soloGroupId: string | null;
 
     beforeEach(() => {
         groups = [];
         hiddenGroupIds = new Set<string>();
         markers = new Map<string, L.Layer>();
+        soloGroupId = null;
         controller = new GroupVisibilityController({
             getGroups: () => groups,
             getHiddenGroupIds: () => hiddenGroupIds,
+            getSoloGroupId: () => soloGroupId,
+            getAllMarkers: () => [...markers.values()],
             findMarker: ({ historyId }) => markers.get(historyId) ?? null
         });
     });
@@ -56,6 +60,52 @@ describe('GroupVisibilityController', () => {
         hiddenGroupIds.clear();
         controller.recompute();
         expect(marker.options).toMatchObject({ opacity: 0.7, fillOpacity: 0.4 });
+    });
+
+    it('isolates shared members and hides ungrouped and unrelated features reversibly', () => {
+        const shared = styledMarker();
+        const other = styledMarker();
+        const ungrouped = styledMarker();
+        markers.set('shared', shared);
+        markers.set('other', other);
+        markers.set('ungrouped', ungrouped);
+        groups = [
+            group('g1', [member('shared')]),
+            group('g2', [member('shared'), member('other')])
+        ];
+        soloGroupId = 'g1';
+        controller.recompute();
+        controller.recompute();
+        expect(isFeatureGroupHidden(shared)).toBe(false);
+        expect(other.options.opacity).toBe(0);
+        expect(isFeatureGroupHidden(ungrouped)).toBe(true);
+        soloGroupId = null;
+        controller.recompute();
+        expect(other.options).toMatchObject({ opacity: 0.7, fillOpacity: 0.4 });
+        expect(ungrouped.options).toMatchObject({ opacity: 0.7, fillOpacity: 0.4 });
+    });
+
+    it('hides newly added markers and restores point interaction on solo exit', () => {
+        groups = [group('g1', [member('target')])];
+        markers.set('target', styledMarker());
+        soloGroupId = 'g1';
+        controller.recompute();
+        const element = document.createElement('div');
+        element.style.pointerEvents = 'auto';
+        const point = {
+            getLatLng: () => ({ lat: 1, lng: 2 }),
+            getElement: () => element,
+            closePopup: vi.fn()
+        } as unknown as L.Layer;
+        markers.set('new', point);
+        controller.recompute();
+        expect(element.style.display).toBe('none');
+        expect(element.style.pointerEvents).toBe('none');
+        expect(point.closePopup).toHaveBeenCalled();
+        soloGroupId = null;
+        controller.recompute();
+        expect(element.style.display).toBe('');
+        expect(element.style.pointerEvents).toBe('auto');
     });
 
     it('keeps a shared member visible until all containing groups are hidden', () => {
