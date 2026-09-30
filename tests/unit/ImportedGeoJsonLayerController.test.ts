@@ -97,6 +97,30 @@ describe('ImportedGeoJsonLayerController', () => {
         expect(map.removeLayer).toHaveBeenCalledOnce();
     });
 
+    it('suppresses imports temporarily without mutating flags or rebuilding cached geometry', () => {
+        let suppressed = false;
+        const layer = makeLayer();
+        const hidden = makeLayer('hidden', false);
+        const controller = new ImportedGeoJsonLayerController({
+            getMap: () => map,
+            onFeaturePropertyChange: vi.fn(),
+            isReadOnly: () => false,
+            getActiveLayerId: () => null,
+            isSuppressed: () => suppressed
+        });
+        controller.render([layer, hidden]);
+        suppressed = true;
+        controller.render([layer, hidden, makeLayer('new')]);
+        expect(map.removeLayer).toHaveBeenCalledOnce();
+        expect(L.geoJSON).toHaveBeenCalledOnce();
+        expect(layer.visible).toBe(true);
+        expect(hidden.visible).toBe(false);
+        suppressed = false;
+        controller.render([layer, hidden, makeLayer('new')]);
+        expect(L.geoJSON).toHaveBeenCalledTimes(2);
+        expect(fakeLeafletLayer.addTo).toHaveBeenCalledTimes(3);
+    });
+
     it('stops styling point features after their imported layer is deleted', () => {
         const controller = new ImportedGeoJsonLayerController({
             getMap: () => map,

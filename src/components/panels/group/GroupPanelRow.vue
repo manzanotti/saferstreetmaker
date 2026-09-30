@@ -8,6 +8,8 @@ defineProps<{
     group: Group;
     memberCount: number;
     hidden: boolean;
+    solo?: boolean;
+    soloActive?: boolean;
     deleteConfirmationOpen: boolean;
     emptyDeletionOpen: boolean;
 }>();
@@ -43,6 +45,8 @@ const emit = defineEmits<{
             :group="group"
             :member-count="memberCount"
             :hidden="hidden"
+            :solo="solo"
+            :solo-active="soloActive"
             @select="emit('select')"
             @toggle-visibility="emit('toggleVisibility')"
             @delete-request="emit('deleteRequest')"

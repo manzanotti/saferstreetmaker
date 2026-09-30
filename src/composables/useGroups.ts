@@ -59,14 +59,24 @@ function findMarkerByHistoryId(layerId: string, historyId: string): L.Layer | nu
 
 const groupVisibilityController = new GroupVisibilityController({
     getGroups: () => useGroupStore(pinia).groups,
-    getHiddenGroupIds: () => useGroupStore(pinia).hiddenGroupIds,
+    getHiddenGroupIds: () => useGroupStore(pinia).effectiveHiddenGroupIds,
     getActiveVersionIds: () => useGroupStore(pinia).activeVersionIds,
+    getSoloGroupId: () => useGroupStore(pinia).soloGroupId,
+    beforeHide: (marker) => phaseHighlighter.clearMarker(marker),
+    onHideEditedFeature: () => useMapStore(pinia).setDrawLayer(null),
+    getAllMarkers: () => {
+        const markers: L.Layer[] = [];
+        for (const layer of useMapStore(pinia).layers) {
+            layer.getLayer().eachLayer((marker) => markers.push(marker));
+        }
+        return markers;
+    },
     findMarker: (member) => findMarkerByHistoryId(member.layerId, member.historyId)
 });
 
 const groupLtnFillController = new GroupLtnFillController({
     getGroups: () => useGroupStore(pinia).groups,
-    getHiddenGroupIds: () => useGroupStore(pinia).hiddenGroupIds,
+    getHiddenGroupIds: () => useGroupStore(pinia).effectiveHiddenGroupIds,
     getActiveVersionIds: () => useGroupStore(pinia).activeVersionIds,
     getLayer: () =>
         (useMapStore(pinia)
@@ -129,9 +139,23 @@ function markPhaseMutation(
     });
 }
 
+let recomputingFeatureVisibility = false;
+
 export function recomputeFeatureVisibility(): void {
-    groupVisibilityController.recompute();
-    groupLtnFillController.recompute();
+    if (recomputingFeatureVisibility) {
+        return;
+    }
+    recomputingFeatureVisibility = true;
+    try {
+        groupVisibilityController.recompute();
+        groupLtnFillController.recompute();
+        const selectionStore = useSelectionStore(pinia);
+        if (selectionStore.isActive && selectionStore.selected.length > 0) {
+            applySelectionHighlights(selectionStore.selected, true);
+        }
+    } finally {
+        recomputingFeatureVisibility = false;
+    }
 }
 
 export function resetGroupVisibility(): void {

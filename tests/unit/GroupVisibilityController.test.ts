@@ -32,14 +32,18 @@ describe('GroupVisibilityController', () => {
     let hiddenGroupIds: Set<string>;
     let markers: Map<string, L.Layer>;
     let controller: GroupVisibilityController;
+    let soloGroupId: string | null;
 
     beforeEach(() => {
         groups = [];
         hiddenGroupIds = new Set<string>();
         markers = new Map<string, L.Layer>();
+        soloGroupId = null;
         controller = new GroupVisibilityController({
             getGroups: () => groups,
             getHiddenGroupIds: () => hiddenGroupIds,
+            getSoloGroupId: () => soloGroupId,
+            getAllMarkers: () => [...markers.values()],
             findMarker: ({ historyId }) => markers.get(historyId) ?? null
         });
     });
@@ -56,6 +60,118 @@ describe('GroupVisibilityController', () => {
         hiddenGroupIds.clear();
         controller.recompute();
         expect(marker.options).toMatchObject({ opacity: 0.7, fillOpacity: 0.4 });
+    });
+
+    it('ends an active edit session before hiding its feature and does not restart it on reveal', () => {
+        let editingEnabled = true;
+        const editing = {
+            enabled: () => editingEnabled,
+            disable: vi.fn(() => {
+                editingEnabled = false;
+            })
+        };
+        const marker = Object.assign(styledMarker(), { editing });
+        const endEditMode = vi.fn();
+        markers.set('h1', marker);
+        groups = [group('g1', [member('h1')])];
+        controller = new GroupVisibilityController({
+            getGroups: () => groups,
+            getHiddenGroupIds: () => hiddenGroupIds,
+            findMarker: () => marker,
+            onHideEditedFeature: endEditMode
+        });
+        hiddenGroupIds.add('g1');
+        controller.recompute();
+        controller.recompute();
+        expect(endEditMode).toHaveBeenCalledOnce();
+        expect(editing.disable).toHaveBeenCalledOnce();
+        hiddenGroupIds.clear();
+        controller.recompute();
+        expect(editingEnabled).toBe(false);
+        expect(marker.options.opacity).toBe(0.7);
+        hiddenGroupIds.add('g1');
+        controller.recompute();
+        expect(endEditMode).toHaveBeenCalledOnce();
+    });
+
+    it('redraws arrowheads after hiding and revealing a line, without redrawing while already hidden', () => {
+        const marker = Object.assign(styledMarker(), { _hatsApplied: true, redraw: vi.fn() });
+        markers.set('h1', marker);
+        groups = [group('g1', [member('h1')])];
+
+        hiddenGroupIds.add('g1');
+        controller.recompute();
+        expect(marker.options).toMatchObject({ opacity: 0, fillOpacity: 0 });
+        expect(marker.redraw).toHaveBeenCalledOnce();
+        expect(marker.redraw.mock.invocationCallOrder[0]).toBeGreaterThan(
+            marker.setStyle.mock.invocationCallOrder[0]
+        );
+
+        controller.recompute();
+        expect(marker.setStyle).toHaveBeenCalledOnce();
+        expect(marker.redraw).toHaveBeenCalledOnce();
+
+        hiddenGroupIds.clear();
+        controller.recompute();
+        expect(marker.options).toMatchObject({ opacity: 0.7, fillOpacity: 0.4 });
+        expect(marker.redraw).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not redraw lines that have no arrowheads', () => {
+        const marker = Object.assign(styledMarker(), { redraw: vi.fn() });
+        markers.set('h1', marker);
+        groups = [group('g1', [member('h1')])];
+        hiddenGroupIds.add('g1');
+        controller.recompute();
+        hiddenGroupIds.clear();
+        controller.recompute();
+        expect(marker.redraw).not.toHaveBeenCalled();
+    });
+
+    it('isolates shared members and hides ungrouped and unrelated features reversibly', () => {
+        const shared = styledMarker();
+        const other = styledMarker();
+        const ungrouped = styledMarker();
+        markers.set('shared', shared);
+        markers.set('other', other);
+        markers.set('ungrouped', ungrouped);
+        groups = [
+            group('g1', [member('shared')]),
+            group('g2', [member('shared'), member('other')])
+        ];
+        soloGroupId = 'g1';
+        controller.recompute();
+        controller.recompute();
+        expect(isFeatureGroupHidden(shared)).toBe(false);
+        expect(other.options.opacity).toBe(0);
+        expect(isFeatureGroupHidden(ungrouped)).toBe(true);
+        soloGroupId = null;
+        controller.recompute();
+        expect(other.options).toMatchObject({ opacity: 0.7, fillOpacity: 0.4 });
+        expect(ungrouped.options).toMatchObject({ opacity: 0.7, fillOpacity: 0.4 });
+    });
+
+    it('hides newly added markers and restores point interaction on solo exit', () => {
+        groups = [group('g1', [member('target')])];
+        markers.set('target', styledMarker());
+        soloGroupId = 'g1';
+        controller.recompute();
+        const element = document.createElement('div');
+        element.style.pointerEvents = 'auto';
+        const point = {
+            getLatLng: () => ({ lat: 1, lng: 2 }),
+            getElement: () => element,
+            closePopup: vi.fn()
+        } as unknown as L.Layer;
+        markers.set('new', point);
+        controller.recompute();
+        expect(element.style.display).toBe('none');
+        expect(element.style.pointerEvents).toBe('none');
+        expect(point.closePopup).toHaveBeenCalled();
+        soloGroupId = null;
+        controller.recompute();
+        expect(element.style.display).toBe('');
+        expect(element.style.pointerEvents).toBe('auto');
     });
 
     it('keeps a shared member visible until all containing groups are hidden', () => {

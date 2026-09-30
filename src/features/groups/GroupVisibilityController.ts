@@ -7,6 +7,10 @@ interface GroupVisibilityControllerOptions {
     getGroups: () => Group[];
     getHiddenGroupIds: () => Set<string>;
     getActiveVersionIds?: () => Record<string, string>;
+    getSoloGroupId?: () => string | null;
+    getAllMarkers?: () => L.Layer[];
+    beforeHide?: (marker: L.Layer) => void;
+    onHideEditedFeature?: () => void;
     findMarker: (member: GroupMember) => L.Layer | null;
 }
 
@@ -16,6 +20,9 @@ type VisibilityLayer = L.Layer & {
     setStyle?: (style: L.PathOptions) => void;
     options?: L.PathOptions;
     syncGroupVisibility?: () => void;
+    editing?: { enabled?: () => boolean; disable?: () => void };
+    _hatsApplied?: boolean;
+    redraw?: () => unknown;
 };
 
 interface OriginalStyle {
@@ -66,6 +73,25 @@ export class GroupVisibilityController {
 
         const hiddenGroupIds = this.options.getHiddenGroupIds();
         const desiredHidden = new Set<L.Layer>();
+        const soloGroupId = this.options.getSoloGroupId?.();
+        if (soloGroupId) {
+            const soloGroup = this.options.getGroups().find((group) => group.id === soloGroupId);
+            const allowed = new Set<L.Layer>();
+            if (soloGroup) {
+                for (const member of getActiveVersion(soloGroup, activeVersionIds[soloGroupId])
+                    .members) {
+                    const marker = this.options.findMarker(member);
+                    if (marker) {
+                        allowed.add(marker);
+                    }
+                }
+            }
+            for (const marker of this.options.getAllMarkers?.() ?? []) {
+                if (!allowed.has(marker)) {
+                    desiredHidden.add(marker);
+                }
+            }
+        }
         for (const [key, groupIds] of memberToGroupIds) {
             if (![...groupIds].every((groupId) => hiddenGroupIds.has(groupId))) {
                 continue;
@@ -105,9 +131,7 @@ export class GroupVisibilityController {
         }
 
         for (const marker of desiredHidden) {
-            if (!this.hiddenMarkers.has(marker)) {
-                this.hide(marker);
-            }
+            this.hide(marker);
         }
     }
 
@@ -130,7 +154,7 @@ export class GroupVisibilityController {
         } else if (typeof visibilityLayer.setStyle === 'function') {
             const originalStyle = this.originalStyles.get(marker as object);
             if (originalStyle) {
-                visibilityLayer.setStyle(originalStyle);
+                this.applyStyle(visibilityLayer, originalStyle);
             }
         }
 
@@ -148,10 +172,31 @@ export class GroupVisibilityController {
 
     private hide(marker: L.Layer): void {
         const visibilityLayer = marker as VisibilityLayer;
+        const alreadyHidden = this.hiddenMarkers.has(marker);
+        if (!alreadyHidden) {
+            this.options.beforeHide?.(marker);
+            if (visibilityLayer.editing?.enabled?.()) {
+                this.options.onHideEditedFeature?.();
+            }
+            visibilityLayer.editing?.disable?.();
+        }
+        if (!alreadyHidden && typeof visibilityLayer.setStyle === 'function') {
+            this.originalStyles.set(marker as object, {
+                opacity: visibilityLayer.options?.opacity ?? 1,
+                fillOpacity: visibilityLayer.options?.fillOpacity ?? 0
+            });
+        }
+        this.hiddenMarkers.add(marker);
         setFeatureGroupHidden(marker, true);
+        marker.closePopup?.();
+        if (!visibilityLayer.syncGroupVisibility) {
+            marker.closeTooltip?.();
+        }
         const element = visibilityLayer.getElement?.();
         if (element) {
-            this.originalPointerEvents.set(marker as object, element.style.pointerEvents);
+            if (!alreadyHidden) {
+                this.originalPointerEvents.set(marker as object, element.style.pointerEvents);
+            }
             element.style.pointerEvents = 'none';
         }
         visibilityLayer.syncGroupVisibility?.();
@@ -161,26 +206,24 @@ export class GroupVisibilityController {
         ) {
             const element = visibilityLayer.getElement?.();
             if (element) {
-                this.originalStyles.set(marker as object, { opacity: 1, fillOpacity: 0 });
                 element.style.display = 'none';
-                this.hiddenMarkers.add(marker);
             }
             return;
         }
 
         if (typeof visibilityLayer.setStyle === 'function') {
-            this.originalStyles.set(marker as object, {
-                opacity:
-                    typeof visibilityLayer.options?.opacity === 'number'
-                        ? visibilityLayer.options.opacity
-                        : 1,
-                fillOpacity:
-                    typeof visibilityLayer.options?.fillOpacity === 'number'
-                        ? visibilityLayer.options.fillOpacity
-                        : 0
-            });
-            visibilityLayer.setStyle({ opacity: 0, fillOpacity: 0 });
-            this.hiddenMarkers.add(marker);
+            const { opacity, fillOpacity } = visibilityLayer.options ?? {};
+            if (opacity !== 0 || fillOpacity !== 0) {
+                this.applyStyle(visibilityLayer, { opacity: 0, fillOpacity: 0 });
+            }
+        }
+    }
+
+    private applyStyle(layer: VisibilityLayer, style: L.PathOptions): void {
+        layer.setStyle?.(style);
+        // leaflet-arrowheads copies the line's style only when it rebuilds its arrowheads.
+        if (layer._hatsApplied) {
+            layer.redraw?.();
         }
     }
 }

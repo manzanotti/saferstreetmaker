@@ -1,6 +1,7 @@
 import type * as L from 'leaflet';
 import type { GroupMember } from '../../models/Group';
 import { memberKey } from './groupVersions';
+import { isFeatureGroupHidden } from './featureVisibility';
 
 type StyledLayer = L.Layer & {
     getElement?: () => HTMLElement | undefined;
@@ -27,7 +28,7 @@ export class PhaseHighlighter {
                 continue;
             }
             const marker = this.findMarker(member);
-            if (!marker) {
+            if (!marker || isFeatureGroupHidden(marker)) {
                 continue;
             }
             const styled = marker as StyledLayer;
@@ -61,7 +62,7 @@ export class PhaseHighlighter {
                 continue;
             }
             const marker = this.findMarker(member);
-            if (!marker) {
+            if (!marker || isFeatureGroupHidden(marker)) {
                 continue;
             }
             const styled = marker as StyledLayer;
@@ -95,7 +96,7 @@ export class PhaseHighlighter {
         this.clear(allMembers);
         for (const member of allMembers) {
             const marker = this.findMarker(member);
-            if (!marker) {
+            if (!marker || isFeatureGroupHidden(marker)) {
                 continue;
             }
             const key = memberKey(member);
@@ -141,22 +142,28 @@ export class PhaseHighlighter {
     clear(members: GroupMember[]): void {
         for (const member of members) {
             const marker = this.findMarker(member);
-            if (!marker) {
-                continue;
+            if (marker) {
+                this.clearMarker(marker);
             }
-            const styled = marker as StyledLayer;
-            const pathStyle = this.originalPathStyles.get(marker as object);
-            if (pathStyle && typeof styled.setStyle === 'function') {
-                styled.setStyle(pathStyle);
-                styled.syncGroupStyle?.();
-                this.originalPathStyles.delete(marker as object);
-            } else {
-                const element = styled.getElement?.();
-                const originalOpacity = this.originalElementOpacity.get(marker as object);
-                if (element && originalOpacity !== undefined) {
-                    element.style.opacity = originalOpacity;
-                    this.originalElementOpacity.delete(marker as object);
-                }
+        }
+    }
+
+    clearMarker(marker: L.Layer): void {
+        if (isFeatureGroupHidden(marker)) {
+            return;
+        }
+        const styled = marker as StyledLayer;
+        const pathStyle = this.originalPathStyles.get(marker as object);
+        if (pathStyle && typeof styled.setStyle === 'function') {
+            this.originalPathStyles.delete(marker as object);
+            styled.setStyle(pathStyle);
+            styled.syncGroupStyle?.();
+        } else {
+            const element = styled.getElement?.();
+            const originalOpacity = this.originalElementOpacity.get(marker as object);
+            if (element && originalOpacity !== undefined) {
+                element.style.opacity = originalOpacity;
+                this.originalElementOpacity.delete(marker as object);
             }
         }
     }

@@ -144,6 +144,7 @@ export function createGroupMutations(dependencies: GroupMutationDependencies) {
 
         groupStore.removeGroup(id);
         dependencies.clearFeatureHighlight();
+        dependencies.recomputeFeatureVisibility();
         mapStore.markLayerUpdated();
     }
 
@@ -167,13 +168,16 @@ export function createGroupMutations(dependencies: GroupMutationDependencies) {
 
     function toggleGroupVisibility(id: string): void {
         const groupStore = useGroupStore(pinia);
-        groupStore.toggleHidden(id);
+        if (groupStore.soloGroupId || groupStore.hiddenGroupIds.has(id)) {
+            dependencies.clearFeatureHighlight();
+        }
+        groupStore.cycleVisibility(id);
         dependencies.recomputeFeatureVisibility();
     }
 
     function setAllGroupsVisibility(hidden: boolean): void {
         const groupStore = useGroupStore(pinia);
-        groupStore.setAllHidden(hidden);
+        groupStore.setAllHidden(groupStore.soloGroupId ? false : hidden);
         dependencies.recomputeFeatureVisibility();
     }
 

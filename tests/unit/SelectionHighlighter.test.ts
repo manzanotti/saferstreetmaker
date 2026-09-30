@@ -5,6 +5,7 @@ vi.mock('leaflet', () => import('./__mocks__/leaflet'));
 import type * as L from 'leaflet';
 import { SelectionHighlighter } from '../../src/features/selection/SelectionHighlighter';
 import type { SelectedMarker } from '../../src/stores/selectionStore';
+import { setFeatureGroupHidden } from '../../src/features/groups/featureVisibility';
 
 function selected(marker: L.Layer): SelectedMarker {
     return {
@@ -16,6 +17,19 @@ function selected(marker: L.Layer): SelectedMarker {
 }
 
 describe('SelectionHighlighter', () => {
+    it('does not add styles or vertex handles to group-hidden features', () => {
+        const setStyle = vi.fn();
+        const hiddenPoint = {
+            getLatLng: () => ({ lat: 1, lng: 2 }),
+            setStyle
+        } as unknown as L.Layer;
+        const hiddenLine = {} as L.Layer;
+        setFeatureGroupHidden(hiddenPoint, true);
+        setFeatureGroupHidden(hiddenLine, true);
+        const highlighter = new SelectionHighlighter({} as L.Map);
+        highlighter.add([selected(hiddenPoint), selected(hiddenLine)]);
+        expect(setStyle).not.toHaveBeenCalled();
+    });
     it('adds and removes the selected class for DivIcon markers', () => {
         const element = document.createElement('div');
         const marker = {
