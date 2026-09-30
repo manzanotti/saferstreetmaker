@@ -49,6 +49,11 @@ import {
     reorderGroupPhases
 } from '../../src/composables/useGroups';
 import type { IMapLayer } from '../../src/composables/layers/IMapLayer';
+import type { SelectionHighlighter } from '../../src/features/selection/SelectionHighlighter';
+import {
+    setSelectionHighlighter,
+    releaseSelectionHighlighter
+} from '../../src/features/selection/featureSelection';
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -148,6 +153,38 @@ describe('useGroups', () => {
         useSelectionStore(pinia).deactivate();
         useMapStore(pinia).setLayers([]);
         useSettingsStore(pinia).readOnly = false;
+    });
+
+    it('rebuilds active selection presentation across visibility changes without mutating selection', () => {
+        const marker = makeStyledMarker('member');
+        const layer = makePointLayer('ModalFilters');
+        layer.getLayer().addLayer(marker);
+        useMapStore(pinia).setLayers([layer]);
+        useGroupStore(pinia).setGroups([
+            { id: 'g1', name: 'One', members: [{ layerId: 'ModalFilters', historyId: 'member' }] }
+        ]);
+        const selectionStore = useSelectionStore(pinia);
+        selectionStore.activate();
+        selectionStore.setSelected([makeSelected('ModalFilters', 'member', marker)]);
+        const selection = selectionStore.selected;
+        const replace = vi.fn();
+        const highlighter = { replace } as unknown as SelectionHighlighter;
+        setSelectionHighlighter(highlighter);
+        try {
+            toggleGroupVisibility('g1');
+            expect(marker.options.opacity).toBe(0);
+            toggleGroupVisibility('g1');
+            expect(marker.options.opacity).toBe(1);
+            toggleGroupVisibility('g1');
+            expect(replace).toHaveBeenCalledTimes(3);
+            expect(replace).toHaveBeenLastCalledWith(selection, selection);
+            expect(selectionStore.selected).toBe(selection);
+            expect(selectionStore.isActive).toBe(true);
+        } finally {
+            releaseSelectionHighlighter(highlighter);
+            selectionStore.deactivate();
+            selectionStore.clear();
+        }
     });
 
     describe('phase editing safeguards', () => {

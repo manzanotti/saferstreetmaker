@@ -149,6 +149,10 @@ export function recomputeFeatureVisibility(): void {
     try {
         groupVisibilityController.recompute();
         groupLtnFillController.recompute();
+        const selectionStore = useSelectionStore(pinia);
+        if (selectionStore.isActive && selectionStore.selected.length > 0) {
+            applySelectionHighlights(selectionStore.selected, true);
+        }
     } finally {
         recomputingFeatureVisibility = false;
     }

@@ -406,4 +406,38 @@ test.describe('Groups — Visibility', () => {
         await expect(handles).toHaveCount(0);
         expect(await selectedIds()).toEqual([]);
     });
+
+    test('existing selection handles follow isolation when selection starts with Groups already open', async ({
+        page
+    }) => {
+        await seedIsolationMap(page);
+        await page.evaluate(() => {
+            const map = (
+                document.getElementById('app') as any
+            ).__vue_app__.config.globalProperties.$pinia._s.get('map').map;
+            map.setView([52.5, -1.8925], 16, { animate: false });
+        });
+        await openGroupsPanel(page);
+        await page.locator('#select-area-button').click();
+        await dragSelectCenter(page, 140, -350);
+        const handles = page.locator('path[fill="#ffffff"][stroke="#3b82f6"]');
+        await expect(handles).toHaveCount(5);
+        const selectedIds = () =>
+            page.evaluate(() =>
+                (
+                    document.getElementById('app') as any
+                ).__vue_app__.config.globalProperties.$pinia._s
+                    .get('selection')
+                    .selected.map((entry: any) => entry.historyId)
+            );
+        const selection = await selectedIds();
+        await page.getByRole('button', { name: 'Hide group Proposal', exact: true }).click();
+        await expect(handles).toHaveCount(3);
+        await page.getByRole('button', { name: 'Show only group Proposal' }).click();
+        await expect(handles).toHaveCount(5);
+        expect(await selectedIds()).toEqual(selection);
+        await page.locator('[data-visibility="solo"]').click();
+        await expect(handles).toHaveCount(5);
+        expect(await selectedIds()).toEqual(selection);
+    });
 });
