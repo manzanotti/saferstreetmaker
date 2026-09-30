@@ -2,6 +2,7 @@ import * as L from 'leaflet';
 import type { GroupMember } from '../../../models/Group';
 import { useGroupStore } from '../../../stores/groupStore';
 import { pinia } from '../../../stores/index';
+import { useSelectionStore } from '../../../stores/selectionStore';
 
 const FEATURE_TYPE_NAMES: Record<string, string> = {
     ModalFilters: 'Modal filter',
@@ -35,6 +36,10 @@ export function buildFeatureDescriptionPopup(
     content.classList.add('feature-popup-content');
     content.classList.add('feature-popup-hover-content');
     const groups = useGroupStore(pinia).getFeatureGroupMemberships(member);
+    const selectedGroupId = useSelectionStore(pinia).selectedGroupId;
+    if (popupType === 'hover' && groups.some((group) => group.groupId === selectedGroupId)) {
+        return null;
+    }
 
     const featureTypeName = FEATURE_TYPE_NAMES[member.layerId] ?? member.layerId;
     if (groups.length === 0 && !details?.featureName) {

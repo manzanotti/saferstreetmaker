@@ -136,6 +136,12 @@ test.describe('Groups — Create group: read-only', () => {
             .getByRole('button', { name: 'Open group School Zone' })
             .click();
         await expect(page.getByRole('dialog', { name: 'School Zone' })).toBeVisible();
+
+        await marker.dispatchEvent('mouseover');
+        await expect(page.locator('.leaflet-popup.group-popup').last()).toBeVisible();
+        await expect(
+            page.locator('.leaflet-popup.group-popup').last().locator('.group-popup-title')
+        ).toHaveText('School Zone');
     });
 
     test('read-only group details cannot edit metadata, membership, or phases', async ({

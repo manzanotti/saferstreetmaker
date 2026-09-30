@@ -122,6 +122,38 @@ test.describe('Groups — Create group: editing', () => {
         );
     });
 
+    test('selected group hover popups stay hidden until group editing closes', async ({ page }) => {
+        await placeTwoModalFilters(page);
+        await selectBothFilters(page);
+        await createGroupWithDescription(page, 'School Zone', '<p>Slow down near school</p>');
+        await openGroupsPanel(page);
+        await openGroupDetails(page, 'School Zone');
+
+        await page.clock.install();
+        const markers = page.locator('.leaflet-filters-pane path.modal-filter-marker');
+        const popup = page.locator('.leaflet-popup.feature-popup-hover');
+        for (const marker of await markers.all()) {
+            await marker.dispatchEvent('mouseover');
+            await page.clock.runFor(100);
+            await expect(popup).toHaveCount(0);
+            await marker.dispatchEvent('mouseout');
+        }
+
+        await markers.first().dispatchEvent('click');
+        const dialog = page.getByRole('dialog', { name: 'Group details' });
+        await expect(dialog.getByText('(1 feature)', { exact: true })).toBeVisible();
+        await markers.first().dispatchEvent('click');
+        await expect(dialog.getByText('(2 features)', { exact: true })).toBeVisible();
+
+        await dialog.getByRole('button', { name: 'Close group details' }).click();
+        await expect(dialog).not.toBeVisible();
+        await markers.first().dispatchEvent('mouseover');
+        await expect(popup).toBeVisible();
+        await expect(popup.locator('.feature-popup-group-description')).toContainText(
+            'School Zone'
+        );
+    });
+
     test('ungrouped feature hover does not show a popup in either mode', async ({ page }) => {
         await placeModalFilter(page, 110);
         const marker = page.locator('.leaflet-filters-pane path.modal-filter-marker').first();
