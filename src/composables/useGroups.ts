@@ -63,6 +63,7 @@ const groupVisibilityController = new GroupVisibilityController({
     getActiveVersionIds: () => useGroupStore(pinia).activeVersionIds,
     getSoloGroupId: () => useGroupStore(pinia).soloGroupId,
     beforeHide: (marker) => phaseHighlighter.clearMarker(marker),
+    onHideEditedFeature: () => useMapStore(pinia).setDrawLayer(null),
     getAllMarkers: () => {
         const markers: L.Layer[] = [];
         for (const layer of useMapStore(pinia).layers) {

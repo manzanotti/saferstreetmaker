@@ -299,8 +299,10 @@ test.describe('Groups — Visibility', () => {
         await expect(page.locator('.leaflet-imported-pane path')).toHaveCount(1);
         await page.locator('#groups-master-toggle').check();
         await expect(page.locator('[data-visibility="hidden"]')).toHaveCount(2);
+        await expect(page.locator('#groups-master-toggle')).toHaveAccessibleName('Show all groups');
         await page.locator('#groups-master-toggle').uncheck();
         await expect(page.locator('[data-visibility="visible"]')).toHaveCount(2);
+        await expect(page.locator('#groups-master-toggle')).toHaveAccessibleName('Hide all groups');
     });
 
     test('solo updates for new features and exits when the isolated group is deleted', async ({
@@ -343,5 +345,65 @@ test.describe('Groups — Visibility', () => {
             '1'
         );
         await expect(page.locator('.leaflet-imported-pane path')).toHaveCount(1);
+    });
+
+    test('hiding an edited feature ends layer edit mode without reviving it on exit', async ({
+        page
+    }) => {
+        await seedIsolationMap(page);
+        await page.locator('[data-fixture="lane"]').dispatchEvent('click');
+        await expect(page.locator('.leaflet-editing-icon').first()).toBeVisible();
+        const activeLayer = () =>
+            page.evaluate(
+                () =>
+                    (
+                        document.getElementById('app') as any
+                    ).__vue_app__.config.globalProperties.$pinia._s.get('map').activeLayerId
+            );
+        expect(await activeLayer()).toBe('mobility-lane');
+        await openGroupsPanel(page);
+        await page.getByRole('button', { name: 'Hide group Proposal', exact: true }).click();
+        expect(await activeLayer()).toBeNull();
+        await expect(page.locator('.leaflet-editing-icon')).toHaveCount(0);
+        await page.getByRole('button', { name: 'Show only group Proposal' }).click();
+        await page.locator('[data-visibility="solo"]').click();
+        expect(await activeLayer()).toBeNull();
+        await expect(page.locator('[data-fixture="lane"]')).toHaveAttribute('stroke-opacity', '1');
+        await expect(page.locator('.leaflet-editing-icon')).toHaveCount(0);
+    });
+
+    test('opening Groups clears existing area-selection handles before isolation starts', async ({
+        page
+    }) => {
+        await seedIsolationMap(page);
+        await page.evaluate(() =>
+            (document.getElementById('app') as any).__vue_app__.config.globalProperties.$pinia._s
+                .get('map')
+                .map.setView([52.5, -1.9], 16)
+        );
+        await page.locator('#select-area-button').click();
+        await dragSelectCenter(page, 200);
+        const handles = page.locator('path[fill="#ffffff"][stroke="#3b82f6"]');
+        await expect(handles).toHaveCount(5);
+        const selectedIds = () =>
+            page.evaluate(() =>
+                (
+                    document.getElementById('app') as any
+                ).__vue_app__.config.globalProperties.$pinia._s
+                    .get('selection')
+                    .selected.map((entry: any) => entry.historyId)
+            );
+        expect(await selectedIds()).toContain('lane');
+        expect(await selectedIds()).toContain('shared-cell');
+        await page.locator('#map').press('g');
+        await expect(handles).toHaveCount(0);
+        expect(await selectedIds()).toEqual([]);
+        await page.getByRole('button', { name: 'Hide group Proposal', exact: true }).click();
+        await expect(handles).toHaveCount(0);
+        await page.getByRole('button', { name: 'Show only group Proposal' }).click();
+        await expect(handles).toHaveCount(0);
+        await page.locator('[data-visibility="solo"]').click();
+        await expect(handles).toHaveCount(0);
+        expect(await selectedIds()).toEqual([]);
     });
 });

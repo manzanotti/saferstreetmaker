@@ -30,7 +30,7 @@ async function toggle(event: Event) {
                     :checked="allHidden"
                     :indeterminate="!!soloActive"
                     :aria-checked="soloActive ? 'mixed' : allHidden ? 'true' : 'false'"
-                    :aria-label="soloActive ? 'Show all groups' : 'Hide all groups'"
+                    :aria-label="soloActive || allHidden ? 'Show all groups' : 'Hide all groups'"
                     @change="toggle"
                 />
                 <label for="groups-master-toggle" class="sr-only">Hide all groups</label>

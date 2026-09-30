@@ -62,6 +62,38 @@ describe('GroupVisibilityController', () => {
         expect(marker.options).toMatchObject({ opacity: 0.7, fillOpacity: 0.4 });
     });
 
+    it('ends an active edit session before hiding its feature and does not restart it on reveal', () => {
+        let editingEnabled = true;
+        const editing = {
+            enabled: () => editingEnabled,
+            disable: vi.fn(() => {
+                editingEnabled = false;
+            })
+        };
+        const marker = Object.assign(styledMarker(), { editing });
+        const endEditMode = vi.fn();
+        markers.set('h1', marker);
+        groups = [group('g1', [member('h1')])];
+        controller = new GroupVisibilityController({
+            getGroups: () => groups,
+            getHiddenGroupIds: () => hiddenGroupIds,
+            findMarker: () => marker,
+            onHideEditedFeature: endEditMode
+        });
+        hiddenGroupIds.add('g1');
+        controller.recompute();
+        controller.recompute();
+        expect(endEditMode).toHaveBeenCalledOnce();
+        expect(editing.disable).toHaveBeenCalledOnce();
+        hiddenGroupIds.clear();
+        controller.recompute();
+        expect(editingEnabled).toBe(false);
+        expect(marker.options.opacity).toBe(0.7);
+        hiddenGroupIds.add('g1');
+        controller.recompute();
+        expect(endEditMode).toHaveBeenCalledOnce();
+    });
+
     it('isolates shared members and hides ungrouped and unrelated features reversibly', () => {
         const shared = styledMarker();
         const other = styledMarker();

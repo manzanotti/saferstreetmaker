@@ -10,6 +10,7 @@ interface GroupVisibilityControllerOptions {
     getSoloGroupId?: () => string | null;
     getAllMarkers?: () => L.Layer[];
     beforeHide?: (marker: L.Layer) => void;
+    onHideEditedFeature?: () => void;
     findMarker: (member: GroupMember) => L.Layer | null;
 }
 
@@ -19,7 +20,7 @@ type VisibilityLayer = L.Layer & {
     setStyle?: (style: L.PathOptions) => void;
     options?: L.PathOptions;
     syncGroupVisibility?: () => void;
-    editing?: { disable?: () => void };
+    editing?: { enabled?: () => boolean; disable?: () => void };
 };
 
 interface OriginalStyle {
@@ -172,6 +173,9 @@ export class GroupVisibilityController {
         const alreadyHidden = this.hiddenMarkers.has(marker);
         if (!alreadyHidden) {
             this.options.beforeHide?.(marker);
+            if (visibilityLayer.editing?.enabled?.()) {
+                this.options.onHideEditedFeature?.();
+            }
             visibilityLayer.editing?.disable?.();
         }
         if (!alreadyHidden && typeof visibilityLayer.setStyle === 'function') {
