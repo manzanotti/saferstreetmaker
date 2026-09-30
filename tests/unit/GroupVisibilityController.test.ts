@@ -94,6 +94,40 @@ describe('GroupVisibilityController', () => {
         expect(endEditMode).toHaveBeenCalledOnce();
     });
 
+    it('redraws arrowheads after hiding and revealing a line, without redrawing while already hidden', () => {
+        const marker = Object.assign(styledMarker(), { _hatsApplied: true, redraw: vi.fn() });
+        markers.set('h1', marker);
+        groups = [group('g1', [member('h1')])];
+
+        hiddenGroupIds.add('g1');
+        controller.recompute();
+        expect(marker.options).toMatchObject({ opacity: 0, fillOpacity: 0 });
+        expect(marker.redraw).toHaveBeenCalledOnce();
+        expect(marker.redraw.mock.invocationCallOrder[0]).toBeGreaterThan(
+            marker.setStyle.mock.invocationCallOrder[0]
+        );
+
+        controller.recompute();
+        expect(marker.setStyle).toHaveBeenCalledOnce();
+        expect(marker.redraw).toHaveBeenCalledOnce();
+
+        hiddenGroupIds.clear();
+        controller.recompute();
+        expect(marker.options).toMatchObject({ opacity: 0.7, fillOpacity: 0.4 });
+        expect(marker.redraw).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not redraw lines that have no arrowheads', () => {
+        const marker = Object.assign(styledMarker(), { redraw: vi.fn() });
+        markers.set('h1', marker);
+        groups = [group('g1', [member('h1')])];
+        hiddenGroupIds.add('g1');
+        controller.recompute();
+        hiddenGroupIds.clear();
+        controller.recompute();
+        expect(marker.redraw).not.toHaveBeenCalled();
+    });
+
     it('isolates shared members and hides ungrouped and unrelated features reversibly', () => {
         const shared = styledMarker();
         const other = styledMarker();

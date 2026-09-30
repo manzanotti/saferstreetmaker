@@ -222,9 +222,12 @@ test.describe('Groups — Visibility', () => {
                 'fill',
                 '#00aa00'
             );
-            await expect(page.locator('#groups-master-toggle')).toHaveAttribute(
-                'aria-checked',
-                'mixed'
+            await expect(page.locator('#groups-master-toggle')).toHaveJSProperty(
+                'indeterminate',
+                true
+            );
+            await expect(page.locator('#groups-master-toggle')).toHaveAccessibleName(
+                'Hide all groups'
             );
             await expect(page.locator('.leaflet-tile-pane img').first()).toBeVisible();
             await other.getByRole('button', { name: 'Show all groups' }).press('Space');
@@ -299,9 +302,11 @@ test.describe('Groups — Visibility', () => {
         await expect(page.locator('.leaflet-imported-pane path')).toHaveCount(1);
         await page.locator('#groups-master-toggle').check();
         await expect(page.locator('[data-visibility="hidden"]')).toHaveCount(2);
-        await expect(page.locator('#groups-master-toggle')).toHaveAccessibleName('Show all groups');
+        await expect(page.locator('#groups-master-toggle')).toBeChecked();
+        await expect(page.locator('#groups-master-toggle')).toHaveAccessibleName('Hide all groups');
         await page.locator('#groups-master-toggle').uncheck();
         await expect(page.locator('[data-visibility="visible"]')).toHaveCount(2);
+        await expect(page.locator('#groups-master-toggle')).not.toBeChecked();
         await expect(page.locator('#groups-master-toggle')).toHaveAccessibleName('Hide all groups');
     });
 
@@ -439,5 +444,119 @@ test.describe('Groups — Visibility', () => {
         await page.locator('[data-visibility="solo"]').click();
         await expect(handles).toHaveCount(5);
         expect(await selectedIds()).toEqual(selection);
+    });
+
+    test('one-way street arrowheads follow hide, solo and show, including after zooming', async ({
+        page
+    }) => {
+        await page.evaluate(() => {
+            const stores = (document.getElementById('app') as any).__vue_app__.config
+                .globalProperties.$pinia._s;
+            const mapStore = stores.get('map');
+            mapStore.map.setView([52.5, -1.9], 16, { animate: false });
+            mapStore.layers
+                .find((layer: any) => layer.id === 'OneWayStreets')
+                .loadFromGeoJSON({
+                    type: 'FeatureCollection',
+                    features: [
+                        {
+                            type: 'Feature',
+                            properties: { historyId: 'one-way' },
+                            geometry: {
+                                type: 'LineString',
+                                coordinates: [
+                                    [-1.903, 52.5],
+                                    [-1.897, 52.5]
+                                ]
+                            }
+                        },
+                        {
+                            type: 'Feature',
+                            properties: { historyId: 'other-one-way' },
+                            geometry: {
+                                type: 'LineString',
+                                coordinates: [
+                                    [-1.903, 52.502],
+                                    [-1.897, 52.502]
+                                ]
+                            }
+                        }
+                    ]
+                });
+            stores.get('group').setGroups([
+                {
+                    id: 'first',
+                    name: 'First',
+                    members: [{ layerId: 'OneWayStreets', historyId: 'one-way' }]
+                },
+                {
+                    id: 'second',
+                    name: 'Second',
+                    members: [{ layerId: 'OneWayStreets', historyId: 'other-one-way' }]
+                }
+            ]);
+        });
+        const arrowheadOpacities = (historyId: string) =>
+            page.evaluate((id) => {
+                const mapStore = (
+                    document.getElementById('app') as any
+                ).__vue_app__.config.globalProperties.$pinia._s.get('map');
+                const opacities: string[] = [];
+                mapStore.layers
+                    .find((layer: any) => layer.id === 'OneWayStreets')
+                    .getLayer()
+                    .eachLayer((line: any) => {
+                        if (line.feature?.properties?.historyId === id) {
+                            line._arrowheads.eachLayer((head: any) =>
+                                opacities.push(head.getElement().getAttribute('stroke-opacity'))
+                            );
+                        }
+                    });
+                return [...new Set(opacities)];
+            }, historyId);
+        const setZoom = (zoom: number) =>
+            page.evaluate(
+                (value) =>
+                    (
+                        document.getElementById('app') as any
+                    ).__vue_app__.config.globalProperties.$pinia._s
+                        .get('map')
+                        .map.setZoom(value, { animate: false }),
+                zoom
+            );
+
+        expect(await arrowheadOpacities('one-way')).toEqual(['1']);
+
+        await openGroupsPanel(page);
+        await page.getByRole('button', { name: 'Hide group First', exact: true }).click();
+        expect(await arrowheadOpacities('one-way')).toEqual(['0']);
+        expect(await arrowheadOpacities('other-one-way')).toEqual(['1']);
+        await setZoom(17);
+        expect(await arrowheadOpacities('one-way')).toEqual(['0']);
+
+        await page.getByRole('button', { name: 'Show only group First' }).click();
+        expect(await arrowheadOpacities('one-way')).toEqual(['1']);
+        expect(await arrowheadOpacities('other-one-way')).toEqual(['0']);
+
+        await page.locator('[data-visibility="solo"]').click();
+        expect(await arrowheadOpacities('one-way')).toEqual(['1']);
+        expect(await arrowheadOpacities('other-one-way')).toEqual(['1']);
+        await setZoom(16);
+        expect(await arrowheadOpacities('one-way')).toEqual(['1']);
+    });
+
+    test('screen readers can tell which group is isolated', async ({ page }) => {
+        await seedIsolationMap(page);
+        await openGroupsPanel(page);
+        await page.getByRole('button', { name: 'Hide group Proposal', exact: true }).click();
+        await page.getByRole('button', { name: 'Show only group Proposal' }).click();
+
+        const isolated = page.locator('[data-visibility="solo"]');
+        const excluded = page.locator('[data-visibility="hidden"]');
+        await expect(isolated).toHaveAccessibleName('Show all groups');
+        await expect(isolated).toHaveAccessibleDescription('Showing only this group');
+        await expect(excluded).toHaveAccessibleName('Show all groups');
+        await expect(excluded).toHaveAccessibleDescription('Hidden');
+        await expect(page.locator('#groups-master-toggle')).toHaveAccessibleName('Hide all groups');
     });
 });

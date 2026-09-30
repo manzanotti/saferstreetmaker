@@ -14,6 +14,7 @@ async function toggle(event: Event) {
     const input = event.target as HTMLInputElement;
     emit('toggle');
     await nextTick();
+    // A native click flips checked/indeterminate even when the bound props do not change.
     input.checked = props.allHidden;
     input.indeterminate = !!props.soloActive;
 }
@@ -29,8 +30,7 @@ async function toggle(event: Event) {
                     type="checkbox"
                     :checked="allHidden"
                     :indeterminate="!!soloActive"
-                    :aria-checked="soloActive ? 'mixed' : allHidden ? 'true' : 'false'"
-                    :aria-label="soloActive || allHidden ? 'Show all groups' : 'Hide all groups'"
+                    aria-label="Hide all groups"
                     @change="toggle"
                 />
                 <label for="groups-master-toggle" class="sr-only">Hide all groups</label>

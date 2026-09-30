@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, useId } from 'vue';
 
 const props = defineProps<{
     groupName: string;
@@ -17,6 +17,11 @@ const actionLabel = computed(() =>
           : `Hide group ${props.groupName}`
 );
 
+const stateId = useId();
+const stateText = computed(() =>
+    props.solo ? 'Showing only this group' : props.hidden ? 'Hidden' : 'Visible'
+);
+
 const emit = defineEmits<{
     toggle: [];
 }>();
@@ -27,6 +32,7 @@ const emit = defineEmits<{
         type="button"
         :aria-label="actionLabel"
         :title="actionLabel"
+        :aria-describedby="stateId"
         :data-visibility="solo ? 'solo' : hidden ? 'hidden' : 'visible'"
         :class="[
             'flex h-7 w-7 shrink-0 items-center justify-center rounded hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-700',
@@ -74,5 +80,6 @@ const emit = defineEmits<{
                 :stroke="solo ? 'white' : 'currentColor'"
             />
         </svg>
+        <span :id="stateId" class="sr-only">{{ stateText }}</span>
     </button>
 </template>

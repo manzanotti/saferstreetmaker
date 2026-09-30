@@ -21,6 +21,8 @@ type VisibilityLayer = L.Layer & {
     options?: L.PathOptions;
     syncGroupVisibility?: () => void;
     editing?: { enabled?: () => boolean; disable?: () => void };
+    _hatsApplied?: boolean;
+    redraw?: () => unknown;
 };
 
 interface OriginalStyle {
@@ -152,7 +154,7 @@ export class GroupVisibilityController {
         } else if (typeof visibilityLayer.setStyle === 'function') {
             const originalStyle = this.originalStyles.get(marker as object);
             if (originalStyle) {
-                visibilityLayer.setStyle(originalStyle);
+                this.applyStyle(visibilityLayer, originalStyle);
             }
         }
 
@@ -210,7 +212,18 @@ export class GroupVisibilityController {
         }
 
         if (typeof visibilityLayer.setStyle === 'function') {
-            visibilityLayer.setStyle({ opacity: 0, fillOpacity: 0 });
+            const { opacity, fillOpacity } = visibilityLayer.options ?? {};
+            if (opacity !== 0 || fillOpacity !== 0) {
+                this.applyStyle(visibilityLayer, { opacity: 0, fillOpacity: 0 });
+            }
+        }
+    }
+
+    private applyStyle(layer: VisibilityLayer, style: L.PathOptions): void {
+        layer.setStyle?.(style);
+        // leaflet-arrowheads copies the line's style only when it rebuilds its arrowheads.
+        if (layer._hatsApplied) {
+            layer.redraw?.();
         }
     }
 }
