@@ -25,6 +25,43 @@ function boundsCorners(bounds: L.LatLngBounds): L.LatLng[] {
     ];
 }
 
+function isLatLng(value: unknown): value is L.LatLng {
+    return (
+        typeof value === 'object' &&
+        value !== null &&
+        'lat' in value &&
+        typeof value.lat === 'number' &&
+        'lng' in value &&
+        typeof value.lng === 'number'
+    );
+}
+
+function getPolygonOuterRings(layer: L.Layer): L.LatLng[][] {
+    const raw = (layer as { getLatLngs?: () => unknown }).getLatLngs?.();
+    if (!Array.isArray(raw) || raw.length === 0) {
+        return [];
+    }
+
+    if (isLatLng(raw[0])) {
+        return [raw as L.LatLng[]];
+    }
+    if (Array.isArray(raw[0]) && isLatLng(raw[0][0])) {
+        return [raw[0] as L.LatLng[]];
+    }
+
+    return raw.flatMap((polygon) => {
+        if (!Array.isArray(polygon) || polygon.length === 0) {
+            return [];
+        }
+        if (isLatLng(polygon[0])) {
+            return [polygon as L.LatLng[]];
+        }
+        return Array.isArray(polygon[0]) && isLatLng(polygon[0][0])
+            ? [polygon[0] as L.LatLng[]]
+            : [];
+    });
+}
+
 function pointInRing(point: L.LatLng, ring: L.LatLng[]): boolean {
     let inside = false;
     for (
@@ -88,22 +125,7 @@ function segmentsIntersect(a1: L.LatLng, a2: L.LatLng, b1: L.LatLng, b2: L.LatLn
  * Polygon holes are intentionally ignored because current LTN cells do not use them.
  */
 export function polygonIntersectsBounds(layer: L.Layer, bounds: L.LatLngBounds): boolean {
-    const rings = getPolygonRings(layer);
-    if (rings.length === 0) {
-        return false;
-    }
-
-    const outerRing = rings[0];
     const rectCorners = boundsCorners(bounds);
-
-    if (outerRing.some((vertex) => bounds.contains(vertex))) {
-        return true;
-    }
-
-    if (rectCorners.some((corner) => pointInRing(corner, outerRing))) {
-        return true;
-    }
-
     const rectEdges: Array<[L.LatLng, L.LatLng]> = [
         [rectCorners[0], rectCorners[1]],
         [rectCorners[1], rectCorners[2]],
@@ -111,14 +133,21 @@ export function polygonIntersectsBounds(layer: L.Layer, bounds: L.LatLngBounds):
         [rectCorners[3], rectCorners[0]]
     ];
 
-    for (let index = 0; index < outerRing.length; index++) {
-        const current = outerRing[index];
-        const next = outerRing[(index + 1) % outerRing.length];
-
-        if (rectEdges.some(([start, end]) => segmentsIntersect(current, next, start, end))) {
+    return getPolygonOuterRings(layer).some((outerRing) => {
+        if (outerRing.some((vertex) => bounds.contains(vertex))) {
             return true;
         }
-    }
+        if (rectCorners.some((corner) => pointInRing(corner, outerRing))) {
+            return true;
+        }
 
-    return false;
+        for (let index = 0; index < outerRing.length; index++) {
+            const current = outerRing[index];
+            const next = outerRing[(index + 1) % outerRing.length];
+            if (rectEdges.some(([start, end]) => segmentsIntersect(current, next, start, end))) {
+                return true;
+            }
+        }
+        return false;
+    });
 }

@@ -23,6 +23,7 @@ function restoreTriggerFocus() {
 function onKeydown(event: KeyboardEvent) {
     if (event.key === 'Escape') {
         event.preventDefault();
+        event.stopPropagation();
         emit('cancel');
         return;
     }

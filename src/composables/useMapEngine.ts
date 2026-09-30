@@ -9,6 +9,7 @@ import * as L from 'leaflet';
 import { watch } from 'vue';
 import { useMapStore } from '../stores/mapStore';
 import { useSettingsStore } from '../stores/settingsStore';
+import { useUiStore } from '../stores/uiStore';
 import { pinia } from '../stores/index';
 import { recomputeFeatureVisibility } from './useGroups';
 import {
@@ -23,6 +24,7 @@ export interface MapEngineResult {
 export function setupMapEngine(): MapEngineResult {
     const mapStore = useMapStore(pinia);
     const settingsStore = useSettingsStore(pinia);
+    const uiStore = useUiStore(pinia);
 
     // ── Create the Leaflet map ────────────────────────────────────────────────
     const map = new L.Map('map', { zoomControl: false });
@@ -43,11 +45,15 @@ export function setupMapEngine(): MapEngineResult {
     new L.TileLayer('https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
         attribution:
             '<a href="https://saferstreetmaker.org" target="_blank">saferstreetmaker.org</a> | &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
+        crossOrigin: 'anonymous',
         maxZoom: 20
     }).addTo(map);
 
     // ── Keyboard: Escape deselects active layer ───────────────────────────────
     map.on('keyup', (e: L.LeafletKeyboardEvent) => {
+        if (uiStore.imageExportInProgress || uiStore.errorMessages.length > 0) {
+            return;
+        }
         if (e.originalEvent.key === 'Escape') {
             map.closePopup();
             // setDrawLayer clears both the toolbar button visual (drawLayerId) and
@@ -72,13 +78,17 @@ export function setupMapEngine(): MapEngineResult {
             mapEl.classList.add(`zoom-${zoom}`);
         }
 
-        settingsStore.zoom = zoom;
-        settingsStore.centre = map.getCenter();
+        if (!uiStore.imageExportInProgress) {
+            settingsStore.zoom = zoom;
+            settingsStore.centre = map.getCenter();
+        }
     });
 
     map.on('moveend', () => {
-        settingsStore.zoom = map.getZoom();
-        settingsStore.centre = map.getCenter();
+        if (!uiStore.imageExportInProgress) {
+            settingsStore.zoom = map.getZoom();
+            settingsStore.centre = map.getCenter();
+        }
     });
 
     const updatePointFeatureVisibility = () => {
