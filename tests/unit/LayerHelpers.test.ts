@@ -44,6 +44,7 @@ import {
 } from '../../src/composables/layers/features/featureGroupMembershipPopup';
 import { useGroupStore } from '../../src/stores/groupStore';
 import { pinia } from '../../src/stores';
+import { useSelectionStore } from '../../src/stores/selectionStore';
 
 function makeMapEl() {
     const el = document.createElement('div');
@@ -69,6 +70,7 @@ beforeEach(() => {
     document.querySelector('.leaflet-mouse-marker')?.remove();
     vi.clearAllMocks();
     useGroupStore(pinia).setGroups([]);
+    useSelectionStore(pinia).deactivate();
 });
 
 describe('feature group lookups', () => {
@@ -514,6 +516,34 @@ describe('feature popups', () => {
     function getPopupContent(popup: any): HTMLElement {
         return popup.setContent.mock.calls[0][0] as HTMLElement;
     }
+
+    it('suppresses hover popups when any membership matches the selected group', () => {
+        useGroupStore(pinia).setGroups([
+            { id: 'g1', name: 'Other group', members: [member] },
+            { id: 'g2', name: 'Edited group', members: [member] }
+        ]);
+        useSelectionStore(pinia).markGroupSelection('g2');
+
+        expect(
+            buildFeatureDescriptionPopup({}, member, 'hover', {
+                featureName: 'Named feature'
+            })
+        ).toBeNull();
+        expect(buildFeatureDescriptionPopup({}, member, 'click')).not.toBeNull();
+
+        useSelectionStore(pinia).clear();
+        expect(buildFeatureDescriptionPopup({}, member)).not.toBeNull();
+    });
+
+    it('keeps hover popups for members of other groups while editing a group', () => {
+        useGroupStore(pinia).setGroups([
+            { id: 'g1', name: 'Other group', members: [member] },
+            { id: 'g2', name: 'Edited group', members: [] }
+        ]);
+        useSelectionStore(pinia).markGroupSelection('g2');
+
+        expect(buildFeatureDescriptionPopup({}, member)).not.toBeNull();
+    });
 
     it('does not build a popup for an unnamed feature without groups', () => {
         const popup = buildFeatureDescriptionPopup({ minWidth: 30 }, member, 'hover', {

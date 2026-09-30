@@ -47,12 +47,58 @@ test.describe('Groups — Create group: hover', () => {
         await expect(popup).toBeVisible();
         await popup.getByRole('button', { name: 'School Zone' }).click();
         await expect(page.getByRole('dialog', { name: 'Group details' })).toBeVisible();
+        await expect(page.locator('.leaflet-popup.feature-popup-hover')).toHaveCount(0);
         await expect(page.getByRole('button', { name: 'Save group changes' })).toHaveCount(0);
         await expect(
             page.getByRole('button', { name: 'Add selected features to a group' })
         ).toHaveCount(0);
         await expect(page.locator('.leaflet-popup.feature-popup-editor')).toHaveCount(0);
     });
+
+    for (const featureType of ['polyline', 'polygon'] as const) {
+        test(`${featureType} hover popup is suppressed during group editing and restored afterward`, async ({
+            page
+        }) => {
+            if (featureType === 'polyline') {
+                await drawNamedMobilityLane(page, 'School lane');
+            } else {
+                await drawNamedLtnCell(page, 'School cell');
+            }
+            const feature = page
+                .locator(
+                    featureType === 'polyline'
+                        ? '.leaflet-overlay-pane path.mobility-lane.leaflet-interactive'
+                        : '.leaflet-ltns-pane path.ltn-cell.leaflet-interactive'
+                )
+                .first();
+            await page.locator('#select-area-button').click();
+            await feature.dispatchEvent('click', { shiftKey: true });
+            await expect(page.getByText('1 feature selected')).toBeVisible();
+            await createGroupWithDescription(page, 'School Zone', '<p>School route</p>');
+
+            const popup = page.locator('.leaflet-popup.feature-popup-hover');
+            await feature.dispatchEvent('mouseover');
+            await expect(popup).toBeVisible();
+            await feature.dispatchEvent('mouseout');
+            await expect(popup).toHaveCount(0);
+
+            await openGroupsPanel(page);
+            await openGroupDetails(page, 'School Zone');
+            await page.clock.install();
+            await feature.dispatchEvent('mouseover');
+            await page.clock.runFor(100);
+            await expect(popup).toHaveCount(0);
+            await feature.dispatchEvent('mouseout');
+
+            await page.getByRole('button', { name: 'Close group details' }).click();
+            await expect(page.getByRole('dialog', { name: 'Group details' })).not.toBeVisible();
+            await feature.dispatchEvent('mouseover');
+            await expect(popup).toBeVisible();
+            await expect(popup.locator('.feature-popup-group-description')).toContainText(
+                'School Zone'
+            );
+        });
+    }
 
     test('polygon hover popup closes when the pointer leaves the polygon', async ({ page }) => {
         await drawNamedLtnCell(page, 'School cell');

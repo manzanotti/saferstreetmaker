@@ -9,6 +9,7 @@ import {
     openGroupsPanel,
     openGroupDetails,
     createGroup,
+    setGroupPhases,
     drawNamedLtnCell
 } from './groupTestHelpers';
 
@@ -51,6 +52,37 @@ test.describe('Groups — Phases', () => {
         await page.getByRole('button', { name: 'Delete phase' }).click();
         await expect(page.getByRole('button', { name: 'Edit Phase 1' })).toHaveCount(0);
         await expect(page.getByText('No phases have been saved for this version.')).toBeVisible();
+    });
+
+    test('phase editing suppresses hover popups for assigned and unassigned group members', async ({
+        page
+    }) => {
+        await placeTwoModalFilters(page);
+        await selectBothFilters(page);
+        await createGroup(page, 'Phase Hover Group');
+        await setGroupPhases(page, 1);
+        await openGroupsPanel(page);
+        await openGroupDetails(page, 'Phase Hover Group');
+        await page.getByRole('button', { name: 'Phases for version Default' }).click();
+        await page.getByRole('button', { name: 'Edit Phase 1' }).click();
+        await expect(page.getByText('1 feature', { exact: true })).toBeVisible();
+
+        await page.clock.install();
+        const markers = page.locator('.leaflet-filters-pane path.modal-filter-marker');
+        const popup = page.locator('.leaflet-popup.feature-popup-hover');
+        for (const marker of await markers.all()) {
+            await marker.dispatchEvent('mouseover');
+            await page.clock.runFor(100);
+            await expect(popup).toHaveCount(0);
+            await marker.dispatchEvent('mouseout');
+        }
+
+        await page.getByRole('button', { name: 'Close phases' }).click();
+        await markers.first().dispatchEvent('mouseover');
+        await expect(popup).toBeVisible();
+        await expect(popup.locator('.feature-popup-group-description')).toContainText(
+            'Phase Hover Group'
+        );
     });
 
     test('adds multiple unassigned point features to a mixed phase with plain clicks', async ({
