@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { Buffer } from 'node:buffer';
 import { readFile } from 'node:fs/promises';
 import { addFreshStorageInitScript, waitForFreshStorage } from './indexedDbHelpers';
@@ -25,11 +25,7 @@ async function createTilePng(page: import('@playwright/test').Page): Promise<Buf
     return Buffer.from(base64, 'base64');
 }
 
-async function setTileResponse(
-    page: import('@playwright/test').Page,
-    tilePng: Buffer,
-    status = 200
-) {
+async function setTileResponse(page: Page, tilePng: Buffer, status = 200) {
     await page.route('**/hot/**/*.png', async (route) => {
         await route.fulfill({
             status,
@@ -38,6 +34,73 @@ async function setTileResponse(
             body: status === 200 ? tilePng : 'Tile request failed'
         });
     });
+}
+
+async function selectDistantGroupPoints(page: Page): Promise<Locator> {
+    await waitForMapReady(page);
+    await setMapZoom(page, 15);
+    await page.locator('#modal-filter-button').click();
+    await page.evaluate(() => {
+        const app = (document.getElementById('app') as any).__vue_app__;
+        const map = app.config.globalProperties.$pinia._s.get('map').map;
+        map.setView([51, -1], 15, { animate: false });
+    });
+    await clickMap(page);
+    await page.evaluate(() => {
+        const app = (document.getElementById('app') as any).__vue_app__;
+        const map = app.config.globalProperties.$pinia._s.get('map').map;
+        map.setView([55, 3], 15, { animate: false });
+    });
+    await clickMap(page);
+    await page.locator('#modal-filter-button').click();
+
+    await page.evaluate(() => {
+        const app = (document.getElementById('app') as any).__vue_app__;
+        const pinia = app.config.globalProperties.$pinia;
+        const map = pinia._s.get('map').map;
+        const elements = Array.from(
+            document.querySelectorAll('.leaflet-filters-pane path.modal-filter-marker')
+        );
+        if (elements.length !== 2) {
+            throw new Error('Expected two modal filter marker elements');
+        }
+        const features = new Map<Element, any>();
+        const findFeature = (layer: any) => {
+            const element = layer.getElement?.();
+            if (elements.includes(element) && layer.getLatLng) {
+                features.set(element, layer);
+            }
+            layer.eachLayer?.(findFeature);
+        };
+        map.eachLayer(findFeature);
+        if (features.size !== elements.length) {
+            throw new Error('Modal filter marker layers not found');
+        }
+
+        const groupFeatures = elements.map((element) => features.get(element));
+        const selection = pinia._s.get('selection');
+        selection.setSelected(
+            groupFeatures.map((feature) => ({
+                layerId: 'ModalFilters',
+                historyId: null,
+                latLng: feature.getLatLng(),
+                marker: feature
+            }))
+        );
+        selection.markGroupSelection('export-group');
+        map.setView([0, 0], 12, { animate: false });
+    });
+    await setMapZoom(page, 12);
+
+    const markers = page.locator('.leaflet-filters-pane path.modal-filter-marker');
+    await expect(markers).toHaveCount(2);
+    await expect
+        .poll(() => markers.first().evaluate((element) => getComputedStyle(element).visibility))
+        .toBe('hidden');
+    await expect
+        .poll(() => markers.last().evaluate((element) => getComputedStyle(element).visibility))
+        .toBe('hidden');
+    return markers;
 }
 
 test.describe('Image export from Share panel', () => {
@@ -175,86 +238,32 @@ test.describe('Image export from Share panel', () => {
     test('fits a selected group to the export size and restores the original map view', async ({
         page
     }) => {
-        await waitForMapReady(page);
-        await setMapZoom(page, 15);
-        await page.locator('#modal-filter-button').click();
-        await page.evaluate(() => {
-            const app = (document.getElementById('app') as any).__vue_app__;
-            const map = app.config.globalProperties.$pinia._s.get('map').map;
-            map.setView([51, -1], 15, { animate: false });
-        });
-        await clickMap(page);
-        await page.evaluate(() => {
-            const app = (document.getElementById('app') as any).__vue_app__;
-            const map = app.config.globalProperties.$pinia._s.get('map').map;
-            map.setView([55, 3], 15, { animate: false });
-        });
-        await clickMap(page);
-        await page.locator('#modal-filter-button').click();
-
+        await selectDistantGroupPoints(page);
         await page.evaluate(() => {
             const app = (document.getElementById('app') as any).__vue_app__;
             const pinia = app.config.globalProperties.$pinia;
             const map = pinia._s.get('map').map;
-            const elements = Array.from(
-                document.querySelectorAll('.leaflet-filters-pane path.modal-filter-marker')
-            );
-            if (elements.length !== 2) {
-                throw new Error('Expected two modal filter marker elements');
-            }
-            const features = new Map<Element, any>();
-            const findFeature = (layer: any) => {
-                const element = layer.getElement?.();
-                if (elements.includes(element) && layer.getLatLng) {
-                    features.set(element, layer);
-                }
-                layer.eachLayer?.(findFeature);
-            };
-            map.eachLayer(findFeature);
-            if (features.size !== elements.length) {
-                throw new Error('Modal filter marker layers not found');
-            }
-
-            const selection = pinia._s.get('selection');
-            const groupFeatures = elements.map((element) => features.get(element));
-            selection.setSelected(
-                groupFeatures.map((feature) => ({
-                    layerId: 'ModalFilters',
-                    historyId: null,
-                    latLng: feature.getLatLng(),
-                    marker: feature
-                }))
-            );
-            selection.markGroupSelection('export-group');
-
+            const groupFeatures = pinia._s.get('selection').selected;
             (window as any).__groupFitDuringExport = false;
             (window as any).__groupFeaturesVisibleDuringExport = new Set<Element>();
             map.on('moveend', () => {
                 if (
                     pinia._s.get('ui').imageExportInProgress &&
-                    groupFeatures.every((feature) => map.getBounds().contains(feature.getLatLng()))
+                    groupFeatures.every((feature: any) => map.getBounds().contains(feature.latLng))
                 ) {
                     (window as any).__groupFitDuringExport = true;
                 }
             });
-            for (const element of elements) {
+            for (const { marker } of groupFeatures) {
+                const element = (marker as any).getElement() as Element;
                 new MutationObserver(() => {
                     if (getComputedStyle(element).visibility === 'visible') {
                         (window as any).__groupFeaturesVisibleDuringExport.add(element);
                     }
                 }).observe(element, { attributes: true, attributeFilter: ['style'] });
             }
-            map.setView([0, 0], 12, { animate: false });
         });
-        await setMapZoom(page, 12);
         const markers = page.locator('.leaflet-filters-pane path.modal-filter-marker');
-        await expect(markers).toHaveCount(2);
-        await expect
-            .poll(() => markers.first().evaluate((element) => getComputedStyle(element).visibility))
-            .toBe('hidden');
-        await expect
-            .poll(() => markers.last().evaluate((element) => getComputedStyle(element).visibility))
-            .toBe('hidden');
 
         await page.locator('#share-button').click();
         await page.locator('#export-as-image').click();
@@ -596,6 +605,11 @@ test.describe('Image export from Share panel', () => {
         await page.reload();
         await page.addStyleTag({ content: '#help { display: none !important; }' });
         await page.waitForSelector('.toolbar');
+        const markers = await selectDistantGroupPoints(page);
+        const originalVisibilities = await markers.evaluateAll((elements) =>
+            elements.map((element) => getComputedStyle(element).visibility)
+        );
+        expect(originalVisibilities).toEqual(['hidden', 'hidden']);
 
         const map = page.locator('#map');
         const originalStyle = await map.getAttribute('style');
@@ -618,6 +632,13 @@ test.describe('Image export from Share panel', () => {
         await expect(map).not.toHaveAttribute('aria-busy');
         await expect(map).not.toHaveAttribute('inert');
         await expect(page.locator('[data-image-export-legend]')).not.toBeAttached();
+        await expect
+            .poll(() =>
+                markers.evaluateAll((elements) =>
+                    elements.map((element) => getComputedStyle(element).visibility)
+                )
+            )
+            .toEqual(originalVisibilities);
         const restoredCenter = await page.evaluate(() => {
             const app = (document.getElementById('app') as any).__vue_app__;
             const center = app.config.globalProperties.$pinia._s.get('map').map.getCenter();
