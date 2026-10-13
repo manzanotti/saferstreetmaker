@@ -55,7 +55,7 @@ test.describe('Layer: Traffic Lights (point, primary button)', () => {
         expect(trafficLightState.size).toBe('1');
         expect(trafficLightState.width).toBe(30);
         expect(trafficLightState.height).toBe(30);
-        expect(trafficLightState.visualTransform).toBe('matrix(0.5, 0, 0, 0.5, 0, 0)');
+        expect(trafficLightState.visualTransform).toBe('none');
         expect(trafficLightState.visualTransformOrigin).toBe('15px 15px');
 
         for (const zoom of [15, 14]) {
