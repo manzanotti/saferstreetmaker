@@ -1,4 +1,4 @@
-import type * as L from 'leaflet';
+import * as L from 'leaflet';
 import { nextTick } from 'vue';
 import { applySelectionHighlights } from '../selection/featureSelection';
 import { pinia } from '../../stores/index';
@@ -261,10 +261,13 @@ export async function exportMapAsPng(width: number, height: number): Promise<voi
     const originalAriaBusy = mapElement.getAttribute('aria-busy');
     const originalPointerEvents = mapElement.style.pointerEvents;
     const originalInert = mapElement.inert;
+    const originalCenter = map.getCenter();
+    const originalZoom = map.getZoom();
     const selectedFeatures = [...selectionStore.selected];
     const isGroupSelection =
         selectionStore.isGroupSelection && selectionStore.selectedGroupId !== null;
     let restoreGroupFeatures = () => {};
+    let groupViewAdjusted = false;
     let selectionCleared = false;
     exportInProgress = true;
 
@@ -285,6 +288,14 @@ export async function exportMapAsPng(width: number, height: number): Promise<voi
         map.invalidateSize({ pan: true, debounceMoveend: false });
         await waitForExportFrame();
         await waitForExportFrame();
+
+        if (isGroupSelection && selectedFeatures.length > 0) {
+            map.fitBounds(L.latLngBounds(selectedFeatures.map(({ latLng }) => latLng)), {
+                padding: [50, 50],
+                animate: false
+            });
+            groupViewAdjusted = true;
+        }
 
         const visibleLayers = getVisibleLegendLayers({
             map,
@@ -356,6 +367,9 @@ export async function exportMapAsPng(width: number, height: number): Promise<voi
                 mapElement.setAttribute('aria-busy', originalAriaBusy);
             }
             map.invalidateSize({ pan: true, debounceMoveend: false });
+            if (groupViewAdjusted) {
+                map.setView(originalCenter, originalZoom, { animate: false });
+            }
             if (selectionCleared) {
                 applySelectionHighlights(selectedFeatures, true, []);
             }

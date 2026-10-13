@@ -232,7 +232,12 @@ function onClose() {
                     id="image-export-description"
                     class="text-sm text-gray-600"
                 >
-                    PNG at the current map scale. Larger dimensions show more surrounding map.
+                    <template v-if="selectionStore.isGroupSelection">
+                        The selected group is fitted to the PNG.
+                    </template>
+                    <template v-else>
+                        PNG at the current map scale. Larger dimensions show more surrounding map.
+                    </template>
                 </p>
                 <p
                     v-else-if="exportFormat === 'html'"

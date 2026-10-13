@@ -172,77 +172,114 @@ test.describe('Image export from Share panel', () => {
         await expect(page.locator('#map')).not.toHaveAttribute('aria-busy');
     });
 
-    test('includes selected group point features at zooms that normally hide them', async ({
+    test('fits a selected group to the export size and restores the original map view', async ({
         page
     }) => {
         await waitForMapReady(page);
         await setMapZoom(page, 15);
         await page.locator('#modal-filter-button').click();
+        await page.evaluate(() => {
+            const app = (document.getElementById('app') as any).__vue_app__;
+            const map = app.config.globalProperties.$pinia._s.get('map').map;
+            map.setView([51, -1], 15, { animate: false });
+        });
         await clickMap(page);
-        await page.waitForSelector('.leaflet-filters-pane path.modal-filter-marker');
+        await page.evaluate(() => {
+            const app = (document.getElementById('app') as any).__vue_app__;
+            const map = app.config.globalProperties.$pinia._s.get('map').map;
+            map.setView([55, 3], 15, { animate: false });
+        });
+        await clickMap(page);
         await page.locator('#modal-filter-button').click();
-        await setMapZoom(page, 8);
-
-        const marker = page.locator('.leaflet-filters-pane path.modal-filter-marker').first();
-        await expect(marker).toHaveCount(1);
-        await expect
-            .poll(() => marker.evaluate((element) => getComputedStyle(element).visibility))
-            .toBe('hidden');
 
         await page.evaluate(() => {
             const app = (document.getElementById('app') as any).__vue_app__;
             const pinia = app.config.globalProperties.$pinia;
             const map = pinia._s.get('map').map;
-            const element = document.querySelector(
-                '.leaflet-filters-pane path.modal-filter-marker'
+            const elements = Array.from(
+                document.querySelectorAll('.leaflet-filters-pane path.modal-filter-marker')
             );
-            if (!element) {
-                throw new Error('Modal filter marker element not found');
+            if (elements.length !== 2) {
+                throw new Error('Expected two modal filter marker elements');
             }
-            let feature: any;
+            const features = new Map<Element, any>();
             const findFeature = (layer: any) => {
-                if (layer.getElement?.() === element && layer.getLatLng) {
-                    feature = layer;
-                    return;
+                const element = layer.getElement?.();
+                if (elements.includes(element) && layer.getLatLng) {
+                    features.set(element, layer);
                 }
                 layer.eachLayer?.(findFeature);
             };
             map.eachLayer(findFeature);
-            if (!feature) {
-                throw new Error('Modal filter marker layer not found');
+            if (features.size !== elements.length) {
+                throw new Error('Modal filter marker layers not found');
             }
 
             const selection = pinia._s.get('selection');
-            selection.setSelected([
-                {
+            const groupFeatures = elements.map((element) => features.get(element));
+            selection.setSelected(
+                groupFeatures.map((feature) => ({
                     layerId: 'ModalFilters',
                     historyId: null,
                     latLng: feature.getLatLng(),
                     marker: feature
-                }
-            ]);
+                }))
+            );
             selection.markGroupSelection('export-group');
 
-            (window as any).__groupFeatureWasVisibleDuringExport = false;
-            new MutationObserver(() => {
-                if (getComputedStyle(element as Element).visibility === 'visible') {
-                    (window as any).__groupFeatureWasVisibleDuringExport = true;
+            (window as any).__groupFitDuringExport = false;
+            (window as any).__groupFeaturesVisibleDuringExport = new Set<Element>();
+            map.on('moveend', () => {
+                if (
+                    pinia._s.get('ui').imageExportInProgress &&
+                    groupFeatures.every((feature) => map.getBounds().contains(feature.getLatLng()))
+                ) {
+                    (window as any).__groupFitDuringExport = true;
                 }
-            }).observe(element, { attributes: true, attributeFilter: ['style'] });
+            });
+            for (const element of elements) {
+                new MutationObserver(() => {
+                    if (getComputedStyle(element).visibility === 'visible') {
+                        (window as any).__groupFeaturesVisibleDuringExport.add(element);
+                    }
+                }).observe(element, { attributes: true, attributeFilter: ['style'] });
+            }
+            map.setView([0, 0], 12, { animate: false });
         });
+        await setMapZoom(page, 12);
+        const markers = page.locator('.leaflet-filters-pane path.modal-filter-marker');
+        await expect(markers).toHaveCount(2);
+        await expect
+            .poll(() => markers.first().evaluate((element) => getComputedStyle(element).visibility))
+            .toBe('hidden');
+        await expect
+            .poll(() => markers.last().evaluate((element) => getComputedStyle(element).visibility))
+            .toBe('hidden');
 
         await page.locator('#share-button').click();
         await page.locator('#export-as-image').click();
+        await expect(page.locator('#image-export-description')).toContainText(
+            'The selected group is fitted to the PNG.'
+        );
         const downloadPromise = page.waitForEvent('download');
         await page.getByRole('button', { name: 'Export PNG' }).click();
         await downloadPromise;
 
-        expect(
-            await page.evaluate(() => (window as any).__groupFeatureWasVisibleDuringExport)
-        ).toBe(true);
-        await expect
-            .poll(() => marker.evaluate((element) => getComputedStyle(element).visibility))
-            .toBe('hidden');
+        const exportState = await page.evaluate(() => {
+            const app = (document.getElementById('app') as any).__vue_app__;
+            const map = app.config.globalProperties.$pinia._s.get('map').map;
+            return {
+                groupFitDuringExport: (window as any).__groupFitDuringExport,
+                groupFeaturesVisible: (window as any).__groupFeaturesVisibleDuringExport.size === 2,
+                center: map.getCenter(),
+                zoom: map.getZoom()
+            };
+        });
+        expect(exportState.groupFitDuringExport).toBe(true);
+        expect(exportState.groupFeaturesVisible).toBe(true);
+        expect(exportState.center.lat).toBeCloseTo(0, 5);
+        expect(exportState.center.lng).toBeCloseTo(0, 5);
+        expect(exportState.zoom).toBe(12);
     });
 
     test('rejects a concurrent image export transaction', async ({ page }) => {
