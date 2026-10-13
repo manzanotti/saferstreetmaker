@@ -17,8 +17,8 @@ describe('point feature zoom visibility', () => {
         expect(shouldShowPointFeatures(mapAtZoom(13))).toBe(true);
     });
 
-    it('reduces point size by half at four levels below maximum zoom', () => {
-        expect(shouldReducePointFeatureSize(mapAtZoom(16))).toBe(true);
+    it('shows full-size points starting at four levels below maximum zoom', () => {
+        expect(shouldReducePointFeatureSize(mapAtZoom(16))).toBe(false);
         expect(shouldReducePointFeatureSize(mapAtZoom(15))).toBe(true);
         expect(shouldReducePointFeatureSize(mapAtZoom(13))).toBe(true);
         expect(shouldReducePointFeatureSize(mapAtZoom(17))).toBe(false);

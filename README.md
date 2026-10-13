@@ -27,6 +27,8 @@ Open **Share** in the toolbar and choose **Image**, **HTML**, or **Url** under *
 
 Additionally, you can load a JSON version of a map.
 
+Point markers are full-size at zoom 16 and above, half-size at zooms 13-15, and hidden at zoom 12 and below.
+
 If I was developing this for a client, then I would write a backend and database to store the maps, as this would allow for user accounts, map sharing, collaborative working. As this would not be free to run, I've not gone down that route, though if any organisation would like to sponsor this project, I have plenty of ideas for functionality that could unlock.
 
 To run this project locally, clone the repo and install dependencies:

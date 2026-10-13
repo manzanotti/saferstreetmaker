@@ -21,7 +21,7 @@ test.describe('Layer: Modal Filter (point, primary button)', () => {
         await expect(page.locator('#modal-filter-button')).toHaveAttribute('aria-pressed', 'true');
     });
 
-    test('marker resizes and stays at its coordinate from zoom 12 to 16', async ({ page }) => {
+    test('marker becomes full-size at zoom 16 and stays at its coordinate', async ({ page }) => {
         await page.locator('#modal-filter-button').click();
         await clickMap(page);
 
@@ -29,7 +29,14 @@ test.describe('Layer: Modal Filter (point, primary button)', () => {
         await setMapZoom(page, 17);
         const normalState = await getPointIconState(page, selector);
 
-        for (const zoom of [16, 15, 14, 13]) {
+        await setMapZoom(page, 16);
+        const fullSizeState = await getPointIconState(page, selector);
+        expectPointAtLeafletCoordinate(fullSizeState);
+        expect(fullSizeState.width).toBeCloseTo(normalState.width);
+        expect(fullSizeState.height).toBeCloseTo(normalState.height);
+        expect(fullSizeState.visibility).toBe('visible');
+
+        for (const zoom of [15, 14, 13]) {
             await setMapZoom(page, zoom);
             const state = await getPointIconState(page, selector);
             expectPointAtLeafletCoordinate(state);
@@ -37,6 +44,12 @@ test.describe('Layer: Modal Filter (point, primary button)', () => {
             expect(state.height).toBeLessThan(normalState.height * 0.51);
             expect(state.visibility).toBe('visible');
         }
+
+        await setMapZoom(page, 16);
+        const restoredState = await getPointIconState(page, selector);
+        expectPointAtLeafletCoordinate(restoredState);
+        expect(restoredState.width).toBeCloseTo(normalState.width);
+        expect(restoredState.height).toBeCloseTo(normalState.height);
 
         await setMapZoom(page, 12);
         const hiddenState = await getPointIconState(page, selector);

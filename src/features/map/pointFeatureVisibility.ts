@@ -8,5 +8,5 @@ export function shouldShowPointFeatures(map: Pick<L.Map, 'getZoom' | 'getMaxZoom
 }
 
 export function shouldReducePointFeatureSize(map: Pick<L.Map, 'getZoom' | 'getMaxZoom'>): boolean {
-    return map.getZoom() <= map.getMaxZoom() - POINT_FEATURE_SMALL_ZOOM_OFFSET;
+    return map.getZoom() < map.getMaxZoom() - POINT_FEATURE_SMALL_ZOOM_OFFSET;
 }

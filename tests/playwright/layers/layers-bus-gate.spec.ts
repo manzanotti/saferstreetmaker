@@ -45,7 +45,7 @@ test.describe('Layer: Bus Gate (point, submenu button)', () => {
         expect(busGateState.size).toBe('1');
         expect(busGateState.width).toBe(23);
         expect(busGateState.height).toBe(23);
-        expect(busGateState.visualTransform).toBe('matrix(0.5, 0, 0, 0.5, 0, 0)');
+        expect(busGateState.visualTransform).toBe('none');
         expect(busGateState.visualTransformOrigin).toBe('11.5px 11.5px');
 
         for (const zoom of [15, 14]) {
