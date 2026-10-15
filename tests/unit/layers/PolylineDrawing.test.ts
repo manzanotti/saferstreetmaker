@@ -93,6 +93,143 @@ describe('polyline drawing tool lifecycle', () => {
         });
     }
 
+    for (const alreadyClosed of [false, true]) {
+        it(`closes only its still-open creation editor on deselection (already closed: ${alreadyClosed})`, async () => {
+            const scope = effectScope();
+            const mapStore = useMapStore(pinia);
+            const map = new L.Map();
+            const popupFactory = vi.spyOn(L, 'popup');
+            const closePopup = vi.spyOn(map, 'closePopup');
+            try {
+                scope.run(() => createMobilityLaneLayer(map));
+                mapStore.setDrawLayer('mobility-lane');
+                map.fire('draw:created', {
+                    layer: new L.Polyline([new L.LatLng(52.5, -1.9), new L.LatLng(52.6, -1.8)])
+                });
+                await nextTick();
+                const editor = popupFactory.mock.results[0].value;
+                if (alreadyClosed) {
+                    editor.fire('remove');
+                    map.openPopup(L.popup());
+                }
+                mapStore.setDrawLayer(null);
+                if (alreadyClosed) {
+                    expect(closePopup).not.toHaveBeenCalled();
+                } else {
+                    expect(closePopup).toHaveBeenCalledExactlyOnceWith(editor);
+                }
+            } finally {
+                mapStore.setDrawLayer(null);
+                scope.stop();
+            }
+        });
+    }
+
+    it('saves a replaced focused editor without clearing ownership of its replacement', async () => {
+        const scope = effectScope();
+        const mapStore = useMapStore(pinia);
+        const map = new L.Map();
+        const popupFactory = vi.spyOn(L, 'popup');
+        const closePopup = vi.spyOn(map, 'closePopup');
+        let content: HTMLElement | null = null;
+        try {
+            scope.run(() => createMobilityLaneLayer(map));
+            mapStore.setDrawLayer('mobility-lane');
+            const points = [new L.LatLng(52.5, -1.9), new L.LatLng(52.6, -1.8)];
+            map.fire('draw:created', { layer: new L.Polyline(points) });
+            await nextTick();
+            const firstEditor = popupFactory.mock.results[0].value;
+            const editorContent = firstEditor.setContent.mock.calls[0][0];
+            if (!(editorContent instanceof HTMLElement)) {
+                throw new Error('Expected polyline editor content');
+            }
+            content = editorContent;
+            document.body.append(content);
+            vi.spyOn(firstEditor, 'getElement').mockReturnValue(content);
+            const input = content.querySelector<HTMLInputElement>('.name-editor');
+            if (!input) {
+                throw new Error('Expected polyline name input');
+            }
+            input.focus();
+            input.value = 'Saved on replacement';
+            vi.spyOn(map, 'openPopup').mockImplementation(() => {
+                editorContent.remove();
+                firstEditor.fire('remove');
+                return map;
+            });
+
+            map.fire('draw:created', { layer: new L.Polyline(points) });
+            await nextTick();
+            expect(mapStore.lastLayerMutation).toMatchObject({
+                kind: 'polyline-edit',
+                payload: { after: { properties: { name: 'Saved on replacement' } } }
+            });
+            const secondEditor = popupFactory.mock.results[1].value;
+            mapStore.setDrawLayer(null);
+            expect(closePopup).toHaveBeenCalledExactlyOnceWith(secondEditor);
+        } finally {
+            content?.remove();
+            mapStore.setDrawLayer(null);
+            scope.stop();
+        }
+    });
+
+    for (const dismissal of ['deselection', 'removal', 'detached removal'] as const) {
+        it(`saves a focused name on editor ${dismissal}`, async () => {
+            const scope = effectScope();
+            const mapStore = useMapStore(pinia);
+            const map = new L.Map();
+            const popupFactory = vi.spyOn(L, 'popup');
+            let content: HTMLElement | null = null;
+            try {
+                scope.run(() => createMobilityLaneLayer(map));
+                mapStore.setDrawLayer('mobility-lane');
+                map.fire('draw:created', {
+                    layer: new L.Polyline([new L.LatLng(52.5, -1.9), new L.LatLng(52.6, -1.8)])
+                });
+                await nextTick();
+                const editor = popupFactory.mock.results[0].value;
+                const editorContent = editor.setContent.mock.calls[0][0];
+                if (!(editorContent instanceof HTMLElement)) {
+                    throw new Error('Expected polyline editor content');
+                }
+                content = editorContent;
+                document.body.append(content);
+                vi.spyOn(editor, 'getElement').mockReturnValue(content);
+                const input = content.querySelector<HTMLInputElement>('.name-editor');
+                if (!input) {
+                    throw new Error('Expected polyline name input');
+                }
+                input.focus();
+                input.value = 'Saved on dismissal';
+                const markLayerUpdated = vi.spyOn(mapStore, 'markLayerUpdated');
+                if (dismissal !== 'deselection') {
+                    if (dismissal === 'detached removal') {
+                        content.remove();
+                    }
+                    editor.fire('remove');
+                    expect(mapStore.lastLayerMutation).toMatchObject({
+                        kind: 'polyline-edit',
+                        payload: { after: { properties: { name: 'Saved on dismissal' } } }
+                    });
+                }
+                mapStore.setDrawLayer(null);
+                if (dismissal === 'deselection') {
+                    expect(document.activeElement).not.toBe(input);
+                }
+                expect(markLayerUpdated).toHaveBeenCalledOnce();
+                expect(mapStore.lastLayerMutation).toMatchObject({
+                    kind: 'polyline-edit',
+                    payload: { after: { properties: { name: 'Saved on dismissal' } } }
+                });
+            } finally {
+                content?.remove();
+                mapStore.setDrawLayer(null);
+                scope.stop();
+            }
+        });
+    }
+
     for (const [factory, buttonId] of [
         [createMobilityLaneLayer, 'mobility-lane'],
         [createCarFreeStreetLayer, 'car-free-street'],
