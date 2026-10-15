@@ -256,8 +256,7 @@ a {
     margin-bottom: 0.75rem;
 }
 
-.feature-name-input-row,
-.feature-name-save-row {
+.feature-name-input-row {
     display: flex;
 }
 
@@ -274,13 +273,6 @@ a {
     border-radius: 0.25rem;
     padding: 0.25rem 0.5rem;
     font-weight: 400;
-}
-
-.feature-name-editor .apply-name-button {
-    border-radius: 0.25rem;
-    background: #166534;
-    color: #fff;
-    padding: 0.3rem 0.65rem;
 }
 
 .feature-popup-groups > strong {

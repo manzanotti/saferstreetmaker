@@ -6,7 +6,7 @@
  * and a direct map.on('draw:created') listener.
  */
 import * as L from 'leaflet';
-import { watch } from 'vue';
+import { nextTick, watch } from 'vue';
 import { useMapStore } from '../../stores/mapStore';
 import { pinia } from '../../stores/index';
 import { setMapCursor, removeMapCursor } from './features/featureCursors';
@@ -30,9 +30,9 @@ export interface PolylineLayerConfig {
     createDrawingTool: (map: L.Map) => { disable(): void };
     /**
      * Called after draw:created fires.
-     * Must add the new feature to geoJsonLayer and return it.
+     * Must add the new feature to geoJsonLayer and return its editor popup.
      */
-    onDrawCreated: (latLngs: L.LatLng[], geoJsonLayer: L.GeoJSON, map: L.Map) => void;
+    onDrawCreated: (latLngs: L.LatLng[], geoJsonLayer: L.GeoJSON, map: L.Map) => L.Popup;
     buildIconEl: () => HTMLElement;
     iconSrc?: string;
 }
@@ -57,6 +57,7 @@ export function createPolylineLayer(
     let selectionMode: 'draw' | 'edit' = 'draw';
     let pendingCursorEvent: L.LeafletMouseEvent | null = null;
     let cursorSyncFrameId: number | null = null;
+    let pendingEditor: L.Popup | null = null;
 
     const buildLayerFeatureCollection = () => {
         const json: any = { type: 'FeatureCollection', features: [] };
@@ -160,7 +161,7 @@ export function createPolylineLayer(
         if (!_selected) {
             return;
         }
-        config.onDrawCreated(e.layer.getLatLngs(), geoJsonLayer, map);
+        const editor = config.onDrawCreated(e.layer.getLatLngs(), geoJsonLayer, map);
         const createdLayers = geoJsonLayer.getLayers() as any[];
         const createdLayer = createdLayers[createdLayers.length - 1];
         const createdFeature = createdLayer?.feature ?? createdLayer?.toGeoJSON?.() ?? null;
@@ -169,9 +170,18 @@ export function createPolylineLayer(
             layerId: config.id,
             payload: createdFeature ?? e.layer.toGeoJSON?.() ?? null
         });
+        pendingEditor = editor;
+        // Leaflet.draw must finish disabling and restarting its handler first.
+        void nextTick(() => {
+            if (_selected && selectionMode === 'draw' && pendingEditor === editor) {
+                pendingEditor = null;
+                map.openPopup(editor);
+            }
+        });
     };
 
     const disableDrawMode = () => {
+        pendingEditor = null;
         _drawingTool?.disable();
         _drawingTool = null;
         map.off('draw:created', handleDrawCreated);

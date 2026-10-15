@@ -1,7 +1,7 @@
 /**
  * Factory for the 5 simple polyline layers:
  * TramLine, BusLane, CarFreeStreet, SchoolStreet, OneWayStreet
- * (no drawing-tool re-init after draw:created)
+ * Drawing repeats until the layer is deselected.
  */
 import * as L from 'leaflet';
 import { createPolylineLayer, type EditablePolylineLayer } from './usePolylineLayer';
@@ -33,7 +33,7 @@ function createSimplePolylineLayer(cfg: SimplePolylineConfig, map: L.Map): IMapL
         historyId?: string,
         name?: string
     ) => {
-        addPolylineToLayer({
+        return addPolylineToLayer({
             points: latLngs,
             geoJsonLayer,
             map,
@@ -66,6 +66,7 @@ function createSimplePolylineLayer(cfg: SimplePolylineConfig, map: L.Map): IMapL
             iconSrc: cfg.iconSrc,
             createDrawingTool(m) {
                 const tool = new L.Draw.Polyline(m, {
+                    repeatMode: true,
                     color: cfg.colour,
                     weight: cfg.weight,
                     opacity: 1,
@@ -75,7 +76,7 @@ function createSimplePolylineLayer(cfg: SimplePolylineConfig, map: L.Map): IMapL
                 return tool;
             },
             onDrawCreated(latLngs, geoJsonLayer) {
-                addLine(latLngs, geoJsonLayer);
+                return addLine(latLngs, geoJsonLayer);
             },
             buildIconEl() {
                 const icon = document.createElement('i');

@@ -304,18 +304,13 @@ describe('MobilityLanes history payloads', () => {
         const popupContent = popup.setContent.mock.calls[0][0] as HTMLElement;
         const nameInput = popupContent.querySelector('.name-editor') as HTMLInputElement;
         const nameInputRow = popupContent.querySelector('.feature-name-input-row');
-        const nameSaveRow = popupContent.querySelector('.feature-name-save-row');
-        const saveNameButton = popupContent.querySelector('.apply-name-button');
-
-        expect(popupContent.querySelector('.feature-name-editor')?.children).toHaveLength(2);
+        expect(popupContent.querySelector('.feature-name-editor')?.children).toHaveLength(1);
         expect(nameInputRow?.contains(nameInput)).toBe(true);
-        expect(nameSaveRow?.contains(saveNameButton)).toBe(true);
+        expect(popupContent.querySelector('.apply-name-button')).toBeNull();
         expect(popupContent.children[1].classList.contains('popup-buttons')).toBe(true);
 
         nameInput.value = 'New name';
-        popupContent
-            .querySelector('.feature-name-editor')
-            ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+        nameInput.dispatchEvent(new Event('blur'));
 
         expect((layer.toGeoJSON() as any).features[0].properties.name).toBe('New name');
         expect(mapStore.lastLayerMutation).toMatchObject({
