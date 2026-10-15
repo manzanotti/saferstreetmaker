@@ -24,6 +24,12 @@ type ExportFormat = 'image' | 'html' | 'url';
 const exportFormat = ref<ExportFormat>('html');
 const errorMessage = ref<string | null>(null);
 const isBusy = computed(() => uiStore.imageExportInProgress);
+const hasSelectedGroupFeatures = computed(
+    () =>
+        selectionStore.isGroupSelection &&
+        selectionStore.selectedGroupId !== null &&
+        selectionStore.selected.length > 0
+);
 const exportValidationError = computed(() =>
     exportFormat.value === 'image' ? getImageExportValidationError(width.value, height.value) : null
 );
@@ -232,7 +238,7 @@ function onClose() {
                     id="image-export-description"
                     class="text-sm text-gray-600"
                 >
-                    <template v-if="selectionStore.isGroupSelection">
+                    <template v-if="hasSelectedGroupFeatures">
                         The selected group is fitted to the PNG.
                     </template>
                     <template v-else>

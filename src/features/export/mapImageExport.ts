@@ -290,11 +290,11 @@ export async function exportMapAsPng(width: number, height: number): Promise<voi
         await waitForExportFrame();
 
         if (isGroupSelection && selectedFeatures.length > 0) {
+            groupViewAdjusted = true;
             map.fitBounds(L.latLngBounds(selectedFeatures.map(({ latLng }) => latLng)), {
                 padding: [50, 50],
                 animate: false
             });
-            groupViewAdjusted = true;
         }
 
         const visibleLayers = getVisibleLegendLayers({
