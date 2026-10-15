@@ -44,26 +44,27 @@ export const useSelectionStore = defineStore('selection', () => {
     }
 
     function deactivate() {
+        // Synchronous membership watchers must see resets as leaving group editing.
+        isGroupSelection.value = false;
+        isPhaseEditing.value = false;
+        selectedGroupId.value = null;
         isActive.value = false;
         selected.value = [];
         lastAreaBounds.value = null;
-        isGroupSelection.value = false;
-        isPhaseEditing.value = false;
-        selectedGroupId.value = null;
     }
 
     function setSelected(markers: SelectedMarker[]) {
-        selected.value = markers;
         isGroupSelection.value = false;
         isPhaseEditing.value = false;
         selectedGroupId.value = null;
+        selected.value = markers;
     }
 
     function clear() {
-        selected.value = [];
-        lastAreaBounds.value = null;
         isGroupSelection.value = false;
         selectedGroupId.value = null;
+        selected.value = [];
+        lastAreaBounds.value = null;
     }
 
     function markGroupSelection(groupId: string) {
