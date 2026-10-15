@@ -44,7 +44,8 @@ test.describe('Layer: Mobility Lane (polyline)', () => {
         const nameInput = page.locator('.leaflet-popup .name-editor');
         await expect(nameInput).toBeVisible();
         await nameInput.fill('Canal route');
-        await page.getByRole('button', { name: 'Save name' }).click();
+        await expect(page.getByRole('button', { name: 'Save name' })).toHaveCount(0);
+        await nameInput.press('Tab');
         await page.waitForTimeout(500);
 
         const features = await getLayerFeatures(page, 'Hello Cleveland', 'MobilityLanes');
@@ -96,8 +97,7 @@ test.describe('Layer: Mobility Lane (polyline)', () => {
         const path = page.locator('.leaflet-overlay-pane path.mobility-lane.leaflet-interactive');
         await hoverSvgPath(page, path);
 
-        const cursor = await getCursorAtPathPoint(path);
-        expect(cursor).toBe('pointer');
+        await expect.poll(() => getCursorAtPathPoint(path)).toBe('pointer');
     });
 
     test('editing a mobility line falls back to a grab cursor away from features', async ({

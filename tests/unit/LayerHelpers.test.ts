@@ -863,7 +863,7 @@ describe('feature popups', () => {
         expect(onCopy).toHaveBeenCalledOnce();
     });
 
-    it('saves an edited feature name and closes the action popup', () => {
+    it('saves an edited feature name on blur without closing the action popup', () => {
         const map = { closePopup: vi.fn() } as any;
         const onRename = vi.fn();
         const popup = buildFeatureActionPopup({
@@ -877,14 +877,37 @@ describe('feature popups', () => {
         const content = getPopupContent(popup);
         const input = content.querySelector('.name-editor') as HTMLInputElement;
         expect(input.value).toBe('Old name');
+        expect(content.querySelector('.apply-name-button')).toBeNull();
         input.value = 'New name';
-
-        (content.querySelector('.feature-name-editor') as HTMLFormElement).dispatchEvent(
-            new Event('submit', { cancelable: true })
-        );
+        input.dispatchEvent(new Event('blur'));
 
         expect(onRename).toHaveBeenCalledWith('New name');
-        expect(map.closePopup).toHaveBeenCalledWith(popup);
+        expect(map.closePopup).not.toHaveBeenCalled();
+    });
+
+    it('submitting the name field blurs it and saves without closing the popup', () => {
+        const map = { closePopup: vi.fn() } as any;
+        const onRename = vi.fn();
+        const popup = buildFeatureActionPopup({
+            map,
+            popupOptions: {},
+            member,
+            onRename,
+            onDelete: vi.fn()
+        }) as any;
+        const content = getPopupContent(popup);
+        document.body.append(content);
+        const input = content.querySelector('.name-editor') as HTMLInputElement;
+        try {
+            input.focus();
+            input.value = 'Keyboard name';
+            content.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
+            expect(document.activeElement).not.toBe(input);
+            expect(onRename).toHaveBeenCalledExactlyOnceWith('Keyboard name');
+            expect(map.closePopup).not.toHaveBeenCalled();
+        } finally {
+            content.remove();
+        }
     });
 
     it('does not build a description popup for an ungrouped feature', () => {

@@ -15,7 +15,7 @@ function addLine(
     historyId?: string,
     name?: string
 ) {
-    addPolylineToLayer({
+    return addPolylineToLayer({
         points: latLngs,
         geoJsonLayer,
         map,
@@ -60,7 +60,7 @@ export function createMobilityLaneLayer(map: L.Map): IMapLayer {
                 return tool;
             },
             onDrawCreated(latLngs, geoJsonLayer, m) {
-                addLine(latLngs, geoJsonLayer, m, () => layer.selectForEdit());
+                return addLine(latLngs, geoJsonLayer, m, () => layer.selectForEdit());
             },
             buildIconEl() {
                 const icon = document.createElement('i');

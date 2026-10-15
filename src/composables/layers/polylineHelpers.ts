@@ -17,11 +17,7 @@ import {
     closeFeatureHoverPopups,
     createFeatureHoverPopupController
 } from './features/featureHoverPopups';
-import {
-    removeMapCursor,
-    setMouseMarkerCursor,
-    setFeatureElementCursor
-} from './features/featureCursors';
+import { removeMapCursor, setFeatureElementCursor } from './features/featureCursors';
 import { buildHistoryId } from './features/featureLookup';
 import { isFeatureEditLayerButtonId } from './features/featureClassification';
 import { buildReadOnlyGroupPopup, getReadOnlyGroupCenter } from './features/readOnlyGroupPopup';
@@ -174,7 +170,7 @@ function buildPolylinePointChanges(beforeCoords: number[][], afterCoords: number
     return pointChanges.length > 0 ? pointChanges : null;
 }
 
-export function addPolylineToLayer(opts: AddPolylineOpts): void {
+export function addPolylineToLayer(opts: AddPolylineOpts): L.Popup {
     const mapStore = useMapStore(pinia);
     const { points, geoJsonLayer, map, layerId, polylineOpts, buttonId } = opts;
     const mutationKind = buttonId === 'ltn-cell' ? 'polygon' : 'polyline';
@@ -270,10 +266,6 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
             }
             return;
         }
-        if (mapStore.activeLayerId === buttonId) {
-            setMouseMarkerCursor('pointer');
-        }
-
         const descriptionPopup = buildFeatureDescriptionPopup(
             { minWidth: 30, keepInView: true },
             { layerId, historyId },
@@ -294,9 +286,6 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
 
     polyline.on('mouseout', () => {
         setFeatureElementCursor(polyline, null);
-        if (mapStore.activeLayerId === buttonId) {
-            setMouseMarkerCursor(null);
-        }
         hoverPopupController.scheduleClose();
     });
 
@@ -325,10 +314,12 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
         onCreateNewGroup: createGroupFromFeature
     });
 
+    let editingExistingFeature = false;
     popup.on('remove', () => {
-        if (mapStore.activeLayerId === buttonId) {
+        if (editingExistingFeature && mapStore.activeLayerId === buttonId) {
             mapStore.setDrawLayer(null);
         }
+        editingExistingFeature = false;
     });
 
     polyline.on('click', (e: any) => {
@@ -426,6 +417,7 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
             }
         });
 
+        editingExistingFeature = true;
         opts.selectForEdit();
         removeMapCursor(buttonId);
         e.target.editing.enable();
@@ -434,6 +426,8 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
     });
 
     geoJsonLayer.addLayer(polyline);
+    popup.setLatLng(polyline.getBounds().getCenter());
+    return popup;
 }
 
 /**

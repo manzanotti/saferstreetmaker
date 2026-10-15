@@ -33,7 +33,7 @@ function createSimplePolylineLayer(cfg: SimplePolylineConfig, map: L.Map): IMapL
         historyId?: string,
         name?: string
     ) => {
-        addPolylineToLayer({
+        return addPolylineToLayer({
             points: latLngs,
             geoJsonLayer,
             map,
@@ -76,7 +76,7 @@ function createSimplePolylineLayer(cfg: SimplePolylineConfig, map: L.Map): IMapL
                 return tool;
             },
             onDrawCreated(latLngs, geoJsonLayer) {
-                addLine(latLngs, geoJsonLayer);
+                return addLine(latLngs, geoJsonLayer);
             },
             buildIconEl() {
                 const icon = document.createElement('i');

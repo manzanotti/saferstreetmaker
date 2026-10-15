@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { getLayerFeatureCount } from './layerMapTestHelpers';
 import { setupFreshPage } from './layerTestSetup';
+import { getLayerFeatures } from '../indexedDbHelpers';
 
 const polylineLayers = [
     { buttonId: 'mobility-lane', layerId: 'MobilityLanes' },
@@ -48,6 +49,23 @@ test.describe('Polyline creation repeats while the tool remains selected', () =>
                     await expect(button).toHaveAttribute('aria-pressed', 'true');
                     await expect(page.locator('.leaflet-mouse-marker')).toHaveCount(1);
                     await expect(page.locator('#map')).toHaveCSS('cursor', 'crosshair');
+                    const editor = page.locator('.leaflet-popup.feature-popup-editor');
+                    await expect(editor).toBeVisible();
+                    await expect(editor.getByRole('button', { name: 'Save name' })).toHaveCount(0);
+                    const nameInput = editor.getByRole('textbox', { name: 'Name', exact: true });
+                    await nameInput.fill(`Line ${index + 1}`);
+                    await nameInput.press(completion === 'last-point click' ? 'Tab' : 'Enter');
+                    await expect(editor).toBeVisible();
+                    await expect
+                        .poll(async () => {
+                            const features = await getLayerFeatures(
+                                page,
+                                'Hello Cleveland',
+                                layerId
+                            );
+                            return features.map((feature) => feature.properties?.name);
+                        })
+                        .toEqual(Array.from({ length: index + 1 }, (_, i) => `Line ${i + 1}`));
                 }
 
                 await button.click();

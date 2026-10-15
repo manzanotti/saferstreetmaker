@@ -183,6 +183,10 @@ class Polyline {
         return this.latlngs;
     }
 
+    getBounds() {
+        return new LatLngBounds(this.latlngs);
+    }
+
     /** leaflet-arrowheads extension used by OneWayStreetLayer */
     arrowheads(_opts?: any) {
         return this;

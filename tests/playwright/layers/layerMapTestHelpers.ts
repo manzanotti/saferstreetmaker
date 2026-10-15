@@ -52,7 +52,7 @@ export async function waitForMapReady(page: Page) {
     });
 }
 
-/** Draw a two-vertex polyline by clicking twice then double-clicking to finish.
+/** Draw a polyline, then dismiss its editor to leave the map unobstructed.
  * Delays between clicks are required: rapid CDP events confuse leaflet.draw's
  * internal state machine, preventing draw:created from firing.
  */
@@ -71,6 +71,8 @@ export async function drawPolyline(page: Page) {
     await page.waitForTimeout(200);
     await page.mouse.dblclick(cx + 60, cy + 60);
     await page.waitForTimeout(500); // wait for the debounced save (draw:created → markLayerUpdated → saveMap)
+    await page.locator('.leaflet-popup.feature-popup-editor .leaflet-popup-close-button').click();
+    await expect(page.locator('.leaflet-popup.feature-popup-editor')).toHaveCount(0);
 }
 
 /** Draw a three-vertex polygon by clicking three times then double-clicking to finish. */

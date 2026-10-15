@@ -127,19 +127,11 @@ export function setFeatureActionPopupContent(
         nameLabel.appendChild(nameInput);
         nameInputRow.appendChild(nameLabel);
 
-        const nameSaveRow = document.createElement('div');
-        nameSaveRow.classList.add('feature-name-save-row');
-        const saveNameButton = document.createElement('button');
-        saveNameButton.type = 'submit';
-        saveNameButton.classList.add('apply-name-button');
-        saveNameButton.textContent = 'Save name';
-        nameSaveRow.appendChild(saveNameButton);
-
-        nameForm.append(nameInputRow, nameSaveRow);
+        nameForm.append(nameInputRow);
+        nameInput.addEventListener('blur', () => opts.onRename?.(nameInput.value));
         nameForm.addEventListener('submit', (event) => {
             event.preventDefault();
-            opts.onRename?.(nameInput.value);
-            opts.map.closePopup(popup);
+            nameInput.blur();
         });
         content.prepend(nameForm, controlList);
     } else {
