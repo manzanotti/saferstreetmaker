@@ -68,9 +68,31 @@ test.describe('Polyline creation repeats while the tool remains selected', () =>
                         .toEqual(Array.from({ length: index + 1 }, (_, i) => `Line ${i + 1}`));
                 }
 
-                await button.click();
+                const finalName = 'Saved when leaving the tool';
+                await page
+                    .locator('.leaflet-popup.feature-popup-editor .name-editor')
+                    .fill(finalName);
+                if (completion === 'last-point click') {
+                    await button.click();
+                } else {
+                    await page.locator('#modal-filter-button').click();
+                    await expect(page.locator('#modal-filter-button')).toHaveAttribute(
+                        'aria-pressed',
+                        'true'
+                    );
+                }
+                await expect(page.locator('.leaflet-popup.feature-popup-editor')).toHaveCount(0);
+                await expect
+                    .poll(async () => {
+                        const features = await getLayerFeatures(page, 'Hello Cleveland', layerId);
+                        return features.map((feature) => feature.properties?.name);
+                    })
+                    .toEqual(['Line 1', finalName]);
                 await expect(button).toHaveAttribute('aria-pressed', 'false');
                 await expect(page.locator('.leaflet-mouse-marker')).toHaveCount(0);
+                if (completion === 'double-click') {
+                    await page.locator('#modal-filter-button').click();
+                }
                 await page.mouse.click(centerX, centerY);
                 await expect(page.locator('.leaflet-editing-icon')).toHaveCount(0);
                 expect(await getLayerFeatureCount(page, layerId)).toBe(2);

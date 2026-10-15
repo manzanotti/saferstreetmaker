@@ -58,6 +58,7 @@ export function createPolylineLayer(
     let pendingCursorEvent: L.LeafletMouseEvent | null = null;
     let cursorSyncFrameId: number | null = null;
     let pendingEditor: L.Popup | null = null;
+    let openedEditor: L.Popup | null = null;
 
     const buildLayerFeatureCollection = () => {
         const json: any = { type: 'FeatureCollection', features: [] };
@@ -175,6 +176,12 @@ export function createPolylineLayer(
         void nextTick(() => {
             if (_selected && selectionMode === 'draw' && pendingEditor === editor) {
                 pendingEditor = null;
+                openedEditor = editor;
+                editor.on('remove', () => {
+                    if (openedEditor === editor) {
+                        openedEditor = null;
+                    }
+                });
                 map.openPopup(editor);
             }
         });
@@ -202,6 +209,12 @@ export function createPolylineLayer(
             } else if (!shouldBeSelected && _selected) {
                 _selected = false;
                 disableDrawMode();
+                if (openedEditor) {
+                    const editor = openedEditor;
+                    openedEditor = null;
+                    editor.getElement()?.querySelector<HTMLInputElement>('.name-editor')?.blur();
+                    map.closePopup(editor);
+                }
                 geoJsonLayer.eachLayer((l: any) => l.editing?.disable());
                 map.off('mousemove', syncMouseMarkerCursor as L.LeafletEventHandlerFn);
                 if (cursorSyncFrameId !== null) {
