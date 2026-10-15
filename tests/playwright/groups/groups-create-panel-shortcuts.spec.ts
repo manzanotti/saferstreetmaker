@@ -68,6 +68,57 @@ test.describe('Groups — Create group: panel-shortcuts', () => {
         await expect(page.getByText('No groups yet')).not.toBeVisible();
     });
 
+    for (const focusTarget of ['dialog', 'map', 'groups panel'] as const) {
+        test(`Escape from the ${focusTarget} preserves selected group members`, async ({
+            page
+        }) => {
+            await placeTwoModalFilters(page);
+            await selectBothFilters(page);
+            await createGroup(page, 'Escape Safety Group');
+            await openGroupsPanel(page);
+            await openGroupDetails(page, 'Escape Safety Group');
+            const dialog = page.getByRole('dialog', { name: 'Group details' });
+            await expect(dialog.getByText('(2 features)', { exact: true })).toBeVisible();
+            const originalMembers = await page.evaluate(() => {
+                const app = (document.getElementById('app') as any).__vue_app__;
+                return app.config.globalProperties.$pinia._s.get('group').groups[0].members;
+            });
+
+            if (focusTarget === 'map') {
+                await page.locator('#map').focus();
+            } else if (focusTarget === 'groups panel') {
+                await openGroupsPanel(page);
+                await expect(dialog).not.toBeVisible();
+            } else {
+                await dialog.getByRole('button', { name: 'Close group details' }).focus();
+            }
+            await page.keyboard.press('Escape');
+
+            const groupState = await page.evaluate(() => {
+                const app = (document.getElementById('app') as any).__vue_app__;
+                const pinia = app.config.globalProperties.$pinia;
+                const store = pinia._s.get('group');
+                return {
+                    members: store.groups[0].members,
+                    pendingEmptyGroupDeletionId: store.pendingEmptyGroupDeletionId
+                };
+            });
+            expect(groupState.members).toEqual(originalMembers);
+            expect(groupState.members).toHaveLength(2);
+            expect(groupState.pendingEmptyGroupDeletionId).toBeNull();
+            await expect(page.getByText('Escape Safety Group is now empty.')).toHaveCount(0);
+            await expect(
+                page.locator('.leaflet-filters-pane path.modal-filter-marker')
+            ).toHaveCount(2);
+
+            if (await dialog.isVisible()) {
+                await dialog.getByRole('button', { name: 'Close group details' }).click();
+            }
+            await openGroupDetails(page, 'Escape Safety Group');
+            await expect(dialog.getByText('(2 features)', { exact: true })).toBeVisible();
+        });
+    }
+
     test('Escape closes the keyboard-opened panel and keeps shortcuts available', async ({
         page
     }) => {
