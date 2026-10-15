@@ -124,7 +124,8 @@ test.describe('Layer: Mobility Lane (polyline)', () => {
         const path = page.locator('.leaflet-overlay-pane path.mobility-lane.leaflet-interactive');
         await clickSvgPath(page, path);
 
-        await expect(page.locator('.leaflet-editing-icon')).toHaveCount(1);
+        await expect(page.locator('.leaflet-mouse-marker')).toHaveCount(0);
+        await expect(page.locator('.leaflet-editing-icon')).toHaveCount(5);
     });
 
     test('clicking an existing mobility line while draw mode is active switches into edit mode', async ({

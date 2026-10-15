@@ -12,7 +12,6 @@ function addLine(
     geoJsonLayer: L.GeoJSON,
     map: L.Map,
     selectForEdit: () => void,
-    reinit?: (m: L.Map) => void,
     historyId?: string,
     name?: string
 ) {
@@ -31,7 +30,6 @@ function addLine(
         buttonId: 'mobility-lane',
         selectForEdit,
         popupKeepInView: false,
-        reinitDrawing: reinit,
         historyId,
         name,
         iconSrc: new URL('../../img/bicycle-svgrepo-com.svg', import.meta.url).href
@@ -39,18 +37,7 @@ function addLine(
 }
 
 export function createMobilityLaneLayer(map: L.Map): IMapLayer {
-    let _drawingTool: any = null;
     let layer: EditablePolylineLayer;
-
-    const reinit = (m: L.Map) => {
-        _drawingTool = new L.Draw.Polyline(m, {
-            color: COLOUR,
-            weight: WEIGHT,
-            opacity: 1,
-            smoothFactor: 1
-        });
-        _drawingTool.enable();
-    };
 
     layer = createPolylineLayer(
         {
@@ -62,17 +49,18 @@ export function createMobilityLaneLayer(map: L.Map): IMapLayer {
             toggleTitle: 'Toggle mobility lanes from the map',
             iconSrc: new URL('../../img/bicycle-svgrepo-com.svg', import.meta.url).href,
             createDrawingTool(m) {
-                _drawingTool = new L.Draw.Polyline(m, {
+                const tool = new L.Draw.Polyline(m, {
+                    repeatMode: true,
                     color: COLOUR,
                     weight: WEIGHT,
                     opacity: 1,
                     smoothFactor: 1
                 });
-                _drawingTool.enable();
-                return _drawingTool;
+                tool.enable();
+                return tool;
             },
             onDrawCreated(latLngs, geoJsonLayer, m) {
-                addLine(latLngs, geoJsonLayer, m, () => layer.selectForEdit(), reinit);
+                addLine(latLngs, geoJsonLayer, m, () => layer.selectForEdit());
             },
             buildIconEl() {
                 const icon = document.createElement('i');
@@ -85,15 +73,7 @@ export function createMobilityLaneLayer(map: L.Map): IMapLayer {
 
     layer.loadFromGeoJSON = (geoJson: any) => {
         loadPolylineGeoJSON(geoJson, (pts, historyId, name) =>
-            addLine(
-                pts,
-                layer.getLayer(),
-                map,
-                () => layer.selectForEdit(),
-                undefined,
-                historyId,
-                name
-            )
+            addLine(pts, layer.getLayer(), map, () => layer.selectForEdit(), historyId, name)
         );
     };
     layer.loadFeature = (feature: any, historyId?: string) => {
@@ -109,7 +89,6 @@ export function createMobilityLaneLayer(map: L.Map): IMapLayer {
             layer.getLayer(),
             map,
             () => layer.selectForEdit(),
-            undefined,
             id,
             feature.properties?.name
         );

@@ -1,6 +1,6 @@
 /**
  * Shared helper for polyline layers that need a rich addPolyline() implementation:
- * edit-on-click, popup with delete button, optional re-init of drawing tool.
+ * edit-on-click and popup with delete button.
  *
  * Note on DOM usage: popup content is built with `document.createElement` because
  * Leaflet controls the popup DOM lifecycle and it lives outside Vue's virtual DOM.
@@ -63,8 +63,6 @@ export interface AddPolylineOpts {
      * leaflet.draw create mode for the polyline layer.
      */
     selectForEdit: () => void;
-    /** If true, re-create and enable the drawing tool after draw:created. */
-    reinitDrawing?: (map: L.Map) => void;
     popupKeepInView?: boolean;
     /** Extra config for arrowheads plugin */
     arrowheads?: object;
@@ -436,10 +434,6 @@ export function addPolylineToLayer(opts: AddPolylineOpts): void {
     });
 
     geoJsonLayer.addLayer(polyline);
-
-    if (opts.reinitDrawing) {
-        opts.reinitDrawing(map);
-    }
 }
 
 /**
