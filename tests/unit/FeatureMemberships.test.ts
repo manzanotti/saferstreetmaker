@@ -58,6 +58,29 @@ describe('findFeatureMemberships', () => {
 });
 
 describe('findFeatureGroupMemberships', () => {
+    it('keeps an unassigned feature in its group without inventing a version membership', () => {
+        const member = { layerId: 'ModalFilters', historyId: 'unassigned' };
+        const groups = [
+            {
+                id: 'g1',
+                name: 'Group',
+                unassignedMembers: [member],
+                versions: [{ id: 'v1', name: 'First', members: [] }]
+            }
+        ];
+        const index = createFeatureMembershipIndex(groups);
+        const expected = [
+            {
+                groupId: 'g1',
+                groupName: 'Group',
+                versionCount: 1,
+                versions: []
+            }
+        ];
+        expect(findFeatureGroupMemberships(groups, member)).toEqual(expected);
+        expect(findFeatureGroupMembershipsInIndex(index, member)).toEqual(expected);
+        expect(findFeatureMembershipsInIndex(index, {}, member)).toEqual([]);
+    });
     it('returns one summary per group with all containing versions', () => {
         const member = { layerId: 'MobilityLanes', historyId: 'line-1' };
 

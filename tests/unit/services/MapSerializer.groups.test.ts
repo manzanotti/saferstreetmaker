@@ -75,6 +75,22 @@ describe('MapSerializer — groups', () => {
     const serializer = new MapSerializer();
     const layers = new Map([['ModalFilters', makeLayer('ModalFilters')]]);
 
+    it('preserves unassigned members in JSON, compact storage, and sharing hashes', () => {
+        const group: Group = {
+            ...phasedGroup,
+            unassignedMembers: [{ layerId: 'ModalFilters', historyId: 'unassigned' }]
+        };
+        const json = serializer.toJSON(makeSettings(), layers, [group]);
+        expect(json.groups?.[0]).toEqual(group);
+        const compact = serializer.toCompactStoredMap(makeSettings(), layers, [group]);
+        expect(serializer.fromCompactStoredMap(compact).groups?.[0]).toEqual(group);
+        const hash = serializer.toEncodedHash(makeSettings(), layers, [group]);
+        expect(serializer.fromEncodedHash(hash)?.groups?.[0]).toEqual(group);
+        expect(
+            structuredClone(serializer.toJSON(makeSettings(), layers, reactive([group]))).groups
+        ).toEqual([group]);
+    });
+
     // ── toJSON ────────────────────────────────────────────────────────────────
 
     it('toJSON includes groups when provided', () => {

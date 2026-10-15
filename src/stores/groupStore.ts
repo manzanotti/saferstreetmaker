@@ -9,8 +9,11 @@ import type {
 } from '../models/Group';
 import {
     getActiveVersion,
+    getAllGroupMembers,
     getDefaultVersionId,
     getGroupVersions,
+    getUnassignedGroupMembers,
+    getVisibleGroupMembers,
     hasVersionName,
     memberKey,
     reconcilePhases
@@ -56,7 +59,7 @@ export const useGroupStore = defineStore('group', () => {
             const group = groups.value.find((item) => item.id === soloGroupId.value);
             return (
                 !!group &&
-                getActiveVersion(group, activeVersionIds.value[group.id]).members.length > 0
+                getVisibleGroupMembers(group, activeVersionIds.value[group.id]).length > 0
             );
         },
         (valid) => {
@@ -158,10 +161,7 @@ export const useGroupStore = defineStore('group', () => {
             const pendingGroup = projectedGroups.find(
                 (group) => group.id === pendingEmptyGroupDeletionId.value
             );
-            if (
-                !pendingGroup ||
-                getActiveVersion(pendingGroup, nextActive[pendingGroup.id]).members.length > 0
-            ) {
+            if (!pendingGroup || getAllGroupMembers(pendingGroup).length > 0) {
                 pendingEmptyGroupDeletionId.value = null;
             }
         }
@@ -267,6 +267,7 @@ export const useGroupStore = defineStore('group', () => {
             const activeVersion = getActiveVersion(g, activeVersionIds.value[id]);
             const existingKeys = new Set(activeVersion.members.map(memberKey));
             const toAdd = uniqueMembers(members).filter((m) => !existingKeys.has(memberKey(m)));
+            const addedKeys = new Set(members.map(memberKey));
             return {
                 ...g,
                 versions: getGroupVersions(g).map((version) =>
@@ -274,7 +275,14 @@ export const useGroupStore = defineStore('group', () => {
                         ? { ...version, members: [...version.members, ...toAdd] }
                         : version
                 ),
-                members: [...activeVersion.members, ...toAdd]
+                members: [...activeVersion.members, ...toAdd],
+                ...(g.unassignedMembers
+                    ? {
+                          unassignedMembers: g.unassignedMembers.filter(
+                              (member) => !addedKeys.has(memberKey(member))
+                          )
+                      }
+                    : {})
             };
         });
     }
@@ -287,6 +295,7 @@ export const useGroupStore = defineStore('group', () => {
 
         const activeVersion = getActiveVersion(group, activeVersionIds.value[id]);
         const nextMembers = uniqueMembers(members).map((member) => ({ ...member }));
+        const nextMemberKeys = new Set(nextMembers.map(memberKey));
         groups.value = groups.value.map((item) =>
             item.id === id
                 ? {
@@ -296,7 +305,14 @@ export const useGroupStore = defineStore('group', () => {
                               ? withMembers(version, nextMembers)
                               : version
                       ),
-                      members: [...nextMembers]
+                      members: [...nextMembers],
+                      ...(item.unassignedMembers
+                          ? {
+                                unassignedMembers: item.unassignedMembers.filter(
+                                    (member) => !nextMemberKeys.has(memberKey(member))
+                                )
+                            }
+                          : {})
                   }
                 : item
         );
@@ -361,7 +377,8 @@ export const useGroupStore = defineStore('group', () => {
     function removeMemberFromVersions(
         groupId: string,
         versionIds: string[],
-        member: GroupMember
+        member: GroupMember,
+        includeUnassigned = false
     ): boolean {
         const group = groups.value.find((item) => item.id === groupId);
         if (!group) {
@@ -371,6 +388,10 @@ export const useGroupStore = defineStore('group', () => {
         const targetKey = memberKey(member);
         const versions = getGroupVersions(group);
         if (
+            !(
+                includeUnassigned &&
+                group.unassignedMembers?.some((item) => memberKey(item) === targetKey)
+            ) &&
             !versions.some(
                 (version) =>
                     targetVersionIds.has(version.id) &&
@@ -394,6 +415,13 @@ export const useGroupStore = defineStore('group', () => {
                 ? {
                       ...item,
                       versions: nextVersions,
+                      ...(includeUnassigned && item.unassignedMembers
+                          ? {
+                                unassignedMembers: item.unassignedMembers.filter(
+                                    (member) => memberKey(member) !== targetKey
+                                )
+                            }
+                          : {}),
                       members: [
                           ...(nextVersions.find((version) => version.id === activeVersionId)
                               ?.members ?? [])
@@ -445,11 +473,19 @@ export const useGroupStore = defineStore('group', () => {
             return false;
         }
         const defaultVersionId = getDefaultVersionId(group);
+        const assignedKeys = new Set(version.members.map(memberKey));
         groups.value = groups.value.map((item) =>
             item.id === groupId
                 ? {
                       ...item,
                       versions: [...getGroupVersions(item), withMembers(version, version.members)],
+                      ...(item.unassignedMembers
+                          ? {
+                                unassignedMembers: getUnassignedGroupMembers(item).filter(
+                                    (member) => !assignedKeys.has(memberKey(member))
+                                )
+                            }
+                          : {}),
                       defaultVersionId
                   }
                 : item
@@ -487,7 +523,11 @@ export const useGroupStore = defineStore('group', () => {
         return true;
     }
 
-    function removeVersion(groupId: string, versionId: string): GroupVersion | null {
+    function removeVersion(
+        groupId: string,
+        versionId: string,
+        keepMembers = false
+    ): GroupVersion | null {
         const group = groups.value.find((item) => item.id === groupId);
         if (!group) {
             return null;
@@ -497,6 +537,15 @@ export const useGroupStore = defineStore('group', () => {
             return null;
         }
         const remaining = versions.filter((version) => version.id !== versionId);
+        const removed = versions.find((version) => version.id === versionId)!;
+        const unassignedMembers = getUnassignedGroupMembers({
+            ...group,
+            versions: remaining,
+            unassignedMembers: [
+                ...(group.unassignedMembers ?? []),
+                ...(keepMembers ? removed.members : [])
+            ]
+        });
         const currentDefault = getDefaultVersionId(group);
         const nextDefault = currentDefault === versionId ? remaining[0].id : currentDefault;
         groups.value = groups.value.map((item) =>
@@ -504,6 +553,7 @@ export const useGroupStore = defineStore('group', () => {
                 ? {
                       ...item,
                       versions: remaining,
+                      ...(keepMembers || item.unassignedMembers ? { unassignedMembers } : {}),
                       defaultVersionId: nextDefault,
                       members:
                           activeVersionIds.value[groupId] === versionId
@@ -600,7 +650,7 @@ export const useGroupStore = defineStore('group', () => {
         }
         if (
             hiddenGroupIds.value.has(id) &&
-            getActiveVersion(group, activeVersionIds.value[id]).members.length > 0
+            getVisibleGroupMembers(group, activeVersionIds.value[id]).length > 0
         ) {
             const next = new Set(hiddenGroupIds.value);
             next.delete(id);

@@ -1,5 +1,10 @@
 import type { Group, GroupMember } from '../../models/Group';
-import { getGroupVersions, memberKey } from './groupVersions';
+import {
+    getAllGroupMembers,
+    getGroupVersions,
+    getUnassignedGroupMembers,
+    memberKey
+} from './groupVersions';
 
 export interface FeatureMembershipLocation {
     groupId: string;
@@ -25,6 +30,9 @@ export function createFeatureMembershipIndex(groups: Group[]): FeatureMembership
     for (const group of groups) {
         const versions = getGroupVersions(group);
         const membershipsByMember = new Map<string, Array<{ id: string; name: string }>>();
+        for (const member of getUnassignedGroupMembers(group)) {
+            membershipsByMember.set(memberKey(member), []);
+        }
         for (const version of versions) {
             const versionMembers = new Set(version.members.map(memberKey));
             for (const key of versionMembers) {
@@ -115,7 +123,7 @@ export function findFeatureGroupMemberships(
             )
             .map((version) => ({ id: version.id, name: version.name }));
 
-        if (containingVersions.length === 0) {
+        if (!getAllGroupMembers(group).some((item) => memberKey(item) === targetKey)) {
             return [];
         }
 

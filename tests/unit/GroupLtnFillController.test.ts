@@ -30,6 +30,30 @@ function makeMarker(historyId: string, svg?: SVGSVGElement) {
 }
 
 describe('GroupLtnFillController', () => {
+    it('retains the group colour for unassigned cells after their version is removed', () => {
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        const marker = makeMarker('cell-1', svg);
+        const controller = new GroupLtnFillController({
+            getGroups: () => [
+                {
+                    id: 'g1',
+                    name: 'Group',
+                    color: '#00aa00',
+                    versions: [{ id: 'v1', name: 'First', members: [] }],
+                    unassignedMembers: [{ layerId: 'LtnCells', historyId: 'cell-1' }]
+                }
+            ],
+            getHiddenGroupIds: () => new Set(),
+            getActiveVersionIds: () => ({}),
+            getLayer: () =>
+                ({
+                    eachLayer: (callback: (layer: unknown) => void) => callback(marker)
+                }) as unknown as L.LayerGroup
+        });
+        controller.recompute();
+        expect(marker.options.fillColor).toBe('#00aa00');
+        expect(marker.getElement().getAttribute('stroke')).toBe('#00aa00');
+    });
     it('restores shared-cell stripes after isolation ends', () => {
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         const marker = makeMarker('cell-1', svg);

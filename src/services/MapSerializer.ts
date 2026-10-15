@@ -112,6 +112,9 @@ function serializeGroup(group: Group): Group {
         ...(description ? { description } : {}),
         ...(group.color ? { color: group.color } : {}),
         defaultVersionId: group.defaultVersionId,
+        ...(group.unassignedMembers?.length
+            ? { unassignedMembers: group.unassignedMembers.map((member) => ({ ...member })) }
+            : {}),
         versions: group.versions.map((version) => ({
             id: version.id,
             name: version.name,
@@ -258,6 +261,7 @@ export class MapSerializer {
             members.forEach((member) => getHistoryIndex(member.historyId));
         };
         groups?.forEach((group) => {
+            collectGroupIds(group.unassignedMembers ?? []);
             if (group.versions) {
                 group.versions.forEach((version) => {
                     collectGroupIds(version.members);

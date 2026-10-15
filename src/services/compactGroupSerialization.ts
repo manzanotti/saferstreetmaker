@@ -8,6 +8,7 @@ export interface CompactGroup {
     m?: Array<[string, string]>;
     d?: string;
     p?: string;
+    u?: Array<[string, string]>;
     v?: Array<{
         i: string;
         n: string;
@@ -47,6 +48,9 @@ function serializeGroup(group: Group): CompactGroup {
         ...(description ? { p: description } : {}),
         ...(group.color ? { c: group.color } : {}),
         d: group.defaultVersionId,
+        ...(group.unassignedMembers?.length
+            ? { u: serializeMembers(group.unassignedMembers) }
+            : {}),
         v: group.versions.map((version) => ({
             i: version.id,
             n: version.name,
@@ -81,6 +85,7 @@ export function deserializeCompactGroups(groups: CompactGroup[] | undefined): Gr
                   ...(group.p ? { description: group.p } : {}),
                   ...(group.c ? { color: group.c } : {}),
                   defaultVersionId: group.d,
+                  ...(group.u ? { unassignedMembers: deserializeMembers(group.u) } : {}),
                   versions: group.v.map((version) => ({
                       id: version.i,
                       name: version.n,

@@ -25,9 +25,16 @@ test.describe('Groups — Create group: panel-shortcuts', () => {
         await placeTwoModalFilters(page);
         await selectBothFilters(page);
         await createGroup(page, 'Versioned Group');
+        await placeTwoModalFilters(page, 170);
         await openGroupsPanel(page);
         await openGroupDetails(page, 'Versioned Group');
         await createGroupVersion(page, 'Versioned Group', 'Alternative');
+        for (const index of [2, 3]) {
+            await page
+                .locator('.leaflet-filters-pane path.modal-filter-marker')
+                .nth(index)
+                .dispatchEvent('click');
+        }
         await page.getByRole('button', { name: 'Close group details' }).click();
 
         await page.locator('#settings-button').click();
@@ -35,7 +42,7 @@ test.describe('Groups — Create group: panel-shortcuts', () => {
         await page.getByRole('button', { name: 'Save' }).click();
         await page
             .locator('.leaflet-filters-pane path.modal-filter-marker')
-            .first()
+            .last()
             .dispatchEvent('click');
 
         const dialog = page.getByRole('dialog', { name: 'Versioned Group' });

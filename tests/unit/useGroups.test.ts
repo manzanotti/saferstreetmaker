@@ -1018,7 +1018,7 @@ describe('useGroups', () => {
     // ── deleteGroupWithElements ───────────────────────────────────────────────
 
     describe('createGroupVersion()', () => {
-        it('clones the active version features with new history ids', () => {
+        it('starts empty instead of cloning features already assigned to a version', () => {
             const layer = makePointLayer('ModalFilters');
             const sourceMarker = makePointMarker('source-feature');
             layer.getLayer().addLayer(sourceMarker as any);
@@ -1037,19 +1037,74 @@ describe('useGroups', () => {
 
             const created = createGroupVersion('g1', 'Alternative');
             const versions = groupStore.groups[0].versions ?? [];
-            const clonedMembers = versions[1]?.members ?? [];
+            const members = versions[1]?.members ?? [];
 
             expect(created).toBe(true);
             expect(versions).toHaveLength(2);
-            expect(clonedMembers).toHaveLength(1);
-            expect(clonedMembers[0]).toEqual(expect.objectContaining({ layerId: 'ModalFilters' }));
-            expect(clonedMembers[0].historyId).not.toBe('source-feature');
+            expect(members).toEqual([]);
             expect(groupStore.activeVersionIds.g1).toBe(versions[1].id);
+            expect(layer.loadFeature).not.toHaveBeenCalled();
+            expect(layer.getLayer().getLayers()).toHaveLength(1);
+            expect(useSelectionStore(pinia).selectedGroupId).toBe('g1');
+        });
+
+        it('seeds a new version only with unassigned group members without cloning them', () => {
+            const layer = makePointLayer('ModalFilters');
+            layer.getLayer().addLayer(makePointMarker('assigned') as any);
+            layer.getLayer().addLayer(makePointMarker('unassigned') as any);
+            useMapStore(pinia).setLayers([layer]);
+            const groupStore = useGroupStore(pinia);
+            const assigned = { layerId: 'ModalFilters', historyId: 'assigned' };
+            const unassigned = { layerId: 'ModalFilters', historyId: 'unassigned' };
+            groupStore.setGroups([
+                {
+                    id: 'g1',
+                    name: 'Test',
+                    versions: [{ id: 'v1', name: 'First', members: [assigned] }],
+                    unassignedMembers: [unassigned]
+                }
+            ]);
+
+            expect(createGroupVersion('g1', 'Second')).toBe(true);
+            expect(groupStore.groups[0].versions?.map((version) => version.members)).toEqual([
+                [assigned],
+                [unassigned]
+            ]);
+            expect(groupStore.groups[0].unassignedMembers).toEqual([]);
             expect(layer.getLayer().getLayers()).toHaveLength(2);
         });
     });
 
     describe('deleteGroupVersion()', () => {
+        it('keeps deleted-version elements used as unassigned members of another group', () => {
+            const layer = makePointLayer('ModalFilters');
+            const marker = makePointMarker('shared');
+            layer.getLayer().addLayer(marker as any);
+            useMapStore(pinia).setLayers([layer]);
+            const member = { layerId: 'ModalFilters', historyId: 'shared' };
+            const store = useGroupStore(pinia);
+            store.setGroups([
+                {
+                    id: 'g1',
+                    name: 'First',
+                    versions: [
+                        { id: 'v1', name: 'Default', members: [] },
+                        { id: 'v2', name: 'Alternative', members: [member] }
+                    ]
+                },
+                {
+                    id: 'g2',
+                    name: 'Second',
+                    versions: [{ id: 'v3', name: 'Default', members: [] }],
+                    unassignedMembers: [member]
+                }
+            ]);
+            expect(deleteGroupVersion('g1', 'v2', true)).toBe(true);
+            expect(layer.getLayer().getLayers()).toEqual([marker]);
+            expect(store.getFeatureGroupMemberships(member).map((item) => item.groupId)).toEqual([
+                'g2'
+            ]);
+        });
         it('keeps the version features on the map when deleting the version only', () => {
             const layer = makePointLayer('ModalFilters');
             const firstMarker = makePointMarker('first-feature');
@@ -1082,6 +1137,21 @@ describe('useGroups', () => {
             expect(deleteGroupVersion('g1', 'v2')).toBe(true);
             expect(groupStore.groups[0].versions?.map((version) => version.id)).toEqual(['v1']);
             expect(layer.getLayer().getLayers()).toEqual([firstMarker, secondMarker]);
+            expect(groupStore.groups[0].unassignedMembers).toEqual([
+                { layerId: 'ModalFilters', historyId: 'second-feature' }
+            ]);
+            expect(
+                groupStore.getFeatureGroupMemberships({
+                    layerId: 'ModalFilters',
+                    historyId: 'second-feature'
+                })
+            ).toMatchObject([{ groupId: 'g1', groupName: 'Test', versions: [] }]);
+            expect(createGroupVersion('g1', 'Third')).toBe(true);
+            expect(groupStore.getActiveGroupVersion('g1')?.members).toEqual([
+                { layerId: 'ModalFilters', historyId: 'second-feature' }
+            ]);
+            expect(groupStore.groups[0].unassignedMembers).toEqual([]);
+            expect(layer.getLayer().getLayers()).toHaveLength(2);
         });
 
         it('removes unique version features when deleting the version and its elements', () => {
@@ -1116,6 +1186,7 @@ describe('useGroups', () => {
             expect(deleteGroupVersion('g1', 'v2', true)).toBe(true);
             expect(groupStore.groups[0].versions?.map((version) => version.id)).toEqual(['v1']);
             expect(layer.getLayer().getLayers()).toEqual([firstMarker]);
+            expect(groupStore.groups[0].unassignedMembers ?? []).toEqual([]);
         });
 
         it('clears the selected version highlights and selection state', () => {
@@ -1195,6 +1266,30 @@ describe('useGroups', () => {
     });
 
     describe('deleteGroupWithElements()', () => {
+        it('removes unassigned features as well as version members', () => {
+            const layer = makePointLayer('ModalFilters');
+            layer.getLayer().addLayer(makePointMarker('versioned') as any);
+            layer.getLayer().addLayer(makePointMarker('unassigned') as any);
+            useMapStore(pinia).setLayers([layer]);
+            const store = useGroupStore(pinia);
+            store.setGroups([
+                {
+                    id: 'g1',
+                    name: 'Group',
+                    versions: [
+                        {
+                            id: 'v1',
+                            name: 'First',
+                            members: [{ layerId: 'ModalFilters', historyId: 'versioned' }]
+                        }
+                    ],
+                    unassignedMembers: [{ layerId: 'ModalFilters', historyId: 'unassigned' }]
+                }
+            ]);
+            deleteGroupWithElements('g1');
+            expect(layer.getLayer().getLayers()).toEqual([]);
+            expect(store.groups).toEqual([]);
+        });
         it('removes group members from their layers and removes the group', () => {
             const layer = makePointLayer('ModalFilters');
             const marker = makePointMarker('h1');
@@ -1847,6 +1942,28 @@ describe('useGroups', () => {
     // ── pruneDanglingGroupMembers ─────────────────────────────────────────────
 
     describe('pruneDanglingGroupMembers()', () => {
+        it('prunes deleted unassigned features without losing surviving group membership', () => {
+            const layer = makePointLayer('ModalFilters');
+            layer.getLayer().addLayer(makePointMarker('kept') as any);
+            useMapStore(pinia).setLayers([layer]);
+            const store = useGroupStore(pinia);
+            store.setGroups([
+                {
+                    id: 'g1',
+                    name: 'Group',
+                    versions: [{ id: 'v1', name: 'First', members: [] }],
+                    unassignedMembers: [
+                        { layerId: 'ModalFilters', historyId: 'kept' },
+                        { layerId: 'ModalFilters', historyId: 'deleted' }
+                    ]
+                }
+            ]);
+            expect(pruneDanglingGroupMembers()).toBe(true);
+            expect(store.groups[0].unassignedMembers).toEqual([
+                { layerId: 'ModalFilters', historyId: 'kept' }
+            ]);
+            expect(pruneDanglingGroupMembers()).toBe(false);
+        });
         it('removes members whose feature no longer exists on the map', () => {
             const layer = makePointLayer('ModalFilters');
             const marker = makePointMarker('h1');

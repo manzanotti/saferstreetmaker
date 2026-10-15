@@ -7,6 +7,7 @@ export interface CompactUrlGroup {
     c?: string;
     d?: string;
     p?: string;
+    u?: Array<[string, number]>;
     m?: Array<[string, number]>;
     v?: Array<{
         i: string;
@@ -59,6 +60,9 @@ export function encodeUrlGroups(
             ...(description ? { p: description } : {}),
             ...(group.color ? { c: group.color } : {}),
             d: group.defaultVersionId,
+            ...(group.unassignedMembers?.length
+                ? { u: encodeUrlMembers(group.unassignedMembers, getHistoryIndex) }
+                : {}),
             v: group.versions.map((version) => ({
                 i: version.id,
                 n: version.name,
@@ -91,6 +95,7 @@ export function decodeUrlGroups(
                   ...(group.p ? { description: group.p } : {}),
                   ...(group.c ? { color: group.c } : {}),
                   defaultVersionId: group.d,
+                  ...(group.u ? { unassignedMembers: decodeUrlMembers(group.u, historyIds) } : {}),
                   versions: group.v.map((version) => ({
                       id: version.i,
                       name: version.n,

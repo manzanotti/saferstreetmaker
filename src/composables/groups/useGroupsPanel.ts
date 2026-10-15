@@ -1,7 +1,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useGroupStore } from '../../stores/groupStore';
 import { useUiStore } from '../../stores/uiStore';
-import { getActiveVersion, memberKey } from '../../features/groups/groupVersions';
+import { getAllGroupMembers } from '../../features/groups/groupVersions';
 import {
     deleteGroup,
     deleteGroupWithElements,
@@ -17,14 +17,7 @@ export function useGroupsPanel() {
     const pendingEmptyGroupDeletionId = computed(() => groupStore.pendingEmptyGroupDeletionId);
     const memberCountByGroupId = computed<Record<string, number>>(() =>
         Object.fromEntries(
-            groupStore.groups.map((group) => [
-                group.id,
-                new Set(
-                    getActiveVersion(group, groupStore.activeVersionIds[group.id]).members.map(
-                        memberKey
-                    )
-                ).size
-            ])
+            groupStore.groups.map((group) => [group.id, getAllGroupMembers(group).length])
         )
     );
     const allHidden = computed(

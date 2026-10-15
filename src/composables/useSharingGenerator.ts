@@ -5,7 +5,7 @@ import { useMapStore } from '../stores/mapStore';
 import { useGroupStore } from '../stores/groupStore';
 import { useImportedLayerStore } from '../stores/importedLayerStore';
 import { getFileManager } from './useMapManager';
-import { getGroupVersions } from '../features/groups/groupVersions';
+import { getAllGroupMembers, getGroupVersions, memberKey } from '../features/groups/groupVersions';
 import type { Group } from '../models/Group';
 import type { IMapLayer } from './layers/IMapLayer';
 
@@ -87,11 +87,7 @@ export function useSharingGenerator(
     }
 
     function getGroupLayers(group: Group): Map<string, IMapLayer> {
-        const memberKeys = new Set(
-            getGroupVersions(group).flatMap((version) =>
-                version.members.map((member) => `${member.layerId}:${member.historyId}`)
-            )
-        );
+        const memberKeys = new Set(getAllGroupMembers(group).map(memberKey));
         const layers = new Map<string, IMapLayer>();
         mapStore.toLayers().forEach((layer, layerId) => {
             const geoJson = layer.toGeoJSON() as unknown as GeoJSON.FeatureCollection;
