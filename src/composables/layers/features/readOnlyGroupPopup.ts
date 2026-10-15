@@ -1,6 +1,7 @@
 import * as L from 'leaflet';
 import {
-    getActiveVersion,
+    getAllGroupMembers,
+    getVisibleGroupMembers,
     getGroupVersions,
     needsReadOnlyGroupDetails
 } from '../../../features/groups/groupVersions';
@@ -16,10 +17,9 @@ export function getReadOnlyGroupCenter(groupId: string): L.LatLng | null {
         return null;
     }
 
-    const version = getActiveVersion(group, groupStore.activeVersionIds[groupId]);
     const bounds = L.latLngBounds([]);
     const layers = useMapStore(pinia).layers;
-    for (const member of version.members) {
+    for (const member of getVisibleGroupMembers(group, groupStore.activeVersionIds[groupId])) {
         const feature = findLayerFeatureByHistoryId(layers, member.layerId, member.historyId) as
             | (L.Layer & {
                   getBounds?: () => L.LatLngBounds;
@@ -74,11 +74,7 @@ export function buildReadOnlyGroupPopup(
     const summary = document.createElement('div');
     summary.classList.add('group-popup-summary');
     const versions = getGroupVersions(group);
-    const featureCount = new Set(
-        versions.flatMap((version) =>
-            version.members.map((member) => `${member.layerId}:${member.historyId}`)
-        )
-    ).size;
+    const featureCount = getAllGroupMembers(group).length;
     summary.textContent = `${featureCount} feature${featureCount === 1 ? '' : 's'} · ${versions.length} version${versions.length === 1 ? '' : 's'}`;
     content.appendChild(summary);
 

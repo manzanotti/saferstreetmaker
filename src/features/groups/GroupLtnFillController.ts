@@ -1,6 +1,6 @@
 import type * as L from 'leaflet';
 import type { Group } from '../../models/Group';
-import { getActiveVersion } from './groupVersions';
+import { getVisibleGroupMembers } from './groupVersions';
 import { DEFAULT_GROUP_COLOUR, normalizeGroupColour } from './groupColours';
 
 const PATTERN_PREFIX = 'ssm-ltn-stripes-';
@@ -148,8 +148,7 @@ export class GroupLtnFillController {
             if (hiddenGroupIds.has(group.id) || !color) {
                 continue;
             }
-            const activeVersion = getActiveVersion(group, activeVersionIds[group.id]);
-            for (const member of activeVersion.members) {
+            for (const member of getVisibleGroupMembers(group, activeVersionIds[group.id])) {
                 if (member.layerId !== 'LtnCells') {
                     continue;
                 }
