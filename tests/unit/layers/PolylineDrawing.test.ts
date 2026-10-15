@@ -125,6 +125,55 @@ describe('polyline drawing tool lifecycle', () => {
         });
     }
 
+    it('saves a replaced focused editor without clearing ownership of its replacement', async () => {
+        const scope = effectScope();
+        const mapStore = useMapStore(pinia);
+        const map = new L.Map();
+        const popupFactory = vi.spyOn(L, 'popup');
+        const closePopup = vi.spyOn(map, 'closePopup');
+        let content: HTMLElement | null = null;
+        try {
+            scope.run(() => createMobilityLaneLayer(map));
+            mapStore.setDrawLayer('mobility-lane');
+            const points = [new L.LatLng(52.5, -1.9), new L.LatLng(52.6, -1.8)];
+            map.fire('draw:created', { layer: new L.Polyline(points) });
+            await nextTick();
+            const firstEditor = popupFactory.mock.results[0].value;
+            const editorContent = firstEditor.setContent.mock.calls[0][0];
+            if (!(editorContent instanceof HTMLElement)) {
+                throw new Error('Expected polyline editor content');
+            }
+            content = editorContent;
+            document.body.append(content);
+            vi.spyOn(firstEditor, 'getElement').mockReturnValue(content);
+            const input = content.querySelector<HTMLInputElement>('.name-editor');
+            if (!input) {
+                throw new Error('Expected polyline name input');
+            }
+            input.focus();
+            input.value = 'Saved on replacement';
+            vi.spyOn(map, 'openPopup').mockImplementation(() => {
+                editorContent.remove();
+                firstEditor.fire('remove');
+                return map;
+            });
+
+            map.fire('draw:created', { layer: new L.Polyline(points) });
+            await nextTick();
+            expect(mapStore.lastLayerMutation).toMatchObject({
+                kind: 'polyline-edit',
+                payload: { after: { properties: { name: 'Saved on replacement' } } }
+            });
+            const secondEditor = popupFactory.mock.results[1].value;
+            mapStore.setDrawLayer(null);
+            expect(closePopup).toHaveBeenCalledExactlyOnceWith(secondEditor);
+        } finally {
+            content?.remove();
+            mapStore.setDrawLayer(null);
+            scope.stop();
+        }
+    });
+
     for (const dismissal of ['deselection', 'removal', 'detached removal'] as const) {
         it(`saves a focused name on editor ${dismissal}`, async () => {
             const scope = effectScope();

@@ -12,7 +12,7 @@ const polylineLayers = [
     { buttonId: 'bus-lane', layerId: 'BusLanes' }
 ];
 
-test.describe('Polyline creation names survive Escape without popup fading', () => {
+test.describe('Polyline creation names survive removal without native blur or popup fading', () => {
     test.beforeEach(async ({ page }) => {
         await page.route('**/leaflet@1.9.3/dist/leaflet.min.js', async (route) => {
             const response = await route.fetch();
@@ -25,53 +25,93 @@ test.describe('Polyline creation names survive Escape without popup fading', () 
     setupFreshPage();
 
     for (const { buttonId, layerId } of polylineLayers) {
-        test(`${layerId} saves a focused name when Escape closes its creation editor`, async ({
-            page
-        }) => {
-            if (buttonId === 'bus-lane') {
-                await page.locator('#tram-line-button').click({ button: 'right' });
-            }
-            const button = page.locator(`#${buttonId}-button`);
-            await button.click();
-            const mapBox = await page.locator('#map').boundingBox();
-            if (!mapBox) {
-                throw new Error('Map bounding box not found');
-            }
-            const centerX = mapBox.x + mapBox.width / 2;
-            const centerY = mapBox.y + mapBox.height / 2;
-            await page.mouse.click(centerX - 100, centerY);
-            await page.waitForTimeout(200);
-            await page.mouse.click(centerX + 100, centerY);
-            await page.waitForTimeout(200);
-            await page.mouse.click(centerX + 100, centerY);
+        for (const dismissal of ['Escape', 'replacement'] as const) {
+            test(`${layerId} saves a focused name on editor ${dismissal}`, async ({ page }) => {
+                if (buttonId === 'bus-lane') {
+                    await page.locator('#tram-line-button').click({ button: 'right' });
+                }
+                const button = page.locator(`#${buttonId}-button`);
+                await button.click();
+                const mapBox = await page.locator('#map').boundingBox();
+                if (!mapBox) {
+                    throw new Error('Map bounding box not found');
+                }
+                const centerX = mapBox.x + mapBox.width / 2;
+                const centerY = mapBox.y + mapBox.height / 2;
+                await page.mouse.click(centerX - 100, centerY);
+                await page.waitForTimeout(200);
+                await page.mouse.click(centerX + 100, centerY);
+                await page.waitForTimeout(200);
+                await page.mouse.click(centerX + 100, centerY);
 
-            const editor = page.locator('.leaflet-popup.feature-popup-editor');
-            const nameInput = editor.getByRole('textbox', { name: 'Name', exact: true });
-            await nameInput.fill('Saved on Escape');
-            await expect(nameInput).toBeFocused();
-            await nameInput.evaluate((input) => {
-                // Model removal paths that do not emit native blur.
-                input.addEventListener(
-                    'blur',
-                    (event) => {
-                        if (event.isTrusted) {
-                            event.stopImmediatePropagation();
+                const editor = page.locator('.leaflet-popup.feature-popup-editor');
+                const nameInput = editor.getByRole('textbox', { name: 'Name', exact: true });
+                const pendingName = `Saved on ${dismissal}`;
+                await nameInput.fill(pendingName);
+                await expect(nameInput).toBeFocused();
+                await nameInput.evaluate((input) => {
+                    // Model removal paths that do not emit native blur.
+                    input.addEventListener(
+                        'blur',
+                        (event) => {
+                            if (event.isTrusted) {
+                                event.stopImmediatePropagation();
+                            }
+                        },
+                        { capture: true }
+                    );
+                });
+                if (dismissal === 'Escape') {
+                    await nameInput.press('Escape');
+                    await expect(editor).toHaveCount(0);
+                } else {
+                    await page.evaluate(() => {
+                        const root = document.getElementById('app') as
+                            | (HTMLElement & {
+                                  __vue_app__?: {
+                                      config: {
+                                          globalProperties: {
+                                              $pinia: {
+                                                  _s: Map<
+                                                      string,
+                                                      { map: import('leaflet').Map | null }
+                                                  >;
+                                              };
+                                          };
+                                      };
+                                  };
+                              })
+                            | null;
+                        const map =
+                            root?.__vue_app__?.config.globalProperties.$pinia._s.get('map')?.map;
+                        if (!map) {
+                            throw new Error('Expected initialized map store');
                         }
-                    },
-                    { capture: true }
-                );
+                        const leaflet = (window as Window & { L: typeof import('leaflet') }).L;
+                        const center = map.getCenter();
+                        map.fire('draw:created', {
+                            layer: leaflet.polyline([center, center.toBounds(100).getNorthEast()])
+                        });
+                    });
+                    await expect(editor).toBeVisible();
+                    await expect(nameInput).toHaveValue('');
+                }
+                await expect
+                    .poll(async () => {
+                        const features = await getLayerFeatures(page, 'Hello Cleveland', layerId);
+                        return features.map((feature) => feature.properties?.name);
+                    })
+                    .toEqual(dismissal === 'Escape' ? [pendingName] : [pendingName, '']);
+                if (dismissal === 'replacement') {
+                    await expect(button).toHaveAttribute('aria-pressed', 'true');
+                    await expect(page.locator('.leaflet-mouse-marker')).toHaveCount(1);
+                    await button.click();
+                    await expect(editor).toHaveCount(0);
+                }
+                await expect(button).toHaveAttribute('aria-pressed', 'false');
+                await expect(page.locator('.leaflet-mouse-marker')).toHaveCount(0);
             });
-            await nameInput.press('Escape');
-            await expect(editor).toHaveCount(0);
-            await expect
-                .poll(async () => {
-                    const features = await getLayerFeatures(page, 'Hello Cleveland', layerId);
-                    return features.map((feature) => feature.properties?.name);
-                })
-                .toEqual(['Saved on Escape']);
-            await expect(button).toHaveAttribute('aria-pressed', 'false');
-            await expect(page.locator('.leaflet-mouse-marker')).toHaveCount(0);
-        });
+        }
     }
 });
 

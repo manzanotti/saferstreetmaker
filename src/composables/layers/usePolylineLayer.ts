@@ -178,12 +178,12 @@ export function createPolylineLayer(
                 pendingEditor = null;
                 openedEditor = editor;
                 editor.on('remove', () => {
+                    // Removed inputs may no longer emit a native blur.
+                    editor
+                        .getElement()
+                        ?.querySelector<HTMLInputElement>('.name-editor')
+                        ?.dispatchEvent(new FocusEvent('blur'));
                     if (openedEditor === editor) {
-                        // Removed inputs may no longer emit a native blur.
-                        editor
-                            .getElement()
-                            ?.querySelector<HTMLInputElement>('.name-editor')
-                            ?.dispatchEvent(new FocusEvent('blur'));
                         openedEditor = null;
                     }
                 });
