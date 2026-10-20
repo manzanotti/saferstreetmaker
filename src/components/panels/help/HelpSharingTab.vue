@@ -15,6 +15,12 @@ defineProps<{
     >
         <h2>Sharing maps</h2>
         <p class="mb-8">
+            Press <strong>Ctrl + I</strong> (or <strong>Command + I</strong> on macOS) to open Share
+            with Image selected. Adjust the dimensions and select Export PNG. If a group is
+            selected, the image is framed around its selected features, just like opening Share and
+            selecting Image manually.
+        </p>
+        <p class="mb-8">
             Obviously, you can save the map file and send that to someone, who could upload it to
             the site, work on it, save it, and send it back to you.
         </p>

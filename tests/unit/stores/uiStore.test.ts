@@ -4,6 +4,19 @@ import { useUiStore } from '../../../src/stores/uiStore';
 import type { PanelId } from '../../../src/stores/uiStore';
 
 describe('uiStore', () => {
+    it('opens Image sharing and resets the ordinary Share entry point to HTML', () => {
+        const store = useUiStore(createPinia());
+        store.openImageSharingPanel();
+        expect(store.activePanel).toBe('sharing');
+        expect(store.sharingExportFormat).toBe('image');
+        store.closePanel();
+        store.openPanel('sharing');
+        expect(store.sharingExportFormat).toBe('html');
+        store.sharingExportFormat = 'url';
+        store.openImageSharingPanel();
+        expect(store.sharingExportFormat).toBe('image');
+    });
+
     beforeEach(() => {
         setActivePinia(createPinia());
     });

@@ -29,7 +29,7 @@ vi.mock('../../src/composables/useAreaSelection', () => ({
     executePaste: vi.fn()
 }));
 
-describe('Presentation mode keyboard shortcut', () => {
+describe('Keyboard shortcuts', () => {
     let map: L.Map;
     let removeListener: () => void;
 
@@ -74,6 +74,66 @@ describe('Presentation mode keyboard shortcut', () => {
     afterEach(() => {
         removeListener();
         document.body.replaceChildren();
+    });
+
+    it.each([{ ctrlKey: true }, { metaKey: true }])(
+        'opens Image sharing with Ctrl/Command+I, including Presentation mode: %j',
+        (modifier) => {
+            useSettingsStore(pinia).readOnly = true;
+            const selection = useSelectionStore(pinia);
+            selection.markGroupSelection('selected-group');
+            useUiStore(pinia).openPanel('groups');
+            expect(press({ key: 'i', ...modifier }).defaultPrevented).toBe(true);
+            expect(useUiStore(pinia).activePanel).toBe('sharing');
+            expect(useUiStore(pinia).sharingExportFormat).toBe('image');
+            expect(selection.selectedGroupId).toBe('selected-group');
+            expect(selection.isGroupSelection).toBe(true);
+        }
+    );
+
+    it.each([
+        { ctrlKey: false },
+        { altKey: true },
+        { shiftKey: true },
+        { repeat: true },
+        { isComposing: true }
+    ])('ignores invalid image shortcut events: %j', (options) => {
+        press({ key: 'i', ctrlKey: true, ...options });
+        expect(useUiStore(pinia).activePanel).toBeNull();
+    });
+
+    it('does not open image sharing while typing, exporting, replaying, or showing errors', () => {
+        const ui = useUiStore(pinia);
+        const input = document.createElement('input');
+        document.body.append(input);
+        press({ key: 'i', ctrlKey: true }, input);
+        const editable = document.createElement('div');
+        Object.defineProperty(editable, 'isContentEditable', { value: true });
+        document.body.append(editable);
+        press({ key: 'i', ctrlKey: true }, editable);
+        ui.setImageExportState(true, null);
+        press({ key: 'i', ctrlKey: true });
+        ui.setImageExportState(false, null);
+        useHistoryStore(pinia).setBusy(true);
+        press({ key: 'i', ctrlKey: true });
+        useHistoryStore(pinia).setBusy(false);
+        ui.showErrors(['Cannot export']);
+        press({ key: 'i', ctrlKey: true });
+        ui.clearErrors();
+        const modal = document.createElement('div');
+        modal.setAttribute('aria-modal', 'true');
+        document.body.append(modal);
+        press({ key: 'i', ctrlKey: true });
+        modal.remove();
+        const event = new KeyboardEvent('keydown', {
+            key: 'i',
+            ctrlKey: true,
+            bubbles: true,
+            cancelable: true
+        });
+        event.preventDefault();
+        map.getContainer().dispatchEvent(event);
+        expect(ui.activePanel).toBeNull();
     });
 
     it('toggles both ways through persisted settings, preserving other settings', async () => {

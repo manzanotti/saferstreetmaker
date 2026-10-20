@@ -20,6 +20,7 @@ const SHORTCUTS = {
     toggleGroups: 'g',
     toggleLayers: 'l',
     togglePresentation: 'p',
+    imageExport: 'i',
     undo: 'z',
     copy: 'c',
     paste: 'v',
@@ -72,6 +73,24 @@ export function setupKeyboardShortcuts(map: L.Map): void {
 
     const handleKeydown = async (event: KeyboardEvent): Promise<void> => {
         if (uiStore.imageExportInProgress) {
+            return;
+        }
+
+        if (
+            event.key.toLowerCase() === SHORTCUTS.imageExport &&
+            (event.ctrlKey || event.metaKey) &&
+            !event.altKey &&
+            !event.shiftKey &&
+            !event.repeat &&
+            !event.isComposing &&
+            !event.defaultPrevented &&
+            !isTyping(event) &&
+            !historyStore.busy &&
+            uiStore.errorMessages.length === 0 &&
+            !document.querySelector('[role="alertdialog"], [aria-modal="true"]')
+        ) {
+            event.preventDefault();
+            uiStore.openImageSharingPanel();
             return;
         }
 

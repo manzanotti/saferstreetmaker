@@ -104,6 +104,92 @@ async function selectDistantGroupPoints(page: Page): Promise<Locator> {
 }
 
 test.describe('Image export from Share panel', () => {
+    test('Ctrl+I opens Image sharing and downloads through the existing export flow', async ({
+        page
+    }) => {
+        await waitForMapReady(page);
+        await page.locator('#map').focus();
+        await page.keyboard.press('Control+i');
+        await expect(page.locator('#export-as-image')).toHaveAttribute('aria-pressed', 'true');
+        await expect(page.locator('#width')).toHaveValue(
+            String(await page.locator('#map').evaluate((element) => element.clientWidth))
+        );
+        await page.locator('#width').fill('800');
+        await page.locator('#height').fill('600');
+        const downloadPromise = page.waitForEvent('download');
+        await page.getByRole('button', { name: 'Export PNG' }).click();
+        const download = await downloadPromise;
+        expect(download.suggestedFilename()).toMatch(/\.png$/);
+        const path = await download.path();
+        expect(path).not.toBeNull();
+        const dimensions = await page.evaluate(
+            async (base64) => {
+                const image = new Image();
+                image.src = `data:image/png;base64,${base64}`;
+                await image.decode();
+                return [image.width, image.height];
+            },
+            (await readFile(path!)).toString('base64')
+        );
+        expect(dimensions).toEqual([800, 600]);
+        await page.getByRole('button', { name: 'Close sharing panel' }).click();
+        await page.locator('#share-button').click();
+        await expect(page.locator('#export-as-html')).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    test('image shortcut preserves selected-group framing and restores the original view', async ({
+        page
+    }) => {
+        await selectDistantGroupPoints(page);
+        const original = await page.evaluate(() => {
+            const pinia = (document.getElementById('app') as any).__vue_app__.config
+                .globalProperties.$pinia;
+            const map = pinia._s.get('map').map;
+            const centre = map.getCenter();
+            return { lat: centre.lat, lng: centre.lng, zoom: map.getZoom() };
+        });
+        await page.locator('#map').focus();
+        await page.keyboard.press('Control+i');
+        await expect(page.locator('#export-as-image')).toHaveAttribute('aria-pressed', 'true');
+        await expect(page.locator('#sharing')).toContainText('selected group');
+        await page.locator('#width').fill('1200');
+        await page.locator('#height').fill('800');
+        const downloadPromise = page.waitForEvent('download');
+        await page.getByRole('button', { name: 'Export PNG' }).click();
+        await downloadPromise;
+        await expect
+            .poll(() =>
+                page.evaluate(() => {
+                    const pinia = (document.getElementById('app') as any).__vue_app__.config
+                        .globalProperties.$pinia;
+                    const map = pinia._s.get('map').map;
+                    const centre = map.getCenter();
+                    return { lat: centre.lat, lng: centre.lng, zoom: map.getZoom() };
+                })
+            )
+            .toEqual(original);
+    });
+
+    test('image shortcut switches an open Share panel, respects typing, and works in Presentation mode', async ({
+        page
+    }) => {
+        await page.locator('#settings-button').click();
+        await page.locator('#title').focus();
+        await page.keyboard.press('Control+i');
+        await expect(page.locator('#title')).toBeVisible();
+        await expect(page.locator('#sharing')).not.toBeAttached();
+        await page.getByRole('button', { name: 'Close settings panel' }).click();
+        await page.locator('#map').focus();
+        await page.keyboard.press('p');
+        await expect(page.locator('#modal-filter-button')).not.toBeVisible();
+        await page.locator('#share-button').click();
+        await expect(page.locator('#export-as-html')).toHaveAttribute('aria-pressed', 'true');
+        await page.locator('#export-as-url').click();
+        await page.keyboard.press('Meta+i');
+        await expect(page.locator('#export-as-image')).toHaveAttribute('aria-pressed', 'true');
+        await expect(page.getByRole('button', { name: 'Export PNG' })).toBeVisible();
+    });
+
     test.beforeEach(async ({ page }) => {
         await addFreshStorageInitScript(page);
         await setTileResponse(page, await createTilePng(page));
