@@ -31,9 +31,11 @@ Point markers are full-size at zoom 16 and above, half-size at zooms 13-15, and 
 
 If I was developing this for a client, then I would write a backend and database to store the maps, as this would allow for user accounts, map sharing, collaborative working. As this would not be free to run, I've not gone down that route, though if any organisation would like to sponsor this project, I have plenty of ideas for functionality that could unlock.
 
-To run this project locally, clone the repo and install dependencies:
+To run this project locally, use Node.js 24 LTS (24.15.0 or newer within the 24.x
+release line) and Yarn 3.6.1 via Corepack, then clone the repo and install dependencies:
 
 ```sh
+corepack enable
 yarn install
 ```
 
