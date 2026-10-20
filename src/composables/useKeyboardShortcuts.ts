@@ -10,11 +10,16 @@ import { pinia } from '../stores/index';
 import { useMapStore } from '../stores/mapStore';
 import { useSelectionStore } from '../stores/selectionStore';
 import { useUiStore } from '../stores/uiStore';
+import { useSettingsStore } from '../stores/settingsStore';
+import { useHistoryStore } from '../stores/historyStore';
+import { clearReadOnlyEditingState } from './useGroups';
+import { isSaveErrorAlreadyShown } from './saveErrorMarker';
 
 const SHORTCUTS = {
     toggleSelection: 's',
     toggleGroups: 'g',
     toggleLayers: 'l',
+    togglePresentation: 'p',
     undo: 'z',
     copy: 'c',
     paste: 'v',
@@ -26,7 +31,12 @@ function isTyping(event: KeyboardEvent): boolean {
     const target = event.target as HTMLElement | null;
     const tag = target?.tagName ?? '';
 
-    return tag === 'INPUT' || tag === 'TEXTAREA' || target?.isContentEditable === true;
+    return (
+        tag === 'INPUT' ||
+        tag === 'TEXTAREA' ||
+        tag === 'SELECT' ||
+        target?.isContentEditable === true
+    );
 }
 
 function hasModifier(event: KeyboardEvent): boolean {
@@ -55,7 +65,10 @@ export function setupKeyboardShortcuts(map: L.Map): void {
     const mapStore = useMapStore(pinia);
     const selectionStore = useSelectionStore(pinia);
     const uiStore = useUiStore(pinia);
+    const settingsStore = useSettingsStore(pinia);
+    const historyStore = useHistoryStore(pinia);
     const mapElement = map.getContainer();
+    let presentationToggleInProgress = false;
 
     const handleKeydown = async (event: KeyboardEvent): Promise<void> => {
         if (uiStore.imageExportInProgress) {
@@ -87,6 +100,45 @@ export function setupKeyboardShortcuts(map: L.Map): void {
             ) {
                 clearFeatureHighlight();
             }
+            return;
+        }
+
+        if (
+            event.key.toLowerCase() === SHORTCUTS.togglePresentation &&
+            isMapAction(event, mapElement) &&
+            !event.repeat &&
+            !event.isComposing &&
+            !event.defaultPrevented &&
+            !presentationToggleInProgress &&
+            !historyStore.busy &&
+            uiStore.activePanel === null &&
+            uiStore.errorMessages.length === 0 &&
+            !document.querySelector('[role="dialog"], [role="alertdialog"]')
+        ) {
+            event.preventDefault();
+            presentationToggleInProgress = true;
+            try {
+                const settings = settingsStore.toSettings();
+                settings.readOnly = !settings.readOnly;
+                if (settings.readOnly) {
+                    map.closePopup();
+                    clearReadOnlyEditingState();
+                }
+                await getMapManager().applySettings(settings);
+            } catch (error) {
+                if (!isSaveErrorAlreadyShown(error)) {
+                    uiStore.showErrors([
+                        'There was a problem saving Presentation mode:',
+                        String(error instanceof Error ? error.message : error)
+                    ]);
+                }
+            } finally {
+                presentationToggleInProgress = false;
+            }
+            return;
+        }
+
+        if (settingsStore.readOnly && event.key !== SHORTCUTS.toggleLayers) {
             return;
         }
 
@@ -174,7 +226,7 @@ export function setupKeyboardShortcuts(map: L.Map): void {
 
         if (
             ((event.key === SHORTCUTS.redo && (event.ctrlKey || event.metaKey)) ||
-                (event.key === SHORTCUTS.undo &&
+                (event.key.toLowerCase() === SHORTCUTS.undo &&
                     (event.ctrlKey || event.metaKey) &&
                     event.shiftKey)) &&
             !isTyping(event)

@@ -45,9 +45,9 @@ defineProps<{
             editing other features. When a feature name property was selected, click its feature to
             edit the name in the popup.
         </p>
-        <h2>Read-only maps</h2>
+        <h2>Presentation mode</h2>
         <p class="mb-8">
-            On a read-only map, imported layers can still be shown or hidden, but they cannot be
+            In Presentation mode, imported layers can still be shown or hidden, but they cannot be
             renamed or deleted, and feature names cannot be edited.
         </p>
     </div>

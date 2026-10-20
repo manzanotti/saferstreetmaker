@@ -4,6 +4,7 @@ import { useUiStore } from '../../stores/uiStore';
 import HelpFeaturesTab from './help/HelpFeaturesTab.vue';
 import HelpGroupsTab from './help/HelpGroupsTab.vue';
 import HelpLayersTab from './help/HelpLayersTab.vue';
+import HelpKeyboardShortcutsTab from './help/HelpKeyboardShortcutsTab.vue';
 import HelpMapsTab from './help/HelpMapsTab.vue';
 import HelpSettingsTab from './help/HelpSettingsTab.vue';
 import HelpSharingTab from './help/HelpSharingTab.vue';
@@ -22,6 +23,7 @@ const tabs = [
     { id: 'tabs-management', label: 'Maps' },
     { id: 'tabs-settings', label: 'Settings' },
     { id: 'tabs-sharing', label: 'Sharing' },
+    { id: 'tabs-shortcuts', label: 'Keyboard shortcuts' },
     { id: 'tabs-tech', label: 'Tech' },
     { id: 'tabs-support', label: 'Support' }
 ];
@@ -101,6 +103,10 @@ function close() {
                         <HelpMapsTab :active-tab="activeTab" :tab-panel-class="tabPanelClass" />
                         <HelpSettingsTab :active-tab="activeTab" :tab-panel-class="tabPanelClass" />
                         <HelpSharingTab :active-tab="activeTab" :tab-panel-class="tabPanelClass" />
+                        <HelpKeyboardShortcutsTab
+                            :active-tab="activeTab"
+                            :tab-panel-class="tabPanelClass"
+                        />
                         <HelpTechTab :active-tab="activeTab" :tab-panel-class="tabPanelClass" />
                         <HelpSupportTab :active-tab="activeTab" :tab-panel-class="tabPanelClass" />
                     </div>
