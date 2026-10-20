@@ -122,7 +122,7 @@ function onCancel() {
                     <label
                         class="form-check-label toggle-label text-sm font-medium text-gray-700"
                         for="read-only"
-                        >Read-only</label
+                        >Presentation mode</label
                     >
                     <input id="read-only" v-model="form.readOnly" type="checkbox" role="switch" />
                 </div>

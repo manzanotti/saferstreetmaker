@@ -56,8 +56,8 @@ defineProps<{
         <p class="mb-8">
             However, if you wish to embed a map in a web page (such as a blog post), you can create
             your map, open the Settings (by clicking the Cog button in the toolbar), setting the map
-            title, whether the map is in read-only mode (so no one can change it), and selecting
-            which layers you want visible on the map.
+            title, whether the map is in Presentation mode (with editing tools hidden), and
+            selecting which layers you want visible on the map.
             <a href="test.html" target="_blank">Example</a>
         </p>
         <p class="mb-8">
@@ -69,8 +69,8 @@ defineProps<{
         <p class="mb-8">
             If a group is selected when you create the share link, the link also identifies the
             group and includes its active version number. Opening that link shows the selected group
-            and version in read-only mode. The group panel is shown when the group has a description
-            or the selected version has implementation phases.
+            and version in Presentation mode. The group panel is shown when the group has a
+            description or the selected version has implementation phases.
         </p>
         <p class="mb-8">Be warned: this can be a very large amount of data!</p>
     </div>

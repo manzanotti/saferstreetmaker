@@ -27,9 +27,11 @@ defineProps<{
             and centre point of the map.
         </p>
         <p class="mb-8">
-            You can choose to make the map read-only, which will remove all the buttons for adding
-            features to the map (but still shows the map management, settings, sharing, and help
-            buttons).
+            Presentation mode hides the editing tools so you can present the map without changing
+            its features. Settings, sharing, help, and layer visibility controls remain available.
+            Toggle it in Settings, or press <strong>P</strong> with the map focused and panels
+            closed to switch it on or off. This is a viewing mode, not access control for a shared
+            map.
         </p>
         <p class="mb-8">
             Finally, you can choose which layers are active on the map. Switching a layer off will

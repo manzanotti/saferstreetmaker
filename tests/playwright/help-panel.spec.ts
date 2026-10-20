@@ -88,7 +88,7 @@ test.describe('Help Panel', () => {
         await expect(page.locator('#tabs-layers')).toContainText('overlapping squares button');
         await expect(page.locator('#tabs-layers')).toContainText('Birmingham Council wards');
         await expect(page.locator('#tabs-layers')).toContainText('example');
-        await expect(page.locator('#tabs-layers')).toContainText('read-only map');
+        await expect(page.locator('#tabs-layers')).toContainText('Presentation mode');
     });
 
     test('Sharing tab explains group and version links', async ({ page }) => {
@@ -97,8 +97,43 @@ test.describe('Help Panel', () => {
 
         await expect(page.locator('#tabs-sharing')).toContainText('identifies the group');
         await expect(page.locator('#tabs-sharing')).toContainText('active version number');
-        await expect(page.locator('#tabs-sharing')).toContainText('read-only mode');
+        await expect(page.locator('#tabs-sharing')).toContainText('Presentation mode');
         await expect(page.locator('#tabs-sharing')).toContainText('implementation phases');
+    });
+
+    test('Keyboard shortcuts tab documents map, editing, and contextual shortcuts', async ({
+        page
+    }) => {
+        await page.locator('#help-button').click();
+        await page.getByRole('tab', { name: 'Keyboard shortcuts' }).click();
+        const shortcuts = page.getByRole('tabpanel', { name: 'Keyboard shortcuts' });
+        await expect(shortcuts).toBeVisible();
+        for (const shortcut of [
+            'P',
+            'S',
+            'G',
+            'L',
+            'Delete / Backspace',
+            'Ctrl/Command + Z',
+            'Ctrl/Command + Y',
+            'Ctrl/Command + Shift + Z',
+            'Ctrl/Command + C',
+            'Ctrl/Command + V',
+            'Arrow keys',
+            '+ / -',
+            'Escape',
+            'Arrow Up / Arrow Down on a phase row',
+            'Tab / Shift + Tab'
+        ]) {
+            await expect(
+                shortcuts.locator('strong').getByText(shortcut, { exact: true })
+            ).toBeVisible();
+        }
+        await expect(shortcuts).toContainText('toggle Presentation mode on or off');
+        await expect(shortcuts).toContainText('while typing in a text field');
+        await page.getByRole('tab', { name: 'Settings', exact: true }).click();
+        await expect(page.locator('#tabs-settings')).toContainText('Presentation mode');
+        await expect(page.locator('#help')).not.toContainText(/read.only/i);
     });
 
     test('clicking the help modal close button hides the modal', async ({ page }) => {
