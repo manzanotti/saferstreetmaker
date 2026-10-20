@@ -43,7 +43,8 @@ export function confirmFeatureDeletion(scope: FeatureDeletionScope): boolean {
             groupStore.removeMemberFromVersions(
                 group.id,
                 getGroupVersions(group).map((version) => version.id),
-                member
+                member,
+                true
             );
         }
         const marker = findLayerFeatureByHistoryId(

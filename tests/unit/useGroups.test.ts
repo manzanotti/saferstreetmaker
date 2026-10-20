@@ -349,6 +349,31 @@ describe('useGroups', () => {
             ).toBe(true);
             expect(layer.getLayer().getLayers()).toEqual([]);
         });
+
+        it('immediately removes unassigned memberships everywhere while preserving other members', () => {
+            const { layer } = setupGroupedLine();
+            const groupStore = useGroupStore(pinia);
+            const otherMember = { layerId: 'MobilityLanes', historyId: 'other-line' };
+            groupStore.addGroup({
+                id: 'g3',
+                name: 'Retained features',
+                versions: [{ id: 'v3', name: 'Current', members: [] }],
+                unassignedMembers: [member, otherMember]
+            });
+            expect(groupStore.getFeatureGroupMemberships(member)).toHaveLength(3);
+
+            expect(confirmFeatureDeletion('everything')).toBe(true);
+
+            expect(groupStore.groups.find((group) => group.id === 'g3')?.unassignedMembers).toEqual(
+                [otherMember]
+            );
+            expect(groupStore.getFeatureGroupMemberships(member)).toEqual([]);
+            expect(groupStore.getFeatureMemberships(member)).toEqual([]);
+            expect(groupStore.getFeatureGroupMemberships(otherMember)).toMatchObject([
+                { groupId: 'g3' }
+            ]);
+            expect(layer.getLayer().getLayers()).toEqual([]);
+        });
     });
 
     describe('applyGroupColor()', () => {

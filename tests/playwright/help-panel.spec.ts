@@ -69,7 +69,12 @@ test.describe('Help Panel', () => {
 
         await expect(page.locator('#tabs-groups')).toBeVisible();
         await expect(page.locator('#tabs-groups')).toContainText('Group versions');
-        await expect(page.locator('#tabs-groups')).toContainText('version dropdown');
+        await expect(page.locator('#tabs-groups')).toContainText(
+            'Select a version to switch designs'
+        );
+        await expect(page.locator('#tabs-groups')).toContainText(
+            'The selected version and unassigned group features are shown on the map'
+        );
         await expect(page.locator('#tabs-groups')).toContainText('all LTN cells in the group');
         await expect(page.locator('#tabs-groups')).toContainText('striped pattern');
         await expect(page.locator('#tabs-groups')).toContainText('Group phases');

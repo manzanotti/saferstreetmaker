@@ -60,8 +60,9 @@ defineProps<{
             the new version starts empty. Give each version a unique name.
         </p>
         <p class="mb-8">
-            Use the version dropdown to switch designs. Only the selected version is shown on the
-            map, and its features are highlighted when the group is selected. Use
+            Select a version to switch designs. The selected version and unassigned group features
+            are shown on the map; the selected version's features are highlighted when the group is
+            selected. Use
             <strong>Set default</strong> to choose which version is shown when the map is loaded.
             The current default is marked <strong>Default</strong>. Unassigned features stay visible
             and retain their group membership. The group list counts unique features across all
