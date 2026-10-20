@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import * as L from 'leaflet';
 
 vi.mock('leaflet', () => import('./__mocks__/leaflet'));
 
@@ -6,7 +7,8 @@ import {
     buildImageExportFilename,
     getImageExportValidationError,
     MAX_IMAGE_EXPORT_PIXELS,
-    waitForExportFrame
+    waitForExportFrame,
+    settleMapViewForExport
 } from '../../src/features/export/mapImageExport';
 
 describe('map image export inputs', () => {
@@ -14,6 +16,65 @@ describe('map image export inputs', () => {
         expect(getImageExportValidationError(null, 500)).toContain('Enter a width');
         expect(getImageExportValidationError(Number.NaN, 500)).toContain('Enter a width');
         expect(getImageExportValidationError(400.5, 500)).toContain('whole numbers');
+    });
+
+    describe('settling the map before image export', () => {
+        async function withExportFrames(
+            run: (map: L.Map, stop: ReturnType<typeof vi.fn>) => Promise<void>
+        ) {
+            vi.useFakeTimers();
+            vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) =>
+                window.setTimeout(() => callback(performance.now()), 16)
+            );
+            vi.stubGlobal('cancelAnimationFrame', window.clearTimeout);
+            const map = new L.Map(document.createElement('div'));
+            const stop = vi.fn(() => map);
+            Object.assign(map, { stop });
+            try {
+                await run(map, stop);
+            } finally {
+                vi.useRealTimers();
+                vi.unstubAllGlobals();
+            }
+        }
+
+        it('stops panning once a settled view is ready', async () => {
+            await withExportFrames(async (map, stop) => {
+                const settling = settleMapViewForExport(map);
+                await vi.runAllTimersAsync();
+                await settling;
+                expect(stop).toHaveBeenCalledOnce();
+            });
+        });
+
+        it('waits for zooms queued on the next frame before stopping the map', async () => {
+            await withExportFrames(async (map, stop) => {
+                const pane = document.createElement('div');
+                map.getContainer().append(pane);
+                window.requestAnimationFrame(() => pane.classList.add('leaflet-zoom-anim'));
+                const settling = settleMapViewForExport(map);
+                await vi.advanceTimersByTimeAsync(100);
+                expect(stop).not.toHaveBeenCalled();
+                pane.classList.remove('leaflet-zoom-anim');
+                await vi.runAllTimersAsync();
+                await settling;
+                expect(stop).toHaveBeenCalledOnce();
+            });
+        });
+
+        it('reports a zoom that never settles instead of capturing misplaced features', async () => {
+            await withExportFrames(async (map, stop) => {
+                const pane = document.createElement('div');
+                pane.classList.add('leaflet-zoom-anim');
+                map.getContainer().append(pane);
+                const failed = expect(settleMapViewForExport(map)).rejects.toThrow(
+                    'map is still zooming'
+                );
+                await vi.runAllTimersAsync();
+                await failed;
+                expect(stop).not.toHaveBeenCalled();
+            });
+        });
     });
 
     it('enforces individual dimension and total pixel limits', () => {
