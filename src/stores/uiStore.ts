@@ -2,11 +2,9 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
 export type PanelId = 'settings' | 'mapManager' | 'sharing' | 'help' | 'groups' | 'layers';
-export type SharingExportFormat = 'image' | 'html' | 'url';
 
 export const useUiStore = defineStore('ui', () => {
     const activePanel = ref<PanelId | null>(null);
-    const sharingExportFormat = ref<SharingExportFormat>('html');
     const errorMessages = ref<string[]>([]);
     const showDownloadStorageLink = ref(false);
     const legendLayerIds = ref<Set<string> | null>(null);
@@ -14,15 +12,7 @@ export const useUiStore = defineStore('ui', () => {
     const imageExportLegendLayerIds = ref<Set<string> | null>(null);
 
     function openPanel(id: PanelId) {
-        if (id === 'sharing' && activePanel.value !== 'sharing') {
-            sharingExportFormat.value = 'html';
-        }
         activePanel.value = id;
-    }
-
-    function openImageSharingPanel() {
-        openPanel('sharing');
-        sharingExportFormat.value = 'image';
     }
 
     function closePanel() {
@@ -50,14 +40,12 @@ export const useUiStore = defineStore('ui', () => {
 
     return {
         activePanel,
-        sharingExportFormat,
         errorMessages,
         showDownloadStorageLink,
         legendLayerIds,
         imageExportInProgress,
         imageExportLegendLayerIds,
         openPanel,
-        openImageSharingPanel,
         closePanel,
         showErrors,
         clearErrors,

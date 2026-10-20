@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
-import { storeToRefs } from 'pinia';
+import { computed, ref } from 'vue';
 import { useMapStore } from '../../stores/mapStore';
-import { useUiStore, type SharingExportFormat } from '../../stores/uiStore';
+import { useUiStore } from '../../stores/uiStore';
 import { useGroupStore } from '../../stores/groupStore';
 import { useSelectionStore } from '../../stores/selectionStore';
 import type { Group } from '../../models/Group';
@@ -21,7 +20,8 @@ const selectionStore = useSelectionStore();
 const mapSize = mapStore.map?.getSize();
 const width = ref<number | null>(mapSize ? Math.round(mapSize.x) : null);
 const height = ref<number | null>(mapSize ? Math.round(mapSize.y) : null);
-const { sharingExportFormat: exportFormat } = storeToRefs(uiStore);
+type ExportFormat = 'image' | 'html' | 'url';
+const exportFormat = ref<ExportFormat>('html');
 const errorMessage = ref<string | null>(null);
 const isBusy = computed(() => uiStore.imageExportInProgress);
 const hasSelectedGroupFeatures = computed(
@@ -37,7 +37,7 @@ const shareScopeGroup = ref<Group | null>(null);
 const scopePromptTrigger = ref<HTMLElement | null>(null);
 const { showCopiedMessage, createShare } = useSharingGenerator(width, height, shareScopeGroup);
 
-function formatButtonClasses(format: SharingExportFormat) {
+function formatButtonClasses(format: ExportFormat) {
     return [
         'flex-1 rounded-md px-2 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600',
         exportFormat.value === format
@@ -46,14 +46,11 @@ function formatButtonClasses(format: SharingExportFormat) {
     ];
 }
 
-function selectFormat(format: SharingExportFormat) {
+function selectFormat(format: ExportFormat) {
     exportFormat.value = format;
-}
-
-watch(exportFormat, () => {
     errorMessage.value = null;
     showCopiedMessage.value = false;
-});
+}
 
 async function onCreate() {
     errorMessage.value = null;

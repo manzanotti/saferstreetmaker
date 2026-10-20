@@ -14,6 +14,7 @@ import { useSettingsStore } from '../stores/settingsStore';
 import { useHistoryStore } from '../stores/historyStore';
 import { clearReadOnlyEditingState } from './useGroups';
 import { isSaveErrorAlreadyShown } from './saveErrorMarker';
+import { exportMapAsPng } from '../features/export/mapImageExport';
 
 const SHORTCUTS = {
     toggleSelection: 's',
@@ -70,6 +71,7 @@ export function setupKeyboardShortcuts(map: L.Map): void {
     const historyStore = useHistoryStore(pinia);
     const mapElement = map.getContainer();
     let presentationToggleInProgress = false;
+    let imageExportRequested = false;
 
     const handleKeydown = async (event: KeyboardEvent): Promise<void> => {
         if (uiStore.imageExportInProgress) {
@@ -85,12 +87,24 @@ export function setupKeyboardShortcuts(map: L.Map): void {
             !event.isComposing &&
             !event.defaultPrevented &&
             !isTyping(event) &&
+            !imageExportRequested &&
             !historyStore.busy &&
             uiStore.errorMessages.length === 0 &&
             !document.querySelector('[role="alertdialog"], [aria-modal="true"]')
         ) {
             event.preventDefault();
-            uiStore.openImageSharingPanel();
+            imageExportRequested = true;
+            try {
+                const size = map.getSize();
+                await exportMapAsPng(Math.round(size.x), Math.round(size.y));
+            } catch (error) {
+                uiStore.showErrors([
+                    'The image could not be exported:',
+                    error instanceof Error ? error.message : String(error)
+                ]);
+            } finally {
+                imageExportRequested = false;
+            }
             return;
         }
 

@@ -104,20 +104,17 @@ async function selectDistantGroupPoints(page: Page): Promise<Locator> {
 }
 
 test.describe('Image export from Share panel', () => {
-    test('Ctrl+I opens Image sharing and downloads through the existing export flow', async ({
+    test('Ctrl+I downloads immediately at the current map dimensions without opening Share', async ({
         page
     }) => {
         await waitForMapReady(page);
         await page.locator('#map').focus();
-        await page.keyboard.press('Control+i');
-        await expect(page.locator('#export-as-image')).toHaveAttribute('aria-pressed', 'true');
-        await expect(page.locator('#width')).toHaveValue(
-            String(await page.locator('#map').evaluate((element) => element.clientWidth))
-        );
-        await page.locator('#width').fill('800');
-        await page.locator('#height').fill('600');
+        const expectedDimensions = await page
+            .locator('#map')
+            .evaluate((element) => [element.clientWidth, element.clientHeight]);
         const downloadPromise = page.waitForEvent('download');
-        await page.getByRole('button', { name: 'Export PNG' }).click();
+        await page.keyboard.press('Control+i');
+        await expect(page.locator('#sharing')).not.toBeAttached();
         const download = await downloadPromise;
         expect(download.suggestedFilename()).toMatch(/\.png$/);
         const path = await download.path();
@@ -131,8 +128,7 @@ test.describe('Image export from Share panel', () => {
             },
             (await readFile(path!)).toString('base64')
         );
-        expect(dimensions).toEqual([800, 600]);
-        await page.getByRole('button', { name: 'Close sharing panel' }).click();
+        expect(dimensions).toEqual(expectedDimensions);
         await page.locator('#share-button').click();
         await expect(page.locator('#export-as-html')).toHaveAttribute('aria-pressed', 'true');
     });
@@ -149,13 +145,9 @@ test.describe('Image export from Share panel', () => {
             return { lat: centre.lat, lng: centre.lng, zoom: map.getZoom() };
         });
         await page.locator('#map').focus();
-        await page.keyboard.press('Control+i');
-        await expect(page.locator('#export-as-image')).toHaveAttribute('aria-pressed', 'true');
-        await expect(page.locator('#sharing')).toContainText('selected group');
-        await page.locator('#width').fill('1200');
-        await page.locator('#height').fill('800');
         const downloadPromise = page.waitForEvent('download');
-        await page.getByRole('button', { name: 'Export PNG' }).click();
+        await page.keyboard.press('Control+i');
+        await expect(page.locator('#sharing')).not.toBeAttached();
         await downloadPromise;
         await expect
             .poll(() =>
@@ -170,7 +162,7 @@ test.describe('Image export from Share panel', () => {
             .toEqual(original);
     });
 
-    test('image shortcut switches an open Share panel, respects typing, and works in Presentation mode', async ({
+    test('image shortcut respects typing and downloads directly in Presentation mode', async ({
         page
     }) => {
         await page.locator('#settings-button').click();
@@ -182,12 +174,22 @@ test.describe('Image export from Share panel', () => {
         await page.locator('#map').focus();
         await page.keyboard.press('p');
         await expect(page.locator('#modal-filter-button')).not.toBeVisible();
-        await page.locator('#share-button').click();
-        await expect(page.locator('#export-as-html')).toHaveAttribute('aria-pressed', 'true');
-        await page.locator('#export-as-url').click();
+        const downloadPromise = page.waitForEvent('download');
         await page.keyboard.press('Meta+i');
-        await expect(page.locator('#export-as-image')).toHaveAttribute('aria-pressed', 'true');
-        await expect(page.getByRole('button', { name: 'Export PNG' })).toBeVisible();
+        await downloadPromise;
+        await expect(page.locator('#sharing')).not.toBeAttached();
+    });
+
+    test('image shortcut reports active-tool errors without opening Share', async ({ page }) => {
+        await waitForMapReady(page);
+        await page.locator('#mobility-lane-button').click();
+        await page.locator('#map').focus();
+        await page.keyboard.press('Control+i');
+        await expect(page.locator('#sharing')).not.toBeAttached();
+        await expect(page.getByRole('dialog', { name: 'An error has occurred' })).toBeVisible();
+        await expect(page.getByRole('dialog', { name: 'An error has occurred' })).toContainText(
+            'Finish or cancel the active map tool'
+        );
     });
 
     test.beforeEach(async ({ page }) => {
