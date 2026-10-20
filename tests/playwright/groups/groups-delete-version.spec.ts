@@ -17,10 +17,17 @@ test.describe('Groups — Delete version', () => {
         await placeTwoModalFilters(page);
         await selectBothFilters(page);
         await createGroup(page, 'Versioned Group');
+        await placeTwoModalFilters(page, 170);
         await openGroupsPanel(page);
         await openGroupDetails(page, 'Versioned Group');
         await createGroupVersion(page, 'Versioned Group', 'Alternative');
         await expectSelectedVersion(page, 'Alternative');
+        for (const index of [2, 3]) {
+            await page
+                .locator('.leaflet-filters-pane path.modal-filter-marker')
+                .nth(index)
+                .dispatchEvent('click');
+        }
         await expect(page.locator('.leaflet-filters-pane path[stroke="#3b82f6"]')).toHaveCount(2);
     });
 

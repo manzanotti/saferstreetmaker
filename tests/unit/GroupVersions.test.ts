@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import type { Group } from '../../src/models/Group';
 import {
     getNewPhaseDraftMembers,
+    getAllGroupMembers,
+    getUnassignedGroupMembers,
+    getVisibleGroupMembers,
     getActiveVersion,
     getDefaultVersionId,
     hasVersionName,
@@ -15,6 +18,25 @@ const legacyGroup: Group = {
 };
 
 describe('group version helpers', () => {
+    it('counts all unique group features and keeps unassigned members visible across versions', () => {
+        const first = { layerId: 'ModalFilters', historyId: 'first' };
+        const second = { layerId: 'ModalFilters', historyId: 'second' };
+        const free = { layerId: 'ModalFilters', historyId: 'free' };
+        const group: Group = {
+            id: 'g1',
+            name: 'Group',
+            versions: [
+                { id: 'v1', name: 'First', members: [first] },
+                { id: 'v2', name: 'Second', members: [second, first] }
+            ],
+            unassignedMembers: [free, first, free]
+        };
+        expect(getUnassignedGroupMembers(group)).toEqual([free]);
+        expect(getAllGroupMembers(group)).toEqual([first, second, free]);
+        expect(getVisibleGroupMembers(group, 'v1')).toEqual([first, free]);
+        expect(getVisibleGroupMembers(group, 'v2')).toEqual([second, first, free]);
+        expect(normalizeGroup(group).unassignedMembers).toEqual([free]);
+    });
     it('normalizes a legacy group into a deterministic default version', () => {
         const normalized = normalizeGroup(legacyGroup);
 

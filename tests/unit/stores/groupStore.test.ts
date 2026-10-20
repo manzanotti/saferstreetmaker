@@ -13,6 +13,55 @@ function makeGroup(id: string, name: string, memberHistoryIds: string[] = []): G
 }
 
 describe('groupStore', () => {
+    it('moves a kept version member to the unassigned pool only when no remaining version uses it', () => {
+        const store = useGroupStore(pinia);
+        const shared = { layerId: 'ModalFilters', historyId: 'shared' };
+        const free = { layerId: 'ModalFilters', historyId: 'free' };
+        store.setGroups([
+            {
+                id: 'g1',
+                name: 'Group',
+                defaultVersionId: 'v2',
+                versions: [
+                    { id: 'v1', name: 'First', members: [shared] },
+                    { id: 'v2', name: 'Second', members: [shared, free] }
+                ]
+            }
+        ]);
+        store.removeVersion('g1', 'v2', true);
+        expect(store.groups[0].unassignedMembers).toEqual([free]);
+        expect(store.activeVersionIds.g1).toBe('v1');
+        expect(store.groups[0].defaultVersionId).toBe('v1');
+        expect(store.getFeatureGroupMemberships(shared)[0].versions).toEqual([
+            { id: 'v1', name: 'First' }
+        ]);
+        store.addMembersToGroup('g1', [free]);
+        expect(store.groups[0].unassignedMembers).toEqual([]);
+        expect(store.getActiveGroupVersion('g1')?.members).toEqual([shared, free]);
+    });
+
+    it('retains solo and cancels empty-group deletion when only unassigned members remain', () => {
+        const store = useGroupStore(pinia);
+        const group: Group = {
+            id: 'g1',
+            name: 'Group',
+            versions: [{ id: 'v1', name: 'First', members: [] }],
+            unassignedMembers: [{ layerId: 'ModalFilters', historyId: 'free' }]
+        };
+        store.setGroups([group]);
+        store.cycleVisibility('g1');
+        store.cycleVisibility('g1');
+        expect(store.soloGroupId).toBe('g1');
+        store.setPendingEmptyGroupDeletion('g1');
+        store.setGroups([group], true);
+        expect(store.soloGroupId).toBe('g1');
+        expect(store.pendingEmptyGroupDeletionId).toBeNull();
+        expect(
+            store.removeMemberFromVersions('g1', ['v1'], group.unassignedMembers![0], true)
+        ).toBe(true);
+        expect(store.getFeatureGroupMemberships(group.unassignedMembers![0])).toEqual([]);
+        expect(store.soloGroupId).toBeNull();
+    });
     it('cycles visible, hidden, solo and shows everything when any eye is clicked', () => {
         const store = useGroupStore(pinia);
         store.setAllHidden(false);

@@ -25,7 +25,8 @@ export function confirmFeatureDeletion(scope: FeatureDeletionScope): boolean {
         groupStore.removeMemberFromVersions(
             selectedMembership.groupId,
             [selectedMembership.versionId],
-            member
+            member,
+            true
         );
     } else if (scope === 'group') {
         const group = groupStore.groups.find((item) => item.id === selectedMembership.groupId);
@@ -33,7 +34,8 @@ export function confirmFeatureDeletion(scope: FeatureDeletionScope): boolean {
             groupStore.removeMemberFromVersions(
                 group.id,
                 getGroupVersions(group).map((version) => version.id),
-                member
+                member,
+                true
             );
         }
     } else {
@@ -41,7 +43,8 @@ export function confirmFeatureDeletion(scope: FeatureDeletionScope): boolean {
             groupStore.removeMemberFromVersions(
                 group.id,
                 getGroupVersions(group).map((version) => version.id),
-                member
+                member,
+                true
             );
         }
         const marker = findLayerFeatureByHistoryId(

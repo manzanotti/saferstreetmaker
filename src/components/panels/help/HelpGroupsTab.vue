@@ -55,16 +55,21 @@ defineProps<{
         <h2>Group versions</h2>
         <p class="mb-8">
             A group can contain several independent versions of a design. The first version is the
-            default. Select <strong>+ Version</strong> to create a copy of the current version; its
-            features are cloned so edits to the new version do not alter the original. Give each
-            version a unique name.
+            default. Select <strong>+ Version</strong> to create a version seeded only with group
+            features that have not been assigned to a version. If every feature is already assigned,
+            the new version starts empty. Give each version a unique name.
         </p>
         <p class="mb-8">
-            Use the version dropdown to switch designs. Only the selected version is shown on the
-            map, and its features are highlighted when the group is selected. Use
+            Select a version to switch designs. The selected version and unassigned group features
+            are shown on the map; the selected version's features are highlighted when the group is
+            selected. Use
             <strong>Set default</strong> to choose which version is shown when the map is loaded.
-            The current default is marked <strong>Default</strong>. Deleting a version removes its
-            copied features; Undo can restore the deletion if needed.
+            The current default is marked <strong>Default</strong>. Unassigned features stay visible
+            and retain their group membership. The group list counts unique features across all
+            versions and unassigned features. Choose <strong>Delete version only</strong> to return
+            its features to the group's unassigned pool, or
+            <strong>Delete version + elements</strong>
+            to remove features that are not used elsewhere. Undo can restore the deletion.
         </p>
         <h2>Group phases</h2>
         <p class="mb-8">

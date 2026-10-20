@@ -20,8 +20,10 @@ import { useSettingsStore } from '../stores/settingsStore';
 import {
     featureKey,
     getActiveVersion,
+    getAllGroupMembers,
     getNewPhaseDraftMembers,
     getGroupVersions,
+    getUnassignedGroupMembers,
     needsReadOnlyGroupDetails
 } from '../features/groups/groupVersions';
 import { GroupVersionFeatureCloner } from '../features/groups/GroupVersionFeatureCloner';
@@ -223,7 +225,7 @@ export function removeFeatureFromGroup(groupId: string, member: GroupMember): bo
     }
 
     const versionIds = getGroupVersions(group).map((version) => version.id);
-    const removed = groupStore.removeMemberFromVersions(groupId, versionIds, member);
+    const removed = groupStore.removeMemberFromVersions(groupId, versionIds, member, true);
     if (!removed) {
         return false;
     }
@@ -425,7 +427,8 @@ function commitGroupSelection(keepEditing: boolean): void {
     }
     mapStore.markLayerUpdated();
 
-    if (membership.fullMembers.length === 0) {
+    const updatedGroup = groupStore.groups.find((group) => group.id === groupId);
+    if (updatedGroup && getAllGroupMembers(updatedGroup).length === 0) {
         groupStore.setPendingEmptyGroupDeletion(groupId);
         uiStore.openPanel('groups');
     }
@@ -557,7 +560,7 @@ export function selectGroup(id: string, highlightFeatures = true): void {
 
     const group = groupStore.groups.find((g) => g.id === id);
     const members = group ? getActiveVersion(group, groupStore.activeVersionIds[id]).members : [];
-    if (!group || members.length === 0) {
+    if (!group) {
         return;
     }
 
@@ -589,6 +592,10 @@ export function selectGroup(id: string, highlightFeatures = true): void {
     }
 
     if (allEntries.length === 0) {
+        const previousEntries = selectionStore.selected;
+        selectionStore.setSelected([]);
+        selectionStore.markGroupSelection(id);
+        applySelectionHighlights([], true, previousEntries);
         return;
     }
 
@@ -760,8 +767,13 @@ function buildAllFeatureMembers(): GroupMember[] {
 
 export function applyReadOnlyGroupPresentation(version: ReturnType<typeof getActiveVersion>): void {
     const members = buildAllFeatureMembers();
+    const group = useGroupStore(pinia).groups.find((item) =>
+        getGroupVersions(item).some((itemVersion) => itemVersion.id === version.id)
+    );
     const groupKeys = new Set(
-        version.members.map((member) => featureKey(member.layerId, member.historyId))
+        [...version.members, ...(group ? getUnassignedGroupMembers(group) : [])].map((member) =>
+            featureKey(member.layerId, member.historyId)
+        )
     );
     phaseHighlighter.dimOutside(members, groupKeys);
 }

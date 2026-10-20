@@ -9,6 +9,7 @@ export interface NormalizedGroup {
     defaultVersionId: string;
     versions: GroupVersion[];
     members: GroupMember[];
+    unassignedMembers?: GroupMember[];
 }
 
 function uniqueMembers(members: GroupMember[]): GroupMember[] {
@@ -75,6 +76,29 @@ export function getActiveVersion(group: Group, activeVersionId?: string | null):
     return versions.find((version) => version.id === requestedId) ?? versions[0];
 }
 
+export function getUnassignedGroupMembers(group: Group): GroupMember[] {
+    const assignedKeys = new Set(
+        getGroupVersions(group).flatMap((version) => version.members.map(memberKey))
+    );
+    return uniqueMembers(group.unassignedMembers ?? []).filter(
+        (member) => !assignedKeys.has(memberKey(member))
+    );
+}
+
+export function getAllGroupMembers(group: Group): GroupMember[] {
+    return uniqueMembers([
+        ...getGroupVersions(group).flatMap((version) => version.members),
+        ...getUnassignedGroupMembers(group)
+    ]);
+}
+
+export function getVisibleGroupMembers(group: Group, activeVersionId?: string): GroupMember[] {
+    return uniqueMembers([
+        ...getActiveVersion(group, activeVersionId).members,
+        ...getUnassignedGroupMembers(group)
+    ]);
+}
+
 export function needsReadOnlyGroupDetails(group: Group): boolean {
     const versions = getGroupVersions(group);
     return versions.length > 1 || versions.some((version) => (version.phases?.length ?? 0) > 0);
@@ -102,6 +126,7 @@ export function normalizeGroup(group: Group): NormalizedGroup {
         ...(group.color ? { color: group.color } : {}),
         defaultVersionId,
         versions,
+        ...(group.unassignedMembers ? { unassignedMembers: getUnassignedGroupMembers(group) } : {}),
         members: [...versions.find((version) => version.id === defaultVersionId)!.members]
     };
 }

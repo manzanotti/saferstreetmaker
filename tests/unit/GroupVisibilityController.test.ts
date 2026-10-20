@@ -62,6 +62,30 @@ describe('GroupVisibilityController', () => {
         expect(marker.options).toMatchObject({ opacity: 0.7, fillOpacity: 0.4 });
     });
 
+    it('includes unassigned members in group hiding and solo visibility', () => {
+        const marker = styledMarker();
+        const outside = styledMarker();
+        markers.set('free', marker);
+        markers.set('outside', outside);
+        groups = [
+            {
+                id: 'g1',
+                name: 'Group',
+                versions: [{ id: 'v1', name: 'First', members: [] }],
+                unassignedMembers: [member('free')]
+            }
+        ];
+        hiddenGroupIds.add('g1');
+        controller.recompute();
+        expect(isFeatureGroupHidden(marker)).toBe(true);
+        hiddenGroupIds.clear();
+        soloGroupId = 'g1';
+        controller.recompute();
+        expect(isFeatureGroupHidden(marker)).toBe(false);
+        expect(isFeatureGroupHidden(outside)).toBe(true);
+        expect(marker.options.opacity).toBe(0.7);
+    });
+
     it('ends an active edit session before hiding its feature and does not restart it on reveal', () => {
         let editingEnabled = true;
         const editing = {

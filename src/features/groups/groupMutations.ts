@@ -3,9 +3,18 @@ import { useMapStore } from '../../stores/mapStore';
 import { useSelectionStore } from '../../stores/selectionStore';
 import { useGroupStore } from '../../stores/groupStore';
 import { pinia } from '../../stores/index';
-import { featureKey, getActiveVersion, getGroupVersions, hasVersionName } from './groupVersions';
-import { GroupVersionFeatureCloner } from './GroupVersionFeatureCloner';
-import { getFeatureHistoryId } from '../../composables/layers/features/featureLookup';
+import {
+    featureKey,
+    getActiveVersion,
+    getAllGroupMembers,
+    getGroupVersions,
+    getUnassignedGroupMembers,
+    hasVersionName
+} from './groupVersions';
+import {
+    buildHistoryId,
+    getFeatureHistoryId
+} from '../../composables/layers/features/featureLookup';
 
 export interface GroupMutationDependencies {
     clearFeatureHighlight: () => void;
@@ -19,30 +28,21 @@ export function createGroupMutations(dependencies: GroupMutationDependencies) {
     function createGroupVersion(groupId: string, name: string): boolean {
         const groupStore = useGroupStore(pinia);
         const group = groupStore.groups.find((item) => item.id === groupId);
-        const source = group ? groupStore.getActiveGroupVersion(groupId) : null;
         const mapStore = useMapStore(pinia);
-        if (!group || !source || !name.trim() || hasVersionName(group, name)) {
+        if (!group || !name.trim() || hasVersionName(group, name)) {
             return false;
         }
 
-        const cloner = new GroupVersionFeatureCloner({
-            getLayer: (layerId) => mapStore.layers.find((layer) => layer.id === layerId),
-            findFeature: (layer, historyId) => {
-                let found: any = null;
-                layer.getLayer().eachLayer((item: any) => {
-                    if (getFeatureHistoryId(item) === historyId) {
-                        found = item.feature ?? item.toGeoJSON?.() ?? null;
-                    }
-                });
-                return found;
-            }
-        });
-        const cloned = cloner.clone({ id: source.id, name: name.trim(), members: source.members });
-        if (!groupStore.addVersion(groupId, cloned)) {
+        const version = {
+            id: buildHistoryId('group-version'),
+            name: name.trim(),
+            members: getUnassignedGroupMembers(group)
+        };
+        if (!groupStore.addVersion(groupId, version)) {
             return false;
         }
         mapStore.markLayerUpdated();
-        return dependencies.switchGroupVersion(groupId, cloned.id);
+        return dependencies.switchGroupVersion(groupId, version.id);
     }
 
     function renameGroupVersion(groupId: string, versionId: string, name: string): boolean {
@@ -79,7 +79,7 @@ export function createGroupMutations(dependencies: GroupMutationDependencies) {
         if (selectionStore.selectedGroupId === groupId) {
             dependencies.clearFeatureHighlight();
         }
-        const version = groupStore.removeVersion(groupId, versionId);
+        const version = groupStore.removeVersion(groupId, versionId, !deleteElements);
         if (!version) {
             return false;
         }
@@ -87,10 +87,8 @@ export function createGroupMutations(dependencies: GroupMutationDependencies) {
         if (deleteElements) {
             const remainingMembers = new Set(
                 groupStore.groups.flatMap((group) =>
-                    getGroupVersions(group).flatMap((remainingVersion) =>
-                        remainingVersion.members.map((member) =>
-                            featureKey(member.layerId, member.historyId)
-                        )
+                    getAllGroupMembers(group).map((member) =>
+                        featureKey(member.layerId, member.historyId)
                     )
                 )
             );
@@ -118,7 +116,7 @@ export function createGroupMutations(dependencies: GroupMutationDependencies) {
         if (!group) {
             return;
         }
-        const members = getGroupVersions(group).flatMap((version) => version.members);
+        const members = getAllGroupMembers(group);
 
         for (const member of members) {
             const marker = dependencies.findMarkerByHistoryId(member.layerId, member.historyId);
@@ -201,6 +199,9 @@ export function createGroupMutations(dependencies: GroupMutationDependencies) {
 
         let changed = false;
         const nextGroups = groupStore.groups.map((group) => {
+            const unassignedMembers = getUnassignedGroupMembers(group).filter((member) =>
+                existing.has(featureKey(member.layerId, member.historyId))
+            );
             const versions = getGroupVersions(group).map((version) => ({
                 ...version,
                 members: version.members.filter((member) =>
@@ -218,6 +219,7 @@ export function createGroupMutations(dependencies: GroupMutationDependencies) {
                 groupStore.activeVersionIds[group.id]
             ).members;
             if (
+                unassignedMembers.length !== (group.unassignedMembers ?? []).length ||
                 kept.length !== currentMembers.length ||
                 versions.some(
                     (version, index) =>
@@ -225,7 +227,12 @@ export function createGroupMutations(dependencies: GroupMutationDependencies) {
                 )
             ) {
                 changed = true;
-                return { ...group, versions, members: kept };
+                return {
+                    ...group,
+                    versions,
+                    members: kept,
+                    ...(group.unassignedMembers ? { unassignedMembers } : {})
+                };
             }
             return group;
         });

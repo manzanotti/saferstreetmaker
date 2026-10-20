@@ -1,6 +1,11 @@
 import type * as L from 'leaflet';
 import type { Group, GroupMember } from '../../models/Group';
-import { getActiveVersion, getGroupVersions, memberKey } from './groupVersions';
+import {
+    getActiveVersion,
+    getGroupVersions,
+    getVisibleGroupMembers,
+    memberKey
+} from './groupVersions';
 import { setFeatureGroupHidden } from './featureVisibility';
 
 interface GroupVisibilityControllerOptions {
@@ -46,7 +51,7 @@ export class GroupVisibilityController {
         for (const group of this.options.getGroups()) {
             const activeVersion = getActiveVersion(group, activeVersionIds[group.id]);
             const activeMemberKeys = new Set<string>();
-            for (const member of activeVersion.members) {
+            for (const member of getVisibleGroupMembers(group, activeVersionIds[group.id])) {
                 const key = memberKey(member);
                 activeMemberKeys.add(key);
                 const groupIds = memberToGroupIds.get(key) ?? new Set<string>();
@@ -78,8 +83,10 @@ export class GroupVisibilityController {
             const soloGroup = this.options.getGroups().find((group) => group.id === soloGroupId);
             const allowed = new Set<L.Layer>();
             if (soloGroup) {
-                for (const member of getActiveVersion(soloGroup, activeVersionIds[soloGroupId])
-                    .members) {
+                for (const member of getVisibleGroupMembers(
+                    soloGroup,
+                    activeVersionIds[soloGroupId]
+                )) {
                     const marker = this.options.findMarker(member);
                     if (marker) {
                         allowed.add(marker);

@@ -28,6 +28,8 @@ export interface Group {
     versions?: GroupVersion[];
     /** The version shown after loading a map. */
     defaultVersionId?: string;
+    /** Group features not currently assigned to any version. */
+    unassignedMembers?: GroupMember[];
     /** Legacy representation, accepted during migration. */
     members?: GroupMember[];
 }
