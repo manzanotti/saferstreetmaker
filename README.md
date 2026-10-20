@@ -25,6 +25,8 @@ The map is zipped and saved to the browser's local storage every time a change i
 
 Open **Share** in the toolbar and choose **Image**, **HTML**, or **Url** under **Export as**. Image downloads a PNG; HTML copies an embeddable iframe; Url copies a direct share link. Width and height default to the map's current on-screen size and set the PNG or iframe dimensions. Image exports keep the current map scale and center, so changing the aspect ratio changes the visible map area. The PNG includes map attribution and a legend for built-in layers with visible features in the exported view. Images are limited to 8192 pixels per side and 16,777,216 total pixels.
 
+Image export waits for an active zoom transition to finish and stops any ongoing pan before capturing the map, keeping features aligned with the map tiles.
+
 Additionally, you can load a JSON version of a map.
 
 Point markers are full-size at zoom 16 and above, half-size at zooms 13-15, and hidden at zoom 12 and below.

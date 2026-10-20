@@ -81,6 +81,22 @@ export function waitForExportFrame(): Promise<void> {
     });
 }
 
+export async function settleMapViewForExport(map: L.Map): Promise<void> {
+    // Leaflet starts CSS zoom transitions on the next animation frame.
+    await waitForExportFrame();
+    await waitForExportFrame();
+    const deadline = Date.now() + 5000;
+    while (map.getContainer().querySelector('.leaflet-zoom-anim')) {
+        if (Date.now() >= deadline) {
+            throw new Error(
+                'The map is still zooming. Wait for it to finish and try exporting again.'
+            );
+        }
+        await new Promise<void>((resolve) => window.setTimeout(resolve, 25));
+    }
+    map.stop();
+}
+
 function intersects(a: DOMRect, b: DOMRect): boolean {
     return a.right > b.left && a.left < b.right && a.bottom > b.top && a.top < b.bottom;
 }
@@ -261,8 +277,8 @@ export async function exportMapAsPng(width: number, height: number): Promise<voi
     const originalAriaBusy = mapElement.getAttribute('aria-busy');
     const originalPointerEvents = mapElement.style.pointerEvents;
     const originalInert = mapElement.inert;
-    const originalCenter = map.getCenter();
-    const originalZoom = map.getZoom();
+    let originalCenter = map.getCenter();
+    let originalZoom = map.getZoom();
     const selectedFeatures = [...selectionStore.selected];
     const isGroupSelection =
         selectionStore.isGroupSelection && selectionStore.selectedGroupId !== null;
@@ -276,6 +292,10 @@ export async function exportMapAsPng(width: number, height: number): Promise<voi
         mapElement.setAttribute('aria-busy', 'true');
         mapElement.style.pointerEvents = 'none';
         mapElement.inert = true;
+
+        await settleMapViewForExport(map);
+        originalCenter = map.getCenter();
+        originalZoom = map.getZoom();
 
         if (selectedFeatures.length > 0) {
             applySelectionHighlights([], true, selectedFeatures);
