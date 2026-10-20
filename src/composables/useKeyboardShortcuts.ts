@@ -14,12 +14,14 @@ import { useSettingsStore } from '../stores/settingsStore';
 import { useHistoryStore } from '../stores/historyStore';
 import { clearReadOnlyEditingState } from './useGroups';
 import { isSaveErrorAlreadyShown } from './saveErrorMarker';
+import { exportMapAsPng } from '../features/export/mapImageExport';
 
 const SHORTCUTS = {
     toggleSelection: 's',
     toggleGroups: 'g',
     toggleLayers: 'l',
     togglePresentation: 'p',
+    imageExport: 'i',
     undo: 'z',
     copy: 'c',
     paste: 'v',
@@ -69,9 +71,40 @@ export function setupKeyboardShortcuts(map: L.Map): void {
     const historyStore = useHistoryStore(pinia);
     const mapElement = map.getContainer();
     let presentationToggleInProgress = false;
+    let imageExportRequested = false;
 
     const handleKeydown = async (event: KeyboardEvent): Promise<void> => {
         if (uiStore.imageExportInProgress) {
+            return;
+        }
+
+        if (
+            event.key.toLowerCase() === SHORTCUTS.imageExport &&
+            (event.ctrlKey || event.metaKey) &&
+            !event.altKey &&
+            !event.shiftKey &&
+            !event.repeat &&
+            !event.isComposing &&
+            !event.defaultPrevented &&
+            !isTyping(event) &&
+            !imageExportRequested &&
+            !historyStore.busy &&
+            uiStore.errorMessages.length === 0 &&
+            !document.querySelector('[role="alertdialog"], [aria-modal="true"]')
+        ) {
+            event.preventDefault();
+            imageExportRequested = true;
+            try {
+                const size = map.getSize();
+                await exportMapAsPng(Math.round(size.x), Math.round(size.y));
+            } catch (error) {
+                uiStore.showErrors([
+                    'The image could not be exported:',
+                    error instanceof Error ? error.message : String(error)
+                ]);
+            } finally {
+                imageExportRequested = false;
+            }
             return;
         }
 

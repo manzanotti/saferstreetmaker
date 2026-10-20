@@ -36,6 +36,11 @@ defineProps<{
         </ul>
         <h3 class="font-semibold mb-2">History and clipboard</h3>
         <ul class="list-disc pl-5 mb-6 space-y-2">
+            <li>
+                <strong>Ctrl/Command + I</strong>: download a PNG immediately at the current map
+                dimensions, using the same selected-group framing as the Share panel. Available in
+                Presentation mode, but not while typing or exporting.
+            </li>
             <li><strong>Ctrl/Command + Z</strong>: undo.</li>
             <li>
                 <strong>Ctrl/Command + Y</strong> or <strong>Ctrl/Command + Shift + Z</strong>:

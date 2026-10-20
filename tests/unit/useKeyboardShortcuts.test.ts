@@ -13,9 +13,13 @@ const mocks = vi.hoisted(() => ({
     applySettings: vi.fn(),
     undo: vi.fn(),
     redo: vi.fn(),
-    clearEditing: vi.fn()
+    clearEditing: vi.fn(),
+    exportPng: vi.fn()
 }));
 vi.mock('leaflet', () => import('./__mocks__/leaflet'));
+vi.mock('../../src/features/export/mapImageExport', () => ({
+    exportMapAsPng: mocks.exportPng
+}));
 vi.mock('../../src/composables/useMapManager', () => ({
     getMapManager: () => mocks
 }));
@@ -29,7 +33,7 @@ vi.mock('../../src/composables/useAreaSelection', () => ({
     executePaste: vi.fn()
 }));
 
-describe('Presentation mode keyboard shortcut', () => {
+describe('Keyboard shortcuts', () => {
     let map: L.Map;
     let removeListener: () => void;
 
@@ -46,6 +50,7 @@ describe('Presentation mode keyboard shortcut', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        mocks.exportPng.mockReset().mockResolvedValue(undefined);
         document.body.replaceChildren();
         const settings = new Settings();
         settings.title = 'Presentation test';
@@ -60,6 +65,7 @@ describe('Presentation mode keyboard shortcut', () => {
             useSettingsStore(pinia).applyFromSettings(nextSettings);
         });
         map = new L.Map(document.createElement('div'));
+        Object.assign(map, { getSize: () => L.point(1280.4, 720.4) });
         document.body.append(map.getContainer());
         const listenerSpy = vi.spyOn(document, 'addEventListener');
         setupKeyboardShortcuts(map);
@@ -74,6 +80,102 @@ describe('Presentation mode keyboard shortcut', () => {
     afterEach(() => {
         removeListener();
         document.body.replaceChildren();
+    });
+
+    it.each([{ ctrlKey: true }, { metaKey: true }])(
+        'downloads directly with Ctrl/Command+I, including Presentation mode: %j',
+        (modifier) => {
+            useSettingsStore(pinia).readOnly = true;
+            const selection = useSelectionStore(pinia);
+            selection.markGroupSelection('selected-group');
+            useUiStore(pinia).openPanel('groups');
+            expect(press({ key: 'i', ...modifier }).defaultPrevented).toBe(true);
+            expect(mocks.exportPng).toHaveBeenCalledWith(1280, 720);
+            expect(useUiStore(pinia).activePanel).toBe('groups');
+            expect(selection.selectedGroupId).toBe('selected-group');
+            expect(selection.isGroupSelection).toBe(true);
+        }
+    );
+
+    it.each([
+        { ctrlKey: false },
+        { altKey: true },
+        { shiftKey: true },
+        { repeat: true },
+        { isComposing: true }
+    ])('ignores invalid image shortcut events: %j', (options) => {
+        press({ key: 'i', ctrlKey: true, ...options });
+        expect(useUiStore(pinia).activePanel).toBeNull();
+        expect(mocks.exportPng).not.toHaveBeenCalled();
+    });
+
+    it('does not export while typing, exporting, replaying, or showing errors', () => {
+        const ui = useUiStore(pinia);
+        const input = document.createElement('input');
+        document.body.append(input);
+        press({ key: 'i', ctrlKey: true }, input);
+        const editable = document.createElement('div');
+        Object.defineProperty(editable, 'isContentEditable', { value: true });
+        document.body.append(editable);
+        press({ key: 'i', ctrlKey: true }, editable);
+        ui.setImageExportState(true, null);
+        press({ key: 'i', ctrlKey: true });
+        ui.setImageExportState(false, null);
+        useHistoryStore(pinia).setBusy(true);
+        press({ key: 'i', ctrlKey: true });
+        useHistoryStore(pinia).setBusy(false);
+        ui.showErrors(['Cannot export']);
+        press({ key: 'i', ctrlKey: true });
+        ui.clearErrors();
+        const modal = document.createElement('div');
+        modal.setAttribute('aria-modal', 'true');
+        document.body.append(modal);
+        press({ key: 'i', ctrlKey: true });
+        modal.remove();
+        const event = new KeyboardEvent('keydown', {
+            key: 'i',
+            ctrlKey: true,
+            bubbles: true,
+            cancelable: true
+        });
+        event.preventDefault();
+        map.getContainer().dispatchEvent(event);
+        expect(ui.activePanel).toBeNull();
+        expect(mocks.exportPng).not.toHaveBeenCalled();
+    });
+
+    it('blocks overlapping shortcut exports and releases the lock after completion', async () => {
+        let finish: () => void = () => {
+            throw new Error('Export not started');
+        };
+        mocks.exportPng.mockImplementationOnce(
+            () =>
+                new Promise<void>((resolve) => {
+                    finish = resolve;
+                })
+        );
+        press({ key: 'i', ctrlKey: true });
+        press({ key: 'i', ctrlKey: true });
+        expect(mocks.exportPng).toHaveBeenCalledOnce();
+        finish();
+        await Promise.resolve();
+        press({ key: 'i', ctrlKey: true });
+        expect(mocks.exportPng).toHaveBeenCalledTimes(2);
+    });
+
+    it('surfaces export errors and permits a retry after dismissal', async () => {
+        mocks.exportPng.mockRejectedValueOnce(new Error('Finish the active map tool'));
+        press({ key: 'i', ctrlKey: true });
+        await vi.waitFor(() =>
+            expect(useUiStore(pinia).errorMessages).toEqual([
+                'The image could not be exported:',
+                'Finish the active map tool'
+            ])
+        );
+        useUiStore(pinia).clearErrors();
+        press({ key: 'i', ctrlKey: true });
+        expect(mocks.exportPng).toHaveBeenCalledTimes(2);
+        expect(useUiStore(pinia).activePanel).toBeNull();
     });
 
     it('toggles both ways through persisted settings, preserving other settings', async () => {
