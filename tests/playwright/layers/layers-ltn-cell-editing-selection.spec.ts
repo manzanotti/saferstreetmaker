@@ -9,7 +9,7 @@ import {
     drawPolygonClosingAtFirstVertex,
     deleteFirstShape
 } from './layerMapTestHelpers';
-import { clickSvgPath, hoverSvgPathStroke } from './layerSvgTestHelpers';
+import { clickSvgPath, dragFirstEditHandle, hoverSvgPathStroke } from './layerSvgTestHelpers';
 import { hoverLocatorCenter } from './layerHoverTestHelpers';
 import {
     getInlineCursor,
@@ -20,6 +20,45 @@ import {
 
 test.describe('Layer: LTN Cell (polygon): editing', () => {
     setupFreshPage();
+
+    test('dragging an LTN edit handle does not leave round selection indicators behind', async ({
+        page
+    }) => {
+        await page.locator('#ltn-button').click();
+        await drawPolygon(page);
+        await page.locator('#ltn-button').click();
+
+        const polygon = page.locator('.leaflet-ltns-pane path.ltn-cell');
+        await polygon.dispatchEvent('click');
+        await page.locator('.leaflet-popup-close-button').click();
+        await page.waitForTimeout(300);
+
+        const handles = page.locator('.leaflet-editing-icon');
+        await expect(handles.first()).toBeVisible();
+        const roundIndicators = page.locator(
+            '.leaflet-overlay-pane path[stroke="#3b82f6"][fill="#ffffff"]'
+        );
+        await expect(roundIndicators).toHaveCount(0);
+
+        const originalPath = await polygon.getAttribute('d');
+        if (!originalPath) {
+            throw new Error('Expected an LTN polygon boundary');
+        }
+        await dragFirstEditHandle(page, -35, -25);
+
+        await expect(polygon).not.toHaveAttribute('d', originalPath);
+        await expect(roundIndicators).toHaveCount(0);
+        await expect(handles.first()).toBeVisible();
+        await expect
+            .poll(() =>
+                page.evaluate(() => {
+                    const app = (document.getElementById('app') as any).__vue_app__;
+                    const selection = app.config.globalProperties.$pinia._s.get('selection');
+                    return selection.selected.length;
+                })
+            )
+            .toBeGreaterThan(0);
+    });
 
     test('clicking an existing LTN polygon enters edit mode without enabling draw mode', async ({
         page

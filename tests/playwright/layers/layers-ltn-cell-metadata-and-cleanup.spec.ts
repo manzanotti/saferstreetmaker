@@ -57,21 +57,23 @@ test.describe('Layer: LTN Cell (polygon): metadata-and-cleanup', () => {
         await expect(page.locator('.label-editor')).toHaveValue('Zone A');
     });
 
-    test('deleting an LTN polygon removes its selection vertex handles', async ({ page }) => {
+    test('deleting an LTN polygon removes its edit handles without leaving selection indicators', async ({
+        page
+    }) => {
         await page.locator('#ltn-button').click();
         await drawPolygon(page);
         await page.locator('#ltn-button').click();
 
-        // Click the polygon to select it — vertex handles (blue circle markers)
-        // appear in the overlay pane.
         await page
             .locator('.leaflet-ltns-pane path.ltn-cell.leaflet-interactive')
             .first()
             .dispatchEvent('click');
         await page.waitForTimeout(200);
 
-        const handles = page.locator('.leaflet-overlay-pane path[stroke="#3b82f6"]');
-        expect(await handles.count()).toBeGreaterThan(0);
+        const handles = page.locator('.leaflet-editing-icon');
+        const indicators = page.locator('.leaflet-overlay-pane path[stroke="#3b82f6"]');
+        await expect(handles.first()).toBeVisible();
+        await expect(indicators).toHaveCount(0);
 
         // Delete the polygon via its popup.
         await page.waitForSelector('.popup-buttons .delete-button');
@@ -79,7 +81,8 @@ test.describe('Layer: LTN Cell (polygon): metadata-and-cleanup', () => {
         await page.waitForTimeout(200);
 
         // The vertex handles must be gone once the polygon is deleted.
-        expect(await handles.count()).toBe(0);
+        await expect(handles).toHaveCount(0);
+        await expect(indicators).toHaveCount(0);
     });
 
     test('hovering an existing point feature shows a pointer cursor while another tool is active', async ({

@@ -124,8 +124,6 @@ export function attachLtnPolygonClickHandler(options: LtnPolygonClickHandlerOpti
             return;
         }
 
-        selectFeature(polygon as unknown as L.Layer, LAYER_ID, false, true);
-
         const editablePolygon = getEditablePolygon();
         if (editablePolygon && editablePolygon !== event.target) {
             editablePolygon.editing?.disable();
@@ -142,6 +140,7 @@ export function attachLtnPolygonClickHandler(options: LtnPolygonClickHandlerOpti
         );
         event.target.editing.enable();
         setEditablePolygon(event.target);
+        selectFeature(polygon as unknown as L.Layer, LAYER_ID, false, true);
         recomputeFeatureVisibility();
         popup.setLatLng(event.target.getBounds().getCenter());
         const focusPopupLabel = (popupEvent: L.PopupEvent): void => {
