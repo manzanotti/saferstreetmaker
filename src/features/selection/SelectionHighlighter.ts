@@ -29,7 +29,7 @@ export class SelectionHighlighter {
             this.handleLayer = L.layerGroup().addTo(this.map);
         }
 
-        for (const { marker, latLng } of markers) {
+        for (const { marker, latLng, layerId } of markers) {
             if (isFeatureGroupHidden(marker)) {
                 continue;
             }
@@ -38,9 +38,13 @@ export class SelectionHighlighter {
                 getElement?: () => HTMLElement | undefined;
                 setStyle?: (style: L.PathOptions) => void;
                 options?: L.PathOptions;
+                editing?: { enabled?: () => boolean };
             };
 
             if (typeof pointMarker.getLatLng !== 'function') {
+                if (layerId === 'LtnCells' && pointMarker.editing?.enabled?.()) {
+                    continue;
+                }
                 L.circleMarker(latLng, VERTEX_HANDLE_STYLE).addTo(this.handleLayer);
                 continue;
             }

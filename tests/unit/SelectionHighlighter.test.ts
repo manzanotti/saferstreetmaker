@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('leaflet', () => import('./__mocks__/leaflet'));
 
-import type * as L from 'leaflet';
+import * as L from 'leaflet';
 import { SelectionHighlighter } from '../../src/features/selection/SelectionHighlighter';
 import type { SelectedMarker } from '../../src/stores/selectionStore';
 import { setFeatureGroupHidden } from '../../src/features/groups/featureVisibility';
@@ -17,6 +17,38 @@ function selected(marker: L.Layer): SelectedMarker {
 }
 
 describe('SelectionHighlighter', () => {
+    it('suppresses LTN selection handles only while polygon editing is enabled', () => {
+        const circleMarker = vi.spyOn(L, 'circleMarker');
+        const editing = { enabled: vi.fn().mockReturnValue(true) };
+        const marker = { editing } as unknown as L.Layer;
+        const entry = { ...selected(marker), layerId: 'LtnCells' };
+        const highlighter = new SelectionHighlighter({} as L.Map);
+        const initialCalls = circleMarker.mock.calls.length;
+
+        highlighter.add([entry]);
+        highlighter.replace([entry], [entry]);
+        expect(circleMarker).toHaveBeenCalledTimes(initialCalls);
+
+        editing.enabled.mockReturnValue(false);
+        highlighter.replace([entry], [entry]);
+        expect(circleMarker).toHaveBeenCalledTimes(initialCalls + 1);
+        circleMarker.mockRestore();
+    });
+
+    it('keeps vertex handles for LTN group and area selections without an active editor', () => {
+        const circleMarker = vi.spyOn(L, 'circleMarker');
+        const entry = { ...selected({} as L.Layer), layerId: 'LtnCells' };
+        const highlighter = new SelectionHighlighter({} as L.Map);
+
+        highlighter.add([entry]);
+
+        expect(circleMarker).toHaveBeenCalledWith(
+            entry.latLng,
+            expect.objectContaining({ radius: 5, interactive: false })
+        );
+        circleMarker.mockRestore();
+    });
+
     it('does not add styles or vertex handles to group-hidden features', () => {
         const setStyle = vi.fn();
         const hiddenPoint = {

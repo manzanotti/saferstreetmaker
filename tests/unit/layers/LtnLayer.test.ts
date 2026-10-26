@@ -13,6 +13,11 @@ import { useMapStore } from '../../../src/stores/mapStore';
 import { useSelectionStore } from '../../../src/stores/selectionStore';
 import { useGroupStore } from '../../../src/stores/groupStore';
 import { selectFeature } from '../../../src/composables/useAreaSelection';
+import { SelectionHighlighter } from '../../../src/features/selection/SelectionHighlighter';
+import {
+    releaseSelectionHighlighter,
+    setSelectionHighlighter
+} from '../../../src/features/selection/featureSelection';
 
 function makeMockMap(): L.Map {
     return new L.Map();
@@ -665,6 +670,63 @@ describe('LtnLayer feature clicks', () => {
         setActivePinia(pinia);
         useSelectionStore(pinia).deactivate();
         useMapStore(pinia).setDrawLayer(null);
+    });
+
+    it('restores retained group-selection handles when leaving LTN edit mode', () => {
+        const map = makeMockMap();
+        const layer = createLtnLayer(map);
+        const highlighter = new SelectionHighlighter(map);
+        const circleMarker = vi.spyOn(L, 'circleMarker');
+        setSelectionHighlighter(highlighter);
+        try {
+            layer.loadFromGeoJSON(
+                polygonFeatureCollection([
+                    [
+                        [
+                            [0, 0],
+                            [1, 0],
+                            [1, 1],
+                            [0, 1],
+                            [0, 0]
+                        ]
+                    ]
+                ])
+            );
+            const polygon = layer.getLayer().getLayers()[0] as L.Polygon;
+            let editingEnabled = false;
+            Object.assign(polygon, {
+                editing: {
+                    enable: () => {
+                        editingEnabled = true;
+                    },
+                    disable: () => {
+                        editingEnabled = false;
+                    },
+                    enabled: () => editingEnabled
+                }
+            });
+            polygon.fire('click', {
+                originalEvent: { clientX: 0, clientY: 0 },
+                target: polygon
+            });
+            const selectionStore = useSelectionStore(pinia);
+            const entries = selectionStore.selected;
+            selectionStore.markGroupSelection('group-1');
+            circleMarker.mockClear();
+
+            useMapStore(pinia).setActiveLayer('modal-filter');
+
+            expect(editingEnabled).toBe(false);
+            expect(selectionStore.isActive).toBe(false);
+            expect(selectionStore.isGroupSelection).toBe(true);
+            expect(selectionStore.selected).toBe(entries);
+            expect(circleMarker).toHaveBeenCalledTimes(entries.length);
+        } finally {
+            highlighter.clear(useSelectionStore(pinia).selected);
+            releaseSelectionHighlighter(highlighter);
+            circleMarker.mockRestore();
+            layer.dispose?.();
+        }
     });
 
     it('replaces the previously selected polygon on a plain click', () => {
