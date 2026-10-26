@@ -46,7 +46,66 @@ describe('createLtnDrawController', () => {
     });
 
     afterEach(() => {
+        delete (document as Partial<Document>).elementsFromPoint;
         vi.useRealTimers();
+    });
+
+    it.each([0, 1])(
+        'only forwards clicks to existing cells before drawing starts (%i vertices)',
+        (vertexCount) => {
+            const polygonConstructor = vi.spyOn(L.Draw, 'Polygon');
+            const existing = new L.Polygon([]);
+            const element = document.createElement('div');
+            element.className = 'ltn-cell';
+            Object.assign(existing, { getElement: () => element });
+            const fire = vi.spyOn(existing, 'fire');
+            Object.assign(map, {
+                eachLayer: (visit: (layer: L.Layer) => void) => visit(existing),
+                mouseEventToLatLng: () => ({ lat: 1, lng: 2 })
+            });
+            const mouseMarker = document.createElement('div');
+            mouseMarker.className = 'leaflet-mouse-marker';
+            map.getContainer().append(mouseMarker);
+            Object.defineProperty(document, 'elementsFromPoint', {
+                configurable: true,
+                value: () => [mouseMarker, element]
+            });
+            try {
+                controller.enable();
+                Object.assign(polygonConstructor.mock.instances[0], {
+                    _markers: Array.from({ length: vertexCount }, () => ({}))
+                });
+                const event = new MouseEvent('mousedown', {
+                    bubbles: true,
+                    cancelable: true
+                });
+                mouseMarker.dispatchEvent(event);
+
+                expect(event.defaultPrevented).toBe(vertexCount === 0);
+                expect(fire).toHaveBeenCalledTimes(vertexCount === 0 ? 1 : 0);
+                controller.disable();
+                mouseMarker.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+                expect(fire).toHaveBeenCalledTimes(vertexCount === 0 ? 1 : 0);
+            } finally {
+                controller.dispose();
+                polygonConstructor.mockRestore();
+            }
+        }
+    );
+
+    it('enables repeat mode so completing a polygon keeps the drawing tool active', () => {
+        const polygonConstructor = vi.spyOn(L.Draw, 'Polygon');
+        try {
+            controller.enable();
+
+            expect(polygonConstructor).toHaveBeenCalledWith(map, {
+                color: '#cc00cc',
+                repeatMode: true
+            });
+        } finally {
+            controller.dispose();
+            polygonConstructor.mockRestore();
+        }
     });
 
     it('creates the polygon and opens its naming popup with the label focused', () => {

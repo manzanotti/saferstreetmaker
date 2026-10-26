@@ -33,6 +33,8 @@ Point markers are full-size at zoom 16 and above, half-size at zooms 13-15, and 
 
 Click an existing LTN cell to edit its boundary using the square vertex handles. Round vertex indicators are used for group and area selections, not while the cell's boundary editor is active. If a group selection is retained when boundary editing ends, its round indicators are restored.
 
+LTN creation stays active after completing a cell. Name the cell and press Enter or close its popup, then draw the next cell without toggling the toolbar button. Press Escape or select another tool to stop drawing.
+
 If I was developing this for a client, then I would write a backend and database to store the maps, as this would allow for user accounts, map sharing, collaborative working. As this would not be free to run, I've not gone down that route, though if any organisation would like to sponsor this project, I have plenty of ideas for functionality that could unlock.
 
 To run this project locally, use Node.js 24 LTS (24.15.0 or newer within the 24.x
