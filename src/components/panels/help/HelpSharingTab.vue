@@ -18,7 +18,9 @@ defineProps<{
             Press <strong>Ctrl + I</strong> (or <strong>Command + I</strong> on macOS) to download a
             PNG immediately at the current map dimensions, without opening Share. If a group is
             selected, the image is framed around its selected features, just like opening Share and
-            selecting Image manually.
+            selecting Image manually. Use only Ctrl or Command, not both. The shortcut is disabled
+            while typing, while another dialog is open, or while Share displays an image export
+            error.
         </p>
         <p class="mb-8">
             Obviously, you can save the map file and send that to someone, who could upload it to

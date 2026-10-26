@@ -99,14 +99,55 @@ describe('Keyboard shortcuts', () => {
 
     it.each([
         { ctrlKey: false },
+        { ctrlKey: true, metaKey: true },
         { altKey: true },
         { shiftKey: true },
         { repeat: true },
         { isComposing: true }
     ])('ignores invalid image shortcut events: %j', (options) => {
-        press({ key: 'i', ctrlKey: true, ...options });
+        expect(press({ key: 'i', ctrlKey: true, ...options }).defaultPrevented).toBe(false);
         expect(useUiStore(pinia).activePanel).toBeNull();
         expect(mocks.exportPng).not.toHaveBeenCalled();
+    });
+
+    it.each(['dialog', 'alertdialog'])('blocks the image shortcut behind a %s', (role) => {
+        const dialog = document.createElement('div');
+        dialog.setAttribute('role', role);
+        const button = document.createElement('button');
+        dialog.append(button);
+        document.body.append(dialog);
+
+        expect(press({ key: 'i', ctrlKey: true }, button).defaultPrevented).toBe(false);
+        expect(mocks.exportPng).not.toHaveBeenCalled();
+    });
+
+    it('allows downloading from Share but blocks its errors and additional dialogs', () => {
+        const dialog = document.createElement('div');
+        dialog.setAttribute('role', 'dialog');
+        dialog.setAttribute('aria-labelledby', 'sharing-panel-title');
+        const form = document.createElement('form');
+        form.id = 'sharing';
+        const button = document.createElement('button');
+        form.append(button);
+        dialog.append(form);
+        document.body.append(dialog);
+        useUiStore(pinia).openPanel('sharing');
+        const error = document.createElement('p');
+        error.setAttribute('role', 'alert');
+        form.append(error);
+
+        expect(press({ key: 'i', ctrlKey: true }, button).defaultPrevented).toBe(false);
+        error.remove();
+        const prompt = document.createElement('div');
+        prompt.setAttribute('role', 'dialog');
+        document.body.append(prompt);
+        expect(press({ key: 'i', ctrlKey: true }, button).defaultPrevented).toBe(false);
+        prompt.remove();
+        expect(mocks.exportPng).not.toHaveBeenCalled();
+
+        expect(press({ key: 'i', ctrlKey: true }, button).defaultPrevented).toBe(true);
+        expect(mocks.exportPng).toHaveBeenCalledOnce();
+        expect(useUiStore(pinia).activePanel).toBe('sharing');
     });
 
     it('does not export while typing, exporting, replaying, or showing errors', () => {

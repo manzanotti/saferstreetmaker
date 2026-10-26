@@ -80,7 +80,7 @@ export function setupKeyboardShortcuts(map: L.Map): void {
 
         if (
             event.key.toLowerCase() === SHORTCUTS.imageExport &&
-            (event.ctrlKey || event.metaKey) &&
+            event.ctrlKey !== event.metaKey &&
             !event.altKey &&
             !event.shiftKey &&
             !event.repeat &&
@@ -90,7 +90,9 @@ export function setupKeyboardShortcuts(map: L.Map): void {
             !imageExportRequested &&
             !historyStore.busy &&
             uiStore.errorMessages.length === 0 &&
-            !document.querySelector('[role="alertdialog"], [aria-modal="true"]')
+            !document.querySelector(
+                '[role="dialog"]:not([aria-labelledby="sharing-panel-title"]), [role="alertdialog"], [aria-modal="true"], #sharing [role="alert"]'
+            )
         ) {
             event.preventDefault();
             imageExportRequested = true;
