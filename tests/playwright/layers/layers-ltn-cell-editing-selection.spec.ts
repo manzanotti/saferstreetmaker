@@ -21,6 +21,53 @@ import {
 test.describe('Layer: LTN Cell (polygon): editing', () => {
     setupFreshPage();
 
+    test('leaving LTN edit mode restores indicators for a retained group selection', async ({
+        page
+    }) => {
+        await page.locator('#ltn-button').click();
+        await drawPolygon(page);
+        await page.locator('#ltn-button').click();
+        await page.evaluate(() => {
+            const app = (document.getElementById('app') as any).__vue_app__;
+            const stores = app.config.globalProperties.$pinia._s;
+            const layer = stores.get('map').layers.find((item: any) => item.id === 'LtnCells');
+            const polygon = layer.getLayer().getLayers()[0];
+            stores.get('group').setGroups([
+                {
+                    id: 'ltn-group',
+                    name: 'LTN group',
+                    members: [{ layerId: 'LtnCells', historyId: polygon.properties.historyId }]
+                }
+            ]);
+        });
+        await page.locator('.leaflet-ltns-pane path.ltn-cell').dispatchEvent('click');
+        await expect(page.locator('.leaflet-editing-icon').first()).toBeVisible();
+        await page.locator('.leaflet-popup .group-link').click();
+        await expect(page.getByRole('dialog', { name: 'Group details' })).toBeVisible();
+
+        const indicators = page.locator(
+            '.leaflet-overlay-pane path[stroke="#3b82f6"][fill="#ffffff"]'
+        );
+        await expect(indicators).toHaveCount(0);
+        await page.locator('#modal-filter-button').click();
+
+        await expect(page.locator('.leaflet-editing-icon')).toHaveCount(0);
+        await expect
+            .poll(() =>
+                page.evaluate(() => {
+                    const app = (document.getElementById('app') as any).__vue_app__;
+                    const selection = app.config.globalProperties.$pinia._s.get('selection');
+                    return {
+                        active: selection.isActive,
+                        groupId: selection.selectedGroupId,
+                        count: selection.selected.length
+                    };
+                })
+            )
+            .toMatchObject({ active: false, groupId: 'ltn-group' });
+        expect(await indicators.count()).toBeGreaterThan(0);
+    });
+
     test('dragging an LTN edit handle does not leave round selection indicators behind', async ({
         page
     }) => {

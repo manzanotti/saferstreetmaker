@@ -66,6 +66,10 @@ export function createLtnLayerLifecycle(options: LtnLayerLifecycleOptions) {
                 state.editablePolygon?.editing?.disable();
                 state.editablePolygon = null;
                 recomputeFeatureVisibility();
+                const selectionStore = useSelectionStore(pinia);
+                if (selectionStore.isGroupSelection && !selectionStore.isActive) {
+                    applySelectionHighlights(selectionStore.selected, true);
+                }
                 cursorController.stop();
                 state.selectionMode = 'draw';
             }
