@@ -16,6 +16,44 @@ export function createLtnDrawController(options: LtnDrawControllerOptions) {
     let removeDrawPopupFocusHandler: (() => void) | null = null;
     let disposed = false;
 
+    const handleExistingPolygonMouseDown = (event: MouseEvent): void => {
+        if (
+            disposed ||
+            isDisposed() ||
+            !isSelected() ||
+            !drawingTool ||
+            event.button !== 0 ||
+            drawingTool._markers?.length > 0 ||
+            !(event.target instanceof Element) ||
+            !event.target.classList.contains('leaflet-mouse-marker')
+        ) {
+            return;
+        }
+
+        const elements = document.elementsFromPoint(event.clientX, event.clientY);
+        const polygons = new Map<Element, L.Polygon>();
+        map.eachLayer((layer) => {
+            if (layer instanceof L.Polygon) {
+                const element = layer.getElement();
+                if (element?.classList.contains('ltn-cell')) {
+                    polygons.set(element, layer);
+                }
+            }
+        });
+        const polygon = elements.map((element) => polygons.get(element)).find((layer) => layer);
+        if (!polygon) {
+            return;
+        }
+
+        // The draw handler's transparent marker otherwise consumes the polygon click.
+        event.preventDefault();
+        event.stopPropagation();
+        polygon.fire('click', {
+            originalEvent: event,
+            latlng: map.mouseEventToLatLng(event)
+        });
+    };
+
     const closeNamingPopup = (): void => {
         if (drawPopupTimeoutId !== null) {
             window.clearTimeout(drawPopupTimeoutId);
@@ -79,15 +117,21 @@ export function createLtnDrawController(options: LtnDrawControllerOptions) {
 
     return {
         enable(): void {
-            drawingTool = new L.Draw.Polygon(map, { color });
+            drawingTool = new L.Draw.Polygon(map, { color, repeatMode: true });
             drawingTool.enable();
             map.on('draw:created', handleDrawCreated);
+            map.getContainer().addEventListener('mousedown', handleExistingPolygonMouseDown, true);
         },
 
         disable(): void {
             drawingTool?.disable();
             drawingTool = null;
             map.off('draw:created', handleDrawCreated);
+            map.getContainer().removeEventListener(
+                'mousedown',
+                handleExistingPolygonMouseDown,
+                true
+            );
         },
 
         isEnabled(): boolean {
