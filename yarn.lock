@@ -1633,12 +1633,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"leaflet-geometryutil@npm:^0.10.3":
-  version: 0.10.3
-  resolution: "leaflet-geometryutil@npm:0.10.3"
-  dependencies:
-    leaflet: ^1.6.0
-  checksum: b5611a71223f9ba4366f94fb48cda7a8f994beaba31c1e2d9db2dee343968203805d65ceadcc7b05769a892ca79c5d17e6ee40204fbca78e8b7f14d0cbafd7a4
+"leaflet-geometryutil@npm:^0.11.0":
+  version: 0.11.0
+  resolution: "leaflet-geometryutil@npm:0.11.0"
+  peerDependencies:
+    leaflet: ">=0.7 <2"
+  checksum: d43a998f6b2cfd00b77a92aa3118915d8e72793d0edc76c3aedda0ca02469f5e259ecb20b3ea584ff86f7e170badb86299aee3d51a6d037f0d7dd2d2880f3398
   languageName: node
   linkType: hard
 
@@ -2440,7 +2440,7 @@ __metadata:
     html2canvas-pro: ^2.5.2
     jsdom: ^30.1.3
     leaflet-arrowheads: ^1.4.0
-    leaflet-geometryutil: ^0.10.3
+    leaflet-geometryutil: ^0.11.0
     lz-string: ^1.5.0
     pinia: ^4.1.0
     prettier: ^3.9.10
