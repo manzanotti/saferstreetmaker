@@ -653,12 +653,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:^24.19.2":
-  version: 24.19.2
-  resolution: "@types/node@npm:24.19.2"
+"@types/node@npm:^26.6.5":
+  version: 26.6.5
+  resolution: "@types/node@npm:26.6.5"
   dependencies:
-    undici-types: ">=7.24.0 <7.24.7"
-  checksum: 4afc94122d647e2c4bc794431632d07a67949d9674b73f13898e1f509de41862e841a07e16097965f18d36e93fc4b2c60ecf2304d8440694369e5282969c0481
+    undici-types: ~8.9.0
+  checksum: 3f7c73324d52cd7aaa0ae45a9a136228b59a2a3002fbea1377e2b949a0ea013ee792d46665dd9eff466f8bbe454560ac95c95ad950469b137c242bdeb88ae7e3
   languageName: node
   linkType: hard
 
@@ -2430,7 +2430,7 @@ __metadata:
     "@tailwindcss/vite": ^4.3.3
     "@types/leaflet": ^1.9.22
     "@types/lz-string": ^1.5.0
-    "@types/node": ^24.19.2
+    "@types/node": ^26.6.5
     "@vitejs/plugin-vue": ^6.0.10
     "@vue/devtools-api": ^8.2.1
     "@vue/tsconfig": ^0.9.1
@@ -2718,10 +2718,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"undici-types@npm:>=7.24.0 <7.24.7":
-  version: 7.24.6
-  resolution: "undici-types@npm:7.24.6"
-  checksum: e79802e37dc472c6324850d938b5df6b9e796f6a1bb5f8ccd24f3a6d17eae94a9cc125506c8b339a3293ffbad81daeba30b843e564c1d237b3c8deafd98b6267
+"undici-types@npm:~8.9.0":
+  version: 8.9.0
+  resolution: "undici-types@npm:8.9.0"
+  checksum: 78c081bf592406e4bb8bbcbd6baa5c395b5998b9a6a22786e6df4bb5bc90a86aaaaa43a447b455d90589c8b5f36a5827942c20d5c7248efb66675feec1a7bb02
   languageName: node
   linkType: hard
 
