@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vMovablePanel } from '../../directives/movablePanel';
 import { reactive, watch } from 'vue';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useUiStore } from '../../stores/uiStore';
@@ -60,6 +61,7 @@ function onCancel() {
 
 <template>
     <div
+        v-movable-panel
         role="dialog"
         aria-labelledby="settings-panel-title"
         class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[10002] rounded-2xl bg-white shadow-xl border border-gray-100 w-80 flex flex-col overflow-hidden max-h-[90vh]"

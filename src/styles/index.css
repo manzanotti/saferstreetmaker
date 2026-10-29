@@ -22,6 +22,22 @@ body {
     margin: 0;
 }
 
+.movable-panel h2 {
+    cursor: grab;
+    -webkit-touch-callout: none;
+}
+
+.panel-dragging,
+.panel-dragging * {
+    cursor: move !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+}
+
+.panel-moving {
+    will-change: transform;
+}
+
 #map {
     height: 100vh;
     height: 100dvh;

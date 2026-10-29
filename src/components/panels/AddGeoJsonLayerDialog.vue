@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vMovablePanel } from '../../directives/movablePanel';
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import type { ImportedGeoJsonLayer } from '../../models/ImportedGeoJsonLayer';
 import { useGeoJsonLayerImport } from '../../composables/useGeoJsonLayerImport';
@@ -97,6 +98,7 @@ onBeforeUnmount(() => {
         @click.self="close"
     >
         <div
+            v-movable-panel
             ref="dialog"
             id="add-layer-dialog"
             role="dialog"

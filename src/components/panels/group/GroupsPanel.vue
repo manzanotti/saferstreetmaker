@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vMovablePanel } from '../../../directives/movablePanel';
 import { useGroupsPanel } from '../../../composables/groups/useGroupsPanel';
 import GroupPanelList from './GroupPanelList.vue';
 import GroupsMasterVisibilityToggle from './GroupsMasterVisibilityToggle.vue';
@@ -25,6 +26,7 @@ const {
 
 <template>
     <div
+        v-movable-panel
         role="dialog"
         aria-labelledby="groups-panel-title"
         class="fixed top-1/2 left-1/2 z-[10001] flex max-h-[90vh] w-96 -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-xl"

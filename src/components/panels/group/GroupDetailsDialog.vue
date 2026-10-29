@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vMovablePanel } from '../../../directives/movablePanel';
 import { ref, useTemplateRef } from 'vue';
 import { useGroupDetailsDialog } from '../../../composables/groups/useGroupDetailsDialog';
 import GroupDetailsDeletePrompt from './GroupDetailsDeletePrompt.vue';
@@ -52,6 +53,7 @@ const {
 
 <template>
     <div
+        v-movable-panel
         v-if="isOpen && group"
         ref="dialog"
         role="dialog"

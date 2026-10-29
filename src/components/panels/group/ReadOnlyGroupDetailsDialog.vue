@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vMovablePanel } from '../../../directives/movablePanel';
 import { computed, nextTick, onBeforeUnmount, useTemplateRef, watch } from 'vue';
 import { useGroupStore } from '../../../stores/groupStore';
 import { useUiStore } from '../../../stores/uiStore';
@@ -121,6 +122,7 @@ function play() {
 
 <template>
     <div
+        v-movable-panel
         v-if="isOpen && group"
         ref="dialog"
         role="dialog"
