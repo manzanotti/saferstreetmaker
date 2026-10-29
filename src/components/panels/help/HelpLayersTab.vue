@@ -40,7 +40,21 @@ defineProps<{
         </p>
         <h2>Showing and editing layers</h2>
         <p class="mb-8">
-            Use the eye button beside an imported layer to show or hide it. The layer's features
+            Use the eye button beside an imported layer to show or hide it. Select the layer name to
+            open its items panel, where you can rename the layer and search its named items. Items
+            without a name are not listed, and items with the same name have separate rows.
+            Searching only filters the list; it does not hide anything on the map.
+        </p>
+        <p class="mb-8">
+            Each item's eye button cycles from visible to hidden, then to showing only that item.
+            While one item is shown alone, any item's eye button shows all items in that layer
+            again. Only this layer is affected; other layers and planning features stay unchanged.
+            Use <strong>Hide all items</strong> or <strong>Show all items</strong> to change the
+            whole layer at once. A hidden layer must be shown before its items appear.
+        </p>
+        <p class="mb-8">
+            Item visibility is temporary: it is kept when you close the panel, but resets when you
+            reload or load a map. These choices are not saved in shared links. The layer's features
             appear below the map's planning features, so they do not prevent you from adding or
             editing other features. When a feature name property was selected, click its feature to
             edit the name in the popup.

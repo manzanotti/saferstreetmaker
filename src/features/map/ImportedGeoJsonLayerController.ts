@@ -14,6 +14,7 @@ export interface ImportedGeoJsonLayerControllerOptions {
     isReadOnly: () => boolean;
     getActiveLayerId: () => string | null;
     isSuppressed?: () => boolean;
+    isFeatureVisible?: (layerId: string, featureIndex: number) => boolean;
 }
 
 export class ImportedGeoJsonLayerController {
@@ -22,6 +23,8 @@ export class ImportedGeoJsonLayerController {
     private readonly isReadOnly: () => boolean;
     private readonly getActiveLayerId: () => string | null;
     private readonly isSuppressed: () => boolean;
+    private readonly isFeatureVisible: (layerId: string, featureIndex: number) => boolean;
+    private readonly featureLayers = new Map<string, Map<number, L.Layer>>();
     private readonly leafletLayers = new Map<string, L.GeoJSON>();
     private readonly renderedFeatureCollections = new Map<
         string,
@@ -40,6 +43,7 @@ export class ImportedGeoJsonLayerController {
         this.isReadOnly = options.isReadOnly;
         this.getActiveLayerId = options.getActiveLayerId;
         this.isSuppressed = options.isSuppressed ?? (() => false);
+        this.isFeatureVisible = options.isFeatureVisible ?? (() => true);
         this.map.on('zoomend', () => this.updatePointFeatureVisibility());
     }
 
@@ -57,6 +61,7 @@ export class ImportedGeoJsonLayerController {
                 this.renderedFeatureCollections.delete(id);
                 this.visibleLayerIds.delete(id);
                 this.pointFeatureLayers.delete(id);
+                this.featureLayers.delete(id);
             }
         }
         layers.forEach((layer) => this.renderLayer(layer));
@@ -71,6 +76,7 @@ export class ImportedGeoJsonLayerController {
         this.currentLayers.clear();
         this.visibleLayerIds.clear();
         this.pointFeatureLayers.clear();
+        this.featureLayers.clear();
     }
 
     private renderLayer(layer: ImportedGeoJsonLayer): void {
@@ -79,13 +85,14 @@ export class ImportedGeoJsonLayerController {
         const visible = layer.visible !== false && !this.isSuppressed();
 
         if (previous && this.renderedFeatureCollections.get(layer.id) === layer.featureCollection) {
+            this.updateFeatureVisibility(layer.id, previous);
             if (!visible && this.visibleLayerIds.delete(layer.id)) {
                 this.map.removeLayer(previous);
             } else if (visible && !this.visibleLayerIds.has(layer.id)) {
                 previous.addTo(this.map);
                 this.visibleLayerIds.add(layer.id);
-                this.updatePointFeatureVisibility();
             }
+            this.updatePointFeatureVisibility();
             return;
         }
 
@@ -95,6 +102,7 @@ export class ImportedGeoJsonLayerController {
             this.renderedFeatureCollections.delete(layer.id);
             this.visibleLayerIds.delete(layer.id);
             this.pointFeatureLayers.delete(layer.id);
+            this.featureLayers.delete(layer.id);
         }
 
         if (!visible) {
@@ -107,6 +115,7 @@ export class ImportedGeoJsonLayerController {
         const featureIndexes = new Map(
             layer.featureCollection.features.map((feature, index) => [feature, index])
         );
+        const featureLayers = new Map<number, L.Layer>();
         const leafletLayer = L.geoJSON(layer.featureCollection, {
             pane: 'imported',
             style: {
@@ -131,6 +140,7 @@ export class ImportedGeoJsonLayerController {
                 if (index === undefined) {
                     return;
                 }
+                featureLayers.set(index, featureLayer);
                 if (feature.geometry?.type === 'Point' || feature.geometry?.type === 'MultiPoint') {
                     pointFeatureLayers.add(featureLayer);
                 }
@@ -146,12 +156,26 @@ export class ImportedGeoJsonLayerController {
                 });
             }
         });
+        this.featureLayers.set(layer.id, featureLayers);
+        this.updateFeatureVisibility(layer.id, leafletLayer);
         leafletLayer.addTo(this.map);
         this.leafletLayers.set(layer.id, leafletLayer);
         this.renderedFeatureCollections.set(layer.id, layer.featureCollection);
         this.visibleLayerIds.add(layer.id);
         this.pointFeatureLayers.set(layer.id, pointFeatureLayers);
         this.updatePointFeatureVisibility();
+    }
+
+    private updateFeatureVisibility(id: string, layer: L.GeoJSON): void {
+        for (const [index, featureLayer] of this.featureLayers.get(id) ?? []) {
+            if (this.isFeatureVisible(id, index)) {
+                if (!layer.hasLayer(featureLayer)) {
+                    layer.addLayer(featureLayer);
+                }
+            } else if (layer.hasLayer(featureLayer)) {
+                layer.removeLayer(featureLayer);
+            }
+        }
     }
 
     private updatePointFeatureVisibility(): void {
