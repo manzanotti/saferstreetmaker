@@ -1,12 +1,32 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import type { ImportedGeoJsonLayer } from '../models/ImportedGeoJsonLayer';
 import { cloneImportedLayers } from '../features/map/importedGeoJson';
 
+interface LayerItemVisibility {
+    hiddenIndices: number[];
+    soloIndex: number | null;
+}
+
 export const useImportedLayerStore = defineStore('importedLayers', () => {
     const layers = ref<ImportedGeoJsonLayer[]>([]);
+    const itemVisibility = ref(new Map<string, LayerItemVisibility>());
+
+    watch(
+        () => layers.value.map((layer) => ({ id: layer.id, source: layer.featureCollection })),
+        (current, previous) => {
+            const sources = new Map(previous?.map((layer) => [layer.id, layer.source]));
+            itemVisibility.value = new Map(
+                [...itemVisibility.value].filter(([id]) =>
+                    current.some((layer) => layer.id === id && sources.get(id) === layer.source)
+                )
+            );
+        },
+        { flush: 'sync' }
+    );
 
     function setLayers(value: ImportedGeoJsonLayer[]): void {
+        itemVisibility.value = new Map();
         layers.value = cloneImportedLayers(value);
     }
 
@@ -53,12 +73,53 @@ export const useImportedLayerStore = defineStore('importedLayers', () => {
         }
     }
 
+    function isFeatureVisible(id: string, featureIndex: number): boolean {
+        const state = itemVisibility.value.get(id);
+        return state?.soloIndex != null
+            ? state.soloIndex === featureIndex
+            : !state?.hiddenIndices.includes(featureIndex);
+    }
+
+    function cycleFeatureVisibility(id: string, featureIndex: number): void {
+        const layer = layers.value.find((item) => item.id === id);
+        if (!layer || !layer.featureCollection.features[featureIndex]) {
+            throw new RangeError(`Unknown imported feature ${id}:${featureIndex}.`);
+        }
+        const state = itemVisibility.value.get(id) ?? { hiddenIndices: [], soloIndex: null };
+        if (state.soloIndex !== null) {
+            setAllFeaturesHidden(id, false);
+        } else if (state.hiddenIndices.includes(featureIndex)) {
+            itemVisibility.value.set(id, {
+                hiddenIndices: state.hiddenIndices.filter((index) => index !== featureIndex),
+                soloIndex: featureIndex
+            });
+        } else {
+            itemVisibility.value.set(id, {
+                hiddenIndices: [...state.hiddenIndices, featureIndex],
+                soloIndex: null
+            });
+        }
+    }
+
+    function setAllFeaturesHidden(id: string, hidden: boolean): void {
+        const layer = layers.value.find((item) => item.id === id);
+        if (!layer) {
+            throw new RangeError(`Unknown imported layer ${id}.`);
+        }
+        itemVisibility.value.set(id, {
+            hiddenIndices: hidden ? layer.featureCollection.features.map((_, index) => index) : [],
+            soloIndex: null
+        });
+    }
+
     function clear(): void {
+        itemVisibility.value = new Map();
         layers.value = [];
     }
 
     return {
         layers,
+        itemVisibility,
         setLayers,
         addLayer,
         deleteLayer,
@@ -66,6 +127,9 @@ export const useImportedLayerStore = defineStore('importedLayers', () => {
         renameLayer,
         setNameProperty,
         updateFeatureProperty,
+        isFeatureVisible,
+        cycleFeatureVisibility,
+        setAllFeaturesHidden,
         clear
     };
 });

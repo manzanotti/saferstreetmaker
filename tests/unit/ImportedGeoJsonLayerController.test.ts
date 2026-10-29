@@ -48,7 +48,13 @@ function makeMap() {
 
 describe('ImportedGeoJsonLayerController', () => {
     let map: L.Map;
-    let fakeLeafletLayer: { addTo: ReturnType<typeof vi.fn> };
+    let fakeLeafletLayer: {
+        addTo: ReturnType<typeof vi.fn>;
+        eachLayer: ReturnType<typeof vi.fn>;
+        hasLayer: ReturnType<typeof vi.fn>;
+        addLayer: ReturnType<typeof vi.fn>;
+        removeLayer: ReturnType<typeof vi.fn>;
+    };
     let options: any;
     let featureLayer: any;
     let pointOptions: any;
@@ -56,9 +62,13 @@ describe('ImportedGeoJsonLayerController', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         map = makeMap();
+        const children = new Set<unknown>();
         fakeLeafletLayer = {
             addTo: vi.fn().mockReturnThis(),
-            eachLayer: vi.fn((callback: (layer: any) => void) => callback(featureLayer))
+            eachLayer: vi.fn((callback: (layer: any) => void) => callback(featureLayer)),
+            hasLayer: vi.fn((child: unknown) => children.has(child)),
+            addLayer: vi.fn((child: unknown) => children.add(child)),
+            removeLayer: vi.fn((child: unknown) => children.delete(child))
         };
         pointOptions = undefined;
         featureLayer = {
@@ -76,6 +86,7 @@ describe('ImportedGeoJsonLayerController', () => {
             layerOptions.pointToLayer?.({}, { lat: 52.5, lng: -1.9 });
             const renderedFeature = data.features.find((feature: any) => feature.geometry !== null);
             layerOptions.onEachFeature(renderedFeature, featureLayer);
+            children.add(featureLayer);
             return fakeLeafletLayer as any;
         });
     });
@@ -315,5 +326,38 @@ describe('ImportedGeoJsonLayerController', () => {
             opacity: 0.8,
             fillOpacity: 0.8
         });
+    });
+
+    it('detaches hidden features and restores cached children without rebuilding geometry', () => {
+        let visible = true;
+        const layer = makeLayerWithNullGeometry();
+        const isFeatureVisible = vi.fn((_id: string, index: number) => index === 1 && visible);
+        const controller = new ImportedGeoJsonLayerController({
+            getMap: () => map,
+            onFeaturePropertyChange: vi.fn(),
+            isReadOnly: () => false,
+            getActiveLayerId: () => null,
+            isFeatureVisible
+        });
+        controller.render([layer]);
+        visible = false;
+        controller.render([layer]);
+        expect(fakeLeafletLayer.removeLayer).toHaveBeenCalledWith(featureLayer);
+        expect(fakeLeafletLayer.hasLayer(featureLayer)).toBe(false);
+        expect(isFeatureVisible).toHaveBeenCalledWith(layer.id, 1);
+
+        layer.visible = false;
+        visible = true;
+        controller.render([layer]);
+        expect(fakeLeafletLayer.addLayer).toHaveBeenCalledWith(featureLayer);
+        layer.visible = true;
+        controller.render([layer]);
+        expect(L.geoJSON).toHaveBeenCalledOnce();
+        expect(fakeLeafletLayer.hasLayer(featureLayer)).toBe(true);
+
+        controller.clear();
+        fakeLeafletLayer.removeLayer.mockClear();
+        controller.render([makeLayer('other')]);
+        expect(fakeLeafletLayer.removeLayer).toHaveBeenCalledOnce();
     });
 });

@@ -8,16 +8,10 @@ defineProps<{
 
 const emit = defineEmits<{
     add: [];
+    open: [id: string];
     delete: [id: string];
     toggleVisibility: [id: string];
-    rename: [id: string, name: string];
 }>();
-
-function renameLayer(event: Event, layer: ImportedGeoJsonLayer): void {
-    const input = event.target as HTMLInputElement;
-    emit('rename', layer.id, input.value);
-    input.value = layer.name;
-}
 </script>
 
 <template>
@@ -42,14 +36,15 @@ function renameLayer(event: Event, layer: ImportedGeoJsonLayer): void {
                 :key="layer.id"
                 class="layer-item flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50"
             >
-                <input
-                    :value="layer.name"
-                    type="text"
-                    :disabled="readOnly"
-                    class="min-w-0 flex-1 rounded border border-transparent bg-transparent px-1 py-1 text-sm text-gray-700 focus:border-gray-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-green-500"
-                    :aria-label="`Rename ${layer.name}`"
-                    @change="renameLayer($event, layer)"
-                />
+                <button
+                    type="button"
+                    :data-layer-id="layer.id"
+                    class="min-w-0 flex-1 rounded px-1 py-1 text-left text-sm font-medium text-gray-700 hover:text-green-700 focus-visible:outline-2 focus-visible:outline-green-700"
+                    :aria-label="`Open layer ${layer.name}`"
+                    @click="emit('open', layer.id)"
+                >
+                    {{ layer.name }}
+                </button>
                 <button
                     type="button"
                     class="flex h-7 w-7 shrink-0 items-center justify-center rounded text-gray-500 hover:bg-slate-100"

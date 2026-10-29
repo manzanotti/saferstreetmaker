@@ -135,6 +135,8 @@ export function setupMapManager(
     const importedLayerController = new ImportedGeoJsonLayerController({
         getMap,
         isSuppressed: () => useGroupStore(pinia).soloGroupId !== null,
+        isFeatureVisible: (layerId, featureIndex) =>
+            importedLayerStore.isFeatureVisible(layerId, featureIndex),
         isReadOnly: () => settingsStore.readOnly,
         getActiveLayerId: () => mapStore.activeLayerId,
         onFeaturePropertyChange: (layerId, featureIndex, key, value) => {
@@ -201,6 +203,11 @@ export function setupMapManager(
     watch(
         () => [
             useGroupStore(pinia).soloGroupId,
+            ...Array.from(importedLayerStore.itemVisibility, ([id, state]) => [
+                id,
+                state.soloIndex,
+                state.hiddenIndices
+            ]),
             ...importedLayerStore.layers.map((layer) => [
                 layer.id,
                 layer.name,

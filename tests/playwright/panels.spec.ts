@@ -211,7 +211,7 @@ test.describe('Settings Panel', () => {
         await expect(page.locator('#undo-button')).toBeDisabled();
         await expect(page.locator('#redo-button')).toBeDisabled();
         await page.locator('#layers-button').click();
-        await expect(page.getByLabel('Rename Birmingham Wards')).toBeVisible();
+        await expect(page.getByLabel('Open layer Birmingham Wards')).toBeVisible();
         await expect(page.getByLabel('Show layer Birmingham Wards')).toBeVisible();
     });
 
@@ -323,10 +323,13 @@ test.describe('Map Manager Panel', () => {
         await page.locator('#layers-button').click();
         await expect(page.locator('#layers-panel')).toBeVisible();
         await expect(page.locator('#map-manager')).not.toBeAttached();
-        await expect(page.getByLabel('Rename Birmingham Wards')).toBeVisible();
+        await expect(page.getByLabel('Open layer Birmingham Wards')).toBeVisible();
         await expect(page.getByLabel('Show layer Birmingham Wards')).toBeVisible();
-        await page.locator('#layers-list input').first().fill('l');
+        await page.getByLabel('Open layer Birmingham Wards').click();
+        await page.getByLabel('Rename Birmingham Wards').fill('l');
         await expect(page.locator('#layers-panel')).toBeVisible();
+        await page.getByLabel('Rename Birmingham Wards').fill('Birmingham Wards');
+        await page.getByRole('button', { name: 'Back to layers' }).click();
 
         await page.locator('#add-layer-button').click();
         await expect(page.locator('#add-layer-dialog')).toBeVisible();
@@ -340,9 +343,9 @@ test.describe('Map Manager Panel', () => {
         await page.locator('#add-layer-dialog').getByRole('button', { name: 'Add layer' }).click();
 
         const layerItem = page.locator('#layers-list .layer-item').filter({
-            has: page.getByLabel('Rename Imported Wards')
+            has: page.getByLabel('Open layer Imported Wards')
         });
-        const visibilityButton = layerItem.locator('button').first();
+        const visibilityButton = layerItem.getByRole('button', { name: /^(Show|Hide) layer/ });
         await expect(visibilityButton).toHaveAttribute('aria-label', 'Hide layer Imported Wards');
         await visibilityButton.click();
         await expect(visibilityButton).toHaveAttribute('aria-label', 'Show layer Imported Wards');
@@ -354,7 +357,9 @@ test.describe('Map Manager Panel', () => {
         await expect(page.locator('#layers-panel')).toBeVisible();
         await expect(page.locator('#layers-list .delete-button')).not.toBeAttached();
 
-        const readOnlyVisibilityButton = layerItem.locator('button').first();
+        const readOnlyVisibilityButton = layerItem.getByRole('button', {
+            name: /^(Show|Hide) layer/
+        });
         await expect(readOnlyVisibilityButton).toHaveAttribute(
             'aria-label',
             'Show layer Imported Wards'
@@ -398,7 +403,7 @@ test.describe('Map Manager Panel', () => {
         await expect(page.locator('#imported-layer-name')).toHaveValue('url-layer');
         await page.locator('#imported-layer-name').fill('URL layer');
         await page.locator('#add-layer-dialog').getByRole('button', { name: 'Add layer' }).click();
-        await expect(page.getByLabel('Rename URL layer')).toBeVisible();
+        await expect(page.getByLabel('Open layer URL layer')).toBeVisible();
     });
 
     test('shows validation feedback when a URL returns invalid GeoJSON', async ({ page }) => {
@@ -476,13 +481,13 @@ test.describe('Map Manager Panel', () => {
         await page.getByRole('button', { name: 'Load', exact: true }).click();
         await page.locator('#imported-layer-name').fill('History layer');
         await page.locator('#add-layer-dialog').getByRole('button', { name: 'Add layer' }).click();
-        await expect(page.getByLabel('Rename History layer')).toBeVisible();
+        await expect(page.getByLabel('Open layer History layer')).toBeVisible();
         await expect(page.locator('#undo-button')).toBeEnabled();
 
         await page.locator('#undo-button').click();
-        await expect(page.getByLabel('Rename History layer')).not.toBeAttached();
+        await expect(page.getByLabel('Open layer History layer')).not.toBeAttached();
         await page.locator('#redo-button').click();
-        await expect(page.getByLabel('Rename History layer')).toBeVisible();
+        await expect(page.getByLabel('Open layer History layer')).toBeVisible();
         // Let the debounced save flush before switching away from this map.
         await page.waitForTimeout(500);
 
@@ -494,8 +499,8 @@ test.describe('Map Manager Panel', () => {
         // close the layers panel opened below.
         await expect(page.locator('#map-manager')).not.toBeAttached();
         await page.locator('#layers-button').click();
-        await expect(page.getByLabel('Rename History layer')).not.toBeAttached();
-        await expect(page.getByLabel('Rename Birmingham Wards')).toBeVisible();
+        await expect(page.getByLabel('Open layer History layer')).not.toBeAttached();
+        await expect(page.getByLabel('Open layer Birmingham Wards')).toBeVisible();
 
         await page.locator('#map-manager-button').click();
         await page
@@ -504,7 +509,7 @@ test.describe('Map Manager Panel', () => {
             .click();
         await expect(page.locator('#map-manager')).not.toBeAttached();
         await page.locator('#layers-button').click();
-        await expect(page.getByLabel('Rename History layer')).toBeVisible();
+        await expect(page.getByLabel('Open layer History layer')).toBeVisible();
     });
 
     test('showing a hidden imported layer reuses its rendered geometry', async ({ page }) => {
@@ -1163,14 +1168,14 @@ test.describe('Reload Persistence', () => {
 
         await page.locator('#layers-button').click();
         await expect(page.locator('#layers-empty')).toBeVisible();
-        await expect(page.getByLabel('Rename Birmingham Wards')).not.toBeAttached();
+        await expect(page.getByLabel('Open layer Birmingham Wards')).not.toBeAttached();
     });
 
     test('the default imported layer is restored after reload when it is kept', async ({
         page
     }) => {
         await page.locator('#layers-button').click();
-        await expect(page.getByLabel('Rename Birmingham Wards')).toBeVisible();
+        await expect(page.getByLabel('Open layer Birmingham Wards')).toBeVisible();
         await page.getByLabel('Close layers').click();
 
         await page.locator('#settings-button').click();
@@ -1183,7 +1188,7 @@ test.describe('Reload Persistence', () => {
         await page.waitForSelector('.toolbar');
 
         await page.locator('#layers-button').click();
-        await expect(page.getByLabel('Rename Birmingham Wards')).toBeVisible();
+        await expect(page.getByLabel('Open layer Birmingham Wards')).toBeVisible();
     });
 
     test('saving Birmingham preserves LTN cells through undo, redo and reload', async ({
@@ -1209,11 +1214,16 @@ test.describe('Reload Persistence', () => {
         await expect(page.locator('.leaflet-ltns-pane path')).toHaveCount(80);
     });
 
-    test('Escape from the layer rename input closes the panel', async ({ page }) => {
+    test('Escape from the layer rename input returns to layers before closing the panel', async ({
+        page
+    }) => {
         await page.locator('#layers-button').click();
-        const renameInput = page.locator('#layers-list input').first();
+        await page.getByLabel('Open layer Birmingham Wards').click();
+        const renameInput = page.getByLabel('Rename Birmingham Wards');
         await renameInput.click();
         await renameInput.press('Escape');
+        await expect(page.getByLabel('Open layer Birmingham Wards')).toBeFocused();
+        await page.keyboard.press('Escape');
         await expect(page.locator('#layers-panel')).not.toBeAttached();
     });
 

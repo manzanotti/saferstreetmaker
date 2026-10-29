@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useMapStore } from '../../stores/mapStore';
 import { useImportedLayerStore } from '../../stores/importedLayerStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useUiStore } from '../../stores/uiStore';
 import ImportedLayersSection from './ImportedLayersSection.vue';
 import AddGeoJsonLayerDialog from './AddGeoJsonLayerDialog.vue';
+import LayerItemsPanel from './layers/LayerItemsPanel.vue';
 
 const mapStore = useMapStore();
 const importedLayerStore = useImportedLayerStore();
@@ -14,6 +15,28 @@ const uiStore = useUiStore();
 const showAddLayerDialog = ref(false);
 const dialog = ref<HTMLDivElement | null>(null);
 const opener = ref<HTMLElement | null>(null);
+const selectedLayerId = ref<string | null>(null);
+const selectedLayer = computed(() =>
+    importedLayerStore.layers.find((layer) => layer.id === selectedLayerId.value)
+);
+let layerOpener: HTMLElement | null = null;
+
+function openLayer(id: string) {
+    layerOpener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    selectedLayerId.value = id;
+    void nextTick(() => document.getElementById('layer-items-search')?.focus());
+}
+
+function backToLayers() {
+    const id = selectedLayerId.value;
+    selectedLayerId.value = null;
+    void nextTick(() => {
+        const row = Array.from(
+            dialog.value?.querySelectorAll<HTMLElement>('[data-layer-id]') ?? []
+        ).find((element) => element.dataset.layerId === id);
+        (row ?? layerOpener ?? dialog.value)?.focus();
+    });
+}
 
 function onAddLayer(layer: Parameters<typeof importedLayerStore.addLayer>[0]) {
     importedLayerStore.addLayer(layer);
@@ -72,7 +95,12 @@ function onDialogKeydown(event: KeyboardEvent) {
     }
     if (event.key === 'Escape') {
         event.preventDefault();
-        closePanel();
+        event.stopPropagation();
+        if (selectedLayer.value) {
+            backToLayers();
+        } else {
+            closePanel();
+        }
         return;
     }
     if (event.key !== 'Tab' || !dialog.value) {
@@ -107,8 +135,9 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-    if (opener.value?.isConnected) {
-        opener.value.focus();
+    const target = document.getElementById('layers-button') ?? opener.value;
+    if (target?.isConnected) {
+        target.focus();
     }
 });
 </script>
@@ -127,7 +156,22 @@ onBeforeUnmount(() => {
         @keydown="onDialogKeydown"
     >
         <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-            <h2 id="layers-panel-title" class="text-base font-semibold text-gray-800">Layers</h2>
+            <div class="min-w-0">
+                <button
+                    v-if="selectedLayer"
+                    type="button"
+                    class="mb-1 rounded text-xs font-medium text-green-700 focus-visible:outline-2 focus-visible:outline-green-700"
+                    @click="backToLayers"
+                >
+                    Back to layers
+                </button>
+                <h2
+                    id="layers-panel-title"
+                    class="break-words text-base font-semibold text-gray-800"
+                >
+                    {{ selectedLayer ? selectedLayer.name : 'Layers' }}
+                </h2>
+            </div>
             <button
                 type="button"
                 aria-label="Close layers"
@@ -138,13 +182,22 @@ onBeforeUnmount(() => {
             </button>
         </div>
         <div class="overflow-y-auto px-5 py-4">
+            <LayerItemsPanel
+                v-if="selectedLayer"
+                :key="selectedLayer.id"
+                :layer="selectedLayer"
+                :read-only="settingsStore.readOnly"
+                @rename="onRenameLayer"
+                @show-layer="onToggleLayerVisibility"
+            />
             <ImportedLayersSection
+                v-else
                 :layers="importedLayerStore.layers"
                 :read-only="settingsStore.readOnly"
                 @add="showAddLayerDialog = true"
                 @delete="onDeleteLayer"
                 @toggle-visibility="onToggleLayerVisibility"
-                @rename="onRenameLayer"
+                @open="openLayer"
             />
         </div>
     </div>
