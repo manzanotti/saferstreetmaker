@@ -6,6 +6,7 @@ import { useImportedLayerItems } from '../../src/composables/layers/useImportedL
 import type { ImportedGeoJsonLayer } from '../../src/models/ImportedGeoJsonLayer';
 import { useMapStore } from '../../src/stores/mapStore';
 import { useUiStore } from '../../src/stores/uiStore';
+import { sanitizeImportedLayers } from '../../src/features/map/importedGeoJson';
 
 function layer(id = 'wards'): ImportedGeoJsonLayer {
     return {
@@ -51,7 +52,7 @@ describe('Imported layer items', () => {
         ]);
         items.query.value = ' ALp ';
         expect(items.filteredItems.value.map((item) => item.index)).toEqual([0, 2]);
-        expect(store.itemVisibility).toEqual({});
+        expect(store.itemVisibility).toEqual(new Map());
         items.query.value = 'missing';
         expect(items.filteredItems.value).toEqual([]);
         store.setNameProperty('wards', null);
@@ -117,15 +118,15 @@ describe('Imported layer items', () => {
         store.cycleFeatureVisibility('wards', 0);
         expect(Object.keys(store.layers[0])).not.toContain('itemVisibility');
         store.setLayers([layer()]);
-        expect(store.itemVisibility).toEqual({});
+        expect(store.itemVisibility).toEqual(new Map());
         store.cycleFeatureVisibility('wards', 0);
         store.deleteLayer('wards');
-        expect(store.itemVisibility).toEqual({});
+        expect(store.itemVisibility).toEqual(new Map());
         store.addLayer(layer());
         expect(store.isFeatureVisible('wards', 0)).toBe(true);
         store.cycleFeatureVisibility('wards', 0);
         store.clear();
-        expect(store.itemVisibility).toEqual({});
+        expect(store.itemVisibility).toEqual(new Map());
     });
 
     it('rejects invalid feature targets explicitly', () => {
@@ -135,6 +136,48 @@ describe('Imported layer items', () => {
         expect(() => store.cycleFeatureVisibility('wards', 99)).toThrow(RangeError);
         expect(() => store.setAllFeaturesHidden('missing', true)).toThrow(RangeError);
     });
+
+    it.each([
+        'constructor',
+        'toString',
+        '__proto__',
+        'valueOf',
+        'hasOwnProperty',
+        '__defineGetter__'
+    ])(
+        'supports inherited-object-key layer ID %s through visibility changes and source replacement',
+        (id) => {
+            const store = useImportedLayerStore();
+            store.setLayers(sanitizeImportedLayers([layer(id), layer('other')]));
+            const items = useImportedLayerItems(() => store.layers[0]);
+            expect(items.isVisible(0)).toBe(true);
+            expect(items.soloIndex.value).toBeNull();
+
+            items.cycleVisibility(0);
+            expect(items.isVisible(0)).toBe(false);
+            expect(store.isFeatureVisible('other', 0)).toBe(true);
+            items.cycleVisibility(0);
+            expect(items.soloIndex.value).toBe(0);
+            expect(items.isVisible(1)).toBe(false);
+            items.toggleAll();
+            expect(items.isVisible(1)).toBe(true);
+            items.toggleAll();
+            expect(items.allHidden.value).toBe(true);
+
+            store.addLayer(layer('added'));
+            expect(items.allHidden.value).toBe(true);
+            store.layers[0].featureCollection = layer(id).featureCollection;
+            expect(items.isVisible(0)).toBe(true);
+            items.cycleVisibility(0);
+            store.deleteLayer(id);
+            store.addLayer(layer(id));
+            expect(store.isFeatureVisible(id, 0)).toBe(true);
+            store.cycleFeatureVisibility(id, 0);
+            store.clear();
+            store.setLayers([layer(id)]);
+            expect(store.isFeatureVisible(id, 0)).toBe(true);
+        }
+    );
 
     it.each<{ geometry: GeoJSON.Geometry; expected: [number, number] }>([
         { geometry: { type: 'Point', coordinates: [4, 8, 100] }, expected: [8, 4] },

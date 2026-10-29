@@ -5,7 +5,11 @@ import type { useImportedLayerStore } from '../../src/stores/importedLayerStore'
 import type { useMapStore } from '../../src/stores/mapStore';
 import type { useSettingsStore } from '../../src/stores/settingsStore';
 import type { useGroupStore } from '../../src/stores/groupStore';
-import { addFirstNavigationStorageResetScript, waitForFreshStorage } from './indexedDbHelpers';
+import {
+    addFirstNavigationStorageResetScript,
+    getHistoryEntryCount,
+    waitForFreshStorage
+} from './indexedDbHelpers';
 
 type AppElement = HTMLElement & { __vue_app__: App };
 type TestPinia = Pinia & { _s: Map<string, unknown> };
@@ -311,6 +315,53 @@ test.describe('Named items in imported layers', () => {
             page.getByRole('button', { name: 'Hide item Beta', exact: true })
         ).toBeVisible();
     });
+
+    for (const id of ['constructor', 'toString', '__proto__']) {
+        test(`loads and controls a persisted layer whose ID is ${id}`, async ({ page }) => {
+            const errors: string[] = [];
+            page.on('pageerror', (error) => errors.push(error.message));
+            await expect(page.locator('#undo-button')).toBeEnabled();
+            const historyCount = await getHistoryEntryCount(page);
+            await page.evaluate((layerId) => {
+                const stores = (
+                    (document.getElementById('app') as AppElement).__vue_app__.config
+                        .globalProperties.$pinia as TestPinia
+                )._s;
+                const store = stores.get('importedLayers') as ImportedStore;
+                const source = JSON.parse(
+                    JSON.stringify(store.layers[0])
+                ) as (typeof store.layers)[number];
+                store.setLayers([{ ...source, id: layerId }]);
+                (stores.get('map') as MapStore).markLayerUpdated();
+            }, id);
+            await expect(page.locator('.leaflet-imported-pane path')).toHaveCount(6);
+            await expect.poll(() => getHistoryEntryCount(page)).toBeGreaterThan(historyCount);
+            await page.reload();
+            await waitForFreshStorage(page);
+            await page.waitForSelector('.toolbar');
+            await expect(page.locator('.leaflet-imported-pane path')).toHaveCount(6);
+            expect(
+                await page.evaluate(() => {
+                    const stores = (
+                        (document.getElementById('app') as AppElement).__vue_app__.config
+                            .globalProperties.$pinia as TestPinia
+                    )._s;
+                    return (stores.get('importedLayers') as ImportedStore).layers.map(
+                        (layer) => layer.id
+                    );
+                })
+            ).toEqual([id]);
+            await openItems(page);
+            await page.getByRole('button', { name: 'Hide item Beta', exact: true }).click();
+            await expect(page.locator('.leaflet-imported-pane path')).toHaveCount(5);
+            await page.getByRole('button', { name: 'Show only item Beta', exact: true }).click();
+            await expect(page.locator('.leaflet-imported-pane path')).toHaveCount(1);
+            await expect(page.locator('#layer-items-list [data-visibility="solo"]')).toHaveCount(1);
+            await page.getByRole('button', { name: 'Show all items', exact: true }).first().click();
+            await expect(page.locator('.leaflet-imported-pane path')).toHaveCount(6);
+            expect(errors).toEqual([]);
+        });
+    }
 
     test('keeps details usable at narrow viewport sizes', async ({ page }) => {
         await page.setViewportSize({ width: 360, height: 640 });

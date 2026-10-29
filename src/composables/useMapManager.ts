@@ -203,7 +203,7 @@ export function setupMapManager(
     watch(
         () => [
             useGroupStore(pinia).soloGroupId,
-            ...Object.entries(importedLayerStore.itemVisibility).map(([id, state]) => [
+            ...Array.from(importedLayerStore.itemVisibility, ([id, state]) => [
                 id,
                 state.soloIndex,
                 state.hiddenIndices

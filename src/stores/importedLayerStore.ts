@@ -10,14 +10,14 @@ interface LayerItemVisibility {
 
 export const useImportedLayerStore = defineStore('importedLayers', () => {
     const layers = ref<ImportedGeoJsonLayer[]>([]);
-    const itemVisibility = ref<Record<string, LayerItemVisibility>>({});
+    const itemVisibility = ref(new Map<string, LayerItemVisibility>());
 
     watch(
         () => layers.value.map((layer) => ({ id: layer.id, source: layer.featureCollection })),
         (current, previous) => {
             const sources = new Map(previous?.map((layer) => [layer.id, layer.source]));
-            itemVisibility.value = Object.fromEntries(
-                Object.entries(itemVisibility.value).filter(([id]) =>
+            itemVisibility.value = new Map(
+                [...itemVisibility.value].filter(([id]) =>
                     current.some((layer) => layer.id === id && sources.get(id) === layer.source)
                 )
             );
@@ -26,7 +26,7 @@ export const useImportedLayerStore = defineStore('importedLayers', () => {
     );
 
     function setLayers(value: ImportedGeoJsonLayer[]): void {
-        itemVisibility.value = {};
+        itemVisibility.value = new Map();
         layers.value = cloneImportedLayers(value);
     }
 
@@ -74,7 +74,7 @@ export const useImportedLayerStore = defineStore('importedLayers', () => {
     }
 
     function isFeatureVisible(id: string, featureIndex: number): boolean {
-        const state = itemVisibility.value[id];
+        const state = itemVisibility.value.get(id);
         return state?.soloIndex != null
             ? state.soloIndex === featureIndex
             : !state?.hiddenIndices.includes(featureIndex);
@@ -85,19 +85,19 @@ export const useImportedLayerStore = defineStore('importedLayers', () => {
         if (!layer || !layer.featureCollection.features[featureIndex]) {
             throw new RangeError(`Unknown imported feature ${id}:${featureIndex}.`);
         }
-        const state = itemVisibility.value[id] ?? { hiddenIndices: [], soloIndex: null };
+        const state = itemVisibility.value.get(id) ?? { hiddenIndices: [], soloIndex: null };
         if (state.soloIndex !== null) {
             setAllFeaturesHidden(id, false);
         } else if (state.hiddenIndices.includes(featureIndex)) {
-            itemVisibility.value[id] = {
+            itemVisibility.value.set(id, {
                 hiddenIndices: state.hiddenIndices.filter((index) => index !== featureIndex),
                 soloIndex: featureIndex
-            };
+            });
         } else {
-            itemVisibility.value[id] = {
+            itemVisibility.value.set(id, {
                 hiddenIndices: [...state.hiddenIndices, featureIndex],
                 soloIndex: null
-            };
+            });
         }
     }
 
@@ -106,14 +106,14 @@ export const useImportedLayerStore = defineStore('importedLayers', () => {
         if (!layer) {
             throw new RangeError(`Unknown imported layer ${id}.`);
         }
-        itemVisibility.value[id] = {
+        itemVisibility.value.set(id, {
             hiddenIndices: hidden ? layer.featureCollection.features.map((_, index) => index) : [],
             soloIndex: null
-        };
+        });
     }
 
     function clear(): void {
-        itemVisibility.value = {};
+        itemVisibility.value = new Map();
         layers.value = [];
     }
 

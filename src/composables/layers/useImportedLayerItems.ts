@@ -24,7 +24,7 @@ export function useImportedLayerItems(getLayer: () => ImportedGeoJsonLayer) {
         const search = query.value.trim().toLocaleLowerCase();
         return namedItems.value.filter((item) => item.name.toLocaleLowerCase().includes(search));
     });
-    const soloIndex = computed(() => store.itemVisibility[getLayer().id]?.soloIndex ?? null);
+    const soloIndex = computed(() => store.itemVisibility.get(getLayer().id)?.soloIndex ?? null);
     const allHidden = computed(() => {
         const layer = getLayer();
         return (
