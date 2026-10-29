@@ -17,6 +17,7 @@ const {
     filteredItems,
     soloIndex,
     allHidden,
+    centreItem,
     isVisible,
     cycleVisibility,
     toggleAll
@@ -96,13 +97,21 @@ function renameLayer(event: Event) {
                 :data-feature-index="item.index"
                 class="flex items-center gap-2 py-2"
             >
-                <span
+                <button
+                    type="button"
+                    :disabled="!item.canCentre"
+                    :aria-label="`Centre map on ${item.name}`"
+                    :title="
+                        item.canCentre ? `Centre map on ${item.name}` : 'This item has no location.'
+                    "
                     :class="[
-                        'min-w-0 flex-1 break-words text-sm',
+                        'min-w-0 flex-1 break-words rounded text-left text-sm enabled:hover:text-green-700 focus-visible:outline-2 focus-visible:outline-green-700',
                         isVisible(item.index) ? 'text-gray-800' : 'text-gray-400 line-through'
                     ]"
-                    >{{ item.name }}</span
+                    @click="centreItem(item.index)"
                 >
+                    {{ item.name }}
+                </button>
                 <VisibilityButton
                     :hidden="!isVisible(item.index)"
                     :solo="soloIndex === item.index"

@@ -175,8 +175,12 @@ test.describe('Named items in imported layers', () => {
                 return original<P, G>(...args);
             };
         });
-        const alpha = page.locator('#layer-items-list li[data-feature-index="1"] button');
-        const duplicate = page.locator('#layer-items-list li[data-feature-index="3"] button');
+        const alpha = page.locator(
+            '#layer-items-list li[data-feature-index="1"] button[data-visibility]'
+        );
+        const duplicate = page.locator(
+            '#layer-items-list li[data-feature-index="3"] button[data-visibility]'
+        );
         await alpha.click();
         await expect(alpha).toHaveAttribute('data-visibility', 'hidden');
         await expect(duplicate).toHaveAttribute('data-visibility', 'visible');
@@ -188,7 +192,9 @@ test.describe('Named items in imported layers', () => {
         await duplicate.click();
         await expect(page.locator('.leaflet-imported-pane path')).toHaveCount(7);
         await expect(alpha).toHaveAttribute('data-visibility', 'visible');
-        const mixed = page.locator('#layer-items-list li[data-feature-index="5"] button');
+        const mixed = page.locator(
+            '#layer-items-list li[data-feature-index="5"] button[data-visibility]'
+        );
         await mixed.click();
         await expect(page.locator('.leaflet-imported-pane path')).toHaveCount(5);
         await mixed.click();
@@ -278,5 +284,48 @@ test.describe('Named items in imported layers', () => {
         await expect(
             page.getByRole('button', { name: 'Show only item Mixed', exact: true })
         ).toBeVisible();
+    });
+
+    test('centres named features by click and keyboard while preserving zoom, visibility and the panel', async ({
+        page
+    }) => {
+        await openItems(page);
+        const view = () =>
+            page.evaluate(() => {
+                const stores = (
+                    (document.getElementById('app') as AppElement).__vue_app__.config
+                        .globalProperties.$pinia as TestPinia
+                )._s;
+                const map = (stores.get('map') as MapStore).map!;
+                const centre = map.getCenter();
+                return { lat: centre.lat, lng: centre.lng, zoom: map.getZoom() };
+            });
+        const expectCentre = async (lat: number, lng: number) => {
+            await expect.poll(async () => (await view()).lat).toBeCloseTo(lat, 4);
+            await expect.poll(async () => (await view()).lng).toBeCloseTo(lng, 4);
+            expect((await view()).zoom).toBe(18);
+        };
+        await expect(
+            page.getByRole('button', { name: 'Centre map on Metadata', exact: true })
+        ).toBeDisabled();
+        const before = await view();
+        await page.getByRole('button', { name: 'Hide item Beta', exact: true }).click();
+        expect(await view()).toEqual(before);
+        await page.getByRole('button', { name: 'Centre map on Beta', exact: true }).click();
+        await expectCentre(52.5015, -1.9025);
+        await expect(
+            page.getByRole('button', { name: 'Show only item Beta', exact: true })
+        ).toBeVisible();
+
+        await page.getByLabel('Search by name').fill('Alpha');
+        const names = page.getByRole('button', { name: 'Centre map on Alpha', exact: true });
+        await names.nth(1).focus();
+        await page.keyboard.press('Enter');
+        await expectCentre(52.5015, -1.9005);
+        await names.first().focus();
+        await page.keyboard.press('Space');
+        await expectCentre(52.5015, -1.9045);
+        await expect(page.locator('#layer-items-panel')).toBeVisible();
+        await expect(page.locator('.leaflet-imported-pane path')).toHaveCount(6);
     });
 });
