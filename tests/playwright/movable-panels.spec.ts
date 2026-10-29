@@ -148,3 +148,44 @@ test('touch long-press moves a panel while an ordinary swipe scrolls its content
     await expect.poll(() => body.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
     expect(await panel.boundingBox()).toEqual(after);
 });
+
+for (const stage of ['pending', 'active']) {
+    test(`a second finger on the map cancels a ${stage} panel touch drag`, async ({
+        page,
+        context
+    }) => {
+        const session = await context.newCDPSession(page);
+        await session.send('Emulation.setTouchEmulationEnabled', { enabled: true });
+        await page.locator('#settings-button').click();
+        const panel = page.getByRole('dialog', { name: 'Settings' });
+        const heading = await page.locator('#settings-panel-title').boundingBox();
+        const before = await panel.boundingBox();
+        const first = { id: 0, x: heading!.x + 20, y: heading!.y + 10 };
+        const second = { id: 1, x: 1000, y: 650 };
+        await session.send('Input.dispatchTouchEvent', {
+            type: 'touchStart',
+            touchPoints: [first]
+        });
+        if (stage === 'active') {
+            await expect(panel).toHaveClass(/panel-moving/);
+        }
+        await session.send('Input.dispatchTouchEvent', {
+            type: 'touchStart',
+            touchPoints: [first, second]
+        });
+        await expect(panel).not.toHaveClass(/panel-moving/);
+        // The pending hold must not activate after the second finger has landed.
+        await page.waitForTimeout(500);
+        await expect(panel).not.toHaveClass(/panel-moving/);
+        await session.send('Input.dispatchTouchEvent', {
+            type: 'touchMove',
+            touchPoints: [
+                { ...first, x: first.x + 30, y: first.y + 20 },
+                { ...second, x: second.x - 30, y: second.y - 20 }
+            ]
+        });
+        await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+        expect(await panel.boundingBox()).toEqual(before);
+        await expect(page.locator('html')).not.toHaveClass(/panel-dragging/);
+    });
+}

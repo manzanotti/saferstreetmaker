@@ -138,6 +138,15 @@ function makeMovable(panel: HTMLElement): () => void {
         );
     }
 
+    document.addEventListener(
+        'touchstart',
+        (event) => {
+            if (touchId !== null && event.touches.length > 1) {
+                finish();
+            }
+        },
+        { signal, capture: true, passive: true }
+    );
     panel.addEventListener(
         'touchstart',
         (event) => {
@@ -158,6 +167,10 @@ function makeMovable(panel: HTMLElement): () => void {
     document.addEventListener(
         'touchmove',
         (event) => {
+            if (touchId !== null && event.touches.length > 1) {
+                finish();
+                return;
+            }
             const touch = Array.from(event.touches).find((item) => item.identifier === touchId);
             if (!touch) {
                 return;

@@ -75,7 +75,7 @@ describe('movable panels', () => {
         return event;
     }
 
-    function touch(type: string, x: number, y: number, count = 1) {
+    function touch(type: string, x: number, y: number, count = 1, target: EventTarget = panel) {
         const touches = Array.from({ length: count }, (_, identifier) => ({
             identifier,
             clientX: x,
@@ -86,7 +86,7 @@ describe('movable panels', () => {
             touches: { value: type === 'touchend' ? [] : touches },
             changedTouches: { value: touches }
         });
-        panel.dispatchEvent(event);
+        target.dispatchEvent(event);
         return event;
     }
 
@@ -163,6 +163,41 @@ describe('movable panels', () => {
         touch('touchstart', 120, 120, 2);
         vi.advanceTimersByTime(500);
         expect(panel.classList.contains('panel-moving')).toBe(false);
+    });
+
+    it.each([0, 450])(
+        'cancels a touch drag when a second finger lands outside the panel after %ims',
+        (holdDuration) => {
+            touch('touchstart', 120, 120);
+            vi.advanceTimersByTime(holdDuration);
+            if (holdDuration === 450) {
+                touch('touchmove', 140, 140);
+            }
+            const transform = panel.style.transform;
+
+            expect(touch('touchstart', 140, 140, 2, document.body).defaultPrevented).toBe(false);
+            expect(panel.classList.contains('panel-moving')).toBe(false);
+            vi.advanceTimersByTime(500);
+            expect(panel.classList.contains('panel-moving')).toBe(false);
+            expect(document.documentElement.classList.contains('panel-dragging')).toBe(false);
+            expect(touch('touchmove', 180, 160, 2, document.body).defaultPrevented).toBe(false);
+            expect(touch('touchmove', 200, 180).defaultPrevented).toBe(false);
+            expect(touch('touchend', 200, 180).defaultPrevented).toBe(false);
+            expect(panel.style.transform).toBe(transform);
+
+            touch('touchstart', 120, 120);
+            vi.advanceTimersByTime(450);
+            expect(touch('touchmove', 180, 160).defaultPrevented).toBe(true);
+            expect(panel.style.transform).not.toBe(transform);
+        }
+    );
+
+    it('also cancels on a multi-touch move without consuming the gesture', () => {
+        touch('touchstart', 120, 120);
+        vi.advanceTimersByTime(450);
+        expect(touch('touchmove', 180, 160, 2, document.body).defaultPrevented).toBe(false);
+        expect(panel.classList.contains('panel-moving')).toBe(false);
+        expect(panel.style.transform).toBe('');
     });
 
     it.each(['pointercancel', 'blur'])('releases drag state on %s', (type) => {

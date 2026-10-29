@@ -32,7 +32,8 @@ Additionally, you can load a JSON version of a map.
 Panels and dialogs can be moved by dragging their heading or any non-interactive
 space with the primary mouse button. On touchscreens, hold for 450 ms before
 dragging; swiping without holding still scrolls panel content. Buttons, links, and
-form fields keep their normal behaviour. Panels stay within the viewport and
+form fields keep their normal behaviour. Adding a second finger anywhere cancels
+panel dragging so multi-touch gestures remain available to the map. Panels stay within the viewport and
 return to their default position when reopened. Toolbars and the legend stay anchored.
 
 Point markers are full-size at zoom 16 and above, half-size at zooms 13-15, and hidden at zoom 12 and below.
