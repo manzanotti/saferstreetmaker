@@ -54,3 +54,8 @@ yarn preview    # preview the production build
 yarn test       # Playwright tests (tests/playwright.config.ts)
 yarn test:unit  # Vitest tests (tests/vitest.config.ts)
 ```
+
+Before running browser tests locally, install the browser engines with
+`yarn playwright install chromium firefox webkit`. `yarn test` runs the full suite
+in Chromium and the named layer-items workflows in Firefox and WebKit as well.
+Use `yarn test --project=chromium` to run only the Chromium suite.

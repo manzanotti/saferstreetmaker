@@ -2,8 +2,10 @@ import { createApp, h, nextTick, type App } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import LayerItemsPanel from '../../src/components/panels/layers/LayerItemsPanel.vue';
+import LayersPanel from '../../src/components/panels/LayersPanel.vue';
 import { useImportedLayerStore } from '../../src/stores/importedLayerStore';
 import { useMapStore } from '../../src/stores/mapStore';
+import { useUiStore } from '../../src/stores/uiStore';
 import * as L from 'leaflet';
 
 describe('LayerItemsPanel', () => {
@@ -25,6 +27,45 @@ describe('LayerItemsPanel', () => {
         ]);
         root = document.createElement('div');
         document.body.appendChild(root);
+    });
+
+    describe('LayersPanel focus restoration', () => {
+        it('returns to the toolbar when pointer activation leaves another control focused', async () => {
+            const pinia = createPinia();
+            setActivePinia(pinia);
+            const uiStore = useUiStore();
+            const previousFocus = document.createElement('input');
+            const toolbar = document.createElement('button');
+            toolbar.id = 'layers-button';
+            toolbar.addEventListener('click', () => uiStore.openPanel('layers'));
+            const root = document.createElement('div');
+            document.body.append(previousFocus, toolbar, root);
+            const app = createApp(() => (uiStore.activePanel === 'layers' ? h(LayersPanel) : null));
+            app.use(pinia);
+            app.mount(root);
+
+            try {
+                previousFocus.focus();
+                toolbar.click();
+                await nextTick();
+                await nextTick();
+                expect(document.activeElement).toBe(root.querySelector('#layers-panel'));
+
+                const close = root.querySelector(
+                    '[aria-label="Close layers"]'
+                ) as HTMLButtonElement;
+                close.click();
+                await nextTick();
+
+                expect(uiStore.activePanel).toBeNull();
+                expect(document.activeElement).toBe(toolbar);
+            } finally {
+                app.unmount();
+                previousFocus.remove();
+                toolbar.remove();
+                root.remove();
+            }
+        });
     });
     afterEach(() => {
         app?.unmount();

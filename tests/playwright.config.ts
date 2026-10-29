@@ -19,6 +19,16 @@ export default defineConfig({
         {
             name: 'chromium',
             use: { ...devices['Desktop Chrome'] }
+        },
+        {
+            name: 'firefox-layer-items',
+            testMatch: 'layer-items.spec.ts',
+            use: { ...devices['Desktop Firefox'] }
+        },
+        {
+            name: 'webkit-layer-items',
+            testMatch: 'layer-items.spec.ts',
+            use: { ...devices['Desktop Safari'] }
         }
     ],
     webServer: {

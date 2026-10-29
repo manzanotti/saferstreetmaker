@@ -4,6 +4,7 @@ import type { Pinia } from 'pinia';
 import type { useImportedLayerStore } from '../../src/stores/importedLayerStore';
 import type { useMapStore } from '../../src/stores/mapStore';
 import type { useSettingsStore } from '../../src/stores/settingsStore';
+import type { useGroupStore } from '../../src/stores/groupStore';
 import { addFirstNavigationStorageResetScript, waitForFreshStorage } from './indexedDbHelpers';
 
 type AppElement = HTMLElement & { __vue_app__: App };
@@ -112,6 +113,57 @@ async function openItems(page: Page) {
     await expect(page.getByLabel('Search by name')).toBeFocused();
 }
 
+async function trackGeometryBuilds(page: Page) {
+    await page.evaluate(() => {
+        const testWindow = window as TestWindow;
+        const original = testWindow.L.geoJSON;
+        const counter = { count: 0 };
+        testWindow.layerItemGeometryBuilds = counter;
+        testWindow.L.geoJSON = <P, G extends GeoJSON.Geometry = GeoJSON.Geometry>(
+            ...args: Parameters<typeof original<P, G>>
+        ) => {
+            counter.count++;
+            return original<P, G>(...args);
+        };
+    });
+}
+
+async function seedPlanningGroup(page: Page) {
+    await page.evaluate(() => {
+        const stores = (
+            (document.getElementById('app') as AppElement).__vue_app__.config.globalProperties
+                .$pinia as TestPinia
+        )._s;
+        const mapStore = stores.get('map') as MapStore;
+        const featureId = mapStore.layers.find((layer) => layer.id === 'ModalFilters')!
+            .loadFeature!({
+            type: 'Feature',
+            properties: { name: 'Grouped feature' },
+            geometry: { type: 'Point', coordinates: [-1.902, 52.5] }
+        });
+        if (!featureId) {
+            throw new Error('Failed to seed the planning group member.');
+        }
+        (stores.get('group') as ReturnType<typeof useGroupStore>).setGroups([
+            {
+                id: 'planning-group',
+                name: 'Planning group',
+                members: [{ layerId: 'ModalFilters', historyId: featureId }]
+            }
+        ]);
+        (stores.get('importedLayers') as ImportedStore).toggleVisibility('other');
+        mapStore.markLayerUpdated();
+    });
+    await expect(page.locator('.leaflet-imported-pane path')).toHaveCount(6);
+}
+
+async function soloPlanningGroup(page: Page) {
+    await page.locator('#groups-button').click();
+    await page.getByRole('button', { name: 'Hide group Planning group', exact: true }).click();
+    await page.getByRole('button', { name: 'Show only group Planning group', exact: true }).click();
+    await expect(page.locator('.leaflet-imported-pane path')).toHaveCount(0);
+}
+
 test.describe('Named items in imported layers', () => {
     test.beforeEach(async ({ page, context }) => {
         await context.grantPermissions(['geolocation']);
@@ -163,18 +215,7 @@ test.describe('Named items in imported layers', () => {
         page
     }) => {
         await openItems(page);
-        await page.evaluate(() => {
-            const testWindow = window as TestWindow;
-            const original = testWindow.L.geoJSON;
-            const counter = { count: 0 };
-            testWindow.layerItemGeometryBuilds = counter;
-            testWindow.L.geoJSON = <P, G extends GeoJSON.Geometry = GeoJSON.Geometry>(
-                ...args: Parameters<typeof original<P, G>>
-            ) => {
-                counter.count++;
-                return original<P, G>(...args);
-            };
-        });
+        await trackGeometryBuilds(page);
         const alpha = page.locator(
             '#layer-items-list li[data-feature-index="1"] button[data-visibility]'
         );
@@ -327,5 +368,112 @@ test.describe('Named items in imported layers', () => {
         await expectCentre(52.5015, -1.9045);
         await expect(page.locator('#layer-items-panel')).toBeVisible();
         await expect(page.locator('.leaflet-imported-pane path')).toHaveCount(6);
+    });
+
+    test('restores hidden item and parent-layer choices after group solo without rebuilding geometry', async ({
+        page
+    }) => {
+        await seedPlanningGroup(page);
+        await trackGeometryBuilds(page);
+        await openItems(page);
+        await page.getByRole('button', { name: 'Hide item Beta', exact: true }).click();
+        await expect(page.locator('.leaflet-imported-pane path')).toHaveCount(5);
+        await page.getByRole('button', { name: 'Close layers' }).click();
+        await soloPlanningGroup(page);
+        await page.getByRole('button', { name: 'Show all groups', exact: true }).click();
+        await expect(page.locator('.leaflet-imported-pane path')).toHaveCount(5);
+
+        await page.locator('#layers-button').click();
+        await expect(
+            page.getByRole('button', { name: 'Show layer Other overlay', exact: true })
+        ).toBeVisible();
+        await page.getByRole('button', { name: 'Open layer Named overlay', exact: true }).click();
+        await expect(
+            page.getByRole('button', { name: 'Show only item Beta', exact: true })
+        ).toBeVisible();
+        await page.getByRole('button', { name: 'Hide all items', exact: true }).click();
+        await expect(page.locator('.leaflet-imported-pane path')).toHaveCount(0);
+        await page.getByRole('button', { name: 'Show all items', exact: true }).click();
+        await expect(page.locator('.leaflet-imported-pane path')).toHaveCount(6);
+        expect(
+            await page.evaluate(() => (window as TestWindow).layerItemGeometryBuilds?.count)
+        ).toBe(0);
+    });
+
+    test('allows item solo changes during group solo without revealing suppressed or hidden layers', async ({
+        page
+    }) => {
+        await seedPlanningGroup(page);
+        await trackGeometryBuilds(page);
+        await openItems(page);
+        await page.getByRole('button', { name: 'Hide item Beta', exact: true }).click();
+        await page.getByRole('button', { name: 'Close layers' }).click();
+        await soloPlanningGroup(page);
+        await openItems(page);
+        await page.getByRole('button', { name: 'Show only item Beta', exact: true }).click();
+        await expect(page.locator('#layer-items-list [data-visibility="solo"]')).toHaveCount(1);
+        await expect(page.locator('.leaflet-imported-pane path')).toHaveCount(0);
+        await page.getByRole('button', { name: 'Close layers' }).click();
+        await page.locator('#groups-button').click();
+        await page.getByRole('button', { name: 'Show all groups', exact: true }).click();
+        await expect(page.locator('.leaflet-imported-pane path')).toHaveCount(1);
+        await openItems(page);
+        await expect(page.locator('#layer-items-list [data-visibility="solo"]')).toHaveCount(1);
+        await page.getByRole('button', { name: 'Show all items', exact: true }).first().click();
+        await expect(page.locator('.leaflet-imported-pane path')).toHaveCount(6);
+        expect(
+            await page.evaluate(() => (window as TestWindow).layerItemGeometryBuilds?.count)
+        ).toBe(0);
+    });
+
+    test('searches and controls a 1000-item layer within UI deadlines without rebuilding geometry', async ({
+        page
+    }) => {
+        await trackGeometryBuilds(page);
+        await page.evaluate(() => {
+            const stores = (
+                (document.getElementById('app') as AppElement).__vue_app__.config.globalProperties
+                    .$pinia as TestPinia
+            )._s;
+            (stores.get('importedLayers') as ImportedStore).setLayers([
+                {
+                    id: 'large',
+                    name: 'Large overlay',
+                    nameProperty: 'name',
+                    featureCollection: {
+                        type: 'FeatureCollection',
+                        features: Array.from({ length: 1000 }, (_, index) => ({
+                            type: 'Feature',
+                            properties: { name: `Street ${String(index).padStart(4, '0')}` },
+                            geometry: {
+                                type: 'Point',
+                                coordinates: [
+                                    -1.905 + (index % 50) * 0.0001,
+                                    52.5 + Math.floor(index / 50) * 0.0001
+                                ]
+                            }
+                        }))
+                    }
+                }
+            ]);
+        });
+        await expect(page.locator('.leaflet-imported-pane path')).toHaveCount(1000);
+        await page.locator('#layers-button').click();
+        await page.getByRole('button', { name: 'Open layer Large overlay', exact: true }).click();
+        await expect(page.locator('#layer-items-list li')).toHaveCount(1000);
+        const search = page.getByLabel('Search by name');
+        await search.fill('Street 099');
+        await expect(page.locator('#layer-items-list li')).toHaveCount(10);
+        await page.getByRole('button', { name: 'Hide item Street 0990', exact: true }).click();
+        await expect(page.locator('.leaflet-imported-pane path')).toHaveCount(999);
+        await page.getByRole('button', { name: 'Show only item Street 0990', exact: true }).click();
+        await expect(page.locator('.leaflet-imported-pane path')).toHaveCount(1);
+        await page.getByRole('button', { name: 'Show all items', exact: true }).first().click();
+        await expect(page.locator('.leaflet-imported-pane path')).toHaveCount(1000);
+        await search.clear();
+        await expect(page.locator('#layer-items-list li')).toHaveCount(1000);
+        expect(
+            await page.evaluate(() => (window as TestWindow).layerItemGeometryBuilds?.count)
+        ).toBe(1);
     });
 });

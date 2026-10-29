@@ -135,8 +135,9 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-    if (opener.value?.isConnected) {
-        opener.value.focus();
+    const target = document.getElementById('layers-button') ?? opener.value;
+    if (target?.isConnected) {
+        target.focus();
     }
 });
 </script>
