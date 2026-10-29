@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vMovablePanel } from '../../directives/movablePanel';
 import { computed, ref } from 'vue';
 import { useMapStore } from '../../stores/mapStore';
 import { useUiStore } from '../../stores/uiStore';
@@ -113,6 +114,7 @@ function onClose() {
         @cancel="shareScopeGroup = null"
     />
     <div
+        v-movable-panel
         role="dialog"
         aria-labelledby="sharing-panel-title"
         class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[10002]"

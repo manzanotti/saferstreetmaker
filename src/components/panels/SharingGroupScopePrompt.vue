@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vMovablePanel } from '../../directives/movablePanel';
 import { nextTick, onBeforeUnmount, onMounted, useTemplateRef } from 'vue';
 import type { Group } from '../../models/Group';
 
@@ -70,7 +71,7 @@ onBeforeUnmount(restoreTriggerFocus);
         tabindex="-1"
         @keydown="onKeydown"
     >
-        <div class="w-80 rounded-xl bg-white p-5 shadow-xl">
+        <div v-movable-panel class="w-80 rounded-xl bg-white p-5 shadow-xl">
             <h2 id="sharing-scope-title" class="text-base font-semibold text-gray-800">
                 Share {{ props.group.name }}
             </h2>

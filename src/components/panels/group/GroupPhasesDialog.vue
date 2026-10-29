@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vMovablePanel } from '../../../directives/movablePanel';
 import { computed, nextTick, onBeforeUnmount, useTemplateRef, watch } from 'vue';
 import { useGroupStore } from '../../../stores/groupStore';
 import { useSelectionStore } from '../../../stores/selectionStore';
@@ -114,6 +115,7 @@ function move(phaseId: string, offset: number) {
 
 <template>
     <div
+        v-movable-panel
         v-if="isOpen"
         ref="dialog"
         role="dialog"

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vMovablePanel } from '../../directives/movablePanel';
 import { useGroupStore } from '../../stores/groupStore';
 import { executeSplitsAndProceed, skipSplitsAndProceed } from '../../composables/useGroups';
 
@@ -7,6 +8,7 @@ const groupStore = useGroupStore();
 
 <template>
     <div
+        v-movable-panel
         v-if="groupStore.splitDialogOpen"
         role="dialog"
         aria-labelledby="partial-polyline-dialog-title"

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vMovablePanel } from '../../directives/movablePanel';
 import { computed } from 'vue';
 import { useUiStore } from '../../stores/uiStore';
 import { getMapManager } from '../../composables/useMapManager';
@@ -32,6 +33,7 @@ async function downloadStorageMap() {
             class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999]"
         >
             <div
+                v-movable-panel
                 role="dialog"
                 aria-labelledby="error-dialog-title"
                 class="rounded-2xl bg-white shadow-2xl border border-gray-100 w-[min(90vw,480px)] flex flex-col overflow-hidden"

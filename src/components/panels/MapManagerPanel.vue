@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vMovablePanel } from '../../directives/movablePanel';
 import { onMounted, ref } from 'vue';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useMapStore } from '../../stores/mapStore';
@@ -172,6 +173,7 @@ function onClose() {
         @dblclick.stop
     >
         <div
+            v-movable-panel
             id="map-manager"
             role="dialog"
             aria-labelledby="map-manager-panel-title"

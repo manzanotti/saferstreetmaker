@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vMovablePanel } from '../../directives/movablePanel';
 import { computed, nextTick, useTemplateRef, watch } from 'vue';
 import { membershipKey } from '../../features/groups/featureMemberships';
 import { useFeatureDeletionStore } from '../../stores/featureDeletionStore';
@@ -37,6 +38,7 @@ function onKeydown(event: KeyboardEvent) {
 
 <template>
     <div
+        v-movable-panel
         v-if="deletionStore.pending"
         ref="dialog"
         role="dialog"

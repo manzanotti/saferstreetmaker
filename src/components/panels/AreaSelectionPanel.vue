@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vMovablePanel } from '../../directives/movablePanel';
 import { computed } from 'vue';
 import { useSelectionStore } from '../../stores/selectionStore';
 import { useGroupStore } from '../../stores/groupStore';
@@ -56,6 +57,7 @@ function onAddToGroupSelect(event: Event) {
 
 <template>
     <div
+        v-movable-panel
         v-if="
             selectionStore.isActive &&
             !groupStore.detailsGroupId &&

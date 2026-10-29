@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vMovablePanel } from '../../directives/movablePanel';
 import { ref } from 'vue';
 import { useUiStore } from '../../stores/uiStore';
 import HelpFeaturesTab from './help/HelpFeaturesTab.vue';
@@ -51,6 +52,7 @@ function close() {
             @dblclick.stop
         >
             <div
+                v-movable-panel
                 role="dialog"
                 aria-labelledby="help-panel-title"
                 class="pointer-events-auto relative rounded-2xl bg-white shadow-xl border border-gray-100 w-[min(90vw,720px)] max-h-[90vh] flex flex-col overflow-hidden"

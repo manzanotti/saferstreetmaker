@@ -9,6 +9,6 @@ export default defineConfig({
         environment: 'jsdom',
         include: ['tests/unit/**/*.test.ts'],
         globals: true,
-        setupFiles: ['tests/unit/setupIndexedDb.ts']
+        setupFiles: ['tests/unit/setupIndexedDb.ts', 'tests/unit/setupResizeObserver.ts']
     }
 });

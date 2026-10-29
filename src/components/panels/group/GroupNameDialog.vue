@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vMovablePanel } from '../../../directives/movablePanel';
 import { ref, computed, watch, nextTick } from 'vue';
 import { useGroupStore } from '../../../stores/groupStore';
 import { finalizeCreateGroup, finalizeRenameGroup } from '../../../composables/useGroups';
@@ -62,6 +63,7 @@ function onKeydown(e: KeyboardEvent) {
 
 <template>
     <div
+        v-movable-panel
         v-if="groupStore.nameDialogOpen"
         role="dialog"
         :aria-labelledby="'group-name-dialog-title'"
