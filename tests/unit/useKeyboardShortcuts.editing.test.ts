@@ -71,14 +71,7 @@ describe('Keyboard shortcuts', () => {
         map = new L.Map(document.createElement('div'));
         Object.assign(map, { getSize: () => L.point(1280.4, 720.4) });
         document.body.append(map.getContainer());
-        const listenerSpy = vi.spyOn(document, 'addEventListener');
-        setupKeyboardShortcuts(map);
-        const listener = listenerSpy.mock.calls.find(([type]) => type === 'keydown')?.[1];
-        if (!listener) {
-            throw new Error('Keyboard listener was not registered');
-        }
-        removeListener = () => document.removeEventListener('keydown', listener);
-        listenerSpy.mockRestore();
+        removeListener = setupKeyboardShortcuts(map);
     });
 
     afterEach(() => {

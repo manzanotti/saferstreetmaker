@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import * as L from 'leaflet';
+import { defineComponent, h, onUnmounted } from 'vue';
 
 vi.mock('leaflet', () => import('./__mocks__/leaflet'));
 
@@ -68,5 +70,32 @@ describe('makeLeafletVueControl', () => {
         expect(preventDefault).not.toHaveBeenCalled();
         expect(stopPropagation).not.toHaveBeenCalled();
         expect(stopImmediatePropagation).not.toHaveBeenCalled();
+        control.onRemove?.({} as any);
+    });
+
+    it('unmounts each Vue app exactly once and mounts a fresh app when re-added', () => {
+        const unmounted = vi.fn();
+        const component = defineComponent({
+            setup() {
+                onUnmounted(unmounted);
+                return () => h('span', 'Mounted control');
+            }
+        });
+        const map = new L.Map(document.createElement('div'));
+        const control = makeLeafletVueControl(component);
+        const first = control.onAdd(map);
+
+        expect(first.textContent).toBe('Mounted control');
+        control.onRemove?.(map);
+        control.onRemove?.(map);
+        expect(first.textContent).toBe('');
+        expect(unmounted).toHaveBeenCalledOnce();
+
+        const second = control.onAdd(map);
+        expect(second).not.toBe(first);
+        expect(second.textContent).toBe('Mounted control');
+        control.onRemove?.(map);
+        expect(second.textContent).toBe('');
+        expect(unmounted).toHaveBeenCalledTimes(2);
     });
 });

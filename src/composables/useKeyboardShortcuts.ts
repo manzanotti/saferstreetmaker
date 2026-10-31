@@ -63,7 +63,7 @@ function isMapAction(event: KeyboardEvent, mapElement: HTMLElement): boolean {
     return !hasModifier(event) && !isTyping(event) && isMapContext(event, mapElement);
 }
 
-export function setupKeyboardShortcuts(map: L.Map): void {
+export function setupKeyboardShortcuts(map: L.Map): () => void {
     const mapStore = useMapStore(pinia);
     const selectionStore = useSelectionStore(pinia);
     const uiStore = useUiStore(pinia);
@@ -285,5 +285,17 @@ export function setupKeyboardShortcuts(map: L.Map): void {
         }
     };
 
+    let disposed = false;
+    const dispose = () => {
+        if (disposed) {
+            return;
+        }
+        disposed = true;
+        document.removeEventListener('keydown', handleKeydown);
+        map.off('unload', dispose);
+    };
+
     document.addEventListener('keydown', handleKeydown);
+    map.on('unload', dispose);
+    return dispose;
 }
