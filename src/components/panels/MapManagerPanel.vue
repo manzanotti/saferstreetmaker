@@ -1,170 +1,25 @@
 <script setup lang="ts">
 import { vMovablePanel } from '../../directives/movablePanel';
-import { onMounted, ref } from 'vue';
-import { useSettingsStore } from '../../stores/settingsStore';
-import { useMapStore } from '../../stores/mapStore';
-import { useUiStore } from '../../stores/uiStore';
-import { useGroupStore } from '../../stores/groupStore';
-import { getMapManager, getFileManager } from '../../composables/useMapManager';
-import { isSaveErrorAlreadyShown } from '../../composables/saveErrorMarker';
-import { useImportedLayerStore } from '../../stores/importedLayerStore';
+import { useMapManagerActions } from '../../composables/panels/useMapManagerActions';
+import MapManagerActionButtons from './mapManager/MapManagerActionButtons.vue';
+import StoredMapList from './mapManager/StoredMapList.vue';
 
-const settingsStore = useSettingsStore();
-const mapStore = useMapStore();
-const uiStore = useUiStore();
-const groupStore = useGroupStore();
-const importedLayerStore = useImportedLayerStore();
-
-const showCreateForm = ref(false);
-const newMapTitle = ref('');
-const duplicateTitleError = ref('');
-
-const storedMaps = ref<string[]>([]);
-
-async function refreshMapList() {
-    storedMaps.value = await getFileManager().loadMapListFromStorage();
-}
-
-function showMapListError(e: any) {
-    uiStore.showErrors([
-        'There was a problem loading the stored map list:',
-        String(e?.message ?? e)
-    ]);
-}
-
-function showStoredMapLoadError(e: any) {
-    uiStore.showErrors(['There was a problem loading the stored map:', String(e?.message ?? e)]);
-}
-
-onMounted(() => {
-    void refreshMapList().catch((e) => {
-        showMapListError(e);
-    });
-});
-
-function onNewMap() {
-    showCreateForm.value = true;
-    newMapTitle.value = '';
-    duplicateTitleError.value = '';
-}
-
-async function onCopyMap() {
-    try {
-        await getFileManager().copyMap(
-            settingsStore.toSettings(),
-            mapStore.toLayers(),
-            groupStore.groups,
-            importedLayerStore.layers
-        );
-    } catch (e: any) {
-        uiStore.showErrors(['There was a problem copying the map:', String(e?.message ?? e)]);
-        return;
-    }
-
-    try {
-        await refreshMapList();
-    } catch (e: any) {
-        showMapListError(e);
-    }
-}
-
-async function onCreate() {
-    const title = newMapTitle.value.trim();
-    if (!title) {
-        return;
-    }
-
-    try {
-        const ok = await getMapManager().createNewMap(title);
-        if (!ok) {
-            duplicateTitleError.value = `You already have a map named ${title}`;
-            return;
-        }
-    } catch (e: any) {
-        if (isSaveErrorAlreadyShown(e)) {
-            return;
-        }
-        uiStore.showErrors(['There was a problem creating the map:', String(e?.message ?? e)]);
-        return;
-    }
-
-    showCreateForm.value = false;
-
-    try {
-        await refreshMapList();
-    } catch (e: any) {
-        showMapListError(e);
-        return;
-    }
-
-    uiStore.closePanel();
-}
-
-function onLoadFile() {
-    getFileManager().loadMapFromFile();
-}
-
-function onSaveFile() {
-    getFileManager().saveMapToFile(
-        settingsStore.toSettings(),
-        mapStore.toLayers(),
-        groupStore.groups,
-        importedLayerStore.layers
-    );
-    uiStore.closePanel();
-}
-
-function onExportGeoJSON() {
-    getFileManager().saveMapToGeoJSONFile(
-        settingsStore.toSettings(),
-        mapStore.toLayers(),
-        importedLayerStore.layers
-    );
-    uiStore.closePanel();
-}
-
-async function onLoadStoredMap(mapName: string) {
-    try {
-        const loaded = await getMapManager().loadMapFromStorage(mapName);
-        if (!loaded) {
-            return;
-        }
-    } catch (e: any) {
-        showStoredMapLoadError(e);
-        return;
-    }
-
-    try {
-        await refreshMapList();
-    } catch (e: any) {
-        showMapListError(e);
-        return;
-    }
-
-    uiStore.closePanel();
-}
-
-async function onDeleteStoredMap(mapName: string) {
-    try {
-        await getFileManager().deleteMapFromStorage(mapName);
-    } catch (e: any) {
-        uiStore.showErrors([
-            'There was a problem deleting the stored map:',
-            String(e?.message ?? e)
-        ]);
-        return;
-    }
-
-    try {
-        await refreshMapList();
-    } catch (e: any) {
-        showMapListError(e);
-    }
-}
-
-function onClose() {
-    uiStore.closePanel();
-}
+const {
+    settingsStore,
+    showCreateForm,
+    newMapTitle,
+    duplicateTitleError,
+    storedMaps,
+    onNewMap,
+    onCopyMap,
+    onCreate,
+    onLoadFile,
+    onSaveFile,
+    onExportGeoJSON,
+    onLoadStoredMap,
+    onDeleteStoredMap,
+    onClose
+} = useMapManagerActions();
 </script>
 
 <template>
@@ -188,94 +43,13 @@ function onClose() {
 
             <!-- Body -->
             <div class="px-5 py-4 overflow-y-auto flex-1 space-y-4">
-                <!-- Icon action buttons -->
-                <div class="flex gap-1.5">
-                    <button
-                        id="new-map"
-                        type="button"
-                        aria-label="Create a new map"
-                        title="Create a new map"
-                        class="w-12 h-12 rounded-xl flex items-center justify-center bg-slate-50 hover:bg-green-100 border border-gray-100 focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:outline-none [touch-action:manipulation] cursor-pointer select-none"
-                        @click.stop="onNewMap"
-                    >
-                        <img
-                            src="../../img/add-document-svgrepo-com.svg"
-                            width="28"
-                            height="28"
-                            alt=""
-                            aria-hidden="true"
-                            class="w-7 h-7 object-contain pointer-events-none"
-                        />
-                    </button>
-                    <button
-                        id="copy-map"
-                        type="button"
-                        aria-label="Make a copy of this map"
-                        title="Make a copy of this map"
-                        class="w-12 h-12 rounded-xl flex items-center justify-center bg-slate-50 hover:bg-green-100 border border-gray-100 focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:outline-none [touch-action:manipulation] cursor-pointer select-none"
-                        @click.stop="onCopyMap"
-                    >
-                        <img
-                            src="../../img/copy-file-svgrepo-com.svg"
-                            width="28"
-                            height="28"
-                            alt=""
-                            aria-hidden="true"
-                            class="w-7 h-7 object-contain pointer-events-none"
-                        />
-                    </button>
-                    <button
-                        id="load-file"
-                        type="button"
-                        aria-label="Load a map from a JSON file"
-                        title="Load a map from a JSON file"
-                        class="w-12 h-12 rounded-xl flex items-center justify-center bg-slate-50 hover:bg-green-100 border border-gray-100 focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:outline-none [touch-action:manipulation] cursor-pointer select-none"
-                        @click.stop="onLoadFile"
-                    >
-                        <img
-                            src="../../img/folder-svgrepo-com.svg"
-                            width="28"
-                            height="28"
-                            alt=""
-                            aria-hidden="true"
-                            class="w-7 h-7 object-contain pointer-events-none"
-                        />
-                    </button>
-                    <button
-                        id="save-file"
-                        type="button"
-                        aria-label="Save map to a JSON file"
-                        title="Save map to a JSON file"
-                        class="w-12 h-12 rounded-xl flex items-center justify-center bg-slate-50 hover:bg-green-100 border border-gray-100 focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:outline-none [touch-action:manipulation] cursor-pointer select-none"
-                        @click.stop="onSaveFile"
-                    >
-                        <img
-                            src="../../img/save-svgrepo-com.svg"
-                            width="28"
-                            height="28"
-                            alt=""
-                            aria-hidden="true"
-                            class="w-7 h-7 object-contain pointer-events-none"
-                        />
-                    </button>
-                    <button
-                        id="save-geojson-file"
-                        type="button"
-                        aria-label="Export map to GeoJSON"
-                        title="Export map to GeoJSON"
-                        class="w-12 h-12 rounded-xl flex items-center justify-center bg-slate-50 hover:bg-green-100 border border-gray-100 focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:outline-none [touch-action:manipulation] cursor-pointer select-none"
-                        @click.stop="onExportGeoJSON"
-                    >
-                        <img
-                            src="../../img/geojson-file-svgrepo-com.svg"
-                            width="28"
-                            height="28"
-                            alt=""
-                            aria-hidden="true"
-                            class="w-7 h-7 object-contain pointer-events-none"
-                        />
-                    </button>
-                </div>
+                <MapManagerActionButtons
+                    @new-map="onNewMap"
+                    @copy-map="onCopyMap"
+                    @load-file="onLoadFile"
+                    @save-file="onSaveFile"
+                    @export-geo-json="onExportGeoJSON"
+                />
 
                 <!-- Create new map form -->
                 <div id="create-new-map" :class="{ hidden: !showCreateForm }">
@@ -309,44 +83,12 @@ function onClose() {
                     </div>
                 </div>
 
-                <!-- Stored maps list -->
-                <div v-if="storedMaps.length > 0" id="map-list">
-                    <p class="text-sm font-medium text-gray-700 mb-1">
-                        Maps stored in your browser
-                    </p>
-                    <p class="text-xs text-gray-400 italic mb-2">Click a name to load that map</p>
-                    <ul class="space-y-1">
-                        <li
-                            v-for="mapName in storedMaps"
-                            :key="mapName"
-                            class="local-map flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50"
-                        >
-                            <template v-if="mapName === settingsStore.title">
-                                <span class="text-sm font-semibold text-gray-800"
-                                    >{{ mapName }} (current)</span
-                                >
-                            </template>
-                            <template v-else>
-                                <span
-                                    role="button"
-                                    tabindex="0"
-                                    class="text-sm text-gray-700 cursor-pointer truncate"
-                                    @click.stop="onLoadStoredMap(mapName)"
-                                    @keydown.enter.prevent="onLoadStoredMap(mapName)"
-                                    @keydown.space.prevent="onLoadStoredMap(mapName)"
-                                    >{{ mapName }}</span
-                                >
-                                <button
-                                    type="button"
-                                    class="delete-button shrink-0 w-8 h-8 rounded-lg flex items-center justify-center bg-slate-50 hover:bg-red-50 border border-gray-100 focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:outline-none touch-manipulation cursor-pointer"
-                                    :aria-label="`Delete ${mapName}`"
-                                    :title="`Delete ${mapName}`"
-                                    @click.stop="onDeleteStoredMap(mapName)"
-                                ></button>
-                            </template>
-                        </li>
-                    </ul>
-                </div>
+                <StoredMapList
+                    :maps="storedMaps"
+                    :current-title="settingsStore.title"
+                    @load="onLoadStoredMap"
+                    @delete="onDeleteStoredMap"
+                />
             </div>
 
             <!-- Footer -->

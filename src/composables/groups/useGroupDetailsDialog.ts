@@ -15,6 +15,7 @@ import { getGroupVersions } from '../../features/groups/groupVersions';
 import { sanitizeGroupDescription } from '../../features/groups/groupDescription';
 import { DEFAULT_GROUP_COLOUR } from '../../features/groups/groupColours';
 import { useGroupVersionEditor } from './useGroupVersionEditor';
+import { useDialogFeatureFitting } from './useDialogFeatureFitting';
 
 interface UseGroupDetailsDialogOptions {
     getDialogHeight: () => number;
@@ -38,40 +39,19 @@ export function useGroupDetailsDialog(options: UseGroupDetailsDialogOptions) {
     const pendingGroupDelete = ref(false);
     let groupEditReady = false;
     let detailsDirty = false;
-    let resizeObserver: ResizeObserver | null = null;
     let detailsPersistenceTimer: ReturnType<typeof setTimeout> | null = null;
 
     const isOpen = computed(() => groupStore.detailsGroupId !== null && Boolean(group.value));
     const renderedDescription = computed(() => sanitizeGroupDescription(description.value));
     const versionEditor = useGroupVersionEditor({ group, versions, persistDetails });
 
-    function fitFeaturesAboveDialog() {
-        fitGroupFeatures(options.getDialogHeight());
-    }
-
-    watch(
+    useDialogFeatureFitting({
         isOpen,
-        (open) => {
-            resizeObserver?.disconnect();
-            resizeObserver = null;
-            if (!open) {
-                return;
-            }
-            void nextTick(() => {
-                const resizeElement = options.getResizeElement();
-                if (!resizeElement) {
-                    return;
-                }
-                fitFeaturesAboveDialog();
-                resizeObserver = new ResizeObserver(fitFeaturesAboveDialog);
-                resizeObserver.observe(resizeElement);
-            });
-        },
-        { immediate: true }
-    );
+        getDialogElement: options.getResizeElement,
+        fitFeatures: () => fitGroupFeatures(options.getDialogHeight())
+    });
 
     onBeforeUnmount(() => {
-        resizeObserver?.disconnect();
         if (detailsPersistenceTimer) {
             clearTimeout(detailsPersistenceTimer);
         }

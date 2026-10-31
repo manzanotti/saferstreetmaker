@@ -1,20 +1,19 @@
 <script setup lang="ts">
 import { vMovablePanel } from '../../../directives/movablePanel';
-import { computed, nextTick, onBeforeUnmount, useTemplateRef, watch } from 'vue';
+import { computed, onBeforeUnmount, useTemplateRef, watch } from 'vue';
 import { useGroupStore } from '../../../stores/groupStore';
 import { useUiStore } from '../../../stores/uiStore';
 import {
     clearGroupSelection,
     clearReadOnlyGroupPresentation,
-    focusReadOnlyGroupPhase,
     fitGroupFeatures,
-    startReadOnlyGroupPlayback,
-    stopReadOnlyGroupPlayback,
-    stepReadOnlyGroupPhase,
-    viewGroupVersion
+    stopReadOnlyGroupPlayback
 } from '../../../composables/useGroups';
-import { getGroupVersions, memberKey } from '../../../features/groups/groupVersions';
+import { useDialogFeatureFitting } from '../../../composables/groups/useDialogFeatureFitting';
+import { getGroupVersions } from '../../../features/groups/groupVersions';
 import { sanitizeGroupDescription } from '../../../features/groups/groupDescription';
+import ReadOnlyGroupVersionsSection from './ReadOnlyGroupVersionsSection.vue';
+import ReadOnlyGroupPhasesSection from './ReadOnlyGroupPhasesSection.vue';
 
 const groupStore = useGroupStore();
 const uiStore = useUiStore();
@@ -40,29 +39,12 @@ const dialog = useTemplateRef<HTMLDivElement>('dialog');
 const renderedDescription = computed(() =>
     sanitizeGroupDescription(group.value?.description ?? '')
 );
-let resizeObserver: ResizeObserver | null = null;
 
-function fitFeatures() {
-    fitGroupFeatures(dialog.value?.offsetHeight ?? 0);
-}
-
-watch(
+useDialogFeatureFitting({
     isOpen,
-    (open) => {
-        resizeObserver?.disconnect();
-        resizeObserver = null;
-        if (open) {
-            void nextTick(() => {
-                if (dialog.value) {
-                    fitFeatures();
-                    resizeObserver = new ResizeObserver(fitFeatures);
-                    resizeObserver.observe(dialog.value);
-                }
-            });
-        }
-    },
-    { immediate: true }
-);
+    getDialogElement: () => dialog.value,
+    fitFeatures: () => fitGroupFeatures(dialog.value?.offsetHeight ?? 0)
+});
 
 watch(
     () => uiStore.activePanel,
@@ -85,12 +67,7 @@ watch(
     { immediate: true }
 );
 
-onBeforeUnmount(() => resizeObserver?.disconnect());
 onBeforeUnmount(() => uiStore.setLegendLayerIds(null));
-
-function memberCount(version: (typeof versions.value)[number]) {
-    return new Set(version.members.map(memberKey)).size;
-}
 
 function close() {
     stopReadOnlyGroupPlayback();
@@ -99,24 +76,6 @@ function close() {
     clearGroupSelection();
     groupStore.closePhasesDialog();
     groupStore.closeDetailsDialog();
-}
-
-function viewVersion(versionId: string) {
-    if (group.value) {
-        viewGroupVersion(group.value.id, versionId);
-    }
-}
-
-function focusPhase(phaseId: string) {
-    focusReadOnlyGroupPhase(phaseId);
-}
-
-function play() {
-    if (groupStore.playbackPlaying) {
-        stopReadOnlyGroupPlayback();
-    } else {
-        startReadOnlyGroupPlayback();
-    }
 }
 </script>
 
@@ -150,47 +109,11 @@ function play() {
                 ></div>
             </section>
 
-            <section v-if="versions.length > 1" aria-labelledby="read-only-group-versions-title">
-                <h3
-                    id="read-only-group-versions-title"
-                    class="mb-2 text-sm font-semibold text-gray-800"
-                >
-                    Versions
-                </h3>
-                <div role="list" :aria-label="`Versions for group ${group.name}`" class="space-y-1">
-                    <div
-                        v-for="version in versions"
-                        :key="version.id"
-                        role="listitem"
-                        class="rounded border px-2 py-2"
-                        :class="
-                            groupStore.activeVersionIds[group.id] === version.id
-                                ? 'border-green-300 bg-green-50'
-                                : 'border-gray-200'
-                        "
-                    >
-                        <div class="flex flex-wrap items-center gap-2">
-                            <span class="min-w-0 flex-1 text-sm font-medium text-gray-700">{{
-                                version.name
-                            }}</span>
-                            <button
-                                v-if="groupStore.activeVersionIds[group.id] !== version.id"
-                                type="button"
-                                :aria-label="`View version ${version.name}`"
-                                class="shrink-0 rounded border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:bg-white"
-                                @click="viewVersion(version.id)"
-                            >
-                                View
-                            </button>
-                            <span class="shrink-0 text-xs text-gray-500"
-                                >({{ memberCount(version) }} feature{{
-                                    memberCount(version) === 1 ? '' : 's'
-                                }})</span
-                            >
-                        </div>
-                    </div>
-                </div>
-            </section>
+            <ReadOnlyGroupVersionsSection
+                v-if="versions.length > 1"
+                :group="group"
+                :versions="versions"
+            />
 
             <section
                 v-if="phases.length === 1"
@@ -199,93 +122,11 @@ function play() {
             >
                 Implemented in one phase
             </section>
-            <section v-else-if="phases.length > 1" aria-labelledby="read-only-group-phases-title">
-                <div class="flex items-center justify-between">
-                    <h3
-                        id="read-only-group-phases-title"
-                        class="text-sm font-semibold text-gray-800"
-                    >
-                        {{ phaseHeading }}
-                    </h3>
-                    <span v-if="groupStore.playbackPlaying" class="text-xs text-gray-500"
-                        >Playing phase {{ (groupStore.playbackPhaseIndex ?? 0) + 1 }}</span
-                    >
-                </div>
-                <div role="list" aria-label="Group phases" class="mt-2 space-y-2">
-                    <div
-                        v-for="(phase, index) in phases"
-                        :key="phase.id"
-                        role="listitem"
-                        class="flex items-center gap-2 rounded-lg border px-3 py-2"
-                        :class="
-                            groupStore.focusedPhaseId === phase.id ||
-                            (groupStore.playbackPlaying && groupStore.playbackPhaseIndex === index)
-                                ? 'border-green-300 bg-green-50'
-                                : 'border-gray-200'
-                        "
-                    >
-                        <button
-                            type="button"
-                            class="min-w-0 flex-1 text-left text-sm font-medium text-gray-700"
-                            :aria-label="`View Phase ${index + 1}`"
-                            @click="focusPhase(phase.id)"
-                        >
-                            Phase {{ index + 1 }}
-                        </button>
-                        <span class="text-xs text-gray-500"
-                            >{{ phase.members.length }} feature{{
-                                phase.members.length === 1 ? '' : 's'
-                            }}</span
-                        >
-                    </div>
-                </div>
-                <div class="flex justify-center gap-1 border-t border-gray-100 pt-3">
-                    <button
-                        type="button"
-                        aria-label="Previous phase"
-                        title="Previous phase"
-                        class="flex h-8 w-8 items-center justify-center rounded border border-gray-200 bg-white text-black hover:bg-gray-50"
-                        @click="stepReadOnlyGroupPhase(-1)"
-                    >
-                        <span aria-hidden="true">|&lt;</span>
-                    </button>
-                    <button
-                        type="button"
-                        :aria-label="
-                            groupStore.playbackPlaying ? 'Stop phase playback' : 'Play phases'
-                        "
-                        title="Play phases"
-                        class="flex h-8 w-8 items-center justify-center rounded border border-gray-200 bg-white text-black hover:bg-gray-50"
-                        @click="play"
-                    >
-                        <span v-if="groupStore.playbackPlaying" aria-hidden="true">■</span
-                        ><span
-                            v-else
-                            aria-hidden="true"
-                            class="h-0 w-0 border-y-[6px] border-y-transparent border-l-[9px] border-l-black"
-                        ></span>
-                    </button>
-                    <button
-                        type="button"
-                        aria-label="Next phase"
-                        title="Next phase"
-                        class="flex h-8 w-8 items-center justify-center rounded border border-gray-200 bg-white text-black hover:bg-gray-50"
-                        @click="stepReadOnlyGroupPhase(1)"
-                    >
-                        <span aria-hidden="true">&gt;|</span>
-                    </button>
-                    <button
-                        v-if="groupStore.playbackComplete"
-                        type="button"
-                        aria-label="Replay phases"
-                        title="Replay phases"
-                        class="flex h-8 w-8 items-center justify-center rounded border border-gray-200 bg-white text-black hover:bg-gray-50"
-                        @click="play"
-                    >
-                        <span aria-hidden="true">↻</span>
-                    </button>
-                </div>
-            </section>
+            <ReadOnlyGroupPhasesSection
+                v-else-if="phases.length > 1"
+                :phases="phases"
+                :phase-heading="phaseHeading"
+            />
         </div>
     </div>
 </template>

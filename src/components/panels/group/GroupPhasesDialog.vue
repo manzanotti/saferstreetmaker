@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { vMovablePanel } from '../../../directives/movablePanel';
-import { computed, nextTick, onBeforeUnmount, useTemplateRef, watch } from 'vue';
+import { computed, useTemplateRef, watch } from 'vue';
 import { useGroupStore } from '../../../stores/groupStore';
 import { useSelectionStore } from '../../../stores/selectionStore';
 import {
     closeGroupPhases,
-    confirmEmptyGroupPhaseDeletion,
     fitGroupPhaseFeatures,
     focusGroupPhase,
     refreshGroupPhasePresentation,
@@ -13,6 +12,8 @@ import {
     startNewGroupPhase
 } from '../../../composables/useGroups';
 import { getGroupVersions } from '../../../features/groups/groupVersions';
+import { useDialogFeatureFitting } from '../../../composables/groups/useDialogFeatureFitting';
+import GroupPhaseDraftNotice from './GroupPhaseDraftNotice.vue';
 
 const groupStore = useGroupStore();
 const selectionStore = useSelectionStore();
@@ -33,33 +34,12 @@ const editingPhaseNumber = computed(() => {
 const isOpen = computed(() => groupStore.phasesDialogOpen && Boolean(group.value && version.value));
 const dialog = useTemplateRef<HTMLDivElement>('dialog');
 const draggedPhaseId = { value: null as string | null };
-let resizeObserver: ResizeObserver | null = null;
 
-function fitFeaturesAboveDialog() {
-    fitGroupPhaseFeatures(dialog.value?.offsetHeight ?? 0);
-}
-
-watch(
+useDialogFeatureFitting({
     isOpen,
-    (open) => {
-        resizeObserver?.disconnect();
-        resizeObserver = null;
-        if (!open) {
-            return;
-        }
-        void nextTick(() => {
-            if (!dialog.value) {
-                return;
-            }
-            fitFeaturesAboveDialog();
-            resizeObserver = new ResizeObserver(fitFeaturesAboveDialog);
-            resizeObserver.observe(dialog.value);
-        });
-    },
-    { immediate: true }
-);
-
-onBeforeUnmount(() => resizeObserver?.disconnect());
+    getDialogElement: () => dialog.value,
+    fitFeatures: () => fitGroupPhaseFeatures(dialog.value?.offsetHeight ?? 0)
+});
 
 watch(
     () => selectionStore.selected,
@@ -69,10 +49,6 @@ watch(
 
 function beginNewPhase() {
     startNewGroupPhase();
-}
-
-function confirmEmptyPhase(deletePhase: boolean) {
-    confirmEmptyGroupPhaseDeletion(deletePhase);
 }
 
 function focus(phaseId: string) {
@@ -142,47 +118,11 @@ function move(phaseId: string, offset: number) {
         </div>
 
         <div class="space-y-3 overflow-y-auto px-4 py-4">
-            <div
+            <GroupPhaseDraftNotice
                 v-if="groupStore.phaseDraftActive"
-                class="rounded-lg border border-green-200 bg-green-50 p-3"
-            >
-                <p class="text-sm font-medium text-green-900">
-                    {{
-                        editingPhaseNumber
-                            ? `Edit Phase ${editingPhaseNumber}`
-                            : `Create Phase ${phases.length + 1}`
-                    }}
-                </p>
-                <p class="mt-1 text-xs text-green-800">
-                    {{
-                        selectionStore.selected.length
-                            ? 'Selected features are highlighted.'
-                            : 'Select at least one feature.'
-                    }}
-                </p>
-                <div
-                    v-if="groupStore.pendingEmptyPhaseDeletionId"
-                    class="mt-3 space-y-2 rounded border border-red-100 bg-red-50 p-3 text-xs text-gray-700"
-                >
-                    <p>This phase has no features. Delete the phase?</p>
-                    <div class="flex gap-2">
-                        <button
-                            type="button"
-                            class="rounded bg-red-600 px-2 py-1 text-white"
-                            @click="confirmEmptyPhase(true)"
-                        >
-                            Delete phase
-                        </button>
-                        <button
-                            type="button"
-                            class="rounded border border-gray-200 bg-white px-2 py-1"
-                            @click="confirmEmptyPhase(false)"
-                        >
-                            Keep editing
-                        </button>
-                    </div>
-                </div>
-            </div>
+                :editing-phase-number="editingPhaseNumber"
+                :next-phase-number="phases.length + 1"
+            />
 
             <div
                 v-if="phases.length === 0 && !groupStore.phaseDraftActive"
