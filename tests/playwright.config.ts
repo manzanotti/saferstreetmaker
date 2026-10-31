@@ -22,12 +22,12 @@ export default defineConfig({
         },
         {
             name: 'firefox-layer-items',
-            testMatch: 'layer-items.spec.ts',
+            testMatch: /[\\/]layer-items(-[a-z-]+)?\.spec\.ts$/,
             use: { ...devices['Desktop Firefox'] }
         },
         {
             name: 'webkit-layer-items',
-            testMatch: 'layer-items.spec.ts',
+            testMatch: /[\\/]layer-items(-[a-z-]+)?\.spec\.ts$/,
             use: { ...devices['Desktop Safari'] }
         }
     ],
