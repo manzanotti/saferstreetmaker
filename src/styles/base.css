@@ -1,0 +1,17 @@
+@reference 'tailwindcss';
+
+h1 {
+    @apply font-medium leading-tight text-3xl mt-0 mb-8;
+}
+
+h2 {
+    @apply font-medium leading-tight text-xl mt-0 mb-2;
+}
+
+li {
+    list-style-type: none;
+}
+
+.hidden {
+    display: none;
+}
