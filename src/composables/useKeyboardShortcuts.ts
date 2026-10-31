@@ -127,6 +127,20 @@ export function setupKeyboardShortcuts(map: L.Map): void {
                 return;
             }
 
+            // Closing a feature editor removes its focused button, leaving focus
+            // on the body where Leaflet's map keyup handler cannot see Escape.
+            if (
+                (mapStore.activeLayerId !== null || mapStore.drawLayerId !== null) &&
+                !event.defaultPrevented &&
+                !isTyping(event) &&
+                isMapContext(event, mapElement)
+            ) {
+                event.preventDefault();
+                map.closePopup();
+                mapStore.setDrawLayer(null);
+                return;
+            }
+
             if (
                 !isTyping(event) &&
                 !selectionStore.isActive &&

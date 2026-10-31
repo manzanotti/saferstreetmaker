@@ -6,6 +6,7 @@ import { useSettingsStore } from '../../src/stores/settingsStore';
 import { useUiStore } from '../../src/stores/uiStore';
 import { useHistoryStore } from '../../src/stores/historyStore';
 import { useSelectionStore } from '../../src/stores/selectionStore';
+import { useMapStore } from '../../src/stores/mapStore';
 import { Settings } from '../../src/models/Settings';
 import { SAVE_ERROR_ALREADY_SHOWN } from '../../src/composables/saveErrorMarker';
 
@@ -61,6 +62,7 @@ describe('Keyboard shortcuts', () => {
         useUiStore(pinia).setImageExportState(false, null);
         useHistoryStore(pinia).setBusy(false);
         useSelectionStore(pinia).deactivate();
+        useMapStore(pinia).setDrawLayer(null);
         mocks.applySettings.mockImplementation(async (nextSettings: Settings) => {
             useSettingsStore(pinia).applyFromSettings(nextSettings);
         });
@@ -271,6 +273,47 @@ describe('Keyboard shortcuts', () => {
             press({}, target);
         }
         expect(mocks.applySettings).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        ['the body', () => document.body],
+        ['the map', () => map.getContainer()]
+    ])('Escape from %s deselects the active map tool', (_name, target) => {
+        const mapStore = useMapStore(pinia);
+        const closePopup = vi.spyOn(map, 'closePopup');
+        mapStore.setDrawLayer('ModalFilters');
+
+        expect(press({ key: 'Escape' }, target()).defaultPrevented).toBe(true);
+        expect(closePopup).toHaveBeenCalledOnce();
+        expect(mapStore.drawLayerId).toBeNull();
+        expect(mapStore.activeLayerId).toBeNull();
+    });
+
+    it('Escape leaves the map tool selected for inputs, controls, and handled events', () => {
+        const mapStore = useMapStore(pinia);
+        mapStore.setDrawLayer('ModalFilters');
+        const input = document.createElement('input');
+        const control = document.createElement('div');
+        control.className = 'leaflet-control';
+        const button = document.createElement('button');
+        control.append(button);
+        const panel = document.createElement('div');
+        map.getContainer().append(input, control);
+        document.body.append(panel);
+
+        for (const target of [input, button, panel]) {
+            press({ key: 'Escape' }, target);
+        }
+        const handled = new KeyboardEvent('keydown', {
+            key: 'Escape',
+            bubbles: true,
+            cancelable: true
+        });
+        handled.preventDefault();
+        document.body.dispatchEvent(handled);
+
+        expect(mapStore.drawLayerId).toBe('ModalFilters');
+        expect(mapStore.activeLayerId).toBe('ModalFilters');
     });
 
     it('ignores panels, dialogs, errors, export, history replay, and handled events', () => {

@@ -96,6 +96,33 @@ test.describe('Layer: Modal Filter (point, primary button)', () => {
         await expect(btn).toHaveAttribute('aria-pressed', 'false');
     });
 
+    test('Escape deselects the tool after closing an existing filter editor', async ({ page }) => {
+        const btn = page.locator('#modal-filter-button');
+        await btn.click();
+        await clickMap(page);
+        await expect(btn).toHaveAttribute('aria-pressed', 'true');
+
+        const marker = page.locator('.leaflet-filters-pane path.modal-filter-marker').first();
+        const markerBox = await marker.boundingBox();
+        if (!markerBox) {
+            throw new Error('Modal filter marker bounding box not found');
+        }
+        await page.mouse.click(
+            markerBox.x + markerBox.width / 2,
+            markerBox.y + markerBox.height / 2
+        );
+        const popup = page.locator('.leaflet-popup');
+        await expect(popup).toBeVisible();
+
+        await popup.locator('.leaflet-popup-close-button').click();
+        await expect(popup).toHaveCount(0);
+        await expect(btn).toHaveAttribute('aria-pressed', 'true');
+
+        await page.keyboard.press('Escape');
+        await expect(btn).toHaveAttribute('aria-pressed', 'false');
+        expect(await getLayerFeatureCount(page, 'ModalFilters')).toBe(1);
+    });
+
     test('undo removes a newly placed modal filter and redo restores it', async ({ page }) => {
         await page.locator('#modal-filter-button').click();
         await clickMap(page);
