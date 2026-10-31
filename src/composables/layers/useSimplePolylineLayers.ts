@@ -90,18 +90,16 @@ function createSimplePolylineLayer(cfg: SimplePolylineConfig, map: L.Map): IMapL
         map
     );
 
-    layer.loadFromGeoJSON = (geoJson: any) => {
+    layer.loadFromGeoJSON = (geoJson: GeoJSON.FeatureCollection) => {
         loadPolylineGeoJSON(geoJson, (pts, historyId, name) =>
             addLine(pts, layer.getLayer(), historyId, name)
         );
     };
-    layer.loadFeature = (feature: any, historyId?: string) => {
+    layer.loadFeature = (feature: GeoJSON.Feature, historyId?: string) => {
         if (feature?.geometry?.type !== 'LineString') {
             return null;
         }
-        const points = feature.geometry.coordinates.map(
-            ([lng, lat]: [number, number]) => new L.LatLng(lat, lng)
-        );
+        const points = feature.geometry.coordinates.map(([lng, lat]) => new L.LatLng(lat, lng));
         const id = historyId ?? buildHistoryId('polyline');
         addLine(points, layer.getLayer(), id, feature.properties?.name);
         return id;

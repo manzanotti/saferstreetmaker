@@ -2,6 +2,7 @@ import type {
     ImportedGeoJsonLayer,
     SerializedImportedGeoJsonLayer
 } from '../../models/ImportedGeoJsonLayer';
+import { isPosition, isPositionArray } from './geoJsonCoordinates';
 
 export interface GeoJsonPropertyPreview {
     key: string;
@@ -19,18 +20,6 @@ const supportedGeometryTypes = new Set([
     'MultiPolygon',
     'GeometryCollection'
 ]);
-
-function isPosition(value: unknown): value is number[] {
-    return (
-        Array.isArray(value) &&
-        value.length >= 2 &&
-        value.every((coordinate) => typeof coordinate === 'number' && Number.isFinite(coordinate))
-    );
-}
-
-function isPositionArray(value: unknown, minimumLength: number): value is number[][] {
-    return Array.isArray(value) && value.length >= minimumLength && value.every(isPosition);
-}
 
 function isLinearRing(value: unknown): value is number[][] {
     if (!isPositionArray(value, 4)) {

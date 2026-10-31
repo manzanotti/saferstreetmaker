@@ -90,7 +90,7 @@ export function useSharingGenerator(
         const memberKeys = new Set(getAllGroupMembers(group).map(memberKey));
         const layers = new Map<string, IMapLayer>();
         mapStore.toLayers().forEach((layer, layerId) => {
-            const geoJson = layer.toGeoJSON() as unknown as GeoJSON.FeatureCollection;
+            const geoJson = layer.toGeoJSON();
             layers.set(layerId, {
                 ...layer,
                 toGeoJSON: () => ({

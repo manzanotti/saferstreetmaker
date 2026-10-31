@@ -84,7 +84,7 @@ export class GroupPolylineSplitter {
         layer.loadFromGeoJSON({
             type: 'FeatureCollection',
             features: [feature]
-        } as unknown as L.GeoJSON);
+        });
         return historyId;
     }
 }

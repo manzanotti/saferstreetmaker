@@ -91,7 +91,7 @@ export function pasteSelection(context: SelectionCommandContext): void {
         layer.loadFromGeoJSON({
             type: 'FeatureCollection',
             features: newFeatures
-        } as unknown as L.GeoJSON);
+        });
     }
 
     context.setVisibleLayerIds(visibleLayerIds);

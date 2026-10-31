@@ -60,8 +60,8 @@ export function createPolylineLayer(
     let pendingEditor: L.Popup | null = null;
     let openedEditor: L.Popup | null = null;
 
-    const buildLayerFeatureCollection = () => {
-        const json: any = { type: 'FeatureCollection', features: [] };
+    const buildLayerFeatureCollection = (): GeoJSON.FeatureCollection => {
+        const json: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] };
         geoJsonLayer.eachLayer((layer: any) => {
             const feature = layer.toGeoJSON() as any;
             feature.properties = {
@@ -300,14 +300,14 @@ export function createPolylineLayer(
             });
         },
 
-        loadFromGeoJSON(_geoJson: any): void {
+        loadFromGeoJSON(_geoJson: GeoJSON.FeatureCollection): void {
             /* implemented per-layer — override by reassigning after creation */
         },
 
         getLayer(): L.GeoJSON {
             return geoJsonLayer;
         },
-        toGeoJSON(): object {
+        toGeoJSON(): GeoJSON.FeatureCollection {
             return buildLayerFeatureCollection();
         },
         clearLayer(): void {

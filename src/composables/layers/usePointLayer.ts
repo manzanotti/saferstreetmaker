@@ -30,6 +30,7 @@ import { useGroupStore } from '../../stores/groupStore';
 import { executeAreaDelete, executeCopy, selectFeature } from '../useAreaSelection';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { shouldShowPointFeatures } from '../../features/map/pointFeatureVisibility';
+import { isPosition } from '../../features/map/geoJsonCoordinates';
 import {
     addFeatureToGroup,
     createGroupFromFeature,
@@ -324,7 +325,7 @@ export function createPointLayer(config: PointLayerConfig, map: L.Map): IMapLaye
             });
         },
 
-        loadFeature(feature: any, historyId?: string): string | null {
+        loadFeature(feature: GeoJSON.Feature, historyId?: string): string | null {
             if (feature?.geometry?.type !== 'Point') {
                 return null;
             }
@@ -332,11 +333,18 @@ export function createPointLayer(config: PointLayerConfig, map: L.Map): IMapLaye
             return addMarker(new L.LatLng(lat, lng), historyId).historyId;
         },
 
-        loadFromGeoJSON(geoJson: any): void {
+        loadFromGeoJSON(geoJson: GeoJSON.FeatureCollection): void {
             if (!geoJson?.features) {
                 return;
             }
-            geoJson.features.forEach((feature: any) => {
+            geoJson.features.forEach((feature) => {
+                if (
+                    !feature.geometry ||
+                    !('coordinates' in feature.geometry) ||
+                    !isPosition(feature.geometry.coordinates)
+                ) {
+                    throw new Error(`Layer "${config.id}" contains a non-point feature.`);
+                }
                 const [lng, lat] = feature.geometry.coordinates;
                 addMarker(new L.LatLng(lat, lng), feature.properties?.historyId);
             });
@@ -345,8 +353,12 @@ export function createPointLayer(config: PointLayerConfig, map: L.Map): IMapLaye
         getLayer(): L.GeoJSON {
             return geoJsonLayer;
         },
-        toGeoJSON(): object {
-            return geoJsonLayer.toGeoJSON();
+        toGeoJSON(): GeoJSON.FeatureCollection {
+            const collection = geoJsonLayer.toGeoJSON();
+            if (collection.type !== 'FeatureCollection') {
+                throw new Error(`Layer "${config.id}" did not produce a feature collection.`);
+            }
+            return collection;
         },
         clearLayer(): void {
             geoJsonLayer.clearLayers();
