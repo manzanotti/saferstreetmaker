@@ -1,0 +1,147 @@
+/**
+ * Unit tests for MapDataLoader — settings, legacy migrations and view state.
+ */
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('leaflet', () => import('./__mocks__/leaflet'));
+
+import * as L from 'leaflet';
+import { MapDataLoader } from '../../src/features/map/MapDataLoader';
+import { MapLayerController } from '../../src/features/map/MapLayerController';
+import type { SerializedMap } from '../../src/services/MapSerializer';
+import { makeLoader } from './MapDataLoader.helpers';
+
+describe('MapDataLoader', () => {
+    it('applies serialized settings and synchronizes active layer IDs', () => {
+        const state = makeLoader({ centre: null, zoom: 0, activeLayers: [] });
+        const data: SerializedMap = {
+            settings: {
+                title: 'Loaded map',
+                readOnly: true,
+                hideToolbar: false,
+                activeLayers: ['MobilityLanes'],
+                centre: { lat: 52.5, lng: -1.9 },
+                zoom: 12,
+                version: '0.8.0'
+            },
+            layers: {}
+        };
+
+        expect(state.loader.load(data, null, null)).toBe(true);
+        expect(state.appliedSettings[0]).toMatchObject({
+            title: 'Loaded map',
+            readOnly: true,
+            activeLayers: ['MobilityLanes']
+        });
+        expect(state.visibleLayerIds[0]).toEqual(new Set(['MobilityLanes']));
+    });
+
+    it('adds Bus Lanes to legacy maps that have Tram Lines enabled', () => {
+        const state = makeLoader({ centre: null, zoom: 0, activeLayers: [] });
+        const data: SerializedMap = {
+            settings: {
+                title: 'Legacy tram map',
+                readOnly: false,
+                hideToolbar: false,
+                activeLayers: ['TramLines'],
+                centre: { lat: 52.5, lng: -1.9 },
+                zoom: 12,
+                version: '0.9.0'
+            },
+            layers: {}
+        };
+
+        expect(state.loader.load(data, null, null)).toBe(true);
+        expect(state.appliedSettings[0]).toMatchObject({
+            activeLayers: ['TramLines', 'BusLanes']
+        });
+        expect(state.visibleLayerIds[0]).toEqual(new Set(['TramLines', 'BusLanes']));
+    });
+
+    it('does not duplicate Bus Lanes when it is already enabled', () => {
+        const state = makeLoader({ centre: null, zoom: 0, activeLayers: [] });
+        const data: SerializedMap = {
+            settings: {
+                title: 'Updated tram map',
+                readOnly: false,
+                hideToolbar: false,
+                activeLayers: ['ModalFilters', 'TramLines', 'BusLanes'],
+                centre: { lat: 52.5, lng: -1.9 },
+                zoom: 12,
+                version: '0.9.0'
+            },
+            layers: {}
+        };
+
+        expect(state.loader.load(data, null, null)).toBe(true);
+        expect(state.appliedSettings[0]).toMatchObject({
+            activeLayers: ['ModalFilters', 'TramLines', 'BusLanes']
+        });
+    });
+
+    it('does not migrate Tram Lines in the current schema version', () => {
+        const state = makeLoader({ centre: null, zoom: 0, activeLayers: [] });
+        const data: SerializedMap = {
+            settings: {
+                title: 'Current tram map',
+                readOnly: false,
+                hideToolbar: false,
+                activeLayers: ['TramLines'],
+                centre: { lat: 52.5, lng: -1.9 },
+                zoom: 12,
+                version: '0.10.0'
+            },
+            layers: {}
+        };
+
+        expect(state.loader.load(data, null, null)).toBe(true);
+        expect(state.appliedSettings[0]).toMatchObject({ activeLayers: ['TramLines'] });
+    });
+
+    it('preserves legacy view state when only zoom is overridden by the URL', () => {
+        const state = makeLoader({
+            centre: null,
+            zoom: 0,
+            activeLayers: ['ModalFilters']
+        });
+        const map = new L.Map();
+        const setView = vi.spyOn(map, 'setView');
+        const legacyData: SerializedMap = {
+            centre: { lat: 51.5, lng: -0.1 },
+            zoom: 11,
+            layers: {}
+        };
+        const loader = new MapDataLoader({
+            getMap: () => map,
+            setDefaultView: vi.fn(),
+            mapLayerController: new MapLayerController({
+                getMap: () => map,
+                getLayers: () => []
+            }),
+            setTitle: vi.fn(),
+            applySettings: vi.fn(),
+            setCentre: (value) => {
+                state.settings.centre = value;
+            },
+            setZoom: (value) => {
+                state.settings.zoom = value;
+            },
+            getCentre: () => state.settings.centre,
+            getZoom: () => state.settings.zoom,
+            setVersion: vi.fn(),
+            getActiveLayerIds: () => state.settings.activeLayers,
+            setVisibleLayerIds: vi.fn(),
+            setGroups: vi.fn(),
+            setAllGroupsHidden: vi.fn(),
+            resetGroupVisibility: vi.fn(),
+            pruneDanglingGroupMembers: vi.fn(),
+            appVersion: '0.11.0'
+        });
+
+        loader.load(legacyData, '13', null);
+
+        expect(state.settings.centre).toMatchObject({ lat: 51.5, lng: -0.1 });
+        expect(state.settings.zoom).toBe(13);
+        expect(setView).toHaveBeenCalledWith([51.5, -0.1], 13);
+    });
+});
