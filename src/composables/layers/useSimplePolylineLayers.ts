@@ -5,7 +5,8 @@
  */
 import * as L from 'leaflet';
 import { createPolylineLayer, type EditablePolylineLayer } from './usePolylineLayer';
-import { addPolylineToLayer, loadPolylineGeoJSON } from './polylineHelpers';
+import { addPolylineToLayer } from './polylineHelpers';
+import { loadPolylineGeoJSON } from './polylineGeoJson';
 import type { IMapLayer } from './IMapLayer';
 import { buildHistoryId } from './features/featureLookup';
 

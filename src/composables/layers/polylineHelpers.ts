@@ -6,38 +6,14 @@
  * Leaflet controls the popup DOM lifecycle and it lives outside Vue's virtual DOM.
  */
 import * as L from 'leaflet';
-import {
-    buildFeatureActionPopup,
-    setFeatureActionPopupContent
-} from './features/featureActionPopup';
-import { buildFeatureDescriptionPopup } from './features/featureDescriptionPopup';
-import {
-    addFeatureHoverPopup,
-    getFeatureHoverLatLng,
-    closeFeatureHoverPopups,
-    createFeatureHoverPopupController
-} from './features/featureHoverPopups';
-import { removeMapCursor, setFeatureElementCursor } from './features/featureCursors';
 import { buildHistoryId } from './features/featureLookup';
-import { isFeatureEditLayerButtonId } from './features/featureClassification';
-import { buildReadOnlyGroupPopup, getReadOnlyGroupCenter } from './features/readOnlyGroupPopup';
+import { attachPolylineInteractions } from './features/polylineFeatureInteractions';
 import {
-    findFirstFeatureGroupId,
-    cacheFeatureGroupElement
-} from './features/featureGroupMembershipPopup';
+    buildPolylinePointChanges,
+    getFeatureCoordinates
+} from './features/polylineHistoryGeometry';
 import { useMapStore } from '../../stores/mapStore';
 import { pinia } from '../../stores/index';
-import { isPositionArray } from '../../features/map/geoJsonCoordinates';
-import { selectFeature, executeAreaDelete, executeCopy } from '../useAreaSelection';
-import { useSelectionStore } from '../../stores/selectionStore';
-import { useGroupStore } from '../../stores/groupStore';
-import { useSettingsStore } from '../../stores/settingsStore';
-import {
-    addFeatureToGroup,
-    createGroupFromFeature,
-    openGroupDetails,
-    removeFeatureFromGroup
-} from '../useGroups';
 
 export interface PolylineOptions {
     color: string;
@@ -66,109 +42,6 @@ export interface AddPolylineOpts {
     historyId?: string;
     name?: string;
     iconSrc?: string;
-}
-
-function getFeatureCoordinates(feature: any): number[][] {
-    const coordinates = feature?.geometry?.coordinates;
-    return Array.isArray(coordinates)
-        ? coordinates.map((coordinate: any) => [coordinate[0], coordinate[1]])
-        : [];
-}
-
-type PolylinePointChange =
-    | {
-          type: 'update';
-          index: number;
-          before: number[];
-          after: number[];
-      }
-    | {
-          type: 'insert';
-          index: number;
-          after: number[];
-      }
-    | {
-          type: 'delete';
-          index: number;
-          before: number[];
-      };
-
-function buildPolylinePointChanges(beforeCoords: number[][], afterCoords: number[][]) {
-    let prefix = 0;
-    while (
-        prefix < beforeCoords.length &&
-        prefix < afterCoords.length &&
-        beforeCoords[prefix][0] === afterCoords[prefix][0] &&
-        beforeCoords[prefix][1] === afterCoords[prefix][1]
-    ) {
-        prefix++;
-    }
-
-    let suffix = 0;
-    while (
-        suffix < beforeCoords.length - prefix &&
-        suffix < afterCoords.length - prefix &&
-        beforeCoords[beforeCoords.length - 1 - suffix][0] ===
-            afterCoords[afterCoords.length - 1 - suffix][0] &&
-        beforeCoords[beforeCoords.length - 1 - suffix][1] ===
-            afterCoords[afterCoords.length - 1 - suffix][1]
-    ) {
-        suffix++;
-    }
-
-    const beforeMiddle = beforeCoords.slice(prefix, beforeCoords.length - suffix);
-    const afterMiddle = afterCoords.slice(prefix, afterCoords.length - suffix);
-    const pointChanges: PolylinePointChange[] = [];
-
-    const sharedLength = Math.min(beforeMiddle.length, afterMiddle.length);
-    for (let index = 0; index < sharedLength; index++) {
-        const beforePoint = beforeMiddle[index];
-        const afterPoint = afterMiddle[index];
-        if (!Array.isArray(afterPoint) || beforePoint.length !== 2 || afterPoint.length !== 2) {
-            return null;
-        }
-
-        if (beforePoint[0] === afterPoint[0] && beforePoint[1] === afterPoint[1]) {
-            continue;
-        }
-
-        pointChanges.push({
-            type: 'update',
-            index: prefix + index,
-            before: [beforePoint[0], beforePoint[1]],
-            after: [afterPoint[0], afterPoint[1]]
-        });
-    }
-
-    if (beforeMiddle.length > afterMiddle.length) {
-        for (let index = sharedLength; index < beforeMiddle.length; index++) {
-            const beforePoint = beforeMiddle[index];
-            if (beforePoint.length !== 2) {
-                return null;
-            }
-
-            pointChanges.push({
-                type: 'delete',
-                index: prefix + sharedLength,
-                before: [beforePoint[0], beforePoint[1]]
-            });
-        }
-    } else if (afterMiddle.length > beforeMiddle.length) {
-        for (let index = sharedLength; index < afterMiddle.length; index++) {
-            const afterPoint = afterMiddle[index];
-            if (!Array.isArray(afterPoint) || afterPoint.length !== 2) {
-                return null;
-            }
-
-            pointChanges.push({
-                type: 'insert',
-                index: prefix + index,
-                after: [afterPoint[0], afterPoint[1]]
-            });
-        }
-    }
-
-    return pointChanges.length > 0 ? pointChanges : null;
 }
 
 export function addPolylineToLayer(opts: AddPolylineOpts): L.Popup {
@@ -238,223 +111,21 @@ export function addPolylineToLayer(opts: AddPolylineOpts): L.Popup {
         lastCommittedFeature = nextFeature;
     });
 
-    const hoverPopupController = createFeatureHoverPopupController();
-
-    polyline.on('mouseover', (event: L.LeafletMouseEvent) => {
-        closeFeatureHoverPopups(map);
-        const groupId = findFirstFeatureGroupId({ layerId, historyId });
-        cacheFeatureGroupElement(event.originalEvent.target as Element | null, groupId);
-        if (groupId) {
-            if (useSettingsStore(pinia).readOnly) {
-                setFeatureElementCursor(polyline, 'pointer');
-                const groupPopup = buildReadOnlyGroupPopup(groupId, openGroupDetails);
-                if (groupPopup) {
-                    const groupCenter =
-                        getReadOnlyGroupCenter(groupId) ?? polyline.getBounds().getCenter();
-                    hoverPopupController.set(groupPopup);
-                    addFeatureHoverPopup(
-                        map,
-                        groupPopup,
-                        getFeatureHoverLatLng(map, groupCenter, event.latlng),
-                        () => hoverPopupController.close(groupPopup)
-                    );
-                }
-                return;
-            }
-        } else {
-            if (useSettingsStore(pinia).readOnly) {
-                setFeatureElementCursor(polyline, 'default');
-            }
-            return;
-        }
-        const descriptionPopup = buildFeatureDescriptionPopup(
-            { minWidth: 30, keepInView: true },
-            { layerId, historyId },
-            'hover',
-            { featureName: name, iconSrc: opts.iconSrc, onOpenGroup: openGroupDetails }
-        );
-        if (descriptionPopup) {
-            const featureCenter = polyline.getBounds().getCenter();
-            hoverPopupController.set(descriptionPopup);
-            addFeatureHoverPopup(
-                map,
-                descriptionPopup,
-                getFeatureHoverLatLng(map, featureCenter, event.latlng),
-                () => hoverPopupController.close(descriptionPopup)
-            );
-        }
-    });
-
-    polyline.on('mouseout', () => {
-        setFeatureElementCursor(polyline, null);
-        hoverPopupController.scheduleClose();
-    });
-
-    const popup = buildFeatureActionPopup({
+    const popup = attachPolylineInteractions({
+        polyline,
+        geoJsonLayer,
         map,
-        popupOptions: {
-            minWidth: 30,
-            keepInView: opts.popupKeepInView ?? true,
-            className: 'feature-popup-editor'
-        },
-        member: { layerId, historyId },
-        name,
-        onRename: renamePolyline,
-        onDelete: () => {
-            selectFeature(polyline as unknown as L.Layer, layerId, false);
-            executeAreaDelete();
-        },
-        onCopy: () => {
-            // Populate the selection with this entire feature, then copy it.
-            selectFeature(polyline as unknown as L.Layer, layerId, false);
-            executeCopy();
-        },
-        onOpenGroup: openGroupDetails,
-        onRemoveFromGroup: (groupId) => removeFeatureFromGroup(groupId, { layerId, historyId }),
-        onAddToGroup: (groupId) => addFeatureToGroup(groupId, { layerId, historyId }),
-        onCreateNewGroup: createGroupFromFeature
-    });
-
-    let editingExistingFeature = false;
-    popup.on('remove', () => {
-        if (editingExistingFeature && mapStore.activeLayerId === buttonId) {
-            mapStore.setDrawLayer(null);
-        }
-        editingExistingFeature = false;
-    });
-
-    polyline.on('click', (e: any) => {
-        // Let an explicitly armed draw tool own the click instead of forcing
-        // polyline edit mode underneath it. Existing-feature edit mode keeps
-        // drawLayerId=null, so cross-layer clicks can switch selection.
-        if (
-            (mapStore.drawLayerId !== null && mapStore.activeLayerId !== buttonId) ||
-            (mapStore.drawLayerId === null &&
-                mapStore.activeLayerId !== null &&
-                mapStore.activeLayerId !== buttonId &&
-                !isFeatureEditLayerButtonId(mapStore.activeLayerId))
-        ) {
-            return;
-        }
-
-        L.DomEvent.stopPropagation(e.originalEvent ?? e);
-        closeFeatureHoverPopups(map);
-
-        setFeatureActionPopupContent(popup, {
-            map,
-            popupOptions: {
-                minWidth: 30,
-                keepInView: opts.popupKeepInView ?? true,
-                className: 'feature-popup-editor'
-            },
-            member: { layerId, historyId },
-            name,
-            onRename: renamePolyline,
-            onDelete: () => {
-                selectFeature(polyline as unknown as L.Layer, layerId, false);
-                executeAreaDelete();
-            },
-            onCopy: () => {
-                selectFeature(polyline as unknown as L.Layer, layerId, false);
-                executeCopy();
-            },
-            onOpenGroup: openGroupDetails,
-            onRemoveFromGroup: (groupId) => removeFeatureFromGroup(groupId, { layerId, historyId }),
-            onAddToGroup: (groupId) => addFeatureToGroup(groupId, { layerId, historyId }),
-            onCreateNewGroup: createGroupFromFeature
-        });
-
-        if (useSettingsStore(pinia).readOnly) {
-            const groupId = findFirstFeatureGroupId({ layerId, historyId });
-            if (groupId) {
-                openGroupDetails(groupId);
-                return;
-            }
-            const descriptionPopup = buildFeatureDescriptionPopup(
-                { minWidth: 30, keepInView: true },
-                { layerId, historyId },
-                'click',
-                { featureName: name, iconSrc: opts.iconSrc, onOpenGroup: openGroupDetails }
-            );
-            if (descriptionPopup) {
-                descriptionPopup.setLatLng(e.latlng);
-                map.openPopup(descriptionPopup);
-            }
-            return;
-        }
-
-        const isModifierClick =
-            (e.originalEvent?.shiftKey || e.originalEvent?.ctrlKey || e.originalEvent?.metaKey) ??
-            false;
-
-        const selectionStore = useSelectionStore(pinia);
-        const groupStore = useGroupStore(pinia);
-        const isGroupEditing =
-            selectionStore.isGroupSelection && selectionStore.selectedGroupId !== null;
-
-        if (groupStore.phaseDraftActive || isGroupEditing) {
-            selectFeature(polyline as unknown as L.Layer, layerId, true, true, true);
-            return;
-        }
-
-        if (isModifierClick) {
-            // Additive selection: merge this feature into the current selection
-            // without opening the popup or entering edit mode.
-            selectFeature(polyline as unknown as L.Layer, layerId, true, false, true);
-            return;
-        }
-
-        // Non-modifier click: replace any previously remembered feature with
-        // this one so switching from one line to another clears the old
-        // selection immediately. skipActivate=true prevents area-selection
-        // mode from activating on a plain click.
-        selectFeature(polyline as unknown as L.Layer, layerId, false, true);
-
-        // Disable editing on sibling features in the same layer before
-        // enabling the clicked line so only one feature stays in edit mode.
-        geoJsonLayer.eachLayer((layer: any) => {
-            if (layer !== e.target) {
-                layer.editing?.disable?.();
-            }
-        });
-
-        editingExistingFeature = true;
-        opts.selectForEdit();
-        removeMapCursor(buttonId);
-        e.target.editing.enable();
-        popup.setLatLng(e.latlng);
-        map.openPopup(popup);
+        layerId,
+        buttonId,
+        historyId,
+        selectForEdit: opts.selectForEdit,
+        getName: () => name,
+        rename: renamePolyline,
+        popupKeepInView: opts.popupKeepInView,
+        iconSrc: opts.iconSrc
     });
 
     geoJsonLayer.addLayer(polyline);
     popup.setLatLng(polyline.getBounds().getCenter());
     return popup;
-}
-
-/**
- * Load a polyline FeatureCollection into a GeoJSON layer.
- * Handles the legacy "nested coordinates" format.
- */
-export function loadPolylineGeoJSON(
-    geoJson: GeoJSON.FeatureCollection,
-    addFn: (points: L.LatLng[], historyId?: string, name?: string) => void
-): void {
-    if (!geoJson?.features) {
-        return;
-    }
-    geoJson.features.forEach((feature) => {
-        if (feature.geometry?.type !== 'LineString') {
-            throw new Error('The layer contains a non-line feature.');
-        }
-        const points: L.LatLng[] = [];
-        const raw: unknown = feature.geometry.coordinates;
-        // Legacy: coordinates wrapped in an extra array
-        const coords =
-            Array.isArray(raw) && raw.length === 1 && isPositionArray(raw[0], 0) ? raw[0] : raw;
-        if (!isPositionArray(coords, 0)) {
-            throw new Error('The layer contains invalid line coordinates.');
-        }
-        coords.forEach((c) => points.push(new L.LatLng(c[1], c[0])));
-        addFn(points, feature.properties?.historyId, feature.properties?.name);
-    });
 }

@@ -8,35 +8,14 @@ import * as L from 'leaflet';
 import { watch } from 'vue';
 import { useMapStore } from '../../stores/mapStore';
 import { pinia } from '../../stores/index';
-import { setMapCursor, removeMapCursor, setFeatureElementCursor } from './features/featureCursors';
+import { setMapCursor, removeMapCursor } from './features/featureCursors';
 import { buildToolbarButton } from './toolbarButton';
 import { buildLegendEntry } from './legendEntry';
-import { buildHistoryId, getFeatureHistoryId } from './features/featureLookup';
-import { buildFeatureActionPopup } from './features/featureActionPopup';
-import { buildFeatureDescriptionPopup } from './features/featureDescriptionPopup';
-import {
-    addFeatureHoverPopup,
-    getFeatureHoverLatLng,
-    closeFeatureHoverPopups,
-    createFeatureHoverPopupController
-} from './features/featureHoverPopups';
-import {
-    cacheFeatureGroupElement,
-    findFirstFeatureGroupId
-} from './features/featureGroupMembershipPopup';
-import { buildReadOnlyGroupPopup, getReadOnlyGroupCenter } from './features/readOnlyGroupPopup';
-import { useSelectionStore } from '../../stores/selectionStore';
-import { useGroupStore } from '../../stores/groupStore';
-import { executeAreaDelete, executeCopy, selectFeature } from '../useAreaSelection';
-import { useSettingsStore } from '../../stores/settingsStore';
+import { buildHistoryId } from './features/featureLookup';
+import { attachFeatureGroupHover } from './features/featureGroupHover';
 import { shouldShowPointFeatures } from '../../features/map/pointFeatureVisibility';
 import { isPosition } from '../../features/map/geoJsonCoordinates';
-import {
-    addFeatureToGroup,
-    createGroupFromFeature,
-    openGroupDetails,
-    removeFeatureFromGroup
-} from '../useGroups';
+import { openGroupDetails } from '../useGroups';
 import type { IMapLayer } from './IMapLayer';
 
 export interface PointLayerConfig {
@@ -57,102 +36,6 @@ export interface PointLayerConfig {
     buildIconEl: () => HTMLElement;
 }
 
-export function getPointEventLatLng(event: {
-    target?: { getLatLng?: () => L.LatLng };
-    latlng?: L.LatLng;
-}) {
-    return event.target?.getLatLng?.() ?? event.latlng ?? null;
-}
-
-/**
- * Shared click handler for point-marker features. While an area selection is
- * active (including the "add to group" flow), clicking a point adds it to the
- * current selection instead of deleting it — so points can be gathered the
- * same way polylines/polygons are. Otherwise it opens the feature popup.
- */
-export function handlePointFeatureClick(
-    event: L.LeafletMouseEvent,
-    layerId: string,
-    iconSrc?: string
-): void {
-    L.DomEvent.stopPropagation(event);
-
-    const selectionStore = useSelectionStore(pinia);
-    const groupStore = useGroupStore(pinia);
-    const readOnly = useSettingsStore(pinia).readOnly;
-    const isPhaseSelection = groupStore.phaseDraftActive;
-    const isGroupEditing =
-        selectionStore.isGroupSelection && selectionStore.selectedGroupId !== null;
-    const isModifierClick =
-        event.originalEvent?.shiftKey ||
-        event.originalEvent?.ctrlKey ||
-        event.originalEvent?.metaKey;
-    if (
-        !readOnly &&
-        (selectionStore.isActive ||
-            selectionStore.isPhaseEditing ||
-            isPhaseSelection ||
-            isGroupEditing ||
-            isModifierClick)
-    ) {
-        // Modifier-click toggles this point in the selection. A normal click
-        // while selection mode is active adds it to the selection.
-        selectFeature(
-            event.target as unknown as L.Layer,
-            layerId,
-            true,
-            isPhaseSelection || isGroupEditing,
-            isModifierClick || isPhaseSelection || isGroupEditing
-        );
-        return;
-    }
-
-    const mapStore = useMapStore(pinia);
-    const latLng = getPointEventLatLng(event);
-    const historyId = getFeatureHistoryId(event.target);
-    const map = mapStore.map;
-    if (!map || !historyId) {
-        return;
-    }
-
-    const member = { layerId, historyId };
-    closeFeatureHoverPopups(map);
-    if (readOnly) {
-        const groupId = findFirstFeatureGroupId(member);
-        if (groupId) {
-            openGroupDetails(groupId);
-            return;
-        }
-        const descriptionPopup = buildFeatureDescriptionPopup(
-            { minWidth: 30, keepInView: true },
-            member,
-            'click',
-            { iconSrc, onOpenGroup: openGroupDetails }
-        );
-        descriptionPopup?.setLatLng(latLng ?? map.getCenter()).openOn(map);
-        return;
-    }
-
-    const popup = buildFeatureActionPopup({
-        map,
-        popupOptions: { minWidth: 30, keepInView: true },
-        member,
-        onDelete: () => {
-            selectFeature(event.target as unknown as L.Layer, layerId, false);
-            executeAreaDelete();
-        },
-        onCopy: () => {
-            selectFeature(event.target as unknown as L.Layer, layerId, false);
-            executeCopy();
-        },
-        onOpenGroup: openGroupDetails,
-        onRemoveFromGroup: (groupId) => removeFeatureFromGroup(groupId, member),
-        onAddToGroup: (groupId) => addFeatureToGroup(groupId, member),
-        onCreateNewGroup: createGroupFromFeature
-    });
-    popup.setLatLng(latLng ?? map.getCenter()).openOn(map);
-}
-
 export function createPointLayer(config: PointLayerConfig, map: L.Map): IMapLayer {
     const mapStore = useMapStore(pinia);
     const geoJsonLayer = new L.GeoJSON();
@@ -170,66 +53,14 @@ export function createPointLayer(config: PointLayerConfig, map: L.Map): IMapLaye
             (marker as any).feature = feature;
         }
 
-        const hoverPopupController = createFeatureHoverPopupController();
-
-        marker.on('mouseover', (event: L.LeafletMouseEvent) => {
-            const markerMap = useMapStore(pinia).map;
-            if (!markerMap) {
-                return;
-            }
-
-            closeFeatureHoverPopups(markerMap);
-
-            const groupId = findFirstFeatureGroupId({
-                layerId: config.id,
-                historyId: nextHistoryId
-            });
-            cacheFeatureGroupElement(event.originalEvent.target as Element | null, groupId);
-            if (groupId) {
-                if (useSettingsStore(pinia).readOnly) {
-                    setFeatureElementCursor(event.originalEvent.target, 'pointer');
-                    const groupPopup = buildReadOnlyGroupPopup(groupId, openGroupDetails);
-                    if (groupPopup) {
-                        hoverPopupController.set(groupPopup);
-                        addFeatureHoverPopup(
-                            markerMap,
-                            groupPopup,
-                            getFeatureHoverLatLng(
-                                markerMap,
-                                getReadOnlyGroupCenter(groupId) ?? latlng,
-                                event.latlng
-                            ),
-                            () => hoverPopupController.close(groupPopup)
-                        );
-                    }
-                    return;
-                }
-            } else {
-                if (useSettingsStore(pinia).readOnly) {
-                    setFeatureElementCursor(event.originalEvent.target, 'default');
-                }
-                return;
-            }
-
-            const descriptionPopup = buildFeatureDescriptionPopup(
-                { minWidth: 30, keepInView: true },
-                { layerId: config.id, historyId: nextHistoryId },
-                'hover',
-                { iconSrc: config.iconSrc }
-            );
-            if (descriptionPopup) {
-                hoverPopupController.set(descriptionPopup);
-                addFeatureHoverPopup(
-                    markerMap,
-                    descriptionPopup,
-                    getFeatureHoverLatLng(markerMap, latlng, event.latlng),
-                    () => hoverPopupController.close(descriptionPopup)
-                );
-            }
-        });
-        marker.on('mouseout', () => {
-            setFeatureElementCursor(marker, null);
-            hoverPopupController.scheduleClose();
+        attachFeatureGroupHover({
+            feature: marker,
+            getMap: () => useMapStore(pinia).map,
+            member: { layerId: config.id, historyId: nextHistoryId },
+            getCenter: () => latlng,
+            getCursorTarget: (event) => event.originalEvent.target,
+            onOpenGroup: openGroupDetails,
+            getDescriptionDetails: () => ({ iconSrc: config.iconSrc })
         });
 
         return { marker, historyId: nextHistoryId };
