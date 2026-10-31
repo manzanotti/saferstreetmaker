@@ -7,38 +7,22 @@
  *   - plain JSON object (used for storage / file download)
  *   - LZ-string-compressed URI-encoded hash (used for sharing)
  */
-import LZString from 'lz-string';
 import type { IMapLayer } from '../composables/layers/IMapLayer';
 import type { Settings } from '../models/Settings';
-import type { Group, GroupMember, GroupPhase } from '../models/Group';
+import type { Group, GroupPhase } from '../models/Group';
 import { normalizeGroupDescription } from '../features/groups/groupDescription';
 import type {
     ImportedGeoJsonLayer,
     SerializedImportedGeoJsonLayer
 } from '../models/ImportedGeoJsonLayer';
-import { decodeUrlGroups, encodeUrlGroups, type CompactUrlGroup } from './compactUrlGroups';
 import {
     fromCompactStoredMap,
     serializeImportedLayer,
     toCompactStoredMap,
     toCompactStoredMapFromSerialized,
-    type CompactSettings,
     type CompactStoredMap
 } from './compactStoredMapSerialization';
-import {
-    COORDINATE_PRECISION,
-    decodeCoordinates,
-    decodeImportedLayers,
-    decodeUrlProperties,
-    encodeCoordinates,
-    encodeImportedLayers,
-    encodeUrlProperties,
-    geometryTypeFromCoordinates,
-    quantizeCoordinate,
-    type CompactUrlCoordinates,
-    type CompactUrlFeature,
-    type CompactUrlImportedLayer
-} from './compactUrlEncoding';
+import { decodeMapHash, encodeCompactUrlHash, toCompactUrlMap } from './compactUrlMap';
 
 /**
  * Typed shape of the JSON document produced by `MapSerializer.toJSON` and
@@ -75,17 +59,6 @@ export interface SerializedMap {
     lastSaved?: string;
     /** Element groups — serialised alongside layer data. */
     groups?: Group[];
-}
-
-const URL_SCHEMA_VERSION = 2;
-interface CompactUrlMap {
-    v: 2;
-    s: CompactSettings;
-    i: string[];
-    l: Record<string, CompactUrlFeature[]>;
-    d: string;
-    g?: CompactUrlGroup[];
-    o?: CompactUrlImportedLayer[];
 }
 
 function serializePhases(phases: GroupPhase[] | undefined): GroupPhase[] {
@@ -174,10 +147,7 @@ export class MapSerializer {
         groups?: Group[],
         importedLayers?: ImportedGeoJsonLayer[]
     ): string {
-        const mapString = JSON.stringify(
-            this.toCompactUrlMap(settings, layersData, groups, importedLayers)
-        );
-        return `v2.${LZString.compressToEncodedURIComponent(mapString)}`;
+        return encodeCompactUrlHash(toCompactUrlMap(settings, layersData, groups, importedLayers));
     }
 
     toCompactStoredMap(
@@ -202,155 +172,6 @@ export class MapSerializer {
      * Returns `null` if the hash is invalid, malformed, or cannot be parsed.
      */
     fromEncodedHash(hash: string): SerializedMap | null {
-        try {
-            if (hash.startsWith('v2.')) {
-                const decompressed = LZString.decompressFromEncodedURIComponent(hash.slice(3));
-                if (decompressed === null) {
-                    return null;
-                }
-                return this.fromCompactUrlMap(JSON.parse(decompressed));
-            }
-            if (hash.startsWith('%')) {
-                return JSON.parse(decodeURIComponent(hash));
-            }
-            const decompressed = LZString.decompressFromEncodedURIComponent(hash);
-            if (decompressed === null) {
-                return null;
-            }
-            return JSON.parse(decompressed);
-        } catch {
-            return null;
-        }
-    }
-
-    private toCompactUrlMap(
-        settings: Settings,
-        layersData: Map<string, IMapLayer>,
-        groups?: Group[],
-        importedLayers?: ImportedGeoJsonLayer[]
-    ): CompactUrlMap {
-        const historyIds: string[] = [];
-        const historyIndexes = new Map<string, number>();
-        const getHistoryIndex = (historyId: string): number => {
-            const existing = historyIndexes.get(historyId);
-            if (existing !== undefined) {
-                return existing;
-            }
-            const index = historyIds.length;
-            historyIds.push(historyId);
-            historyIndexes.set(historyId, index);
-            return index;
-        };
-
-        const layerFeatures = new Map<string, GeoJSON.Feature[]>();
-        layersData.forEach((layer, layerName) => {
-            const featureCollection = layer.toGeoJSON() as unknown as {
-                features?: GeoJSON.Feature[];
-            };
-            const features = featureCollection.features ?? [];
-            layerFeatures.set(layerName, features);
-            features.forEach((feature) => {
-                const historyId = feature.properties?.historyId;
-                if (typeof historyId === 'string' && historyId !== '') {
-                    getHistoryIndex(historyId);
-                }
-            });
-        });
-
-        const collectGroupIds = (members: GroupMember[]) => {
-            members.forEach((member) => getHistoryIndex(member.historyId));
-        };
-        groups?.forEach((group) => {
-            collectGroupIds(group.unassignedMembers ?? []);
-            if (group.versions) {
-                group.versions.forEach((version) => {
-                    collectGroupIds(version.members);
-                    version.phases?.forEach((phase) => collectGroupIds(phase.members));
-                });
-            } else {
-                collectGroupIds(group.members ?? []);
-            }
-        });
-
-        const layers: Record<string, CompactUrlFeature[]> = {};
-        layerFeatures.forEach((features, layerName) => {
-            layers[layerName] = features.map((feature) => {
-                const state = { x: 0, y: 0 };
-                const geometryCoordinates =
-                    'coordinates' in feature.geometry ? feature.geometry.coordinates : [];
-                const coordinates = encodeCoordinates(geometryCoordinates, state);
-                const properties = encodeUrlProperties(feature.properties, getHistoryIndex);
-                return properties === undefined ? [coordinates] : [coordinates, properties];
-            });
-        });
-
-        return {
-            v: URL_SCHEMA_VERSION,
-            s: {
-                t: settings.title,
-                r: settings.readOnly ? 1 : 0,
-                h: settings.hideToolbar ? 1 : 0,
-                a: [...settings.activeLayers],
-                c: settings.centre
-                    ? ([settings.centre.lat, settings.centre.lng].map(quantizeCoordinate) as [
-                          number,
-                          number
-                      ])
-                    : null,
-                z: settings.zoom,
-                v: settings.version
-            },
-            i: historyIds,
-            l: layers,
-            d: new Date().toISOString(),
-            g: encodeUrlGroups(groups, getHistoryIndex),
-            ...(importedLayers && importedLayers.length > 0
-                ? { o: encodeImportedLayers(importedLayers) }
-                : {})
-        };
-    }
-
-    private fromCompactUrlMap(data: CompactUrlMap): SerializedMap | null {
-        if (data.v !== 2 || !data.s || !data.l || !Array.isArray(data.i)) {
-            return null;
-        }
-        const layers: Record<string, unknown> = {};
-        for (const [layerName, features] of Object.entries(data.l)) {
-            layers[layerName] = {
-                type: 'FeatureCollection',
-                features: features.map(([coordinates, properties]) => {
-                    const state = { x: 0, y: 0 };
-                    const decodedCoordinates = decodeCoordinates(coordinates, state);
-                    return {
-                        type: 'Feature',
-                        properties: decodeUrlProperties(properties, data.i),
-                        geometry: {
-                            type: geometryTypeFromCoordinates(coordinates),
-                            coordinates: decodedCoordinates
-                        }
-                    };
-                })
-            };
-        }
-        return {
-            settings: {
-                title: data.s.t,
-                readOnly: data.s.r === 1,
-                hideToolbar: data.s.h === 1,
-                activeLayers: [...data.s.a],
-                centre: data.s.c
-                    ? {
-                          lat: data.s.c[0] / COORDINATE_PRECISION,
-                          lng: data.s.c[1] / COORDINATE_PRECISION
-                      }
-                    : null,
-                zoom: data.s.z,
-                version: data.s.v
-            },
-            layers,
-            lastSaved: data.d,
-            groups: decodeUrlGroups(data.g, data.i),
-            ...(data.o && data.o.length > 0 ? { importedLayers: decodeImportedLayers(data.o) } : {})
-        };
+        return decodeMapHash(hash);
     }
 }
