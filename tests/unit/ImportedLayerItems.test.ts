@@ -47,8 +47,8 @@ describe('Imported layer items', () => {
         const items = useImportedLayerItems(() => store.layers[0]);
         expect(items.namedItems.value).toEqual([
             { index: 0, name: 'Alpha', canCentre: true },
-            { index: 1, name: 'Beta', canCentre: true },
-            { index: 2, name: 'Alpha', canCentre: true }
+            { index: 2, name: 'Alpha', canCentre: true },
+            { index: 1, name: 'Beta', canCentre: true }
         ]);
         items.query.value = ' ALp ';
         expect(items.filteredItems.value.map((item) => item.index)).toEqual([0, 2]);
@@ -57,6 +57,29 @@ describe('Imported layer items', () => {
         expect(items.filteredItems.value).toEqual([]);
         store.setNameProperty('wards', null);
         expect(items.namedItems.value).toEqual([]);
+    });
+
+    it('sorts names case-insensitively without changing feature order or duplicate identities', () => {
+        const source = layer();
+        const names = ['  zebra  ', 'beta', 'Alpha', 'ALPHA', '  delta  ', ''];
+        source.featureCollection.features.forEach((feature, index) => {
+            feature.properties = { name: names[index] };
+        });
+        const store = useImportedLayerStore();
+        store.setLayers([source]);
+        const features = [...store.layers[0].featureCollection.features];
+        const items = useImportedLayerItems(() => store.layers[0]);
+
+        expect(items.namedItems.value.map(({ index, name }) => ({ index, name }))).toEqual([
+            { index: 2, name: 'Alpha' },
+            { index: 3, name: 'ALPHA' },
+            { index: 1, name: 'beta' },
+            { index: 4, name: 'delta' },
+            { index: 0, name: 'zebra' }
+        ]);
+        items.query.value = ' TA ';
+        expect(items.filteredItems.value.map((item) => item.name)).toEqual(['beta', 'delta']);
+        expect(store.layers[0].featureCollection.features).toEqual(features);
     });
 
     it('cycles visible, hidden, solo and show-all within one layer, including unnamed items', () => {
@@ -106,7 +129,11 @@ describe('Imported layer items', () => {
         store.renameLayer('wards', 'Renamed layer');
         store.toggleVisibility('wards');
         store.toggleVisibility('wards');
-        expect(items.namedItems.value[0].name).toBe('Renamed');
+        expect(items.namedItems.value.map((item) => [item.index, item.name])).toEqual([
+            [2, 'Alpha'],
+            [1, 'Beta'],
+            [0, 'Renamed']
+        ]);
         expect(items.isVisible(0)).toBe(false);
         store.layers[0].featureCollection = layer().featureCollection;
         expect(items.isVisible(0)).toBe(true);
