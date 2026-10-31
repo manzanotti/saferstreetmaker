@@ -1,50 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as L from 'leaflet';
 import { ImportedGeoJsonLayerController } from '../../src/features/map/ImportedGeoJsonLayerController';
-import type { ImportedGeoJsonLayer } from '../../src/models/ImportedGeoJsonLayer';
+import {
+    makeLayer,
+    makeLayerWithNullGeometry,
+    makeMap
+} from './ImportedGeoJsonLayerController.helpers';
 
 vi.mock('leaflet', () => import('./__mocks__/leaflet'));
-
-function makeLayer(id = 'layer-1', visible = true): ImportedGeoJsonLayer {
-    return {
-        id,
-        name: 'Wards',
-        nameProperty: 'name',
-        visible,
-        featureCollection: {
-            type: 'FeatureCollection',
-            features: [
-                {
-                    type: 'Feature',
-                    properties: { name: 'Ward 1' },
-                    geometry: { type: 'Point', coordinates: [-1.9, 52.5] }
-                }
-            ]
-        }
-    };
-}
-
-function makeLayerWithNullGeometry(): ImportedGeoJsonLayer {
-    const layer = makeLayer();
-    layer.featureCollection.features.unshift({
-        type: 'Feature',
-        properties: { name: 'Unknown' },
-        geometry: null
-    });
-    return layer;
-}
-
-function makeMap() {
-    return {
-        addLayer: vi.fn(),
-        removeLayer: vi.fn(),
-        fire: vi.fn(),
-        closePopup: vi.fn(),
-        getZoom: vi.fn().mockReturnValue(10),
-        getMaxZoom: vi.fn().mockReturnValue(20),
-        on: vi.fn()
-    } as unknown as L.Map;
-}
 
 describe('ImportedGeoJsonLayerController', () => {
     let map: L.Map;
@@ -132,71 +95,6 @@ describe('ImportedGeoJsonLayerController', () => {
         expect(fakeLeafletLayer.addTo).toHaveBeenCalledTimes(3);
     });
 
-    it('stops styling point features after their imported layer is deleted', () => {
-        const controller = new ImportedGeoJsonLayerController({
-            getMap: () => map,
-            onFeaturePropertyChange: vi.fn(),
-            isReadOnly: () => false,
-            getActiveLayerId: () => null
-        });
-
-        controller.render([makeLayer()]);
-        const zoomHandler = vi.mocked(map.on).mock.calls[0][1] as () => void;
-        featureLayer.setStyle.mockClear();
-
-        controller.render([]);
-        zoomHandler();
-
-        expect(featureLayer.setStyle).not.toHaveBeenCalled();
-    });
-
-    it('builds editable and read-only popup content and reports edits', () => {
-        const onFeaturePropertyChange = vi.fn();
-        let readOnly = false;
-        const controller = new ImportedGeoJsonLayerController({
-            getMap: () => map,
-            onFeaturePropertyChange,
-            isReadOnly: () => readOnly,
-            getActiveLayerId: () => null
-        });
-
-        controller.render([makeLayer()]);
-        const editablePopup = featureLayer.bindPopup.mock.calls[0][0]();
-        const input = editablePopup.querySelector('input') as HTMLInputElement;
-        input.value = 'Renamed';
-        input.dispatchEvent(new Event('blur'));
-        expect(onFeaturePropertyChange).toHaveBeenCalledWith('layer-1', 0, 'name', 'Renamed');
-
-        onFeaturePropertyChange.mockClear();
-        const unchangedPopup = featureLayer.bindPopup.mock.calls[0][0]();
-        unchangedPopup.querySelector('input')?.dispatchEvent(new Event('blur'));
-        expect(onFeaturePropertyChange).not.toHaveBeenCalled();
-
-        readOnly = true;
-        controller.render([makeLayer()]);
-        const readOnlyPopup = featureLayer.bindPopup.mock.calls[0][0]();
-        expect(readOnlyPopup.querySelector('span')?.textContent).toBe('Ward 1');
-        expect(readOnlyPopup.querySelector('input')).toBeNull();
-    });
-
-    it('uses the source feature index after a null-geometry feature', () => {
-        const onFeaturePropertyChange = vi.fn();
-        const controller = new ImportedGeoJsonLayerController({
-            getMap: () => map,
-            onFeaturePropertyChange,
-            isReadOnly: () => false,
-            getActiveLayerId: () => null
-        });
-
-        controller.render([makeLayerWithNullGeometry()]);
-        const popup = featureLayer.bindPopup.mock.calls[0][0]();
-        const input = popup.querySelector('input') as HTMLInputElement;
-        input.value = 'Renamed';
-        input.dispatchEvent(new Event('blur'));
-
-        expect(onFeaturePropertyChange).toHaveBeenCalledWith('layer-1', 1, 'name', 'Renamed');
-    });
-
     it('keeps rendered geometry when only layer metadata changes', () => {
         const layer = makeLayer();
         const controller = new ImportedGeoJsonLayerController({
@@ -261,51 +159,6 @@ describe('ImportedGeoJsonLayerController', () => {
         controller.render([]);
         controller.render([layer]);
         expect(L.geoJSON).toHaveBeenCalledTimes(3);
-    });
-
-    it('uses current metadata in popups after reattaching an imported layer', () => {
-        const layer = makeLayer();
-        const onFeaturePropertyChange = vi.fn();
-        const controller = new ImportedGeoJsonLayerController({
-            getMap: () => map,
-            onFeaturePropertyChange,
-            isReadOnly: () => false,
-            getActiveLayerId: () => null
-        });
-
-        controller.render([layer]);
-        controller.render([{ ...layer, name: 'Renamed wards', visible: false }]);
-        controller.render([{ ...layer, name: 'Renamed wards', nameProperty: null }]);
-        const popup = featureLayer.bindPopup.mock.calls[0][0]();
-        expect(popup.querySelector('span')?.textContent).toBe('Renamed wards');
-
-        controller.render([{ ...layer, nameProperty: 'newName' }]);
-        const updatedPopup = featureLayer.bindPopup.mock.calls[0][0]();
-        const input = updatedPopup.querySelector('input') as HTMLInputElement;
-        input.value = 'Updated';
-        input.dispatchEvent(new Event('blur'));
-        expect(onFeaturePropertyChange).toHaveBeenCalledWith('layer-1', 0, 'newName', 'Updated');
-        expect(L.geoJSON).toHaveBeenCalledOnce();
-    });
-
-    it('forwards feature clicks to the active map tool and closes the popup', () => {
-        let activeLayerId: string | null = 'modal-filter';
-        const controller = new ImportedGeoJsonLayerController({
-            getMap: () => map,
-            onFeaturePropertyChange: vi.fn(),
-            isReadOnly: () => false,
-            getActiveLayerId: () => activeLayerId
-        });
-
-        controller.render([makeLayer()]);
-        const clickHandler = featureLayer.on.mock.calls[0][1];
-        clickHandler({ latlng: { lat: 52.5, lng: -1.9 } });
-        expect(map.fire).toHaveBeenCalledWith('click', { latlng: { lat: 52.5, lng: -1.9 } });
-        expect(map.closePopup).toHaveBeenCalledOnce();
-
-        activeLayerId = null;
-        clickHandler({ latlng: { lat: 52.5, lng: -1.9 } });
-        expect(map.fire).toHaveBeenCalledOnce();
     });
 
     it('hides imported point features eight zoom levels from maximum', () => {
