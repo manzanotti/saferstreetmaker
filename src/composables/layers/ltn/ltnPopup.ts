@@ -1,6 +1,7 @@
 import * as L from 'leaflet';
 import type { GroupMember } from '../../../models/Group';
 import { buildPopupActionControl } from '../features/featureActionPopup';
+import { makeEditorPopupMovable } from '../features/movableEditorPopup';
 import {
     buildFeatureGroupMembershipContent,
     disposePopupElement
@@ -32,11 +33,14 @@ export function createLtnPopup(
     refreshGroupContent: () => void;
     dispose: () => void;
 } {
-    const popup = L.popup({
-        minWidth: 30,
-        keepInView: true,
-        className: 'feature-popup-editor'
-    });
+    const popup = makeEditorPopupMovable(
+        L.popup({
+            minWidth: 30,
+            keepInView: true,
+            className: 'feature-popup-editor'
+        }),
+        map
+    );
     const controlList = document.createElement('ul');
     controlList.classList.add('popup-buttons', 'ltn-popup-buttons');
     const currentControls = document.createElement('li');

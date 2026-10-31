@@ -21,9 +21,10 @@ defineProps<{
             It's very early days of the site, so don't be surprised if you encounter the odd issue.
         </p>
         <p class="mb-8">
-            Move panels and dialogs by dragging a heading or empty space. On a touchscreen, hold
-            briefly before dragging. Buttons and form fields work as usual, and the toolbars and
-            legend stay in place.
+            Move panels, dialogs, and map-feature editors by dragging a heading or empty space. For
+            a feature editor, drag its Groups heading. On a touchscreen, hold briefly before
+            dragging. Buttons and form fields work as usual, and the toolbars and legend stay in
+            place.
         </p>
         <p class="mb-8">
             You can place various active travel features on your area. The idea is to use these to

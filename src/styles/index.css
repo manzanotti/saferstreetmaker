@@ -22,7 +22,8 @@ body {
     margin: 0;
 }
 
-.movable-panel h2 {
+.movable-panel h2,
+.movable-editor-popup .feature-popup-groups > strong {
     cursor: grab;
     -webkit-touch-callout: none;
 }

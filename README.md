@@ -36,6 +36,15 @@ form fields keep their normal behaviour. Adding a second finger anywhere cancels
 panel dragging so multi-touch gestures remain available to the map. Panels stay within the viewport and
 return to their default position when reopened. Toolbars and the legend stay anchored.
 
+Map-feature editor pop-ups (marker actions, line names/groups, and LTN cell
+labels/colours/groups) use the same mouse drag and 450 ms touch long-press
+interaction. Drag the Groups heading or non-interactive space to move the whole
+pop-up, including its close button. Editing controls keep working, and the pop-up
+continues to follow its feature when the map pans or zooms. Moved editors are kept
+within the viewport after map panning, zooming, and resizing; untouched editors
+retain Leaflet's normal anchoring without acquiring a drag offset. Closing and reopening
+resets its drag offset. Hover descriptions remain unchanged.
+
 Point markers are full-size at zoom 16 and above, half-size at zooms 13-15, and hidden at zoom 12 and below.
 
 Click an existing LTN cell to edit its boundary using the square vertex handles. Round vertex indicators are used for group and area selections, not while the cell's boundary editor is active. If a group selection is retained when boundary editing ends, its round indicators are restored.
