@@ -6,6 +6,8 @@ import { useImportedLayerStore } from '../../stores/importedLayerStore';
 import { useMapStore } from '../../stores/mapStore';
 import { useUiStore } from '../../stores/uiStore';
 
+const nameCollator = new Intl.Collator(undefined, { sensitivity: 'base' });
+
 export function useImportedLayerItems(getLayer: () => ImportedGeoJsonLayer) {
     const store = useImportedLayerStore();
     const mapStore = useMapStore();
@@ -13,12 +15,17 @@ export function useImportedLayerItems(getLayer: () => ImportedGeoJsonLayer) {
     const query = shallowRef('');
     const namedItems = computed(() => {
         const layer = getLayer();
-        return layer.featureCollection.features.flatMap((feature, index) => {
-            const name = layer.nameProperty
-                ? formatPropertyValue(feature.properties?.[layer.nameProperty]).trim()
-                : '';
-            return name ? [{ index, name, canCentre: feature.geometry !== null }] : [];
-        });
+        return layer.featureCollection.features
+            .flatMap((feature, index) => {
+                const name = layer.nameProperty
+                    ? formatPropertyValue(feature.properties?.[layer.nameProperty]).trim()
+                    : '';
+                return name ? [{ index, name, canCentre: feature.geometry !== null }] : [];
+            })
+            .sort(
+                (left, right) =>
+                    nameCollator.compare(left.name, right.name) || left.index - right.index
+            );
     });
     const filteredItems = computed(() => {
         const search = query.value.trim().toLocaleLowerCase();

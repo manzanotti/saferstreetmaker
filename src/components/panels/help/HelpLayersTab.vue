@@ -41,11 +41,11 @@ defineProps<{
         <h2>Showing and editing layers</h2>
         <p class="mb-8">
             Use the eye button beside an imported layer to show or hide it. Select the layer name to
-            open its items panel, where you can rename the layer and search its named items. Items
-            without a name are not listed, and items with the same name have separate rows.
-            Searching only filters the list; it does not hide anything on the map. Select an item's
-            name to centre it in the map view without changing the zoom or its visibility. Items
-            without a location cannot be centred.
+            open its items panel, where you can rename the layer and search its named items. Named
+            items are listed alphabetically; items without a name are not listed, and items with the
+            same name have separate rows. Searching only filters the list; it does not hide anything
+            on the map. Select an item's name to centre it in the map view without changing the zoom
+            or its visibility. Items without a location cannot be centred.
         </p>
         <p class="mb-8">
             Each item's eye button cycles from visible to hidden, then to showing only that item.
