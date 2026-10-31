@@ -38,7 +38,8 @@ export function createLtnPopup(
             minWidth: 30,
             keepInView: true,
             className: 'feature-popup-editor'
-        })
+        }),
+        map
     );
     const controlList = document.createElement('ul');
     controlList.classList.add('popup-buttons', 'ltn-popup-buttons');

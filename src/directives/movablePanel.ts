@@ -4,10 +4,20 @@ const interactiveSelector =
     'button, a, input, textarea, select, label, summary, [role="button"], [role="tab"], [contenteditable]:not([contenteditable="false"]), [data-no-panel-drag]';
 const cleanups = new WeakMap<HTMLElement, () => void>();
 
+interface MovablePanelOptions {
+    offsetProperty?: 'transform' | 'translate';
+    constrainOnWindowResize?: boolean;
+}
+
+export interface MovablePanelController {
+    constrain: () => void;
+    dispose: () => void;
+}
+
 export function makeMovablePanel(
     panel: HTMLElement,
-    offsetProperty: 'transform' | 'translate' = 'transform'
-): () => void {
+    { offsetProperty = 'transform', constrainOnWindowResize = true }: MovablePanelOptions = {}
+): MovablePanelController {
     const listeners = new AbortController();
     const { signal } = listeners;
     const originalOffset = panel.style[offsetProperty];
@@ -42,6 +52,12 @@ export function makeMovablePanel(
         x += Math.max(-rect.left, Math.min(0, window.innerWidth - rect.right));
         y += Math.max(-rect.top, Math.min(0, window.innerHeight - rect.bottom));
         render();
+    }
+
+    function constrainIfMoved() {
+        if (!active && (x !== 0 || y !== 0)) {
+            constrain();
+        }
     }
 
     function activate() {
@@ -235,30 +251,31 @@ export function makeMovablePanel(
         'resize',
         () => {
             finish();
-            constrain();
+            if (constrainOnWindowResize) {
+                constrain();
+            }
         },
         { signal }
     );
-    const observer = new ResizeObserver(() => {
-        if (!active && (x !== 0 || y !== 0)) {
-            constrain();
-        }
-    });
+    const observer = new ResizeObserver(constrainIfMoved);
     observer.observe(panel);
 
-    return () => {
-        finish();
-        clearTimeout(clickTimer);
-        listeners.abort();
-        observer.disconnect();
-        panel.classList.remove('movable-panel');
-        panel.style[offsetProperty] = originalOffset;
+    return {
+        constrain: constrainIfMoved,
+        dispose: () => {
+            finish();
+            clearTimeout(clickTimer);
+            listeners.abort();
+            observer.disconnect();
+            panel.classList.remove('movable-panel');
+            panel.style[offsetProperty] = originalOffset;
+        }
     };
 }
 
 export const vMovablePanel: ObjectDirective<HTMLElement> = {
     mounted(panel) {
-        cleanups.set(panel, makeMovablePanel(panel));
+        cleanups.set(panel, makeMovablePanel(panel).dispose);
     },
     beforeUnmount(panel) {
         cleanups.get(panel)?.();

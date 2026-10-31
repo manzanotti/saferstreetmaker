@@ -1,10 +1,23 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
+import type { App } from 'vue';
+import type { useMapStore } from '../../src/stores/mapStore';
 import {
     setupPage,
     placeModalFilter,
     drawNamedMobilityLane,
     drawNamedLtnCell
 } from './groups/groupTestHelpers';
+
+async function resizeMapViewport(page: Page, width: number, height: number) {
+    await page.setViewportSize({ width, height });
+    await page.waitForFunction((expectedWidth) => {
+        const root = document.getElementById('app') as HTMLElement & { __vue_app__: App };
+        const mapStore = root.__vue_app__.config.globalProperties.$pinia._s.get(
+            'map'
+        ) as ReturnType<typeof useMapStore>;
+        return mapStore.map?.getSize().x === expectedWidth;
+    }, width);
+}
 
 async function dragEditor(page: Page, popup: Locator, dx = 60, dy = 25) {
     const before = await popup.boundingBox();
@@ -121,6 +134,49 @@ test('drag offsets survive map positioning changes during zoom', async ({ page }
     expect(after.anchor).not.toBe(before.anchor);
 });
 
+for (const movement of ['pan', 'zoom']) {
+    test(`a moved editor stays in view after map ${movement}`, async ({ page }) => {
+        await page.getByRole('button', { name: 'Legend', exact: true }).click();
+        await placeModalFilter(page, 100);
+        await page.locator('#modal-filter-button').click();
+        await page.locator('path.modal-filter-marker').first().dispatchEvent('click');
+        const popup = page.locator('.leaflet-popup.movable-editor-popup');
+        const box = await popup.boundingBox();
+        await dragEditor(page, popup, page.viewportSize()!.width - box!.x - box!.width - 1, 0);
+        const offset = await popup.evaluate((element) => element.style.translate);
+        if (movement === 'pan') {
+            await page.locator('#map').focus();
+            await page.keyboard.press('ArrowLeft');
+        } else {
+            await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
+            await expect(page.locator('#map')).toHaveClass(/zoom-18/);
+        }
+        await expect
+            .poll(async () => {
+                const rect = await popup.boundingBox();
+                return rect!.x + rect!.width;
+            })
+            .toBeLessThanOrEqual(page.viewportSize()!.width + 1);
+        await expect
+            .poll(() => popup.evaluate((element) => element.style.translate))
+            .not.toBe(offset);
+        await popup.getByRole('button', { name: 'Close popup' }).click();
+        await expect(popup).not.toBeVisible();
+    });
+}
+
+test('resizing leaves an untouched editor anchored without adding a drag offset', async ({
+    page
+}) => {
+    await placeModalFilter(page, 100);
+    await page.locator('#modal-filter-button').click();
+    await page.locator('path.modal-filter-marker').first().dispatchEvent('click');
+    const popup = page.locator('.leaflet-popup.movable-editor-popup');
+    expect(await popup.evaluate((element) => element.style.translate)).toBe('');
+    await resizeMapViewport(page, 640, 600);
+    expect(await popup.evaluate((element) => element.style.translate)).toBe('');
+});
+
 test('editor pop-ups stay reachable after dragging to an edge and resizing', async ({ page }) => {
     await placeModalFilter(page);
     await page.locator('#modal-filter-button').click();
@@ -131,7 +187,7 @@ test('editor pop-ups stay reachable after dragging to an edge and resizing', asy
     await page.mouse.down();
     await page.mouse.move(1200, 680, { steps: 10 });
     await page.mouse.up();
-    await page.setViewportSize({ width: 640, height: 600 });
+    await resizeMapViewport(page, 640, 600);
     await expect
         .poll(async () => {
             const box = await popup.boundingBox();

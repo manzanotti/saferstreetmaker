@@ -76,6 +76,12 @@ test('panels stay reachable when dragged past edges and the viewport shrinks', a
     expect(box!.y).toBeGreaterThanOrEqual(0);
     await drag(page, page.locator('#settings-panel-title'), 1500, 1500);
     await page.setViewportSize({ width: 640, height: 600 });
+    await expect
+        .poll(async () => {
+            const resized = await panel.boundingBox();
+            return resized!.x + resized!.width;
+        })
+        .toBeLessThanOrEqual(641);
     box = await panel.boundingBox();
     expect(box!.x).toBeGreaterThanOrEqual(0);
     expect(box!.y).toBeGreaterThanOrEqual(0);

@@ -40,7 +40,9 @@ Map-feature editor pop-ups (marker actions, line names/groups, and LTN cell
 labels/colours/groups) use the same mouse drag and 450 ms touch long-press
 interaction. Drag the Groups heading or non-interactive space to move the whole
 pop-up, including its close button. Editing controls keep working, and the pop-up
-continues to follow its feature when the map pans or zooms. Closing and reopening
+continues to follow its feature when the map pans or zooms. Moved editors are kept
+within the viewport after map panning, zooming, and resizing; untouched editors
+retain Leaflet's normal anchoring without acquiring a drag offset. Closing and reopening
 resets its drag offset. Hover descriptions remain unchanged.
 
 Point markers are full-size at zoom 16 and above, half-size at zooms 13-15, and hidden at zoom 12 and below.

@@ -41,7 +41,7 @@ export function buildDeletePopup(
     onDelete: () => void,
     onCopy?: () => void
 ): L.Popup {
-    const popup = makeEditorPopupMovable(L.popup(popupOptions));
+    const popup = makeEditorPopupMovable(L.popup(popupOptions), map);
 
     const controlList = document.createElement('ul');
     controlList.classList.add('popup-buttons');
@@ -143,7 +143,7 @@ export function setFeatureActionPopupContent(
 }
 
 export function buildFeatureActionPopup(opts: FeatureActionPopupOptions): L.Popup {
-    const popup = makeEditorPopupMovable(L.popup(opts.popupOptions));
+    const popup = makeEditorPopupMovable(L.popup(opts.popupOptions), opts.map);
     setFeatureActionPopupContent(popup, opts);
     return popup;
 }

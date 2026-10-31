@@ -12,20 +12,27 @@ import { createLtnPopup } from '../../src/composables/layers/ltn/ltnPopup';
 describe('movable editor pop-ups', () => {
     let popup: L.Popup;
     let element: HTMLDivElement;
+    let popupMap: L.Map;
+    let anchorX: number;
+    let anchorY: number;
 
     beforeEach(() => {
+        popupMap = L.map(document.createElement('div'));
+        anchorX = 100;
+        anchorY = 100;
         element = document.createElement('div');
         element.innerHTML = '<strong>Groups</strong><input><button>Copy</button><select></select>';
         element.style.transform = 'translate3d(100px, 200px, 0px)';
         document.body.append(element);
         vi.spyOn(element, 'getBoundingClientRect').mockImplementation(() => {
             const [x, y] = element.style.translate.split(' ').map(Number.parseFloat);
-            return new DOMRect(100 + (x || 0), 100 + (y || 0), 300, 200);
+            return new DOMRect(anchorX + (x || 0), anchorY + (y || 0), 300, 200);
         });
     });
 
     afterEach(() => {
         popup?.fire('remove');
+        popupMap.remove();
         element.remove();
     });
 
@@ -59,7 +66,7 @@ describe('movable editor pop-ups', () => {
 
     it('uses a separate translate layer and preserves Leaflet positioning updates', () => {
         const nextPopup = L.popup();
-        expect(makeEditorPopupMovable(nextPopup)).toBe(nextPopup);
+        expect(makeEditorPopupMovable(nextPopup, popupMap)).toBe(nextPopup);
         mount(nextPopup);
         drag();
         expect(element.style.translate).toBe('50px 20px');
@@ -71,7 +78,7 @@ describe('movable editor pop-ups', () => {
     });
 
     it.each(['input', 'button', 'select'])('does not hijack editor %s controls', (selector) => {
-        mount(makeEditorPopupMovable(L.popup()));
+        mount(makeEditorPopupMovable(L.popup(), popupMap));
         pointer('pointerdown', element.querySelector(selector)!, 120, 120);
         pointer('pointermove', document, 170, 140);
         pointer('pointerup', document, 170, 140);
@@ -80,7 +87,7 @@ describe('movable editor pop-ups', () => {
     });
 
     it('cleans up during a drag and starts at its default offset when reopened', () => {
-        mount(makeEditorPopupMovable(L.popup()));
+        mount(makeEditorPopupMovable(L.popup(), popupMap));
         pointer('pointerdown', element, 120, 120);
         pointer('pointermove', document, 170, 140);
         popup.fire('remove');
@@ -120,6 +127,48 @@ describe('movable editor pop-ups', () => {
         } finally {
             map.remove();
         }
+    });
+
+    it.each(['moveend', 'zoomend', 'resize'])(
+        're-constrains a moved editor after map %s',
+        (event) => {
+            mount(makeEditorPopupMovable(L.popup(), popupMap));
+            drag();
+            anchorX = window.innerWidth - 100;
+            anchorY = window.innerHeight - 100;
+            popupMap.fire(event);
+            const rect = element.getBoundingClientRect();
+            expect(rect.right).toBeLessThanOrEqual(window.innerWidth);
+            expect(rect.bottom).toBeLessThanOrEqual(window.innerHeight);
+            expect(element.style.transform).toBe('translate3d(100px, 200px, 0px)');
+        }
+    );
+
+    it('waits for map resizing and does not add an offset to an untouched editor', () => {
+        mount(makeEditorPopupMovable(L.popup(), popupMap));
+        anchorX = window.innerWidth;
+        window.dispatchEvent(new Event('resize'));
+        expect(element.style.translate).toBe('');
+        anchorX = 100;
+        popupMap.fire('resize');
+        expect(element.style.translate).toBe('');
+    });
+
+    it('removes map constraints on close and reinstates them once on reopening', () => {
+        mount(makeEditorPopupMovable(L.popup(), popupMap));
+        drag();
+        popup.fire('remove');
+        const measure = vi.mocked(element.getBoundingClientRect);
+        measure.mockClear();
+        for (const event of ['moveend', 'zoomend', 'resize']) {
+            popupMap.fire(event);
+        }
+        expect(measure).not.toHaveBeenCalled();
+        popup.fire('add');
+        drag();
+        measure.mockClear();
+        popupMap.fire('moveend');
+        expect(measure).toHaveBeenCalledTimes(1);
     });
 
     it('enables copy/delete-only action pop-ups', () => {
