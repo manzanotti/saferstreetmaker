@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { getLayerFeatureCount } from './layerMapTestHelpers';
+import { drawPolyline, getLayerFeatureCount } from './layerMapTestHelpers';
 import { setupFreshPage } from './layerTestSetup';
 import { getLayerFeatures } from '../indexedDbHelpers';
 
@@ -117,6 +117,25 @@ test.describe('Polyline creation names survive removal without native blur or po
 
 test.describe('Polyline creation repeats while the tool remains selected', () => {
     setupFreshPage();
+
+    for (const { buttonId } of polylineLayers) {
+        test(`${buttonId} tool deselects with Escape after closing its editor`, async ({
+            page
+        }) => {
+            if (buttonId === 'bus-lane') {
+                await page.locator('#tram-line-button').click({ button: 'right' });
+            }
+            const button = page.locator(`#${buttonId}-button`);
+            await button.click();
+            await drawPolyline(page);
+            await expect(button).toHaveAttribute('aria-pressed', 'true');
+
+            await page.keyboard.press('Escape');
+
+            await expect(button).toHaveAttribute('aria-pressed', 'false');
+            await expect(page.locator('.leaflet-mouse-marker')).toHaveCount(0);
+        });
+    }
 
     for (const { buttonId, layerId } of polylineLayers) {
         for (const completion of ['last-point click', 'double-click'] as const) {
