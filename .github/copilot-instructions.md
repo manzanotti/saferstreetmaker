@@ -18,7 +18,7 @@
 
 - UI controls (Toolbar, Legend, modal container) are Vue components mounted into Leaflet `L.Control` containers via `makeLeafletVueControl()` in `src/composables/useLeafletVueControl.ts`. All share a single Pinia instance so stores are reactive across controls.
 - Layer state and selection is managed via `mapStore.activeLayerId` (a `ref<string | null>`). Layer composables use `watch({ flush: 'sync' })` on this value to attach/detach Leaflet event listeners and Leaflet.draw tools synchronously.
-- Map data persistence is handled by `src/services/FileManager.ts`, which delegates to `MapSerializer` (JSON ↔ LZ-string) and `MapStorage` (localStorage CRUD).
+- Map data persistence is handled by `src/services/FileManager.ts`, which delegates to `MapSerializer` (JSON ↔ LZ-string) and `MapStorage` (IndexedDB CRUD via `MapDatabase`, with a one-time import of legacy localStorage maps).
 - There is **no event bus** — PubSub.js was removed. Cross-layer communication uses Pinia store mutations and direct Leaflet event listeners.
 
 ## Project Structure
@@ -78,7 +78,7 @@ Eleven layers, each in `src/composables/layers/`. Two interaction patterns:
 
 BusGate, and TrafficLights/PedestrianLights/ZebraCrossing are grouped in toolbar submenus — revealed by right-clicking the parent toolbar button.
 
-Map data is saved to `localStorage` as LZ-string compressed JSON, key `Map_<title>`.
+Map data is saved to IndexedDB (see `src/services/MapDatabase.ts`). Older versions saved LZ-string compressed JSON to `localStorage` under `Map_<title>`; these are imported once by `LegacyMapStorageImporter`.
 
 ## Playwright Testing Notes
 
@@ -86,6 +86,6 @@ Map data is saved to `localStorage` as LZ-string compressed JSON, key `Map_<titl
 - **#help modal blocks map clicks**: The help modal sits above the map and can intercept clicks when visible. In `beforeEach`, inject: `await page.addStyleTag({ content: '#help { display: none !important; }' })` when the test only needs the map surface.
 - **Map view timing**: Leaflet's `setView()` is called from the geolocation success callback (async). Wait for it with `context.grantPermissions(['geolocation'])` + `context.setGeolocation(...)` + `page.waitForFunction(() => Array.from(document.getElementById('map')?.classList ?? []).some(c => c.startsWith('zoom-')))`.
 - **leaflet.draw needs click delays**: Rapid back-to-back `page.mouse.click` calls confuse leaflet.draw's state machine and prevent `draw:created` from firing. Add `await page.waitForTimeout(200)` between each click when drawing polylines/polygons.
-- **Add `waitForTimeout` after map interactions**: Layer composables call `mapStore.markLayerUpdated()` synchronously, but the debounced save runs asynchronously. Add `await page.waitForTimeout(100)` after placing a marker, or `await page.waitForTimeout(500)` after drawing a polyline/polygon, before reading localStorage.
+- **Add `waitForTimeout` after map interactions**: Layer composables call `mapStore.markLayerUpdated()` synchronously, but the debounced save runs asynchronously. Add `await page.waitForTimeout(100)` after placing a marker, or `await page.waitForTimeout(500)` after drawing a polyline/polygon, before reading stored map data (use the helpers in `tests/playwright/indexedDbHelpers.ts`).
 - **Legend shares icon CSS classes**: e.g. `.traffic-lights-icon` matches both the legend `<li>` and the map `DivIcon` marker. Always scope to `.leaflet-marker-icon.traffic-lights-icon` when targeting map markers.
 - **Deleting markers**: Use `dispatchEvent('click')` rather than `.click()` on DivIcon markers and SVG paths — Playwright's actionability checks can fail on these elements.
