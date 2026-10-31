@@ -4,10 +4,13 @@ const interactiveSelector =
     'button, a, input, textarea, select, label, summary, [role="button"], [role="tab"], [contenteditable]:not([contenteditable="false"]), [data-no-panel-drag]';
 const cleanups = new WeakMap<HTMLElement, () => void>();
 
-function makeMovable(panel: HTMLElement): () => void {
+export function makeMovablePanel(
+    panel: HTMLElement,
+    offsetProperty: 'transform' | 'translate' = 'transform'
+): () => void {
     const listeners = new AbortController();
     const { signal } = listeners;
-    const originalTransform = panel.style.transform;
+    const originalOffset = panel.style[offsetProperty];
     let x = 0;
     let y = 0;
     let moved = false;
@@ -25,7 +28,10 @@ function makeMovable(panel: HTMLElement): () => void {
     panel.classList.add('movable-panel');
 
     function render() {
-        panel.style.transform = `translate(${x}px, ${y}px) ${originalTransform}`;
+        panel.style[offsetProperty] =
+            offsetProperty === 'translate'
+                ? `${x}px ${y}px`
+                : `translate(${x}px, ${y}px) ${originalOffset}`;
     }
 
     function constrain() {
@@ -246,13 +252,13 @@ function makeMovable(panel: HTMLElement): () => void {
         listeners.abort();
         observer.disconnect();
         panel.classList.remove('movable-panel');
-        panel.style.transform = originalTransform;
+        panel.style[offsetProperty] = originalOffset;
     };
 }
 
 export const vMovablePanel: ObjectDirective<HTMLElement> = {
     mounted(panel) {
-        cleanups.set(panel, makeMovable(panel));
+        cleanups.set(panel, makeMovablePanel(panel));
     },
     beforeUnmount(panel) {
         cleanups.get(panel)?.();
