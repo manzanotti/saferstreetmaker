@@ -19,6 +19,23 @@ describe('UndoJournal', () => {
         await Dexie.delete('SaferStreetMakerDB');
     });
 
+    it('does not classify imported-layer changes as no-ops', () => {
+        const before = viewSnapshot(12);
+        const after = {
+            ...viewSnapshot(12),
+            importedLayers: [
+                {
+                    id: 'imported-1',
+                    name: 'Wards',
+                    nameProperty: null,
+                    featureCollection: { type: 'FeatureCollection' as const, features: [] }
+                }
+            ]
+        };
+
+        expect(isNoOp(before, after)).toBe(false);
+    });
+
     describe('pruneNoOpCheckpoints', () => {
         it('removes view-only entries, keeps feature entries, and compacts sequences', async () => {
             await journal.clearHistory('Prune');

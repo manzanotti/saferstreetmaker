@@ -36,10 +36,6 @@ export function viewSnapshot(zoom: number, layers: Record<string, unknown> = {})
     };
 }
 
-/**
- * Test comparator mirroring useMapManager's history equality: two snapshots are
- * "no-op" when they match once map view state (centre/zoom) is stripped.
- */
 export function isNoOp(before: unknown, after: unknown): boolean {
     const strip = (snapshot: unknown): string => {
         const s = snapshot as SerializedMap | null;
@@ -59,7 +55,8 @@ export function isNoOp(before: unknown, after: unknown): boolean {
             title: s.title,
             settings,
             layers: s.layers,
-            groups: s.groups
+            groups: s.groups,
+            importedLayers: s.importedLayers
         });
     };
     return strip(before) === strip(after);
