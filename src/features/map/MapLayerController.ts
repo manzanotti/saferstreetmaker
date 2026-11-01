@@ -54,7 +54,7 @@ export class MapLayerController {
         this.getLayers().forEach((layer) => {
             const layerDataKey = this.getSerializedLayerKey(layer.id, layerData);
             const serializedLayer = layerData[layerDataKey];
-            if (serializedLayer) {
+            if (serializedLayer !== undefined) {
                 layer.loadFromGeoJSON(
                     parseStoredLayerGeoJson(serializedLayer, layer.id, layer.kind)
                 );

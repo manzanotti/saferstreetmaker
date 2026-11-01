@@ -1,5 +1,5 @@
 import type { IMapLayer } from '../../composables/layers/IMapLayer';
-import { isPosition, isPositionArray } from './geoJsonCoordinates';
+import { isLinearRing, isPosition, isPositionArray } from './geoJsonCoordinates';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -29,8 +29,16 @@ export function parseStoredLayerGeoJson(
         if (
             !isRecord(feature) ||
             (feature.type !== undefined && feature.type !== 'Feature') ||
-            !isRecord(feature.geometry) ||
-            (feature.geometry.type !== undefined && feature.geometry.type !== expectedType)
+            !isRecord(feature.geometry)
+        ) {
+            throw new Error(`${label} has an invalid ${expectedType} geometry.`);
+        }
+
+        const legacyMultiLine = kind === 'polyline' && feature.geometry.type === 'MultiLineString';
+        if (
+            feature.geometry.type !== undefined &&
+            feature.geometry.type !== expectedType &&
+            !legacyMultiLine
         ) {
             throw new Error(`${label} has an invalid ${expectedType} geometry.`);
         }
@@ -49,13 +57,15 @@ export function parseStoredLayerGeoJson(
             geometry = { ...feature.geometry, type: 'Point', coordinates };
         } else if (kind === 'polyline') {
             // Older maps wrapped each line's coordinates in one extra array.
-            const line =
+            const nestedLine =
                 Array.isArray(coordinates) &&
                 coordinates.length === 1 &&
-                isPositionArray(coordinates[0], 0)
-                    ? coordinates[0]
-                    : coordinates;
-            if (!isPositionArray(line, 0)) {
+                isPositionArray(coordinates[0], 2);
+            if (legacyMultiLine && !nestedLine) {
+                throw new Error(`${label} has invalid coordinates.`);
+            }
+            const line = nestedLine ? coordinates[0] : coordinates;
+            if (!isPositionArray(line, 2)) {
                 throw new Error(`${label} has invalid coordinates.`);
             }
             geometry = { ...feature.geometry, type: 'LineString', coordinates: line };
@@ -63,7 +73,7 @@ export function parseStoredLayerGeoJson(
             if (
                 !Array.isArray(coordinates) ||
                 coordinates.length === 0 ||
-                !coordinates.every((ring) => isPositionArray(ring, 0))
+                !coordinates.every(isLinearRing)
             ) {
                 throw new Error(`${label} has invalid coordinates.`);
             }

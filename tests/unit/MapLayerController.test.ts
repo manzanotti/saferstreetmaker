@@ -73,6 +73,26 @@ describe('MapLayerController', () => {
         expect(layers[1].visible).toBe(false);
     });
 
+    it.each([null, false, 0, ''])('rejects a present malformed layer value: %j', (value) => {
+        const map = new L.Map();
+        const layer = makeLayer('ModalFilters');
+        const controller = new MapLayerController({ getMap: () => map, getLayers: () => [layer] });
+
+        expect(() => controller.loadLayers({ ModalFilters: value }, [])).toThrow(
+            'Layer "ModalFilters" must contain a GeoJSON feature collection.'
+        );
+        expect(layer.loaded).toEqual([]);
+    });
+
+    it('permits a layer to be absent from an older map', () => {
+        const map = new L.Map();
+        const layer = makeLayer('ModalFilters');
+        const controller = new MapLayerController({ getMap: () => map, getLayers: () => [layer] });
+
+        expect(() => controller.loadLayers({}, [])).not.toThrow();
+        expect(layer.loaded).toEqual([]);
+    });
+
     it('clears layer data and removes every layer from the map', () => {
         const map = new L.Map();
         const layers = [makeLayer('a'), makeLayer('b')];
