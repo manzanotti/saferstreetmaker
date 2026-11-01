@@ -121,6 +121,7 @@ test.describe('Image export from Share panel', () => {
 
         await expect(page.locator('#image-export-error')).toContainText('between 256 and 8192');
         await expect(page.getByRole('button', { name: 'Export PNG' })).toBeDisabled();
+        await expect(page.getByRole('button', { name: 'Copy PNG' })).toBeDisabled();
     });
 
     test('refuses to export while a map tool is active', async ({ page }) => {

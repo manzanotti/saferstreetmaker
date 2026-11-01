@@ -18,6 +18,7 @@ export default defineConfig({
     projects: [
         {
             name: 'chromium',
+            testIgnore: /[\\/]image-copy-cross-browser\.spec\.ts$/,
             use: { ...devices['Desktop Chrome'] }
         },
         {
@@ -28,6 +29,16 @@ export default defineConfig({
         {
             name: 'webkit-layer-items',
             testMatch: /[\\/]layer-items(-[a-z-]+)?\.spec\.ts$/,
+            use: { ...devices['Desktop Safari'] }
+        },
+        {
+            name: 'firefox-image-copy',
+            testMatch: /[\\/]image-copy-cross-browser\.spec\.ts$/,
+            use: { ...devices['Desktop Firefox'] }
+        },
+        {
+            name: 'webkit-image-copy',
+            testMatch: /[\\/]image-copy-cross-browser\.spec\.ts$/,
             use: { ...devices['Desktop Safari'] }
         }
     ],

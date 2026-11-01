@@ -10,6 +10,7 @@ export const useUiStore = defineStore('ui', () => {
     const legendLayerIds = ref<Set<string> | null>(null);
     const imageExportInProgress = ref(false);
     const imageExportLegendLayerIds = ref<Set<string> | null>(null);
+    const imageCopied = ref(false);
 
     function openPanel(id: PanelId) {
         activePanel.value = id;
@@ -38,6 +39,10 @@ export const useUiStore = defineStore('ui', () => {
         imageExportLegendLayerIds.value = layerIds;
     }
 
+    function setImageCopied(copied: boolean) {
+        imageCopied.value = copied;
+    }
+
     return {
         activePanel,
         errorMessages,
@@ -45,11 +50,13 @@ export const useUiStore = defineStore('ui', () => {
         legendLayerIds,
         imageExportInProgress,
         imageExportLegendLayerIds,
+        imageCopied,
         openPanel,
         closePanel,
         showErrors,
         clearErrors,
         setLegendLayerIds,
-        setImageExportState
+        setImageExportState,
+        setImageCopied
     };
 });

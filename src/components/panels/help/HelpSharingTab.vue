@@ -15,12 +15,13 @@ defineProps<{
     >
         <h2>Sharing maps</h2>
         <p class="mb-8">
-            Press <strong>Ctrl + I</strong> (or <strong>Command + I</strong> on macOS) to download a
-            PNG immediately at the current map dimensions, without opening Share. If a group is
-            selected, the image is framed around its selected features, just like opening Share and
-            selecting Image manually. Use only Ctrl or Command, not both. The shortcut is disabled
-            while typing, while another dialog is open, or while Share displays an image export
-            error.
+            In Share, select Image to copy a PNG or export it to a file using the specified
+            dimensions. Press <strong>Ctrl + I</strong> (or <strong>Command + I</strong> on macOS)
+            to copy a PNG at the current map dimensions, or add <strong>Shift</strong> to download
+            it. If a group is selected, the image is framed around its selected features. Use only
+            Ctrl or Command, not both. These shortcuts are disabled while typing, while another
+            dialog is open, or while Share displays an image export error. Copying an image requires
+            a secure connection and a browser that supports image clipboard access.
         </p>
         <p class="mb-8">
             Obviously, you can save the map file and send that to someone, who could upload it to
