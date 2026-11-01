@@ -18,7 +18,7 @@
 
 - UI controls (Toolbar, Legend, modal container) are Vue components mounted into Leaflet `L.Control` containers via `makeLeafletVueControl()` in `src/composables/useLeafletVueControl.ts`. All share a single Pinia instance so stores are reactive across controls.
 - Layer state and selection is managed via `mapStore.activeLayerId` (a `ref<string | null>`). Layer composables use `watch({ flush: 'sync' })` on this value to attach/detach Leaflet event listeners and Leaflet.draw tools synchronously.
-- Map data persistence is handled by `src/services/FileManager.ts`, which delegates to `MapSerializer` (JSON ↔ LZ-string) and `MapStorage` (IndexedDB CRUD via `MapDatabase`, with a one-time import of legacy localStorage maps).
+- Map data persistence is handled by `src/services/FileManager.ts`, which delegates to `MapSerializer` (compact stored-map data and LZ-string share hashes) and `MapStorage` (IndexedDB CRUD via `MapDatabase`, with a one-time import of legacy localStorage maps).
 - There is **no event bus** — PubSub.js was removed. Cross-layer communication uses Pinia store mutations and direct Leaflet event listeners.
 
 ## Project Structure
