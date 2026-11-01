@@ -113,6 +113,10 @@ export function applyPolylinePointChanges(
     ) {
         return false;
     }
+    if (direction === 'undo') {
+        // Successive deletions at one index must be reinserted in reverse order.
+        insertChanges.reverse();
+    }
     insertChanges
         .sort((left, right) => left.index - right.index)
         .forEach((change) => {
@@ -223,6 +227,9 @@ export function applyPolygonPointChanges(
         })
     ) {
         return false;
+    }
+    if (direction === 'undo') {
+        insertChanges.reverse();
     }
     insertChanges
         .sort((left, right) => {
