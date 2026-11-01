@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { addFreshStorageInitScript, waitForFreshStorage } from './indexedDbHelpers';
 
-test.describe('Map Manager Panel', () => {
+test.describe('Layers panel', () => {
     test.beforeEach(async ({ page }) => {
         await addFreshStorageInitScript(page);
         await page.goto('/');

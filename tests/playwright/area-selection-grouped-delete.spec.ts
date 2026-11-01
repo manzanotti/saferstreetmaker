@@ -3,9 +3,9 @@ import { getLayerFeatureCount } from './indexedDbHelpers';
 import { setupPage, drawMobilityLane } from './areaSelectionTestHelpers';
 
 // ---------------------------------------------------------------------------
-// Popup copy (polyline / polygon)
+// Grouped feature deletion
 // ---------------------------------------------------------------------------
-test.describe('Area selection — popup copy (polyline/polygon)', () => {
+test.describe('Area selection — grouped feature deletion', () => {
     test.beforeEach(async ({ page, context }) => {
         await setupPage(page, context);
     });
