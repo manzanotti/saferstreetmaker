@@ -5,7 +5,7 @@
  * Responsibilities are delegated to specialist classes:
  *
  *   MapSerializer — pure data transforms (JSON ↔ LZ-string hash)
- *   MapStorage    — localStorage CRUD
+ *   MapStorage    — IndexedDB CRUD (with one-time legacy localStorage import)
  *   FileManager   — OS file I/O (upload / download / remote fetch) + callback wiring
  */
 import type { IMapLayer } from '../composables/layers/IMapLayer';
