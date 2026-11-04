@@ -1,5 +1,5 @@
 import * as L from 'leaflet';
-import { createApp, type Component } from 'vue';
+import { createApp, type App, type Component } from 'vue';
 import { pinia } from '../stores/index';
 
 /**
@@ -17,6 +17,7 @@ export function makeLeafletVueControl(
 ): L.Control {
     const control = new L.Control({ position });
     let container: HTMLElement | null = null;
+    let app: App | null = null;
     let pointerDownHandler: ((event: PointerEvent) => void) | null = null;
     let controlDblClickHandler: ((event: MouseEvent) => void) | null = null;
     let documentDblClickHandler: ((event: MouseEvent) => void) | null = null;
@@ -77,11 +78,14 @@ export function makeLeafletVueControl(
         };
         document.addEventListener('dblclick', documentDblClickHandler, true);
 
-        createApp(Component).use(pinia).mount(container);
+        app = createApp(Component);
+        app.use(pinia).mount(container);
         return container;
     };
 
     control.onRemove = () => {
+        app?.unmount();
+        app = null;
         if (container && pointerDownHandler) {
             container.removeEventListener('pointerdown', pointerDownHandler, true);
         }
