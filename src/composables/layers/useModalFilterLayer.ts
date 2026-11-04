@@ -1,5 +1,6 @@
 import * as L from 'leaflet';
-import { createPointLayer, handlePointFeatureClick } from './usePointLayer';
+import { createPointLayer } from './usePointLayer';
+import { handlePointFeatureClick } from './features/pointFeatureClick';
 import type { IMapLayer } from './IMapLayer';
 
 export function createModalFilterLayer(map: L.Map): IMapLayer {
