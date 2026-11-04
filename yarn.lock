@@ -1295,10 +1295,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fake-indexeddb@npm:^6.2.6":
-  version: 6.2.6
-  resolution: "fake-indexeddb@npm:6.2.6"
-  checksum: 6824969a006b16ab5f6351d162941c9322caceb2071920e24aa9bcc97b9d8b73a2a6cae64be761abe20d835021736af443f1bc0b17fa851fca1aedcc673beb5c
+"fake-indexeddb@npm:^6.2.7":
+  version: 6.2.7
+  resolution: "fake-indexeddb@npm:6.2.7"
+  checksum: 73a27cb9a952043b2b2d4ed49b829397de561d25faf587e167ff52759027541a593b36fe8d53eab1098f5149be312fa9e2e05935f15e100b79ccbeb32f1d54fb
   languageName: node
   linkType: hard
 
@@ -2436,7 +2436,7 @@ __metadata:
     "@vue/tsconfig": ^0.9.1
     dexie: ^4.4.6
     dompurify: ^3.4.17
-    fake-indexeddb: ^6.2.6
+    fake-indexeddb: ^6.2.7
     html2canvas-pro: ^2.5.2
     jsdom: ^30.1.3
     leaflet-arrowheads: ^1.4.0
