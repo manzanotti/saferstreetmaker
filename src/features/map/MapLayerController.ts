@@ -1,5 +1,6 @@
 import * as L from 'leaflet';
 import type { IMapLayer } from '../../composables/layers/IMapLayer';
+import { parseStoredLayerGeoJson } from './storedLayerGeoJson';
 
 type SerializedLayerData = Record<string, unknown>;
 
@@ -53,8 +54,10 @@ export class MapLayerController {
         this.getLayers().forEach((layer) => {
             const layerDataKey = this.getSerializedLayerKey(layer.id, layerData);
             const serializedLayer = layerData[layerDataKey];
-            if (serializedLayer) {
-                layer.loadFromGeoJSON(serializedLayer as L.GeoJSON);
+            if (serializedLayer !== undefined) {
+                layer.loadFromGeoJSON(
+                    parseStoredLayerGeoJson(serializedLayer, layer.id, layer.kind)
+                );
             }
 
             if (activeLayerIds.includes(layer.id)) {

@@ -21,7 +21,7 @@ function cloneValue<T>(value: T): T {
 function makePolygonFeature(
     coordinates: number[][][],
     options?: { historyId?: string; label?: string; color?: string }
-) {
+): GeoJSON.Feature<GeoJSON.Polygon> {
     return {
         type: 'Feature',
         properties: {
@@ -62,8 +62,8 @@ function makeSerializedMap(
 function createFakeLtnLayer(initialCoordinates: number[][][]): IMapLayer & {
     getState: () => { type: 'FeatureCollection'; features: unknown[] };
 } {
-    let featureCollection = {
-        type: 'FeatureCollection' as const,
+    let featureCollection: GeoJSON.FeatureCollection = {
+        type: 'FeatureCollection',
         features: [makePolygonFeature(initialCoordinates)]
     };
 
@@ -79,6 +79,7 @@ function createFakeLtnLayer(initialCoordinates: number[][][]): IMapLayer & {
         selected: false,
         visible: true,
         groupName: '',
+        kind: 'polygon',
         iconHtml: '',
         getToolbarButton: () => ({
             id: 'ltn',
@@ -89,8 +90,8 @@ function createFakeLtnLayer(initialCoordinates: number[][][]): IMapLayer & {
             text: 'LTN'
         }),
         getLegendEntry: () => document.createElement('li'),
-        loadFromGeoJSON(geoJson: L.GeoJSON) {
-            featureCollection = cloneValue(geoJson as unknown as typeof featureCollection);
+        loadFromGeoJSON(geoJson: GeoJSON.FeatureCollection) {
+            featureCollection = cloneValue(geoJson);
         },
         getLayer() {
             return geoJsonLayer;

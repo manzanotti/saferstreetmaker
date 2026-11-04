@@ -17,7 +17,10 @@ function cloneValue<T>(value: T): T {
     return JSON.parse(JSON.stringify(value)) as T;
 }
 
-function makePolylineFeature(coordinates: number[][], historyId = 'polyline-1') {
+function makePolylineFeature(
+    coordinates: number[][],
+    historyId = 'polyline-1'
+): GeoJSON.Feature<GeoJSON.LineString> {
     return {
         type: 'Feature',
         properties: { historyId },
@@ -51,8 +54,8 @@ function makeSerializedMap(coordinates: number[][], historyId = 'polyline-1'): S
 function createFakeMobilityLayer(initialCoordinates: number[][]): IMapLayer & {
     getState: () => { type: 'FeatureCollection'; features: unknown[] };
 } {
-    let featureCollection = {
-        type: 'FeatureCollection' as const,
+    let featureCollection: GeoJSON.FeatureCollection = {
+        type: 'FeatureCollection',
         features: [makePolylineFeature(initialCoordinates)]
     };
 
@@ -68,6 +71,7 @@ function createFakeMobilityLayer(initialCoordinates: number[][]): IMapLayer & {
         selected: false,
         visible: true,
         groupName: '',
+        kind: 'polyline',
         iconHtml: '',
         getToolbarButton: () => ({
             id: 'mobility-lane',
@@ -77,8 +81,8 @@ function createFakeMobilityLayer(initialCoordinates: number[][]): IMapLayer & {
             action: () => {}
         }),
         getLegendEntry: () => document.createElement('li'),
-        loadFromGeoJSON(geoJson: L.GeoJSON) {
-            featureCollection = cloneValue(geoJson as unknown as typeof featureCollection);
+        loadFromGeoJSON(geoJson: GeoJSON.FeatureCollection) {
+            featureCollection = cloneValue(geoJson);
         },
         getLayer() {
             return geoJsonLayer;

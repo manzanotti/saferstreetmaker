@@ -7,6 +7,7 @@ import { dispatchHistoryReplay } from './historyReplayDispatch';
 import { replayFeatureMutation } from './featureMutationReplay';
 import { getSettingsMutationTarget } from './settingsMutationReplay';
 import { migrateSettingsForSchema } from '../map/MapDataLoader';
+import { parseStoredLayerGeoJson } from '../map/storedLayerGeoJson';
 import {
     runHistoryReplayTransaction,
     type HistoryReplayTransactionEffects
@@ -96,10 +97,15 @@ export class HistoryReplayCoordinator {
         if (!replayedFeatureCollection) {
             return await this.applyLayerMutationReplay(replay.snapshot, mutation);
         }
+        const validated = parseStoredLayerGeoJson(
+            replayedFeatureCollection,
+            current.layer.id,
+            current.layer.kind
+        );
 
         return await runHistoryReplayTransaction(this.options.transactionEffects, async () => {
             current.layer.getLayer().clearLayers();
-            current.layer.loadFromGeoJSON(replayedFeatureCollection as unknown as L.GeoJSON);
+            current.layer.loadFromGeoJSON(validated);
             this.options.recomputeGroupPresentation?.();
             await this.options.saveMap();
             this.options.setLastSavedSnapshot(this.options.buildSnapshot());
@@ -118,9 +124,12 @@ export class HistoryReplayCoordinator {
 
         return await runHistoryReplayTransaction(this.options.transactionEffects, async () => {
             const layerState = this.getSnapshotLayerData(snapshot, mutation.layerId);
+            const validated = layerState
+                ? parseStoredLayerGeoJson(layerState, layer.id, layer.kind)
+                : null;
             layer.getLayer().clearLayers();
-            if (layerState) {
-                layer.loadFromGeoJSON(layerState as L.GeoJSON);
+            if (validated) {
+                layer.loadFromGeoJSON(validated);
             }
             this.options.recomputeGroupPresentation?.();
             await this.options.saveMap();
@@ -208,7 +217,7 @@ export class HistoryReplayCoordinator {
         if (!layer) {
             return null;
         }
-        const featureCollection = layer.toGeoJSON() as { features?: unknown[] };
+        const featureCollection = layer.toGeoJSON();
         return {
             layer,
             featureCollection: {

@@ -14,10 +14,10 @@ export interface IMapLayer {
 
     getToolbarButton: () => ToolbarButton;
     getLegendEntry: () => HTMLElement;
-    loadFromGeoJSON: (geoJson: L.GeoJSON) => void;
+    loadFromGeoJSON: (geoJson: GeoJSON.FeatureCollection) => void;
     loadFeature?: (feature: GeoJSON.Feature, historyId?: string) => string | null;
     getLayer: () => L.GeoJSON;
-    toGeoJSON: () => {};
+    toGeoJSON: () => GeoJSON.FeatureCollection;
     clearLayer: () => void;
     dispose?: () => void;
 }

@@ -89,9 +89,7 @@ export function toCompactUrlMap(
 
     const layerFeatures = new Map<string, GeoJSON.Feature[]>();
     layersData.forEach((layer, layerName) => {
-        const featureCollection = layer.toGeoJSON() as unknown as {
-            features?: GeoJSON.Feature[];
-        };
+        const featureCollection = layer.toGeoJSON();
         const features = featureCollection.features ?? [];
         layerFeatures.set(layerName, features);
         features.forEach((feature) => {

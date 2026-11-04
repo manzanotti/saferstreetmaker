@@ -129,9 +129,12 @@ export class FileManager {
         layersData: Map<string, IMapLayer>,
         importedLayers?: ImportedGeoJsonLayer[]
     ): void {
-        const geoJSON: any = { type: 'FeatureCollection', features: [] };
+        const geoJSON: GeoJSON.FeatureCollection<GeoJSON.Geometry | null> = {
+            type: 'FeatureCollection',
+            features: []
+        };
         layersData.forEach((layer) => {
-            const fc = layer.toGeoJSON() as any;
+            const fc = layer.toGeoJSON();
             if (fc?.features) {
                 geoJSON.features.push(...fc.features);
             }

@@ -148,11 +148,14 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             });
         },
 
-        loadFromGeoJSON(geoJson: any): void {
+        loadFromGeoJSON(geoJson: GeoJSON.FeatureCollection): void {
             if (state.disposed || !geoJson?.features) {
                 return;
             }
-            geoJson.features.forEach((feature: any) => {
+            geoJson.features.forEach((feature) => {
+                if (feature.geometry?.type !== 'Polygon' || !feature.geometry.coordinates[0]) {
+                    throw new Error('Layer "LtnCells" contains an invalid polygon feature.');
+                }
                 const points: L.LatLng[] = [];
                 const polygonCoords = feature.geometry.coordinates[0];
                 polygonCoords.forEach((c: number[]) => points.push(new L.LatLng(c[1], c[0])));
@@ -175,12 +178,12 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             }
         },
 
-        loadFeature(feature: any, historyId?: string): string | null {
+        loadFeature(feature: GeoJSON.Feature, historyId?: string): string | null {
             if (state.disposed || feature?.geometry?.type !== 'Polygon') {
                 return null;
             }
             const points = (feature.geometry.coordinates[0] ?? []).map(
-                ([lng, lat]: [number, number]) => new L.LatLng(lat, lng)
+                ([lng, lat]) => new L.LatLng(lat, lng)
             );
             const properties = feature.properties ?? {};
             const id = historyId ?? buildHistoryId('ltn');
@@ -192,8 +195,8 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
             return geoJsonLayer;
         },
 
-        toGeoJSON(): object {
-            const json: any = { type: 'FeatureCollection', features: [] };
+        toGeoJSON(): GeoJSON.FeatureCollection {
+            const json: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] };
             geoJsonLayer.eachLayer((l: any) => {
                 const feature = getPolygonHistoryFeature(l as any);
                 json.features.push(feature);
