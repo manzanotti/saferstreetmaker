@@ -128,6 +128,15 @@ test.describe('Groups — Phases', () => {
         );
         await page.getByRole('button', { name: 'Close group details' }).click();
         await page.getByRole('button', { name: 'Undo' }).click();
+        await expect
+            .poll(() =>
+                page.evaluate(() => {
+                    const app = (document.getElementById('app') as any).__vue_app__;
+                    const groupStore = app?.config?.globalProperties?.$pinia?._s?.get('group');
+                    return groupStore.groups[0].versions[0].phases.map((phase: any) => phase.id);
+                })
+            )
+            .toEqual(phaseIdsBeforeMove);
         await page.getByRole('button', { name: 'Undo' }).click();
 
         await expect(
