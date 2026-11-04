@@ -1,0 +1,207 @@
+.leaflet-popup a[role='button'],
+.leaflet-popup a > span {
+    cursor: default;
+}
+
+.feature-popup-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.feature-popup-feature-icon {
+    display: block;
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    flex: 0 0 auto;
+}
+
+.feature-popup-feature-name {
+    font-weight: 600;
+}
+
+.feature-name-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.feature-name-input-row {
+    display: flex;
+}
+
+.feature-name-editor label {
+    display: grid;
+    flex: 1;
+    gap: 0.25rem;
+    font-weight: 600;
+}
+
+.feature-name-editor .name-editor {
+    min-width: 0;
+    border: 1px solid #d1d5db;
+    border-radius: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    font-weight: 400;
+}
+
+.feature-popup-groups > strong {
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.feature-popup-groups > ul {
+    margin: 0;
+    padding: 0;
+}
+
+.feature-popup-group {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.feature-popup-group-none {
+    color: #6b7280;
+}
+
+.feature-popup-add-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.add-feature-to-group-button,
+.add-feature-to-group-select {
+    box-sizing: border-box;
+    min-height: 2rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    background: #f8fafc;
+    color: #374151;
+    cursor: pointer;
+    font-size: 0.75rem;
+}
+
+.add-feature-to-group-button {
+    padding: 0.25rem 0.5rem;
+}
+
+.add-feature-to-group-select {
+    max-width: 12rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.add-feature-to-group-button:hover,
+.add-feature-to-group-select:hover {
+    background: #f1f5f9;
+}
+
+.add-feature-to-group-button:focus-visible,
+.add-feature-to-group-select:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px #15803d;
+}
+
+.group-link {
+    min-width: 0;
+    padding: 0.15rem 0;
+    border: 0;
+    background: transparent;
+    color: #2563eb;
+    cursor: pointer;
+    text-align: left;
+}
+
+.group-link:hover {
+    text-decoration: underline;
+}
+
+.group-link:focus-visible {
+    outline: none;
+    border-radius: 0.25rem;
+    box-shadow: 0 0 0 2px #15803d;
+}
+
+.leaflet-tooltip {
+    font-size: 3em;
+    font-weight: 700;
+    background-color: rgba(255, 94, 0, 0);
+    border: 0;
+    box-shadow: none;
+    cursor: default;
+    pointer-events: none;
+}
+
+ul.popup-buttons {
+    display: flex;
+    align-items: stretch;
+    justify-content: space-between;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+ul.popup-buttons > li {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+ul.ltn-popup-buttons > li.current-controls {
+    display: block;
+}
+
+ul.ltn-popup-buttons {
+    display: block;
+}
+
+ul.ltn-popup-buttons .current-controls-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+}
+
+ul.ltn-popup-buttons .current-controls-content > li {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+ul.ltn-popup-buttons > li.colour-actions {
+    justify-content: flex-start;
+    gap: 0.25em;
+    margin-top: 0.5em;
+}
+
+ul.ltn-popup-buttons .label-editor {
+    box-sizing: border-box;
+    border: 1px solid #d1d5db;
+    height: 2em;
+    padding: 0.25rem 0.5rem;
+    width: 8em;
+}
+
+ul.ltn-popup-buttons .colour-swatch {
+    box-sizing: border-box;
+    width: 2em;
+    height: 2em;
+    padding: 0;
+    border: 1px solid #d1d5db;
+    background: transparent;
+    cursor: pointer;
+}
+
+ul.ltn-popup-buttons .colour-actions {
+    gap: 0.25em;
+}
+
+ul.ltn-popup-buttons > li.feature-popup-group-content {
+    margin-top: 0.75rem;
+}

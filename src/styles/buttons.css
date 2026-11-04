@@ -1,0 +1,87 @@
+.delete-button {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url(../img/outlined-trash-bin-svgrepo-com.svg);
+    background-color: transparent;
+    background-position: center;
+    background-repeat: no-repeat;
+    border: 0;
+    cursor: pointer;
+    display: block;
+    width: 2em;
+    height: 2em;
+    background-size: 2em 2em;
+    padding: 0;
+}
+
+.delete-button:hover {
+    box-shadow: 0 2px 2px 0 black;
+}
+
+.delete-button:focus-visible {
+    outline: none;
+    border-radius: 0.375rem;
+    box-shadow:
+        0 0 0 2px #15803d,
+        0 2px 2px 0 black;
+}
+
+.copy-button {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url(../img/copy-svgrepo-com.svg);
+    background-color: transparent;
+    background-position: center;
+    background-repeat: no-repeat;
+    border: 0;
+    cursor: pointer;
+    display: block;
+    width: 2em;
+    height: 2em;
+    background-size: 2em 2em;
+    padding: 0;
+}
+
+.copy-button:hover {
+    box-shadow: 0 2px 2px 0 black;
+}
+
+.copy-button:focus-visible {
+    outline: none;
+    border-radius: 0.375rem;
+    box-shadow:
+        0 0 0 2px #15803d,
+        0 2px 2px 0 black;
+}
+
+.remove-feature-button {
+    appearance: none;
+    -webkit-appearance: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75em;
+    height: 1.75em;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #6b7280;
+    cursor: pointer;
+}
+
+.remove-feature-button svg {
+    width: 1.1em;
+    height: 1.1em;
+}
+
+.remove-feature-button:hover {
+    color: #374151;
+    background: #f1f5f9;
+    border-radius: 0.25rem;
+}
+
+.remove-feature-button:focus-visible {
+    outline: none;
+    border-radius: 0.375rem;
+    box-shadow: 0 0 0 2px #15803d;
+}
