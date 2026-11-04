@@ -1,7 +1,7 @@
 /**
  * Tests for MapSerializer compact URL geometry/property encoding and legacy hashes.
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { MapSerializer } from '../../../src/services/MapSerializer';
 import type { Group } from '../../../src/models/Group';
 import LZString from 'lz-string';
@@ -112,5 +112,37 @@ describe('MapSerializer — groups', () => {
         const legacyHash = LZString.compressToEncodedURIComponent(JSON.stringify(legacyMap));
 
         expect(serializer.fromEncodedHash(legacyHash)).toEqual(legacyMap);
+    });
+
+    it('continues to decode legacy URI-encoded JSON hashes', () => {
+        const legacyMap = serializer.toJSON(makeSettings(), layers, groups);
+        expect(serializer.fromEncodedHash(encodeURIComponent(JSON.stringify(legacyMap)))).toEqual(
+            legacyMap
+        );
+    });
+
+    it('preserves the compact URL encoding used by previously shared maps', () => {
+        const historicHash =
+            'v2.N4IgbiBcBMA0IGcqgC5RACQJYJQewCcsBjAAgFsBDABxHgKgAZ4ALJ+SqAbRAFk8AJpQA2AMSzCUAUwJIAuvGLcArNACM0AMwAWZQDZYAWg079AdgUgAXlA3wIkEIwB0ATmeMQAX3hZul4WQ+QRFxSRkkSC45HxABdGhGaG1DRjVU6AAVRk1IRm085Q9GRgAtbyA';
+        const settings = {
+            ...makeSettings(),
+            title: 'Historic map',
+            centre: { lat: 52.123456, lng: -1.234567 }
+        };
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2024-01-02T03:04:05.000Z'));
+        try {
+            expect(serializer.toEncodedHash(settings, layers)).toBe(historicHash);
+            expect(serializer.fromEncodedHash(historicHash)?.settings).toEqual(settings);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('rejects malformed or incomplete compact hashes', () => {
+        const incomplete = LZString.compressToEncodedURIComponent(JSON.stringify({ v: 2 }));
+        expect(serializer.fromEncodedHash(`v2.${incomplete}`)).toBeNull();
+        expect(serializer.fromEncodedHash('v2.not-valid')).toBeNull();
+        expect(serializer.fromEncodedHash('%not-valid')).toBeNull();
     });
 });

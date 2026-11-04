@@ -2,6 +2,12 @@ import { MapDatabase } from './MapDatabase';
 import type { HistoryEntryRecord } from './MapDatabase';
 import type { SerializedMap } from './MapSerializer';
 import { HistorySnapshotStore } from './HistorySnapshotStore';
+import { recordHistoryCheckpoint, type HistoryMutation } from './historyCheckpointWriter';
+import {
+    migrateViewOnlyCheckpoints,
+    pruneNoOpCheckpoints,
+    VIEW_CHECKPOINT_MIGRATION_KEY
+} from './historyCheckpointMigration';
 
 export interface HistoryStatus {
     canUndo: boolean;
@@ -111,80 +117,17 @@ export class UndoJournal {
         before: SerializedMap,
         after: SerializedMap,
         kind = 'checkpoint',
-        mutation?: {
-            kind: string;
-            layerId: string;
-            payload?: unknown;
-        }
+        mutation?: HistoryMutation
     ): Promise<void> {
-        const [storedBefore, storedAfter] = await Promise.all([
-            this.snapshotStore.storeImportedLayersReference(before),
-            this.snapshotStore.storeImportedLayersReference(after)
-        ]);
-        await this.db.transaction(
-            'rw',
-            this.db.historyEntries,
-            this.db.historyStates,
-            this.db.historyImportedLayers,
-            async () => {
-                for (const storedSnapshot of [storedBefore, storedAfter]) {
-                    if (storedSnapshot.importedLayersRecord) {
-                        await this.db.historyImportedLayers.put(
-                            storedSnapshot.importedLayersRecord
-                        );
-                    }
-                }
-                const state = await this.db.historyStates.get(mapTitle);
-                const nextSequence = state?.currentSequence ?? 0;
-
-                // Delete any redo entries (sequence >= current position) using the
-                // compound index so we avoid an O(n) full scan.
-                const redoEntryIds = await this.db.historyEntries
-                    .where('[mapTitle+sequence]')
-                    .between([mapTitle, nextSequence], [mapTitle, Infinity], true, true)
-                    .primaryKeys();
-                if (redoEntryIds.length > 0) {
-                    await this.db.historyEntries.bulkDelete(redoEntryIds as number[]);
-                }
-
-                await this.db.historyEntries.add({
-                    mapTitle,
-                    sequence: nextSequence,
-                    kind,
-                    mutationKind: mutation?.kind,
-                    mutationLayerId: mutation?.layerId,
-                    mutationPayload: mutation?.payload,
-                    before: storedBefore.snapshot,
-                    after: storedAfter.snapshot,
-                    createdAt: new Date().toISOString()
-                });
-
-                const newSequence = nextSequence + 1;
-                await this.db.historyStates.put({ mapTitle, currentSequence: newSequence });
-
-                // Prune oldest entries if the history cap is exceeded.
-                // Use count() first so we do not materialize the full history on
-                // every checkpoint write; only fetch the overflow entries that need
-                // to be deleted.
-                const entryCount = await this.db.historyEntries
-                    .where('[mapTitle+sequence]')
-                    .between([mapTitle, -Infinity], [mapTitle, Infinity])
-                    .count();
-                if (entryCount > UndoJournal.MAX_HISTORY) {
-                    const overflow = entryCount - UndoJournal.MAX_HISTORY;
-                    const idsToRemove = (await this.db.historyEntries
-                        .where('[mapTitle+sequence]')
-                        .between([mapTitle, -Infinity], [mapTitle, Infinity])
-                        .limit(overflow)
-                        .primaryKeys()) as number[];
-                    if (idsToRemove.length > 0) {
-                        await this.db.historyEntries.bulkDelete(idsToRemove);
-                    }
-                    // Note: currentSequence is intentionally left at newSequence.
-                    // undoEntry self-heals when it finds that entries below currentSequence
-                    // have been pruned by snapping to the oldest surviving sequence.
-                }
-            }
+        await recordHistoryCheckpoint(
+            this.db,
+            this.snapshotStore,
+            UndoJournal.MAX_HISTORY,
+            mapTitle,
+            before,
+            after,
+            kind,
+            mutation
         );
     }
 
@@ -289,7 +232,7 @@ export class UndoJournal {
     }
 
     /** Metadata flag key for the one-time view-only-checkpoint migration. */
-    static readonly VIEW_CHECKPOINT_MIGRATION_KEY = 'historyViewCheckpointMigration:v1';
+    static readonly VIEW_CHECKPOINT_MIGRATION_KEY = VIEW_CHECKPOINT_MIGRATION_KEY;
 
     /**
      * Remove history entries whose before/after snapshots represent no real
@@ -302,67 +245,7 @@ export class UndoJournal {
         mapTitle: string,
         isNoOp: (before: unknown, after: unknown) => boolean
     ): Promise<number> {
-        return await this.db.transaction(
-            'rw',
-            this.db.historyEntries,
-            this.db.historyStates,
-            async () => {
-                const entries = await this.db.historyEntries
-                    .where('[mapTitle+sequence]')
-                    .between([mapTitle, -Infinity], [mapTitle, Infinity])
-                    .sortBy('sequence');
-                if (entries.length === 0) {
-                    return 0;
-                }
-
-                const state = await this.db.historyStates.get(mapTitle);
-                const currentSequence = state?.currentSequence ?? 0;
-                const minSequence = entries[0].sequence;
-
-                const survivors: HistoryEntryRecord[] = [];
-                let removedCount = 0;
-                let removedBeforeCurrent = 0;
-                for (const entry of entries) {
-                    if (isNoOp(entry.before, entry.after)) {
-                        removedCount++;
-                        if (entry.sequence < currentSequence) {
-                            removedBeforeCurrent++;
-                        }
-                        continue;
-                    }
-                    survivors.push(entry);
-                }
-
-                if (removedCount === 0) {
-                    return 0;
-                }
-
-                const idsToDelete = entries
-                    .map((entry) => entry.id)
-                    .filter((id): id is number => id != null);
-                await this.db.historyEntries.bulkDelete(idsToDelete);
-
-                if (survivors.length > 0) {
-                    // Re-add survivors with fresh ids and contiguous sequences.
-                    const renumbered = survivors.map((entry, index) => {
-                        const { id: _id, ...rest } = entry;
-                        return { ...rest, sequence: index };
-                    });
-                    await this.db.historyEntries.bulkAdd(renumbered);
-                }
-
-                const newCurrentSequence = Math.min(
-                    survivors.length,
-                    Math.max(0, currentSequence - minSequence - removedBeforeCurrent)
-                );
-                await this.db.historyStates.put({
-                    mapTitle,
-                    currentSequence: newCurrentSequence
-                });
-
-                return removedCount;
-            }
-        );
+        return await pruneNoOpCheckpoints(this.db, mapTitle, isNoOp);
     }
 
     /**
@@ -376,18 +259,6 @@ export class UndoJournal {
         mapTitles: string[],
         isNoOp: (before: unknown, after: unknown) => boolean
     ): Promise<void> {
-        const flag = await this.db.metadata.get(UndoJournal.VIEW_CHECKPOINT_MIGRATION_KEY);
-        if (flag?.value === '1') {
-            return;
-        }
-
-        for (const mapTitle of mapTitles) {
-            await this.pruneNoOpCheckpoints(mapTitle, isNoOp);
-        }
-
-        await this.db.metadata.put({
-            key: UndoJournal.VIEW_CHECKPOINT_MIGRATION_KEY,
-            value: '1'
-        });
+        await migrateViewOnlyCheckpoints(this.db, mapTitles, isNoOp);
     }
 }
