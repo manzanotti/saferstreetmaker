@@ -18,11 +18,13 @@ const mocks = vi.hoisted(() => ({
     undo: vi.fn(),
     redo: vi.fn(),
     clearEditing: vi.fn(),
-    exportPng: vi.fn()
+    exportPng: vi.fn(),
+    copyPng: vi.fn()
 }));
 vi.mock('leaflet', () => import('./__mocks__/leaflet'));
 vi.mock('../../src/features/export/mapImageExport', () => ({
-    exportMapAsPng: mocks.exportPng
+    exportMapAsPng: mocks.exportPng,
+    copyMapAsPng: mocks.copyPng
 }));
 vi.mock('../../src/composables/useMapManager', () => ({
     getMapManager: () => mocks

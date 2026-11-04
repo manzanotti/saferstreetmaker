@@ -10,7 +10,7 @@ import {
     useSharingExportOptions,
     type ExportFormat
 } from '../../composables/panels/useSharingExportOptions';
-import { exportMapAsPng } from '../../features/export/mapImageExport';
+import { copyMapAsPng, exportMapAsPng } from '../../features/export/mapImageExport';
 import SharingGroupScopePrompt from './SharingGroupScopePrompt.vue';
 import SharingExportOptions from './sharing/SharingExportOptions.vue';
 
@@ -36,6 +36,20 @@ function selectFormat(format: ExportFormat) {
     exportFormat.value = format;
     errorMessage.value = null;
     showCopiedMessage.value = false;
+}
+
+async function onCopyImage() {
+    errorMessage.value = exportValidationError.value;
+    if (errorMessage.value) {
+        return;
+    }
+
+    try {
+        await copyMapAsPng(width.value!, height.value!);
+    } catch (error) {
+        errorMessage.value =
+            error instanceof Error ? error.message : 'The image could not be copied.';
+    }
 }
 
 async function onCreate() {
@@ -179,8 +193,17 @@ function onClose() {
             </div>
 
             <div
-                class="flex items-center justify-end gap-2 px-5 py-4 border-t border-gray-100 shrink-0"
+                class="flex flex-wrap items-center justify-end gap-2 px-5 py-4 border-t border-gray-100 shrink-0"
             >
+                <button
+                    v-if="exportFormat === 'image'"
+                    type="button"
+                    :disabled="isBusy || Boolean(exportValidationError)"
+                    class="rounded-lg border border-green-700 text-green-800 hover:bg-green-50 px-4 py-2 text-sm font-medium focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-1 focus-visible:outline-none [touch-action:manipulation] disabled:opacity-50"
+                    @click="onCopyImage"
+                >
+                    Copy PNG
+                </button>
                 <button
                     type="submit"
                     :disabled="isBusy || Boolean(exportValidationError)"

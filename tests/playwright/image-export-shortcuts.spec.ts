@@ -29,7 +29,7 @@ test.describe('Image export from Share panel', () => {
         await page.locator('#settings-button').click();
         const close = page.getByRole('button', { name: 'Close settings panel' });
         await close.focus();
-        await page.keyboard.press('Control+i');
+        await page.keyboard.press('Control+Shift+i');
         await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
         await close.click();
         await page.locator('#map').focus();
@@ -48,7 +48,7 @@ test.describe('Image export from Share panel', () => {
         await format.focus();
         const downloads: string[] = [];
         page.on('download', (download) => downloads.push(download.suggestedFilename()));
-        await page.keyboard.press('Control+i');
+        await page.keyboard.press('Control+Shift+i');
         await page.waitForTimeout(500);
         expect(downloads).toEqual([]);
 
@@ -56,13 +56,13 @@ test.describe('Image export from Share panel', () => {
         await expect(page.locator('#image-export-error')).not.toBeAttached();
         await format.focus();
         const download = page.waitForEvent('download');
-        await page.keyboard.press('Control+i');
+        await page.keyboard.press('Control+Shift+i');
         await download;
         await expect(page.getByRole('dialog', { name: 'Share map' })).toBeVisible();
         await expect(format).toHaveAttribute('aria-pressed', 'true');
     });
 
-    test('Ctrl+I downloads immediately at the current map dimensions without opening Share', async ({
+    test('Ctrl+Shift+I downloads immediately at the current map dimensions without opening Share', async ({
         page
     }) => {
         await waitForMapReady(page);
@@ -71,7 +71,7 @@ test.describe('Image export from Share panel', () => {
             .locator('#map')
             .evaluate((element) => [element.clientWidth, element.clientHeight]);
         const downloadPromise = page.waitForEvent('download');
-        await page.keyboard.press('Control+i');
+        await page.keyboard.press('Control+Shift+i');
         await expect(page.locator('#sharing')).not.toBeAttached();
         const download = await downloadPromise;
         expect(download.suggestedFilename()).toMatch(/\.png$/);
@@ -104,7 +104,7 @@ test.describe('Image export from Share panel', () => {
         });
         await page.locator('#map').focus();
         const downloadPromise = page.waitForEvent('download');
-        await page.keyboard.press('Control+i');
+        await page.keyboard.press('Control+Shift+i');
         await expect(page.locator('#sharing')).not.toBeAttached();
         await downloadPromise;
         await expect
@@ -125,7 +125,7 @@ test.describe('Image export from Share panel', () => {
     }) => {
         await page.locator('#settings-button').click();
         await page.locator('#title').focus();
-        await page.keyboard.press('Control+i');
+        await page.keyboard.press('Control+Shift+i');
         await expect(page.locator('#title')).toBeVisible();
         await expect(page.locator('#sharing')).not.toBeAttached();
         await page.getByRole('button', { name: 'Close settings panel' }).click();
@@ -133,7 +133,7 @@ test.describe('Image export from Share panel', () => {
         await page.keyboard.press('p');
         await expect(page.locator('#modal-filter-button')).not.toBeVisible();
         const downloadPromise = page.waitForEvent('download');
-        await page.keyboard.press('Meta+i');
+        await page.keyboard.press('Meta+Shift+i');
         await downloadPromise;
         await expect(page.locator('#sharing')).not.toBeAttached();
     });
@@ -142,7 +142,7 @@ test.describe('Image export from Share panel', () => {
         await waitForMapReady(page);
         await page.locator('#mobility-lane-button').click();
         await page.locator('#map').focus();
-        await page.keyboard.press('Control+i');
+        await page.keyboard.press('Control+Shift+i');
         await expect(page.locator('#sharing')).not.toBeAttached();
         await expect(page.getByRole('dialog', { name: 'An error has occurred' })).toBeVisible();
         await expect(page.getByRole('dialog', { name: 'An error has occurred' })).toContainText(

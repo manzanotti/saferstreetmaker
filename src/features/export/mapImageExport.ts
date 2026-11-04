@@ -15,6 +15,7 @@ import {
     waitForExportFrame,
     waitForMapAssets
 } from './imageExportAssets';
+import { getPngClipboardWriter } from './imageClipboard';
 import { buildImageExportFilename, getImageExportValidationError } from './imageExportValidation';
 
 export { waitForExportFrame, settleMapViewForExport } from './imageExportAssets';
@@ -66,7 +67,11 @@ function revealSelectedGroupFeatures(mapElement: HTMLElement, features: L.Layer[
     };
 }
 
-export async function exportMapAsPng(width: number, height: number): Promise<void> {
+function performImageExport(
+    width: number,
+    height: number,
+    deliverImage: (image: Promise<Blob>) => Promise<void>
+): Promise<void> {
     const validationError = getImageExportValidationError(width, height);
     if (validationError) {
         throw new Error(validationError);
@@ -102,7 +107,7 @@ export async function exportMapAsPng(width: number, height: number): Promise<voi
     let selectionCleared = false;
     exportInProgress = true;
 
-    try {
+    const renderImage = async (): Promise<Blob> => {
         uiStore.setImageExportState(true, new Set());
         mapElement.setAttribute('aria-busy', 'true');
         mapElement.style.pointerEvents = 'none';
@@ -184,33 +189,67 @@ export async function exportMapAsPng(width: number, height: number): Promise<voi
             throw new Error('The image was created at an unexpected size. Try exporting again.');
         }
 
-        const blob = await createPngBlob(canvas);
-        downloadBlob(blob, buildImageExportFilename(settingsStore.title));
-    } finally {
+        return createPngBlob(canvas);
+    };
+
+    const image = renderImage();
+    let delivery: Promise<void>;
+    try {
+        delivery = deliverImage(image);
+    } catch (error) {
+        delivery = Promise.reject(error);
+    }
+
+    return (async () => {
         try {
-            restoreGroupFeatures();
-            mapElement.style.pointerEvents = originalPointerEvents;
-            mapElement.inert = originalInert;
-            if (originalStyle === null) {
-                mapElement.removeAttribute('style');
-            } else {
-                mapElement.setAttribute('style', originalStyle);
+            const [rendered, delivered] = await Promise.allSettled([image, delivery]);
+            if (rendered.status === 'rejected') {
+                throw rendered.reason;
             }
-            if (originalAriaBusy === null) {
-                mapElement.removeAttribute('aria-busy');
-            } else {
-                mapElement.setAttribute('aria-busy', originalAriaBusy);
-            }
-            map.invalidateSize({ pan: true, debounceMoveend: false });
-            if (groupViewAdjusted) {
-                map.setView(originalCenter, originalZoom, { animate: false });
-            }
-            if (selectionCleared) {
-                applySelectionHighlights(selectedFeatures, true, []);
+            if (delivered.status === 'rejected') {
+                throw delivered.reason;
             }
         } finally {
-            uiStore.setImageExportState(false, null);
-            exportInProgress = false;
+            try {
+                restoreGroupFeatures();
+                mapElement.style.pointerEvents = originalPointerEvents;
+                mapElement.inert = originalInert;
+                if (originalStyle === null) {
+                    mapElement.removeAttribute('style');
+                } else {
+                    mapElement.setAttribute('style', originalStyle);
+                }
+                if (originalAriaBusy === null) {
+                    mapElement.removeAttribute('aria-busy');
+                } else {
+                    mapElement.setAttribute('aria-busy', originalAriaBusy);
+                }
+                map.invalidateSize({ pan: true, debounceMoveend: false });
+                if (groupViewAdjusted) {
+                    map.setView(originalCenter, originalZoom, { animate: false });
+                }
+                if (selectionCleared) {
+                    applySelectionHighlights(selectedFeatures, true, []);
+                }
+            } finally {
+                uiStore.setImageExportState(false, null);
+                exportInProgress = false;
+            }
         }
-    }
+    })();
+}
+
+export async function exportMapAsPng(width: number, height: number): Promise<void> {
+    await performImageExport(width, height, async (image) => {
+        const blob = await image;
+        downloadBlob(blob, buildImageExportFilename(useSettingsStore(pinia).title));
+    });
+}
+
+export async function copyMapAsPng(width: number, height: number): Promise<void> {
+    const uiStore = useUiStore(pinia);
+    uiStore.setImageCopied(false);
+    const writeImage = getPngClipboardWriter();
+    await performImageExport(width, height, writeImage);
+    uiStore.setImageCopied(true);
 }

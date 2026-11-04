@@ -9,6 +9,7 @@ import GroupDetailsDialog from './components/panels/group/GroupDetailsDialog.vue
 import GroupPhasesDialog from './components/panels/group/GroupPhasesDialog.vue';
 import ReadOnlyGroupDetailsDialog from './components/panels/group/ReadOnlyGroupDetailsDialog.vue';
 import PanelContainer from './components/controls/PanelContainer.vue';
+import ImageCopyStatus from './components/controls/ImageCopyStatus.vue';
 import { useSettingsStore } from './stores/settingsStore';
 
 const settingsStore = useSettingsStore();
@@ -26,4 +27,5 @@ const readOnly = computed(() => settingsStore.readOnly);
     <PartialPolylineDialog />
     <FeatureDeletionDialog />
     <PanelContainer />
+    <ImageCopyStatus />
 </template>

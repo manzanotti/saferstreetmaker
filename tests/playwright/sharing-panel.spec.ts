@@ -45,6 +45,7 @@ test.describe('Sharing Panel', () => {
         await expect(page.locator('#width')).toBeVisible();
         await expect(page.locator('#height')).toBeVisible();
         await expect(page.getByRole('button', { name: 'Export PNG' })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Copy PNG' })).toBeVisible();
 
         await page.locator('#export-as-url').click();
         await expect(page.locator('#url-export-description')).toBeVisible();

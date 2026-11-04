@@ -1,5 +1,5 @@
 /**
- * Unit tests for keyboard shortcuts — Ctrl/Command+I image export.
+ * Unit tests for image clipboard and file-export keyboard shortcuts.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as L from 'leaflet';
@@ -17,11 +17,13 @@ const mocks = vi.hoisted(() => ({
     undo: vi.fn(),
     redo: vi.fn(),
     clearEditing: vi.fn(),
-    exportPng: vi.fn()
+    exportPng: vi.fn(),
+    copyPng: vi.fn()
 }));
 vi.mock('leaflet', () => import('./__mocks__/leaflet'));
 vi.mock('../../src/features/export/mapImageExport', () => ({
-    exportMapAsPng: mocks.exportPng
+    exportMapAsPng: mocks.exportPng,
+    copyMapAsPng: mocks.copyPng
 }));
 vi.mock('../../src/composables/useMapManager', () => ({
     getMapManager: () => mocks
@@ -54,6 +56,7 @@ describe('Keyboard shortcuts', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mocks.exportPng.mockReset().mockResolvedValue(undefined);
+        mocks.copyPng.mockReset().mockResolvedValue(undefined);
         document.body.replaceChildren();
         const settings = new Settings();
         settings.title = 'Presentation test';
@@ -80,17 +83,27 @@ describe('Keyboard shortcuts', () => {
     });
 
     it.each([{ ctrlKey: true }, { metaKey: true }])(
-        'downloads directly with Ctrl/Command+I, including Presentation mode: %j',
+        'copies directly with Ctrl/Command+I, including Presentation mode: %j',
         (modifier) => {
             useSettingsStore(pinia).readOnly = true;
             const selection = useSelectionStore(pinia);
             selection.markGroupSelection('selected-group');
             useUiStore(pinia).openPanel('groups');
             expect(press({ key: 'i', ...modifier }).defaultPrevented).toBe(true);
-            expect(mocks.exportPng).toHaveBeenCalledWith(1280, 720);
+            expect(mocks.copyPng).toHaveBeenCalledWith(1280, 720);
+            expect(mocks.exportPng).not.toHaveBeenCalled();
             expect(useUiStore(pinia).activePanel).toBe('groups');
             expect(selection.selectedGroupId).toBe('selected-group');
             expect(selection.isGroupSelection).toBe(true);
+        }
+    );
+
+    it.each([{ ctrlKey: true }, { metaKey: true }])(
+        'downloads directly with Ctrl/Command+Shift+I: %j',
+        (modifier) => {
+            expect(press({ key: 'I', shiftKey: true, ...modifier }).defaultPrevented).toBe(true);
+            expect(mocks.exportPng).toHaveBeenCalledWith(1280, 720);
+            expect(mocks.copyPng).not.toHaveBeenCalled();
         }
     );
 
@@ -98,13 +111,16 @@ describe('Keyboard shortcuts', () => {
         { ctrlKey: false },
         { ctrlKey: true, metaKey: true },
         { altKey: true },
-        { shiftKey: true },
         { repeat: true },
         { isComposing: true }
     ])('ignores invalid image shortcut events: %j', (options) => {
         expect(press({ key: 'i', ctrlKey: true, ...options }).defaultPrevented).toBe(false);
+        expect(
+            press({ key: 'I', ctrlKey: true, shiftKey: true, ...options }).defaultPrevented
+        ).toBe(false);
         expect(useUiStore(pinia).activePanel).toBeNull();
         expect(mocks.exportPng).not.toHaveBeenCalled();
+        expect(mocks.copyPng).not.toHaveBeenCalled();
     });
 
     it.each(['dialog', 'alertdialog'])('blocks the image shortcut behind a %s', (role) => {
@@ -116,9 +132,10 @@ describe('Keyboard shortcuts', () => {
 
         expect(press({ key: 'i', ctrlKey: true }, button).defaultPrevented).toBe(false);
         expect(mocks.exportPng).not.toHaveBeenCalled();
+        expect(mocks.copyPng).not.toHaveBeenCalled();
     });
 
-    it('allows downloading from Share but blocks its errors and additional dialogs', () => {
+    it('allows copying from Share but blocks its errors and additional dialogs', () => {
         const dialog = document.createElement('div');
         dialog.setAttribute('role', 'dialog');
         dialog.setAttribute('aria-labelledby', 'sharing-panel-title');
@@ -141,9 +158,10 @@ describe('Keyboard shortcuts', () => {
         expect(press({ key: 'i', ctrlKey: true }, button).defaultPrevented).toBe(false);
         prompt.remove();
         expect(mocks.exportPng).not.toHaveBeenCalled();
+        expect(mocks.copyPng).not.toHaveBeenCalled();
 
         expect(press({ key: 'i', ctrlKey: true }, button).defaultPrevented).toBe(true);
-        expect(mocks.exportPng).toHaveBeenCalledOnce();
+        expect(mocks.copyPng).toHaveBeenCalledOnce();
         expect(useUiStore(pinia).activePanel).toBe('sharing');
     });
 
@@ -180,39 +198,53 @@ describe('Keyboard shortcuts', () => {
         map.getContainer().dispatchEvent(event);
         expect(ui.activePanel).toBeNull();
         expect(mocks.exportPng).not.toHaveBeenCalled();
+        expect(mocks.copyPng).not.toHaveBeenCalled();
     });
 
     it('blocks overlapping shortcut exports and releases the lock after completion', async () => {
         let finish: () => void = () => {
             throw new Error('Export not started');
         };
-        mocks.exportPng.mockImplementationOnce(
+        mocks.copyPng.mockImplementationOnce(
             () =>
                 new Promise<void>((resolve) => {
                     finish = resolve;
                 })
         );
         press({ key: 'i', ctrlKey: true });
-        press({ key: 'i', ctrlKey: true });
-        expect(mocks.exportPng).toHaveBeenCalledOnce();
+        press({ key: 'I', ctrlKey: true, shiftKey: true });
+        expect(mocks.copyPng).toHaveBeenCalledOnce();
+        expect(mocks.exportPng).not.toHaveBeenCalled();
         finish();
         await Promise.resolve();
-        press({ key: 'i', ctrlKey: true });
-        expect(mocks.exportPng).toHaveBeenCalledTimes(2);
+        press({ key: 'I', ctrlKey: true, shiftKey: true });
+        expect(mocks.exportPng).toHaveBeenCalledOnce();
     });
 
     it('surfaces export errors and permits a retry after dismissal', async () => {
-        mocks.exportPng.mockRejectedValueOnce(new Error('Finish the active map tool'));
+        mocks.copyPng.mockRejectedValueOnce(new Error('Finish the active map tool'));
         press({ key: 'i', ctrlKey: true });
         await vi.waitFor(() =>
             expect(useUiStore(pinia).errorMessages).toEqual([
-                'The image could not be exported:',
+                'The image could not be copied:',
                 'Finish the active map tool'
             ])
         );
         useUiStore(pinia).clearErrors();
         press({ key: 'i', ctrlKey: true });
-        expect(mocks.exportPng).toHaveBeenCalledTimes(2);
+        expect(mocks.copyPng).toHaveBeenCalledTimes(2);
         expect(useUiStore(pinia).activePanel).toBeNull();
+    });
+
+    it('reports file-export failures separately from clipboard failures', async () => {
+        mocks.exportPng.mockRejectedValueOnce(new Error('File export failed'));
+        press({ key: 'I', ctrlKey: true, shiftKey: true });
+        await vi.waitFor(() =>
+            expect(useUiStore(pinia).errorMessages).toEqual([
+                'The image could not be exported:',
+                'File export failed'
+            ])
+        );
+        expect(mocks.copyPng).not.toHaveBeenCalled();
     });
 });

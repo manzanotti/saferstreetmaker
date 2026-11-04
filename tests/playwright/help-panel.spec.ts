@@ -120,6 +120,7 @@ test.describe('Help Panel', () => {
             'Ctrl/Command + C',
             'Ctrl/Command + V',
             'Ctrl/Command + I',
+            'Ctrl/Command + Shift + I',
             'Arrow keys',
             '+ / -',
             'Escape',

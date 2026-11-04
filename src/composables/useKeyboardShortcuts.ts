@@ -14,7 +14,7 @@ import { useSettingsStore } from '../stores/settingsStore';
 import { useHistoryStore } from '../stores/historyStore';
 import { clearReadOnlyEditingState } from './useGroups';
 import { isSaveErrorAlreadyShown } from './saveErrorMarker';
-import { exportMapAsPng } from '../features/export/mapImageExport';
+import { copyMapAsPng, exportMapAsPng } from '../features/export/mapImageExport';
 
 const SHORTCUTS = {
     toggleSelection: 's',
@@ -82,7 +82,6 @@ export function setupKeyboardShortcuts(map: L.Map): () => void {
             event.key.toLowerCase() === SHORTCUTS.imageExport &&
             event.ctrlKey !== event.metaKey &&
             !event.altKey &&
-            !event.shiftKey &&
             !event.repeat &&
             !event.isComposing &&
             !event.defaultPrevented &&
@@ -98,10 +97,18 @@ export function setupKeyboardShortcuts(map: L.Map): () => void {
             imageExportRequested = true;
             try {
                 const size = map.getSize();
-                await exportMapAsPng(Math.round(size.x), Math.round(size.y));
+                const width = Math.round(size.x);
+                const height = Math.round(size.y);
+                if (event.shiftKey) {
+                    await exportMapAsPng(width, height);
+                } else {
+                    await copyMapAsPng(width, height);
+                }
             } catch (error) {
                 uiStore.showErrors([
-                    'The image could not be exported:',
+                    event.shiftKey
+                        ? 'The image could not be exported:'
+                        : 'The image could not be copied:',
                     error instanceof Error ? error.message : String(error)
                 ]);
             } finally {
