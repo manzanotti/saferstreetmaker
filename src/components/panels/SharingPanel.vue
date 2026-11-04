@@ -1,28 +1,25 @@
 <script setup lang="ts">
 import { vMovablePanel } from '../../directives/movablePanel';
 import { computed, ref } from 'vue';
-import { useMapStore } from '../../stores/mapStore';
 import { useUiStore } from '../../stores/uiStore';
 import { useGroupStore } from '../../stores/groupStore';
 import { useSelectionStore } from '../../stores/selectionStore';
 import type { Group } from '../../models/Group';
 import { useSharingGenerator } from '../../composables/useSharingGenerator';
 import {
-    exportMapAsPng,
-    getImageExportValidationError
-} from '../../features/export/mapImageExport';
+    useSharingExportOptions,
+    type ExportFormat
+} from '../../composables/panels/useSharingExportOptions';
+import { exportMapAsPng } from '../../features/export/mapImageExport';
 import SharingGroupScopePrompt from './SharingGroupScopePrompt.vue';
+import SharingExportOptions from './sharing/SharingExportOptions.vue';
 
-const mapStore = useMapStore();
 const uiStore = useUiStore();
 const groupStore = useGroupStore();
 const selectionStore = useSelectionStore();
 
-const mapSize = mapStore.map?.getSize();
-const width = ref<number | null>(mapSize ? Math.round(mapSize.x) : null);
-const height = ref<number | null>(mapSize ? Math.round(mapSize.y) : null);
-type ExportFormat = 'image' | 'html' | 'url';
-const exportFormat = ref<ExportFormat>('html');
+const { width, height, exportFormat, exportValidationError, hasEmbedDimensions } =
+    useSharingExportOptions();
 const errorMessage = ref<string | null>(null);
 const isBusy = computed(() => uiStore.imageExportInProgress);
 const hasSelectedGroupFeatures = computed(
@@ -31,21 +28,9 @@ const hasSelectedGroupFeatures = computed(
         selectionStore.selectedGroupId !== null &&
         selectionStore.selected.length > 0
 );
-const exportValidationError = computed(() =>
-    exportFormat.value === 'image' ? getImageExportValidationError(width.value, height.value) : null
-);
 const shareScopeGroup = ref<Group | null>(null);
 const scopePromptTrigger = ref<HTMLElement | null>(null);
 const { showCopiedMessage, createShare } = useSharingGenerator(width, height, shareScopeGroup);
-
-function formatButtonClasses(format: ExportFormat) {
-    return [
-        'flex-1 rounded-md px-2 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600',
-        exportFormat.value === format
-            ? 'bg-green-700 text-white shadow-sm'
-            : 'text-gray-600 hover:bg-white'
-    ];
-}
 
 function selectFormat(format: ExportFormat) {
     exportFormat.value = format;
@@ -70,10 +55,7 @@ async function onCreate() {
         return;
     }
 
-    if (
-        exportFormat.value !== 'url' &&
-        (width.value === null || height.value === null || width.value <= 0 || height.value <= 0)
-    ) {
+    if (exportFormat.value !== 'url' && !hasEmbedDimensions()) {
         return;
     }
 
@@ -144,88 +126,14 @@ function onClose() {
             </div>
 
             <div class="px-5 py-4 space-y-4">
-                <div v-if="exportFormat !== 'url'">
-                    <label for="width" class="block text-sm font-medium text-gray-700 mb-1"
-                        >Width</label
-                    >
-                    <div class="flex items-center gap-2">
-                        <input
-                            id="width"
-                            v-model.number="width"
-                            type="number"
-                            :min="exportFormat === 'image' ? 256 : undefined"
-                            :max="exportFormat === 'image' ? 8192 : undefined"
-                            required
-                            :disabled="isBusy"
-                            class="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-800 focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none disabled:bg-gray-100"
-                            @input="errorMessage = null"
-                        />
-                        <span class="text-sm text-gray-500">px</span>
-                    </div>
-                </div>
-
-                <div v-if="exportFormat !== 'url'">
-                    <label for="height" class="block text-sm font-medium text-gray-700 mb-1"
-                        >Height</label
-                    >
-                    <div class="flex items-center gap-2">
-                        <input
-                            id="height"
-                            v-model.number="height"
-                            type="number"
-                            :min="exportFormat === 'image' ? 256 : undefined"
-                            :max="exportFormat === 'image' ? 8192 : undefined"
-                            required
-                            :disabled="isBusy"
-                            class="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-800 focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none disabled:bg-gray-100"
-                            @input="errorMessage = null"
-                        />
-                        <span class="text-sm text-gray-500">px</span>
-                    </div>
-                </div>
-
-                <div>
-                    <p id="sharing-format-label" class="mb-1 text-sm font-medium text-gray-700">
-                        Export as:
-                    </p>
-                    <div
-                        id="export-as"
-                        role="group"
-                        aria-labelledby="sharing-format-label"
-                        class="flex rounded-lg border border-gray-200 bg-gray-100 p-0.5"
-                    >
-                        <button
-                            id="export-as-image"
-                            type="button"
-                            :aria-pressed="exportFormat === 'image'"
-                            :disabled="isBusy"
-                            :class="formatButtonClasses('image')"
-                            @click="selectFormat('image')"
-                        >
-                            Image
-                        </button>
-                        <button
-                            id="export-as-html"
-                            type="button"
-                            :aria-pressed="exportFormat === 'html'"
-                            :disabled="isBusy"
-                            :class="formatButtonClasses('html')"
-                            @click="selectFormat('html')"
-                        >
-                            HTML
-                        </button>
-                        <button
-                            id="export-as-url"
-                            type="button"
-                            :aria-pressed="exportFormat === 'url'"
-                            :disabled="isBusy"
-                            :class="formatButtonClasses('url')"
-                            @click="selectFormat('url')"
-                        >
-                            Url
-                        </button>
-                    </div>
-                </div>
+                <SharingExportOptions
+                    v-model:width="width"
+                    v-model:height="height"
+                    :format="exportFormat"
+                    :disabled="isBusy"
+                    @select-format="selectFormat"
+                    @dimension-input="errorMessage = null"
+                />
 
                 <p
                     v-if="exportFormat !== 'image'"
