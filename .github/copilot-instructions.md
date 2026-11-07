@@ -56,6 +56,7 @@
 - **Use standard Git commands and the GitHub CLI only**: Do not use GitKraken or any GitKraken MCP tools for repository operations.
 - **Start from current main**: Before making changes, fetch the remote and fast-forward the local `main` branch: `git fetch origin`, `git switch main`, and `git pull --ff-only origin main`.
 - **Work on a branch**: Create a normal feature branch from the updated `main` with `git switch -c <branch-name>` before editing files.
+- **Independent review before commit**: Before each commit intended for a PR, have a separate reviewer using a different model from the implementer independently review the complete PR diff against its base, including staged, unstaged, and untracked changes. Fix valid findings, explain rejected findings, and rerun affected checks. If an independent different-model review is unavailable, report the blocker and do not commit or push.
 - **Commit and push**: After validation, commit the focused changes and push the branch with `git push -u origin <branch-name>`.
 - **Create a pull request**: Use the GitHub CLI to open a PR targeting `main`, for example `gh pr create --base main --head <branch-name> --title "<title>" --body "<summary and validation>"`.
 - **Verify the pull request**: Confirm the PR URL, base branch, head branch, state, and body with `gh pr view <number> --json body,url,state,headRefName,baseRefName`.
