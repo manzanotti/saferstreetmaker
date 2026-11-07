@@ -63,4 +63,25 @@ test.describe('Satellite view toggle', () => {
         await expect(button).toHaveAttribute('aria-pressed', 'false');
         await expect(tiles.first()).toHaveAttribute('src', /tile\.openstreetmap\.fr/);
     });
+
+    test('M toggles satellite view from the focused map, including in read-only mode', async ({
+        page
+    }) => {
+        const button = page.locator('#satellite-view-button');
+        const tiles = page.locator('#map .leaflet-tile-pane img.leaflet-tile');
+
+        await page.locator('#map').focus();
+        await page.keyboard.press('m');
+        await expect(button).toHaveAttribute('aria-pressed', 'true');
+        await expect(tiles.first()).toHaveAttribute('src', /mt\d\.google\.com\/vt\/lyrs=s/);
+
+        await page.locator('#settings-button').click();
+        await page.locator('#read-only').check();
+        await page.getByRole('button', { name: 'Save' }).click();
+        await expect(page.locator('#read-only')).not.toBeAttached();
+        await page.locator('#map').focus();
+        await page.keyboard.press('m');
+        await expect(button).toHaveAttribute('aria-pressed', 'false');
+        await expect(tiles.first()).toHaveAttribute('src', /tile\.openstreetmap\.fr/);
+    });
 });
