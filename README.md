@@ -29,6 +29,8 @@ Image export waits for an active zoom transition to finish and stops any ongoing
 
 Additionally, you can load a JSON version of a map.
 
+Use the **satellite** button in the top toolbar to switch the base map between the OpenStreetMap street view and Google satellite imagery. Click it again to return to the street view.
+
 Panels and dialogs can be moved by dragging their heading or any non-interactive
 space with the primary mouse button. On touchscreens, hold for 450 ms before
 dragging; swiping without holding still scrolls panel content. Buttons, links, and

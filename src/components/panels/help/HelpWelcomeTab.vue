@@ -33,6 +33,10 @@ defineProps<{
             what I think a better scheme would be).
         </p>
         <p class="mb-8">
+            Use the satellite button in the top toolbar to switch the base map to satellite imagery,
+            and click it again to return to the street map.
+        </p>
+        <p class="mb-8">
             You can now also generate HTML to embed your map in another web page, so if you want to
             illustrate a blog post with an infrastructure map, you now can.
         </p>

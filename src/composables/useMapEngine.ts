@@ -16,6 +16,7 @@ import {
     shouldReducePointFeatureSize,
     shouldShowPointFeatures
 } from '../features/map/pointFeatureVisibility';
+import { createBaseTileLayer } from '../features/map/baseTileLayers';
 
 export interface MapEngineResult {
     map: L.Map;
@@ -42,12 +43,17 @@ export function setupMapEngine(): MapEngineResult {
     filtersPane.style.zIndex = '500';
 
     // ── Tile layer ────────────────────────────────────────────────────────────
-    new L.TileLayer('https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
-        attribution:
-            '<a href="https://saferstreetmaker.org" target="_blank">saferstreetmaker.org</a> | &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
-        crossOrigin: 'anonymous',
-        maxZoom: 20
-    }).addTo(map);
+    let baseTileLayer = createBaseTileLayer(uiStore.satelliteView ? 'satellite' : 'street').addTo(
+        map
+    );
+
+    watch(
+        () => uiStore.satelliteView,
+        (satellite) => {
+            map.removeLayer(baseTileLayer);
+            baseTileLayer = createBaseTileLayer(satellite ? 'satellite' : 'street').addTo(map);
+        }
+    );
 
     // ── Keyboard: Escape deselects active layer ───────────────────────────────
     map.on('keyup', (e: L.LeafletKeyboardEvent) => {

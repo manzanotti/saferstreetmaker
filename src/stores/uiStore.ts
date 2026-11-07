@@ -11,6 +11,11 @@ export const useUiStore = defineStore('ui', () => {
     const imageExportInProgress = ref(false);
     const imageExportLegendLayerIds = ref<Set<string> | null>(null);
     const imageCopied = ref(false);
+    const satelliteView = ref(false);
+
+    function toggleSatelliteView() {
+        satelliteView.value = !satelliteView.value;
+    }
 
     function openPanel(id: PanelId) {
         activePanel.value = id;
@@ -51,6 +56,8 @@ export const useUiStore = defineStore('ui', () => {
         imageExportInProgress,
         imageExportLegendLayerIds,
         imageCopied,
+        satelliteView,
+        toggleSatelliteView,
         openPanel,
         closePanel,
         showErrors,
