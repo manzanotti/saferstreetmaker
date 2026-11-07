@@ -14,6 +14,10 @@ const areaSelectIcon = new URL('../../img/area-select.svg', import.meta.url).hre
 const mapManagerIconSrc = new URL('../../img/folder-svgrepo-com.svg', import.meta.url).href;
 const groupIconSrc = new URL('../../img/group.svg', import.meta.url).href;
 const layersIconSrc = new URL('../../img/layers-overlap.svg', import.meta.url).href;
+const satelliteIconSrc = new URL('../../img/satellite.svg', import.meta.url).href;
+const satelliteTooltip = computed(() =>
+    uiStore.satelliteView ? 'Switch to street map view' : 'Switch to satellite view'
+);
 
 interface PanelButtonDef {
     id: string;
@@ -65,6 +69,13 @@ async function onUndo() {
 
 async function onRedo() {
     await getMapManager().redo();
+}
+
+function onSatelliteButtonClick() {
+    if (uiStore.imageExportInProgress) {
+        return;
+    }
+    uiStore.toggleSatelliteView();
 }
 
 function onPanelButtonClick(panelId: PanelId) {
@@ -179,6 +190,36 @@ function onPanelButtonClick(panelId: PanelId) {
         </li>
         <!-- Line-break on mobile: forces groups/settings/share/help onto a second row -->
         <li class="basis-full sm:hidden" aria-hidden="true"></li>
+        <!-- Satellite view toggle -->
+        <li>
+            <button
+                id="satellite-view-button"
+                type="button"
+                :aria-label="satelliteTooltip"
+                :title="satelliteTooltip"
+                :aria-pressed="uiStore.satelliteView"
+                :class="[
+                    'w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center',
+                    'transition-transform duration-150 ease-out',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-1',
+                    'touch-manipulation cursor-pointer select-none',
+                    uiStore.satelliteView
+                        ? 'bg-green-700 shadow-inner'
+                        : 'bg-slate-50 hover:bg-green-100'
+                ]"
+                @click.stop="onSatelliteButtonClick"
+            >
+                <img
+                    :src="satelliteIconSrc"
+                    width="28"
+                    height="28"
+                    alt=""
+                    aria-hidden="true"
+                    class="w-5 h-5 sm:w-7 sm:h-7 object-contain pointer-events-none"
+                    :class="{ invert: uiStore.satelliteView }"
+                />
+            </button>
+        </li>
         <!-- Settings, share, help -->
         <li v-for="mb in visiblePanelButtons" :key="mb.id">
             <button

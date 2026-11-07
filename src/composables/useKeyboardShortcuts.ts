@@ -21,6 +21,7 @@ const SHORTCUTS = {
     toggleGroups: 'g',
     toggleLayers: 'l',
     togglePresentation: 'p',
+    toggleSatelliteView: 'm',
     imageExport: 'i',
     undo: 'z',
     copy: 'c',
@@ -191,6 +192,21 @@ export function setupKeyboardShortcuts(map: L.Map): () => void {
             } finally {
                 presentationToggleInProgress = false;
             }
+            return;
+        }
+
+        if (
+            event.key.toLowerCase() === SHORTCUTS.toggleSatelliteView &&
+            isMapAction(event, mapElement) &&
+            !event.repeat &&
+            !event.isComposing &&
+            !event.defaultPrevented &&
+            uiStore.activePanel === null &&
+            uiStore.errorMessages.length === 0 &&
+            !document.querySelector('[role="dialog"], [role="alertdialog"]')
+        ) {
+            event.preventDefault();
+            uiStore.toggleSatelliteView();
             return;
         }
 

@@ -46,6 +46,21 @@ describe('uiStore', () => {
         });
     });
 
+    describe('toggleSatelliteView()', () => {
+        it('defaults to the street view', () => {
+            const store = useUiStore();
+            expect(store.satelliteView).toBe(false);
+        });
+
+        it('toggles satellite view on and off', () => {
+            const store = useUiStore();
+            store.toggleSatelliteView();
+            expect(store.satelliteView).toBe(true);
+            store.toggleSatelliteView();
+            expect(store.satelliteView).toBe(false);
+        });
+    });
+
     describe('showErrors() / clearErrors()', () => {
         it('stores error messages', () => {
             const store = useUiStore();

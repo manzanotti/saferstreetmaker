@@ -24,6 +24,7 @@ defineProps<{
         </p>
         <ul class="list-disc pl-5 mb-6 space-y-2">
             <li><strong>P</strong>: toggle Presentation mode on or off, with panels closed.</li>
+            <li><strong>M</strong>: toggle satellite map view.</li>
             <li><strong>S</strong>: toggle area selection.</li>
             <li><strong>G</strong>: open or close the Groups panel.</li>
             <li>
