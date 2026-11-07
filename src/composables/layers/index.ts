@@ -1,5 +1,5 @@
 /**
- * Layer factory barrel — creates all 12 map layers for a given Leaflet map.
+ * Layer factory barrel — creates all map layers for a given Leaflet map.
  * Import this instead of the individual layer files in main.ts.
  */
 import type * as L from 'leaflet';
@@ -17,6 +17,7 @@ import {
     createOneWayStreetLayer
 } from './useSimplePolylineLayers';
 import { createLtnLayer } from './useLtnLayer';
+import { createJunctionNarrowingLayer } from './useJunctionNarrowingLayer';
 
 export function createAllLayers(map: L.Map): IMapLayer[] {
     return [
@@ -28,6 +29,7 @@ export function createAllLayers(map: L.Map): IMapLayer[] {
         createSchoolStreetLayer(map),
         createOneWayStreetLayer(map),
         createLtnLayer(map),
+        createJunctionNarrowingLayer(map),
         createBusGateLayer(map),
         createTrafficLightsLayer(map),
         createPedestrianLightsLayer(map),

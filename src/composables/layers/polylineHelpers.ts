@@ -20,14 +20,17 @@ export interface PolylineOptions {
     weight: number;
     opacity: number;
     smoothFactor: number;
+    fillColor?: string;
+    fillOpacity?: number;
     className?: string;
 }
 
 export interface AddPolylineOpts {
-    points: L.LatLng[];
+    points: L.LatLng[] | L.LatLng[][];
     geoJsonLayer: L.GeoJSON;
     map: L.Map;
     layerId: string;
+    kind?: 'polyline' | 'polygon';
     polylineOpts: PolylineOptions;
     buttonId: string;
     /**
@@ -47,19 +50,22 @@ export interface AddPolylineOpts {
 export function addPolylineToLayer(opts: AddPolylineOpts): L.Popup {
     const mapStore = useMapStore(pinia);
     const { points, geoJsonLayer, map, layerId, polylineOpts, buttonId } = opts;
-    const mutationKind = buttonId === 'ltn-cell' ? 'polygon' : 'polyline';
+    const mutationKind = opts.kind ?? 'polyline';
 
-    let polyline = new L.Polyline(points, polylineOpts) as any;
+    let polyline: L.Polyline<GeoJSON.Geometry> =
+        mutationKind === 'polygon'
+            ? new L.Polygon(points, polylineOpts)
+            : new L.Polyline(points, polylineOpts);
 
     if (opts.arrowheads) {
         polyline = polyline.arrowheads(opts.arrowheads);
     }
 
-    const historyId = opts.historyId ?? buildHistoryId('polyline');
+    const historyId = opts.historyId ?? buildHistoryId(mutationKind);
     let name = opts.name ?? '';
 
     const buildPolylineHistoryFeature = () => {
-        const feature = polyline.toGeoJSON() as any;
+        const feature = polyline.toGeoJSON();
         feature.properties = {
             ...(feature.properties ?? {}),
             historyId,
@@ -90,23 +96,31 @@ export function addPolylineToLayer(opts: AddPolylineOpts): L.Popup {
 
     polyline.on('edit', () => {
         const nextFeature = buildPolylineHistoryFeature();
-        const beforeCoordinates = getFeatureCoordinates(lastCommittedFeature);
-        const afterCoordinates = getFeatureCoordinates(nextFeature);
-        const pointChanges = buildPolylinePointChanges(beforeCoordinates, afterCoordinates);
-        mapStore.markLayerUpdated({
-            kind: `${mutationKind}-edit`,
-            layerId,
-            payload: pointChanges
-                ? {
-                      historyId,
-                      pointChanges
-                  }
-                : {
-                      historyId,
-                      beforeCoordinates,
-                      afterCoordinates
-                  }
-        });
+        if (mutationKind === 'polygon') {
+            mapStore.markLayerUpdated({
+                kind: 'polygon-edit',
+                layerId,
+                payload: { before: lastCommittedFeature, after: nextFeature }
+            });
+        } else {
+            const beforeCoordinates = getFeatureCoordinates(lastCommittedFeature);
+            const afterCoordinates = getFeatureCoordinates(nextFeature);
+            const pointChanges = buildPolylinePointChanges(beforeCoordinates, afterCoordinates);
+            mapStore.markLayerUpdated({
+                kind: 'polyline-edit',
+                layerId,
+                payload: pointChanges
+                    ? {
+                          historyId,
+                          pointChanges
+                      }
+                    : {
+                          historyId,
+                          beforeCoordinates,
+                          afterCoordinates
+                      }
+            });
+        }
         polyline.feature = nextFeature;
         lastCommittedFeature = nextFeature;
     });

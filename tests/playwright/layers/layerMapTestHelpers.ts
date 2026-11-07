@@ -111,7 +111,7 @@ export async function drawPolygonClosingAtFirstVertex(page: Page) {
     await page.waitForTimeout(200);
     await page.mouse.click(cx, cy + 40);
     await page.waitForTimeout(200);
-    await page.mouse.dblclick(cx - 60, cy - 40);
+    await page.mouse.click(cx - 60, cy - 40);
     await page.waitForTimeout(500);
 }
 

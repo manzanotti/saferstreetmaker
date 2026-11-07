@@ -80,7 +80,7 @@ onBeforeUnmount(() => {
         :style="docked ? { transform: `scale(${scale})` } : undefined"
         :class="[
             showSubmenuIndicator ? 'relative' : '',
-            'w-12 h-12 rounded-xl flex items-center justify-center',
+            'w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center',
             docked
                 ? 'transition-transform duration-150 ease-out origin-left'
                 : 'transition-transform duration-150 ease-out',

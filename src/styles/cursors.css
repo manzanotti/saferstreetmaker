@@ -85,6 +85,17 @@
     cursor: pointer !important;
 }
 
+#map.junction-narrowing,
+#map.junction-narrowing .leaflet-interactive:not(.junction-narrowing),
+#map.junction-narrowing .leaflet-marker-icon,
+.junction-narrowing [role='button'] {
+    cursor: crosshair;
+}
+
+#map.junction-narrowing .leaflet-interactive.junction-narrowing {
+    cursor: pointer !important;
+}
+
 #map.ltn-cell,
 #map.ltn-cell .leaflet-interactive:not(.ltn-cell),
 #map.ltn-cell .leaflet-marker-icon,

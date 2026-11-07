@@ -11,7 +11,7 @@ import { useUiStore } from '../../stores/uiStore';
 import { useImportedLayerStore } from '../../stores/importedLayerStore';
 import type { PersistenceMutation } from './MapPersistenceCoordinator';
 
-export const APP_VERSION = '0.10.0';
+export const APP_VERSION = '0.11.0';
 
 interface MapManagerState {
     lastSavedSnapshot: SerializedMap | null;

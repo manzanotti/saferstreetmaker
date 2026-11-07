@@ -13,7 +13,8 @@ const FEATURE_EDIT_LAYER_BUTTON_IDS = new Set([
     'car-free-street',
     'school-street',
     'one-way-street',
-    'ltn'
+    'ltn',
+    'junction-narrowing'
 ]);
 
 export function isPointFeatureElement(element: Element): boolean {

@@ -12,6 +12,7 @@ const iconUrls = {
     busLane: new URL('../../../img/bus-lane.svg', import.meta.url).href,
     carFreeStreet: new URL('../../../img/ban-on-driving-147248.svg', import.meta.url).href,
     schoolStreet: new URL('../../../img/school-street.svg', import.meta.url).href,
+    junctionNarrowing: new URL('../../../img/junction-narrowing.svg', import.meta.url).href,
     trafficLights: new URL('../../../img/trafficlights-black1.svg', import.meta.url).href,
     pedestrianLights: new URL(
         '../../../img/UK-Traffic-Signal-Pedestrians-1975.svg',

@@ -27,7 +27,7 @@ body {
 
 @media (max-width: 639px) {
     .toolbar > li:nth-child(odd) .subToolbar {
-        left: calc(200% + 0.75rem);
+        left: calc(200% + 0.25rem);
     }
 
     .toolbar > li:last-child .subToolbar {

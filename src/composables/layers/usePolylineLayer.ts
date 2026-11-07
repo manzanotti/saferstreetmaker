@@ -14,6 +14,7 @@ import { buildToolbarButton } from './toolbarButton';
 import { buildLegendEntry } from './legendEntry';
 import { isPointFeatureElement } from './features/featureClassification';
 import type { IMapLayer } from './IMapLayer';
+import { getPolygonRings } from '../../geometry/leafletGeometry';
 
 export interface PolylineLayerConfig {
     id: string;
@@ -23,6 +24,7 @@ export interface PolylineLayerConfig {
     tooltip: string;
     toggleTitle: string;
     isFirst?: boolean;
+    kind?: 'polyline' | 'polygon';
     /**
      * Create (and enable) a new Leaflet.draw tool.
      * Called when the layer is selected.
@@ -162,12 +164,17 @@ export function createPolylineLayer(
         if (!_selected) {
             return;
         }
-        const editor = config.onDrawCreated(e.layer.getLatLngs(), geoJsonLayer, map);
+        const points =
+            config.kind === 'polygon' ? getPolygonRings(e.layer)[0] : e.layer.getLatLngs();
+        if (!points) {
+            throw new Error(`Layer "${config.id}" received a polygon without vertices.`);
+        }
+        const editor = config.onDrawCreated(points, geoJsonLayer, map);
         const createdLayers = geoJsonLayer.getLayers() as any[];
         const createdLayer = createdLayers[createdLayers.length - 1];
         const createdFeature = createdLayer?.feature ?? createdLayer?.toGeoJSON?.() ?? null;
         mapStore.markLayerUpdated({
-            kind: 'polyline-add',
+            kind: config.kind === 'polygon' ? 'polygon-add' : 'polyline-add',
             layerId: config.id,
             payload: createdFeature ?? e.layer.toGeoJSON?.() ?? null
         });
@@ -275,7 +282,7 @@ export function createPolylineLayer(
             _visible = v;
         },
         groupName: config.groupName,
-        kind: 'polyline' as const,
+        kind: config.kind ?? 'polyline',
         iconHtml: config.buildIconEl().outerHTML,
 
         getToolbarButton() {
