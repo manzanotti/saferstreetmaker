@@ -39,4 +39,28 @@ test.describe('Satellite view toggle', () => {
         await expect(tiles.first()).toHaveAttribute('src', /tile\.openstreetmap\.fr/);
         await expect(page.locator('#map img.leaflet-tile[src*="google.com"]')).toHaveCount(0);
     });
+
+    test('remains visible and toggles the base map in read-only mode', async ({ page }) => {
+        await page.locator('#settings-button').click();
+        await page.locator('#read-only').check();
+        await page.getByRole('button', { name: 'Save' }).click();
+        await expect(page.locator('#undo-button')).not.toBeAttached();
+
+        const button = page.locator('#satellite-view-button');
+        const tiles = page.locator('#map .leaflet-tile-pane img.leaflet-tile');
+
+        await expect(button).toBeVisible();
+        await expect(button).toHaveAttribute('aria-pressed', 'false');
+
+        await button.click();
+
+        await expect(button).toHaveAttribute('aria-pressed', 'true');
+        await expect(tiles.first()).toHaveAttribute('src', /mt\d\.google\.com\/vt\/lyrs=s/);
+        await expect(page.locator('#map img.leaflet-tile[src*="openstreetmap"]')).toHaveCount(0);
+
+        await button.click();
+
+        await expect(button).toHaveAttribute('aria-pressed', 'false');
+        await expect(tiles.first()).toHaveAttribute('src', /tile\.openstreetmap\.fr/);
+    });
 });
