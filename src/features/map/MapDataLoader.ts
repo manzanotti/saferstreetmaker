@@ -8,6 +8,7 @@ import { sanitizeImportedLayers } from './importedGeoJson';
 import type { ImportedGeoJsonLayerController } from './ImportedGeoJsonLayerController';
 
 const BUS_LANES_INTRODUCED_VERSION = '0.10.0';
+const JUNCTION_NARROWINGS_INTRODUCED_VERSION = '0.11.0';
 
 export function migrateSettingsForSchema<T extends { activeLayers: string[]; version: string }>(
     settings: T,
@@ -24,6 +25,14 @@ export function migrateSettingsForSchema<T extends { activeLayers: string[]; ver
         !settings.activeLayers.includes('BusLanes')
     ) {
         migratedSettings.activeLayers.push('BusLanes');
+    }
+
+    if (
+        !isVersionBefore(appVersion, JUNCTION_NARROWINGS_INTRODUCED_VERSION) &&
+        isVersionBefore(settings.version, JUNCTION_NARROWINGS_INTRODUCED_VERSION) &&
+        !settings.activeLayers.includes('JunctionNarrowings')
+    ) {
+        migratedSettings.activeLayers.push('JunctionNarrowings');
     }
 
     migratedSettings.version = appVersion;

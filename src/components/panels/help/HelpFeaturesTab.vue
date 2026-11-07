@@ -101,6 +101,14 @@ defineProps<{
             first point added to complete the shape. Clicking on one allows you to set the label
             text for each LTN block.
         </p>
+        <HelpFeatureHeading icon="junctionNarrowing">Junction Narrowings</HelpFeatureHeading>
+        <p class="mb-8">
+            Junction narrowings reduce the width of a junction, encouraging drivers to slow down
+            when turning and making it safer for pedestrians to cross. Select the Junction Narrowing
+            button in the layer toolbar, place the corners of the area, and click the first point to
+            finish the black polygon. Click a polygon to edit its outline, name, groups, or delete
+            it.
+        </p>
         <HelpFeatureHeading icon="trafficLights">Traffic Lights</HelpFeatureHeading>
         <p class="mb-8">
             This feature is to define a set of traffic lights used to control traffic at junctions.

@@ -17,23 +17,26 @@ function selected(marker: L.Layer): SelectedMarker {
 }
 
 describe('SelectionHighlighter', () => {
-    it('suppresses LTN selection handles only while polygon editing is enabled', () => {
-        const circleMarker = vi.spyOn(L, 'circleMarker');
-        const editing = { enabled: vi.fn().mockReturnValue(true) };
-        const marker = { editing } as unknown as L.Layer;
-        const entry = { ...selected(marker), layerId: 'LtnCells' };
-        const highlighter = new SelectionHighlighter({} as L.Map);
-        const initialCalls = circleMarker.mock.calls.length;
+    it.each(['LtnCells', 'JunctionNarrowings'])(
+        'suppresses %s selection handles only while polygon editing is enabled',
+        (layerId) => {
+            const circleMarker = vi.spyOn(L, 'circleMarker');
+            const editing = { enabled: vi.fn().mockReturnValue(true) };
+            const marker = Object.assign(new L.Polygon([]), { editing });
+            const entry = { ...selected(marker), layerId };
+            const highlighter = new SelectionHighlighter({} as L.Map);
+            const initialCalls = circleMarker.mock.calls.length;
 
-        highlighter.add([entry]);
-        highlighter.replace([entry], [entry]);
-        expect(circleMarker).toHaveBeenCalledTimes(initialCalls);
+            highlighter.add([entry]);
+            highlighter.replace([entry], [entry]);
+            expect(circleMarker).toHaveBeenCalledTimes(initialCalls);
 
-        editing.enabled.mockReturnValue(false);
-        highlighter.replace([entry], [entry]);
-        expect(circleMarker).toHaveBeenCalledTimes(initialCalls + 1);
-        circleMarker.mockRestore();
-    });
+            editing.enabled.mockReturnValue(false);
+            highlighter.replace([entry], [entry]);
+            expect(circleMarker).toHaveBeenCalledTimes(initialCalls + 1);
+            circleMarker.mockRestore();
+        }
+    );
 
     it('keeps vertex handles for LTN group and area selections without an active editor', () => {
         const circleMarker = vi.spyOn(L, 'circleMarker');

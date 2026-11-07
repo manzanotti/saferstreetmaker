@@ -16,7 +16,8 @@ const FEATURE_TYPE_NAMES: Record<string, string> = {
     CarFreeStreets: 'Car-free street',
     SchoolStreet: 'School street',
     OneWayStreets: 'One-way street',
-    LtnCells: 'LTN cell'
+    LtnCells: 'LTN cell',
+    JunctionNarrowings: 'Junction narrowing'
 };
 
 export interface FeatureDescriptionPopupDetails {

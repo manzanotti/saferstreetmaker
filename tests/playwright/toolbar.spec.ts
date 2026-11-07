@@ -19,9 +19,10 @@ test.describe('Toolbar', () => {
     }) => {
         const layerToolbar = page.locator('.leaflet-top.leaflet-left .leaflet-control .toolbar');
         await expect(layerToolbar).toBeVisible();
-        await expect(layerToolbar.locator('> li > button')).toHaveCount(8);
+        await expect(layerToolbar.locator('> li > button')).toHaveCount(9);
         await expect(layerToolbar.locator('#modal-filter-button')).toBeVisible();
         await expect(layerToolbar.locator('#mobility-lane-button')).toBeVisible();
+        await expect(layerToolbar.locator('#junction-narrowing-button')).toBeVisible();
 
         const map = await page.locator('#map').boundingBox();
         const toolbar = await layerToolbar.boundingBox();
@@ -98,6 +99,14 @@ test.describe('Mobile map controls', () => {
             expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(360);
         }
 
+        for (const button of await toolbar.locator('> li > button').all()) {
+            const bounds = await button.boundingBox();
+            expect(bounds).not.toBeNull();
+            expect(bounds!.width).toBeGreaterThanOrEqual(44);
+            expect(bounds!.height).toBeGreaterThanOrEqual(44);
+            expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(360);
+        }
+
         const legendContent = page.locator('.legend-content');
         await expect
             .poll(() =>
@@ -129,6 +138,12 @@ test.describe('Mobile map controls', () => {
         expect(submenuBounds!.y).toBeGreaterThanOrEqual(0);
         expect(submenuBounds!.y + submenuBounds!.height).toBeLessThanOrEqual(360);
         expect(submenuBounds!.x + submenuBounds!.width).toBeLessThan(legendBounds!.x);
+        for (const button of await submenu.locator('button').all()) {
+            const bounds = await button.boundingBox();
+            expect(bounds).not.toBeNull();
+            expect(bounds!.width).toBeGreaterThanOrEqual(44);
+            expect(bounds!.height).toBeGreaterThanOrEqual(44);
+        }
 
         await page.setViewportSize({ width: 800, height: 600 });
         await expect(toolbar).toHaveAttribute('aria-orientation', 'vertical');

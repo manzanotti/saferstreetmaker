@@ -66,6 +66,15 @@ test.describe('Stored map layer compatibility', () => {
             .toMatchObject([{ properties: { historyId: 'old-lane', name: 'Old lane' } }]);
     });
 
+    test('makes junction narrowings available on maps saved before the layer existed', async ({
+        page
+    }) => {
+        await uploadMap(page, {}, ['ModalFilters']);
+
+        await expect(page.locator('#junction-narrowing-button')).toBeVisible();
+        await expect(page.locator('#JunctionNarrowings-legend')).toBeVisible();
+    });
+
     test('reports invalid layer coordinates when importing a map', async ({ page }) => {
         await uploadMap(
             page,

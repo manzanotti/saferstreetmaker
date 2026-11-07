@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('leaflet', () => import('./__mocks__/leaflet'));
 
 import * as L from 'leaflet';
-import { MapDataLoader } from '../../src/features/map/MapDataLoader';
+import { MapDataLoader, migrateSettingsForSchema } from '../../src/features/map/MapDataLoader';
 import { MapLayerController } from '../../src/features/map/MapLayerController';
 import type { SerializedMap } from '../../src/services/MapSerializer';
 import { makeLoader } from './MapDataLoader.helpers';
@@ -31,9 +31,9 @@ describe('MapDataLoader', () => {
         expect(state.appliedSettings[0]).toMatchObject({
             title: 'Loaded map',
             readOnly: true,
-            activeLayers: ['MobilityLanes']
+            activeLayers: ['MobilityLanes', 'JunctionNarrowings']
         });
-        expect(state.visibleLayerIds[0]).toEqual(new Set(['MobilityLanes']));
+        expect(state.visibleLayerIds[0]).toEqual(new Set(['MobilityLanes', 'JunctionNarrowings']));
     });
 
     it('adds Bus Lanes to legacy maps that have Tram Lines enabled', () => {
@@ -53,9 +53,11 @@ describe('MapDataLoader', () => {
 
         expect(state.loader.load(data, null, null)).toBe(true);
         expect(state.appliedSettings[0]).toMatchObject({
-            activeLayers: ['TramLines', 'BusLanes']
+            activeLayers: ['TramLines', 'BusLanes', 'JunctionNarrowings']
         });
-        expect(state.visibleLayerIds[0]).toEqual(new Set(['TramLines', 'BusLanes']));
+        expect(state.visibleLayerIds[0]).toEqual(
+            new Set(['TramLines', 'BusLanes', 'JunctionNarrowings'])
+        );
     });
 
     it('does not duplicate Bus Lanes when it is already enabled', () => {
@@ -75,7 +77,7 @@ describe('MapDataLoader', () => {
 
         expect(state.loader.load(data, null, null)).toBe(true);
         expect(state.appliedSettings[0]).toMatchObject({
-            activeLayers: ['ModalFilters', 'TramLines', 'BusLanes']
+            activeLayers: ['ModalFilters', 'TramLines', 'BusLanes', 'JunctionNarrowings']
         });
     });
 
@@ -95,7 +97,40 @@ describe('MapDataLoader', () => {
         };
 
         expect(state.loader.load(data, null, null)).toBe(true);
-        expect(state.appliedSettings[0]).toMatchObject({ activeLayers: ['TramLines'] });
+        expect(state.appliedSettings[0]).toMatchObject({
+            activeLayers: ['TramLines', 'JunctionNarrowings']
+        });
+    });
+
+    it('enables junction narrowings on older maps without duplicating an existing entry', () => {
+        expect(
+            migrateSettingsForSchema(
+                { version: '0.10.0', activeLayers: ['ModalFilters'] },
+                '0.11.0'
+            ).activeLayers
+        ).toEqual(['ModalFilters', 'JunctionNarrowings']);
+        expect(
+            migrateSettingsForSchema(
+                { version: '0.10.0', activeLayers: ['JunctionNarrowings'] },
+                '0.11.0'
+            ).activeLayers
+        ).toEqual(['JunctionNarrowings']);
+    });
+
+    it('preserves a disabled junction-narrowing layer in the current schema', () => {
+        expect(
+            migrateSettingsForSchema(
+                { version: '0.11.0', activeLayers: ['ModalFilters'] },
+                '0.11.0'
+            ).activeLayers
+        ).toEqual(['ModalFilters']);
+    });
+
+    it('does not apply the junction migration when targeting an older schema', () => {
+        expect(
+            migrateSettingsForSchema({ version: '0.9.0', activeLayers: ['ModalFilters'] }, '0.10.0')
+                .activeLayers
+        ).toEqual(['ModalFilters']);
     });
 
     it('preserves legacy view state when only zoom is overridden by the URL', () => {

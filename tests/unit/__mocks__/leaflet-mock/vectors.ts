@@ -78,7 +78,7 @@ class Polygon {
     private _handlers: Record<string, Function[]> = {};
 
     constructor(
-        public latlngs: LatLng[],
+        public latlngs: LatLng[] | LatLng[][],
         options: any = {}
     ) {
         this.options = options;
@@ -129,14 +129,19 @@ class Polygon {
         return { getCenter: () => new LatLng(0, 0) };
     }
 
-    getLatLngs() {
-        return [this.latlngs];
+    getLatLngs(): LatLng[][] {
+        return Array.isArray(this.latlngs[0])
+            ? (this.latlngs as LatLng[][])
+            : [this.latlngs as LatLng[]];
     }
 
     toGeoJSON() {
         return {
             type: 'Feature',
-            geometry: { type: 'Polygon', coordinates: [this.latlngs.map((p) => [p.lng, p.lat])] },
+            geometry: {
+                type: 'Polygon',
+                coordinates: this.getLatLngs().map((ring) => ring.map((p) => [p.lng, p.lat]))
+            },
             properties: { ...this.properties }
         };
     }

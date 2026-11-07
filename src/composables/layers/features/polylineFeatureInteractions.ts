@@ -24,7 +24,7 @@ import { isFeatureEditLayerButtonId } from './featureClassification';
 import { findFirstFeatureGroupId } from './featureGroupMembershipPopup';
 
 interface PolylineInteractionOptions {
-    polyline: L.Polyline;
+    polyline: L.Polyline<GeoJSON.Geometry>;
     geoJsonLayer: L.GeoJSON;
     map: L.Map;
     layerId: string;
@@ -145,7 +145,6 @@ export function attachPolylineInteractions(opts: PolylineInteractionOptions): L.
             return;
         }
 
-        selectFeature(polyline, layerId, false, true);
         geoJsonLayer.eachLayer((layer: any) => {
             if (layer !== e.target) {
                 layer.editing?.disable?.();
@@ -156,6 +155,7 @@ export function attachPolylineInteractions(opts: PolylineInteractionOptions): L.
         opts.selectForEdit();
         removeMapCursor(buttonId);
         e.target.editing.enable();
+        selectFeature(polyline, layerId, false, true);
         popup.setLatLng(e.latlng);
         map.openPopup(popup);
     });

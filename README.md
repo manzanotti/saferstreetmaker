@@ -53,6 +53,8 @@ Click an existing LTN cell to edit its boundary using the square vertex handles.
 
 LTN creation stays active after completing a cell. Name the cell and press Enter or close its popup, then draw the next cell without toggling the toolbar button. Press Escape or select another tool to stop drawing.
 
+Use the Junction Narrowing tool to draw black polygons showing narrowed junctions that encourage slower turns and safer pedestrian crossings. Click the first vertex to finish a polygon; click an existing polygon to edit it.
+
 If I was developing this for a client, then I would write a backend and database to store the maps, as this would allow for user accounts, map sharing, collaborative working. As this would not be free to run, I've not gone down that route, though if any organisation would like to sponsor this project, I have plenty of ideas for functionality that could unlock.
 
 To run this project locally, use Node.js 24 LTS (24.15.0 or newer within the 24.x
