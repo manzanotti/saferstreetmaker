@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { addFreshStorageInitScript, waitForFreshStorage } from './indexedDbHelpers';
 import { createTilePng, setTileResponse } from './imageExportTestHelpers';
+import { STREET_TILE_URL_PATTERN } from './tileTestHelpers';
 
 test.describe('Image export from Share panel', () => {
     test.beforeEach(async ({ page }) => {
@@ -63,8 +64,8 @@ test.describe('Image export from Share panel', () => {
         let releaseFirstTile: (() => void) | undefined;
         let didStallTile = false;
         const tilePng = await createTilePng(page);
-        await page.unroute('**/hot/**/*.png');
-        await page.route('**/hot/**/*.png', async (route) => {
+        await page.unroute(STREET_TILE_URL_PATTERN);
+        await page.route(STREET_TILE_URL_PATTERN, async (route) => {
             if (!didStallTile) {
                 didStallTile = true;
                 await new Promise<void>((resolve) => {
@@ -79,7 +80,7 @@ test.describe('Image export from Share panel', () => {
             });
         });
         page.on('request', (request) => {
-            if (request.url().includes('/hot/') && request.url().endsWith('.png')) {
+            if (STREET_TILE_URL_PATTERN.test(request.url())) {
                 tileRequestUrls.add(request.url());
             }
         });

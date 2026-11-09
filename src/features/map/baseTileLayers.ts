@@ -5,7 +5,7 @@ export type BaseMapStyle = 'street' | 'satellite';
 const SITE_ATTRIBUTION =
     '<a href="https://saferstreetmaker.org" target="_blank">saferstreetmaker.org</a>';
 
-export const STREET_TILE_URL = 'https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png';
+export const STREET_TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 export const SATELLITE_TILE_URL = 'https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}';
 
 export function createBaseTileLayer(style: BaseMapStyle): L.TileLayer {
@@ -19,8 +19,9 @@ export function createBaseTileLayer(style: BaseMapStyle): L.TileLayer {
     }
 
     return new L.TileLayer(STREET_TILE_URL, {
-        attribution: `${SITE_ATTRIBUTION} | &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>`,
+        attribution: `${SITE_ATTRIBUTION} | &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors`,
         crossOrigin: 'anonymous',
+        maxNativeZoom: 19,
         maxZoom: 20
     });
 }
