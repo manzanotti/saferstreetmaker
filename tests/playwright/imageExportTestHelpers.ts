@@ -2,6 +2,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { Buffer } from 'node:buffer';
 import { clickMap, waitForMapReady } from './layers/layerMapTestHelpers';
 import { setMapZoom } from './layers/layerPointTestHelpers';
+import { STREET_TILE_URL_PATTERN } from './tileTestHelpers';
 
 export async function createTilePng(page: import('@playwright/test').Page): Promise<Buffer> {
     const base64 = await page.evaluate(() => {
@@ -24,7 +25,7 @@ export async function createTilePng(page: import('@playwright/test').Page): Prom
 }
 
 export async function setTileResponse(page: Page, tilePng: Buffer, status = 200) {
-    await page.route('**/hot/**/*.png', async (route) => {
+    await page.route(STREET_TILE_URL_PATTERN, async (route) => {
         await route.fulfill({
             status,
             contentType: status === 200 ? 'image/png' : 'text/html',

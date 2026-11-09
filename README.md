@@ -4,7 +4,7 @@ A map creator for adding potential active travel measures.
 
 I got tired of using screenshots of Google Maps and Paint.net to create maps of potential active travel infrastructure, so, like all good developers, I decided to see if I could write my own solution. There is a live version of the site [https://saferstreetmaker.org], serving as a demo too.
 
-Using the leaflet.js [https://leafletjs.com] mapping library to show OpenStreetMap [https://www.openstreetmap.org] maps.
+Using the leaflet.js [https://leafletjs.com] mapping library to show OpenStreetMap [https://www.openstreetmap.org] maps. The default street view uses the standard `tile.openstreetmap.org` tile server; at map zoom 20, zoom-19 tiles are enlarged.
 
 The project is written in TypeScript, uses yarn for package management, Tailwind [https://www.tailwindcss.com] for styling, and Vite for the dev server and production build. As my version of the site is being hosted as a Static Web App on Azure, I took the decision to pull in all third-party libraries from external CDNs, to make sure my site would stay within the, admittedly generous, traffic limits.
 

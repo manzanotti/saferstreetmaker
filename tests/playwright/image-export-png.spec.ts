@@ -3,6 +3,7 @@ import { Buffer } from 'node:buffer';
 import { readFile } from 'node:fs/promises';
 import { addFreshStorageInitScript, waitForFreshStorage } from './indexedDbHelpers';
 import { createTilePng, setTileResponse, selectDistantGroupPoints } from './imageExportTestHelpers';
+import { STREET_TILE_URL_PATTERN } from './tileTestHelpers';
 
 test.describe('Image export from Share panel', () => {
     test.beforeEach(async ({ page }) => {
@@ -110,7 +111,7 @@ test.describe('Image export from Share panel', () => {
     test('reports failed map tiles and restores the map without downloading a partial image', async ({
         page
     }) => {
-        await page.unroute('**/hot/**/*.png');
+        await page.unroute(STREET_TILE_URL_PATTERN);
         await setTileResponse(page, Buffer.alloc(0), 403);
         await page.reload();
         await page.addStyleTag({ content: '#help { display: none !important; }' });
