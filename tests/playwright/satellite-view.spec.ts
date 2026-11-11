@@ -87,9 +87,12 @@ test.describe('Satellite view toggle', () => {
         await expect(page.locator('#map img.leaflet-tile[src*="World_Imagery"]')).toHaveCount(0);
     });
 
-    test('keeps zoom 20 while using zoom-19 street tiles', async ({ page }) => {
+    test('uses native satellite and label tiles at zoom 20', async ({ page }) => {
         const button = page.locator('#satellite-view-button');
         const tiles = page.locator('#map .leaflet-tile-pane img.leaflet-tile');
+        const imagery = page.locator(
+            '#map .leaflet-tile-pane img.leaflet-tile[src*="World_Imagery/MapServer/tile"]'
+        );
         const labels = page.locator(
             '#map .leaflet-tile-pane img.leaflet-tile[src*="World_Transportation/MapServer/tile"]'
         );
@@ -106,8 +109,12 @@ test.describe('Satellite view toggle', () => {
 
         await button.click();
         await expect(page.locator('#map')).toHaveClass(/(?:^|\s)zoom-20(?:\s|$)/);
-        await expect(tiles.first()).toHaveAttribute('src', satelliteImageryTilePattern);
+        await expect(imagery.first()).toHaveAttribute('src', satelliteImageryTilePattern);
+        await expect(imagery.first()).toHaveAttribute('src', /\/MapServer\/tile\/20\//);
+        await expect(imagery.first()).toHaveJSProperty('naturalWidth', 1);
         await expect(labels.first()).toHaveAttribute('src', satelliteLabelsTilePattern);
+        await expect(labels.first()).toHaveAttribute('src', /\/MapServer\/tile\/20\//);
+        await expect(labels.first()).toHaveJSProperty('naturalWidth', 1);
 
         await button.click();
         await expect(page.locator('#map')).toHaveClass(/(?:^|\s)zoom-20(?:\s|$)/);

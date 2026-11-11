@@ -16,6 +16,7 @@ export function createBaseTileLayer(style: BaseMapStyle): L.TileLayer {
         return new L.TileLayer(SATELLITE_TILE_URL, {
             attribution: `${SITE_ATTRIBUTION} | <a href="https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer" target="_blank">Source: Esri, Vantor, Earthstar Geographics, and the GIS User Community</a>`,
             crossOrigin: 'anonymous',
+            maxNativeZoom: 23,
             maxZoom: 20
         });
     }
@@ -33,6 +34,7 @@ export function createSatelliteLabelsLayer(): L.TileLayer {
         attribution:
             '<a href="https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer" target="_blank">&copy; Esri, HERE, Garmin, (c) OpenStreetMap contributors</a>',
         crossOrigin: 'anonymous',
+        maxNativeZoom: 23,
         maxZoom: 20
     });
 }

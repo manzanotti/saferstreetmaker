@@ -31,6 +31,7 @@ describe('createBaseTileLayer', () => {
         );
         expect(layer.options.attribution).toContain('saferstreetmaker.org');
         expect(layer.options.crossOrigin).toBe('anonymous');
+        expect(layer.options.maxNativeZoom).toBe(23);
         expect(layer.options.maxZoom).toBe(20);
     });
 
@@ -45,6 +46,7 @@ describe('createBaseTileLayer', () => {
         );
         expect(layer.options.attribution).toContain('World_Transportation/MapServer');
         expect(layer.options.crossOrigin).toBe('anonymous');
+        expect(layer.options.maxNativeZoom).toBe(23);
         expect(layer.options.maxZoom).toBe(20);
     });
 });
