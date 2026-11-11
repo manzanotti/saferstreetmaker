@@ -8,6 +8,11 @@ const transparentPng = Buffer.from(
     'base64'
 );
 
+const satelliteLabelsTilePattern =
+    /^https:\/\/services\.arcgisonline\.com\/ArcGIS\/rest\/services\/Reference\/World_Transportation\/MapServer\/tile\/\d+\/\d+\/\d+$/;
+const satelliteImageryTilePattern =
+    /^https:\/\/services\.arcgisonline\.com\/ArcGIS\/rest\/services\/World_Imagery\/MapServer\/tile\/\d+\/\d+\/\d+$/;
+
 test.describe('Satellite view toggle', () => {
     test.beforeEach(async ({ page }) => {
         await page.route(STREET_TILE_URL_PATTERN, (route) =>
@@ -17,8 +22,19 @@ test.describe('Satellite view toggle', () => {
                 body: transparentPng
             })
         );
-        await page.route(/google\.com\/vt/, (route) =>
-            route.fulfill({ contentType: 'image/png', body: transparentPng })
+        await page.route(satelliteImageryTilePattern, (route) =>
+            route.fulfill({
+                contentType: 'image/png',
+                headers: { 'access-control-allow-origin': '*' },
+                body: transparentPng
+            })
+        );
+        await page.route(satelliteLabelsTilePattern, (route) =>
+            route.fulfill({
+                contentType: 'image/png',
+                headers: { 'access-control-allow-origin': '*' },
+                body: transparentPng
+            })
         );
         await addFreshStorageInitScript(page);
         await page.goto('/');
@@ -27,12 +43,18 @@ test.describe('Satellite view toggle', () => {
         await page.waitForSelector('#satellite-view-button');
     });
 
-    test('switches the base map to Google satellite tiles and back', async ({ page }) => {
+    test('switches the base map to Esri satellite imagery with road labels and back', async ({
+        page
+    }) => {
         const button = page.locator('#satellite-view-button');
         const tiles = page.locator('#map .leaflet-tile-pane img.leaflet-tile');
+        const labels = page.locator(
+            '#map .leaflet-tile-pane img.leaflet-tile[src*="World_Transportation/MapServer/tile"]'
+        );
         const attribution = page.locator('#map .leaflet-control-attribution');
 
         await expect(button).toHaveAttribute('aria-pressed', 'false');
+        await expect(labels).toHaveCount(0);
         await expect(tiles.first()).toHaveAttribute('src', STREET_TILE_URL_PATTERN);
         await expect(tiles.first()).toHaveAttribute('crossorigin', 'anonymous');
         await expect(attribution).toContainText('\u00a9 OpenStreetMap contributors');
@@ -45,21 +67,35 @@ test.describe('Satellite view toggle', () => {
 
         await expect(button).toHaveAttribute('aria-pressed', 'true');
         await expect(button).toHaveAttribute('title', 'Switch to street map view');
-        await expect(tiles.first()).toHaveAttribute('src', /mt\d\.google\.com\/vt\/lyrs=s/);
+        await expect(tiles.first()).toHaveAttribute('src', satelliteImageryTilePattern);
+        await expect(labels.first()).toHaveAttribute('src', satelliteLabelsTilePattern);
+        await expect(labels.first()).toHaveAttribute('crossorigin', 'anonymous');
+        await expect(attribution).toContainText('Source: Esri, Vantor, Earthstar Geographics');
+        await expect(attribution).toContainText(
+            '\u00a9 Esri, HERE, Garmin, (c) OpenStreetMap contributors'
+        );
         await expect(page.locator('#map img.leaflet-tile[src*="openstreetmap"]')).toHaveCount(0);
-        await expect(page.locator('.leaflet-control-attribution')).toContainText('Google');
+        await expect(page.locator('#map img.leaflet-tile[src*="google.com"]')).toHaveCount(0);
 
         await button.click();
 
         await expect(button).toHaveAttribute('aria-pressed', 'false');
         await expect(tiles.first()).toHaveAttribute('src', STREET_TILE_URL_PATTERN);
+        await expect(labels).toHaveCount(0);
         await expect(attribution).toContainText('\u00a9 OpenStreetMap contributors');
-        await expect(page.locator('#map img.leaflet-tile[src*="google.com"]')).toHaveCount(0);
+        await expect(attribution).not.toContainText('Esri');
+        await expect(page.locator('#map img.leaflet-tile[src*="World_Imagery"]')).toHaveCount(0);
     });
 
-    test('keeps zoom 20 while using zoom-19 street tiles', async ({ page }) => {
+    test('uses native satellite and label tiles at zoom 20', async ({ page }) => {
         const button = page.locator('#satellite-view-button');
         const tiles = page.locator('#map .leaflet-tile-pane img.leaflet-tile');
+        const imagery = page.locator(
+            '#map .leaflet-tile-pane img.leaflet-tile[src*="World_Imagery/MapServer/tile"]'
+        );
+        const labels = page.locator(
+            '#map .leaflet-tile-pane img.leaflet-tile[src*="World_Transportation/MapServer/tile"]'
+        );
         const nativeZoomTiles = page.locator(
             '#map img.leaflet-tile[src^="https://tile.openstreetmap.org/19/"]'
         );
@@ -73,11 +109,17 @@ test.describe('Satellite view toggle', () => {
 
         await button.click();
         await expect(page.locator('#map')).toHaveClass(/(?:^|\s)zoom-20(?:\s|$)/);
-        await expect(tiles.first()).toHaveAttribute('src', /mt\d\.google\.com\/vt\/.*&z=20$/);
+        await expect(imagery.first()).toHaveAttribute('src', satelliteImageryTilePattern);
+        await expect(imagery.first()).toHaveAttribute('src', /\/MapServer\/tile\/20\//);
+        await expect(imagery.first()).toHaveJSProperty('naturalWidth', 1);
+        await expect(labels.first()).toHaveAttribute('src', satelliteLabelsTilePattern);
+        await expect(labels.first()).toHaveAttribute('src', /\/MapServer\/tile\/20\//);
+        await expect(labels.first()).toHaveJSProperty('naturalWidth', 1);
 
         await button.click();
         await expect(page.locator('#map')).toHaveClass(/(?:^|\s)zoom-20(?:\s|$)/);
         await expect(nativeZoomTiles.first()).toHaveJSProperty('naturalWidth', 1);
+        await expect(labels).toHaveCount(0);
     });
 
     test('remains visible and toggles the base map in read-only mode', async ({ page }) => {
@@ -88,20 +130,27 @@ test.describe('Satellite view toggle', () => {
 
         const button = page.locator('#satellite-view-button');
         const tiles = page.locator('#map .leaflet-tile-pane img.leaflet-tile');
+        const labels = page.locator(
+            '#map .leaflet-tile-pane img.leaflet-tile[src*="World_Transportation/MapServer/tile"]'
+        );
 
         await expect(button).toBeVisible();
         await expect(button).toHaveAttribute('aria-pressed', 'false');
+        await expect(labels).toHaveCount(0);
 
         await button.click();
 
         await expect(button).toHaveAttribute('aria-pressed', 'true');
-        await expect(tiles.first()).toHaveAttribute('src', /mt\d\.google\.com\/vt\/lyrs=s/);
+        await expect(tiles.first()).toHaveAttribute('src', satelliteImageryTilePattern);
+        await expect(labels.first()).toHaveAttribute('src', satelliteLabelsTilePattern);
         await expect(page.locator('#map img.leaflet-tile[src*="openstreetmap"]')).toHaveCount(0);
+        await expect(page.locator('#map img.leaflet-tile[src*="google.com"]')).toHaveCount(0);
 
         await button.click();
 
         await expect(button).toHaveAttribute('aria-pressed', 'false');
         await expect(tiles.first()).toHaveAttribute('src', STREET_TILE_URL_PATTERN);
+        await expect(labels).toHaveCount(0);
     });
 
     test('M toggles satellite view from the focused map, including in read-only mode', async ({
@@ -113,7 +162,7 @@ test.describe('Satellite view toggle', () => {
         await page.locator('#map').focus();
         await page.keyboard.press('m');
         await expect(button).toHaveAttribute('aria-pressed', 'true');
-        await expect(tiles.first()).toHaveAttribute('src', /mt\d\.google\.com\/vt\/lyrs=s/);
+        await expect(tiles.first()).toHaveAttribute('src', satelliteImageryTilePattern);
 
         await page.locator('#settings-button').click();
         await page.locator('#read-only').check();

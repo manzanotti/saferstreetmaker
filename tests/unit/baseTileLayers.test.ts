@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
     createBaseTileLayer,
+    createSatelliteLabelsLayer,
     SATELLITE_TILE_URL,
+    SATELLITE_LABELS_TILE_URL,
     STREET_TILE_URL
 } from '../../src/features/map/baseTileLayers';
 
@@ -18,13 +20,33 @@ describe('createBaseTileLayer', () => {
         expect(layer.options.maxZoom).toBe(20);
     });
 
-    it("creates Google's satellite tile layer", () => {
+    it("creates Esri's satellite imagery tile layer", () => {
         const layer = createBaseTileLayer('satellite');
+        expect(SATELLITE_TILE_URL).toBe(
+            'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+        );
         expect(layer).toHaveProperty('_url', SATELLITE_TILE_URL);
-        expect(SATELLITE_TILE_URL).toContain('google.com/vt/lyrs=s');
-        expect(layer.options.subdomains).toEqual(['0', '1', '2', '3']);
-        expect(layer.options.attribution).toContain('Google');
+        expect(layer.options.attribution).toContain(
+            'Source: Esri, Vantor, Earthstar Geographics, and the GIS User Community'
+        );
+        expect(layer.options.attribution).toContain('saferstreetmaker.org');
         expect(layer.options.crossOrigin).toBe('anonymous');
+        expect(layer.options.maxNativeZoom).toBe(23);
+        expect(layer.options.maxZoom).toBe(20);
+    });
+
+    it('creates a transparent transportation labels overlay for satellite view', () => {
+        const layer = createSatelliteLabelsLayer();
+        expect(SATELLITE_LABELS_TILE_URL).toBe(
+            'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}'
+        );
+        expect(layer).toHaveProperty('_url', SATELLITE_LABELS_TILE_URL);
+        expect(layer.options.attribution).toContain(
+            '&copy; Esri, HERE, Garmin, (c) OpenStreetMap contributors'
+        );
+        expect(layer.options.attribution).toContain('World_Transportation/MapServer');
+        expect(layer.options.crossOrigin).toBe('anonymous');
+        expect(layer.options.maxNativeZoom).toBe(23);
         expect(layer.options.maxZoom).toBe(20);
     });
 });

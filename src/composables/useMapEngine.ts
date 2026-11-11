@@ -16,7 +16,7 @@ import {
     shouldReducePointFeatureSize,
     shouldShowPointFeatures
 } from '../features/map/pointFeatureVisibility';
-import { createBaseTileLayer } from '../features/map/baseTileLayers';
+import { createBaseTileLayer, createSatelliteLabelsLayer } from '../features/map/baseTileLayers';
 
 export interface MapEngineResult {
     map: L.Map;
@@ -46,12 +46,24 @@ export function setupMapEngine(): MapEngineResult {
     let baseTileLayer = createBaseTileLayer(uiStore.satelliteView ? 'satellite' : 'street').addTo(
         map
     );
+    let satelliteLabelsLayer: L.TileLayer | null = null;
+    if (uiStore.satelliteView) {
+        satelliteLabelsLayer = createSatelliteLabelsLayer().addTo(map);
+    }
 
     watch(
         () => uiStore.satelliteView,
         (satellite) => {
             map.removeLayer(baseTileLayer);
             baseTileLayer = createBaseTileLayer(satellite ? 'satellite' : 'street').addTo(map);
+
+            if (satelliteLabelsLayer) {
+                map.removeLayer(satelliteLabelsLayer);
+                satelliteLabelsLayer = null;
+            }
+            if (satellite) {
+                satelliteLabelsLayer = createSatelliteLabelsLayer().addTo(map);
+            }
         }
     );
 
