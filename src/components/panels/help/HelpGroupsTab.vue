@@ -60,6 +60,11 @@ defineProps<{
             the new version starts empty. Give each version a unique name.
         </p>
         <p class="mb-8">
+            While Group details is open, features you draw or place with the toolbar are
+            automatically added to the selected version. Close Group details to draw features
+            without adding them to the group.
+        </p>
+        <p class="mb-8">
             Select a version to switch designs. The selected version and unassigned group features
             are shown on the map; the selected version's features are highlighted when the group is
             selected. Use

@@ -15,6 +15,7 @@ import { buildLegendEntry } from './legendEntry';
 import { isPointFeatureElement } from './features/featureClassification';
 import type { IMapLayer } from './IMapLayer';
 import { getPolygonRings } from '../../geometry/leafletGeometry';
+import { addCreatedFeatureToEditedGroup } from '../groups/groupMembershipActions';
 
 export interface PolylineLayerConfig {
     id: string;
@@ -173,11 +174,15 @@ export function createPolylineLayer(
         const createdLayers = geoJsonLayer.getLayers() as any[];
         const createdLayer = createdLayers[createdLayers.length - 1];
         const createdFeature = createdLayer?.feature ?? createdLayer?.toGeoJSON?.() ?? null;
-        mapStore.markLayerUpdated({
-            kind: config.kind === 'polygon' ? 'polygon-add' : 'polyline-add',
-            layerId: config.id,
-            payload: createdFeature ?? e.layer.toGeoJSON?.() ?? null
-        });
+        if (createdLayer && addCreatedFeatureToEditedGroup(config.id, createdLayer)) {
+            mapStore.markLayerUpdated();
+        } else {
+            mapStore.markLayerUpdated({
+                kind: config.kind === 'polygon' ? 'polygon-add' : 'polyline-add',
+                layerId: config.id,
+                payload: createdFeature ?? e.layer.toGeoJSON?.() ?? null
+            });
+        }
         pendingEditor = editor;
         // Leaflet.draw must finish disabling and restarting its handler first.
         void nextTick(() => {
