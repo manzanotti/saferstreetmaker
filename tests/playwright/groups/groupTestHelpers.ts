@@ -156,7 +156,12 @@ export async function expectSelectedVersion(page: Page, name: string): Promise<v
     );
 }
 
-export async function drawNamedLtnCell(page: Page, name: string, offsetX = 0): Promise<void> {
+export async function drawNamedLtnCell(
+    page: Page,
+    name: string,
+    offsetX = 0,
+    offsetY = 0
+): Promise<void> {
     await page.locator('#ltn-button').click();
     const map = page.locator('.leaflet-container');
     const box = await map.boundingBox();
@@ -164,7 +169,7 @@ export async function drawNamedLtnCell(page: Page, name: string, offsetX = 0): P
         throw new Error('Map bounding box not found');
     }
     const cx = box.x + box.width / 2;
-    const cy = box.y + box.height / 2;
+    const cy = box.y + box.height / 2 + offsetY;
     await page.waitForTimeout(200);
     await page.mouse.click(cx - 45 + offsetX, cy - 35);
     await page.waitForTimeout(200);
@@ -181,7 +186,7 @@ export async function drawNamedLtnCell(page: Page, name: string, offsetX = 0): P
     await page.waitForTimeout(300);
 }
 
-export async function drawNamedMobilityLane(page: Page, name: string): Promise<void> {
+export async function drawNamedMobilityLane(page: Page, name: string, offsetY = 0): Promise<void> {
     await page.locator('#mobility-lane-button').click();
     const map = page.locator('.leaflet-container');
     const box = await map.boundingBox();
@@ -189,7 +194,7 @@ export async function drawNamedMobilityLane(page: Page, name: string): Promise<v
         throw new Error('Map bounding box not found');
     }
     const cx = box.x + box.width / 2;
-    const cy = box.y + box.height / 2;
+    const cy = box.y + box.height / 2 + offsetY;
     await page.waitForTimeout(200);
     await page.mouse.click(cx - 60, cy);
     await page.waitForTimeout(200);
