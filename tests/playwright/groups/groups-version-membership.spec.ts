@@ -3,6 +3,7 @@ import type { Group } from '../../../src/models/Group';
 import { getLayerFeatureCount } from '../indexedDbHelpers';
 import {
     setupPage,
+    placeModalFilter,
     placeTwoModalFilters,
     selectBothFilters,
     createGroup,
@@ -33,6 +34,57 @@ async function readGroup(page: Page): Promise<Group> {
 }
 
 test.describe('Group version membership', () => {
+    test('assigns newly placed features to the selected version, not the default', async ({
+        page,
+        context
+    }) => {
+        await setupPage(page, context);
+        await placeTwoModalFilters(page);
+        await selectBothFilters(page);
+        await createGroup(page, 'Draw alternatives');
+        await openGroupDetails(page, 'Draw alternatives');
+        await createGroupVersion(page, 'Draw alternatives', 'Alternative');
+
+        await placeModalFilter(page, 35, -150);
+        await page.locator('#modal-filter-button').click();
+        const dialog = page.getByRole('dialog', { name: 'Group details' });
+        const defaultVersion = dialog.getByRole('button', { name: 'Select version Default' });
+        const alternative = dialog.getByRole('button', { name: 'Select version Alternative' });
+        await expect(alternative).toHaveAttribute('aria-pressed', 'true');
+        await expect(dialog.getByText('(1 feature)', { exact: true })).toBeVisible();
+        await expect(dialog.getByText('(2 features)', { exact: true })).toBeVisible();
+
+        const markers = page.locator('.leaflet-filters-pane path.modal-filter-marker');
+        const newMarker = markers.last();
+        await expect(markers.first()).toHaveCSS('pointer-events', 'none');
+        await expect(newMarker).not.toHaveCSS('pointer-events', 'none');
+        await defaultVersion.click();
+        await expect(markers.first()).not.toHaveCSS('pointer-events', 'none');
+        await expect(newMarker).toHaveCSS('pointer-events', 'none');
+        await alternative.click();
+        await expect(newMarker).not.toHaveCSS('pointer-events', 'none');
+
+        await dialog.getByRole('button', { name: 'Close group details' }).click();
+        await newMarker.dispatchEvent('mouseover');
+        await expect(page.locator('.feature-popup-group-description')).toContainText(
+            'Draw alternatives'
+        );
+        await newMarker.dispatchEvent('mouseout');
+        await openGroupsPanel(page);
+        await expect(
+            page.getByRole('button', { name: 'Select group Draw alternatives' })
+        ).toHaveText('Draw alternatives (3)');
+
+        await page.locator('#undo-button').click();
+        await expect(markers).toHaveCount(2);
+        await expect.poll(async () => (await readGroup(page)).versions?.[1].members).toEqual([]);
+        await page.locator('#redo-button').click();
+        await expect(markers).toHaveCount(3);
+        await expect
+            .poll(async () => (await readGroup(page)).versions?.[1].members)
+            .toHaveLength(1);
+    });
+
     test('seeds only unassigned features and preserves membership, totals, and history after deleting a third version', async ({
         page,
         context

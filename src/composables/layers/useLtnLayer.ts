@@ -13,6 +13,7 @@ import { createLtnCursorController } from './ltn/ltnCursorController';
 import { createLtnDrawController } from './ltn/ltnDrawController';
 import { createLtnPolygonFactory } from './ltn/ltnPolygonFactory';
 import { createLtnLayerLifecycle, type LtnLayerState } from './ltn/ltnLayerLifecycle';
+import { addCreatedFeatureToEditedGroup } from '../groups/groupMembershipActions';
 
 const COLOUR = '#cc00cc';
 const BUTTON_ID = 'ltn';
@@ -60,12 +61,16 @@ export function createLtnLayer(map: L.Map): EditablePolylineLayer {
         isSelected: () => state.selected,
         isDisposed: () => state.disposed,
         onDrawCreated: (layer) => {
-            const polygon = addLtnCell(layer.getLatLngs()[0], _ltnTitle, COLOUR) as any;
-            mapStore.markLayerUpdated({
-                kind: 'polygon-add',
-                layerId: 'LtnCells',
-                payload: polygon?.historyFeature ?? layer.toGeoJSON?.() ?? null
-            });
+            const polygon = addLtnCell(layer.getLatLngs()[0], _ltnTitle, COLOUR);
+            if (addCreatedFeatureToEditedGroup('LtnCells', polygon)) {
+                mapStore.markLayerUpdated();
+            } else {
+                mapStore.markLayerUpdated({
+                    kind: 'polygon-add',
+                    layerId: 'LtnCells',
+                    payload: getPolygonHistoryFeature(polygon)
+                });
+            }
             return polygon;
         }
     });

@@ -1,17 +1,48 @@
+import type * as L from 'leaflet';
 import type { GroupMember } from '../../models/Group';
 import { useMapStore } from '../../stores/mapStore';
 import { useSelectionStore } from '../../stores/selectionStore';
 import { useGroupStore } from '../../stores/groupStore';
 import { useUiStore } from '../../stores/uiStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 import { pinia } from '../../stores/index';
 import { getAllGroupMembers } from '../../features/groups/groupVersions';
-import { buildHistoryId } from '../layers/features/featureLookup';
-import { recomputeFeatureVisibility } from './groupRuntime';
+import { buildHistoryId, getFeatureHistoryId } from '../layers/features/featureLookup';
+import { applySelectionHighlights } from '../useAreaSelection';
+import { buildEntriesForMembers, recomputeFeatureVisibility } from './groupRuntime';
 import {
     getSelectionMembership,
     splitRemovedSharedVersionMembers,
     performPendingSplits
 } from './groupSelectionSplits';
+
+export function addCreatedFeatureToEditedGroup(layerId: string, feature: L.Layer): boolean {
+    const groupStore = useGroupStore(pinia);
+    const groupId = groupStore.detailsGroupId;
+    if (!groupId || useSettingsStore(pinia).readOnly) {
+        return false;
+    }
+
+    const version = groupStore.getActiveGroupVersion(groupId);
+    if (!version) {
+        return false;
+    }
+    const historyId = getFeatureHistoryId(feature);
+    if (!historyId) {
+        throw new Error(`Newly drawn feature in "${layerId}" has no history ID.`);
+    }
+
+    const member = { layerId, historyId };
+    groupStore.addMembersToGroup(groupId, [member]);
+    const selectionStore = useSelectionStore(pinia);
+    const previousSelection = selectionStore.selected;
+    // setSelected resets group selection so the details watcher won't commit it again.
+    selectionStore.setSelected(buildEntriesForMembers([...version.members, member]));
+    selectionStore.markGroupSelection(groupId);
+    recomputeFeatureVisibility();
+    applySelectionHighlights(selectionStore.selected, true, previousSelection);
+    return true;
+}
 
 export function createGroupFromSelection(): void {
     const groupStore = useGroupStore(pinia);

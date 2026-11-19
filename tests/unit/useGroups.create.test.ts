@@ -19,6 +19,7 @@ import {
     finalizeRenameGroup,
     createGroupVersion
 } from '../../src/composables/useGroups';
+import { addCreatedFeatureToEditedGroup } from '../../src/composables/groups/groupMembershipActions';
 import {
     makePointLayer,
     makePolylineLayer,
@@ -42,6 +43,45 @@ describe('useGroups', () => {
         useSelectionStore(pinia).deactivate();
         useMapStore(pinia).setLayers([]);
         useSettingsStore(pinia).readOnly = false;
+    });
+
+    it('adds newly drawn features only to the version being edited and keeps existing members selected', () => {
+        const layer = makePointLayer('ModalFilters');
+        const original = makePointMarker('original');
+        const first = makePointMarker('first-drawn');
+        const second = makePointMarker('second-drawn');
+        const outside = makePointMarker('outside');
+        for (const marker of [original, first, second, outside]) {
+            layer.getLayer().addLayer(marker);
+        }
+        useMapStore(pinia).setLayers([layer]);
+
+        const groupStore = useGroupStore(pinia);
+        groupStore.addGroup({
+            id: 'g1',
+            name: 'Design',
+            members: [{ layerId: 'ModalFilters', historyId: 'original' }]
+        });
+        createGroupVersion('g1', 'Alternative');
+        groupStore.openDetailsDialog('g1');
+
+        expect(addCreatedFeatureToEditedGroup('ModalFilters', first)).toBe(true);
+        expect(addCreatedFeatureToEditedGroup('ModalFilters', second)).toBe(true);
+        expect(
+            groupStore.groups[0].versions?.map((version) =>
+                version.members.map((member) => member.historyId)
+            )
+        ).toEqual([['original'], ['first-drawn', 'second-drawn']]);
+        expect(useSelectionStore(pinia).selected.map((entry) => entry.marker)).toEqual([
+            first,
+            second
+        ]);
+
+        groupStore.closeDetailsDialog();
+        expect(addCreatedFeatureToEditedGroup('ModalFilters', outside)).toBe(false);
+        expect(
+            groupStore.getFeatureMemberships({ layerId: 'ModalFilters', historyId: 'outside' })
+        ).toHaveLength(0);
     });
 
     // ── createGroupFromSelection ──────────────────────────────────────────────

@@ -16,6 +16,7 @@ import { attachFeatureGroupHover } from './features/featureGroupHover';
 import { shouldShowPointFeatures } from '../../features/map/pointFeatureVisibility';
 import { isPosition } from '../../features/map/geoJsonCoordinates';
 import { openGroupDetails } from '../useGroups';
+import { addCreatedFeatureToEditedGroup } from '../groups/groupMembershipActions';
 import type { IMapLayer } from './IMapLayer';
 
 export interface PointLayerConfig {
@@ -71,7 +72,12 @@ export function createPointLayer(config: PointLayerConfig, map: L.Map): IMapLaye
         if (!shouldShowPointFeatures(map)) {
             return;
         }
-        const { historyId } = addMarker(e.latlng);
+        const { marker, historyId } = addMarker(e.latlng);
+        if (addCreatedFeatureToEditedGroup(config.id, marker)) {
+            // Snapshot both the new feature and its group membership in one change.
+            mapStore.markLayerUpdated();
+            return;
+        }
         mapStore.markLayerUpdated({
             kind: 'point-add',
             layerId: config.id,
