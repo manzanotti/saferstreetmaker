@@ -53,10 +53,14 @@ function isMapContext(event: KeyboardEvent, mapElement: HTMLElement): boolean {
         return true;
     }
 
+    if (!(target instanceof Node) || !mapElement.contains(target)) {
+        return false;
+    }
+
     return (
-        target instanceof Node &&
-        mapElement.contains(target) &&
-        !(target instanceof Element && target.closest('.leaflet-control'))
+        !(target instanceof Element) ||
+        target.closest('.leaflet-control') === null ||
+        target.closest('.leaflet-control .toolbar[role="toolbar"][aria-label="Map tools"]') !== null
     );
 }
 

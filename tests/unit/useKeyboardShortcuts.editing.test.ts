@@ -122,6 +122,42 @@ describe('Keyboard shortcuts', () => {
         expect(mapStore.activeLayerId).toBe('ModalFilters');
     });
 
+    it('allows map shortcuts from the map tools toolbar but not other Leaflet controls', () => {
+        const mapToolsControl = document.createElement('div');
+        mapToolsControl.className = 'leaflet-control';
+        const mapToolsToolbar = document.createElement('ul');
+        mapToolsToolbar.className = 'toolbar';
+        mapToolsToolbar.setAttribute('role', 'toolbar');
+        mapToolsToolbar.setAttribute('aria-label', 'Map tools');
+        const mapToolsButton = document.createElement('button');
+        mapToolsToolbar.append(mapToolsButton);
+        mapToolsControl.append(mapToolsToolbar);
+
+        const commandsControl = document.createElement('div');
+        commandsControl.className = 'leaflet-control';
+        const commandsToolbar = document.createElement('ul');
+        commandsToolbar.setAttribute('role', 'toolbar');
+        commandsToolbar.setAttribute('aria-label', 'Map controls');
+        const commandsButton = document.createElement('button');
+        commandsToolbar.append(commandsButton);
+        commandsControl.append(commandsToolbar);
+
+        const otherControl = document.createElement('div');
+        otherControl.className = 'leaflet-control';
+        const otherButton = document.createElement('button');
+        otherControl.append(otherButton);
+        map.getContainer().append(mapToolsControl, commandsControl, otherControl);
+
+        press({ key: 's' }, otherButton);
+        expect(useSelectionStore(pinia).isActive).toBe(false);
+
+        press({ key: 's' }, commandsButton);
+        expect(useSelectionStore(pinia).isActive).toBe(false);
+
+        press({ key: 's' }, mapToolsButton);
+        expect(useSelectionStore(pinia).isActive).toBe(true);
+    });
+
     it('blocks editing shortcuts in Presentation mode but allows layer visibility controls', () => {
         useSettingsStore(pinia).readOnly = true;
         press({ key: 's' });
